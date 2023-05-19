@@ -844,10 +844,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         boolean compilationStarted = false;
         try {
             TruffleCompiler compiler = getTruffleCompiler(callTarget);
-            final Map<String, Object> optionsMap = getOptionsForCompiler(callTarget);
             listeners.onCompilationStarted(callTarget, task);
             compilationStarted = true;
-            compiler.doCompile(task, callTarget, optionsMap, listeners.isEmpty() ? null : listeners);
+            compiler.doCompile(task, callTarget, listeners.isEmpty() ? null : listeners);
             task.dequeueTargets();
         } catch (OptimizationFailedException e) {
             // Listeners already notified
@@ -1120,42 +1119,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             engineOptions = res;
         }
         return res;
-    }
-
-    /**
-     * Returns OptimizedCallTarget's {@link OptimizedRuntimeOptions} as a {@link Map}. The returned
-     * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
-     */
-    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
-        Map<String, Object> map = new HashMap<>();
-        OptionValues values = target.engine.getEngineOptions();
-
-        for (OptionDescriptor desc : OptimizedRuntimeOptions.getDescriptors()) {
-            final OptionKey<?> key = desc.getKey();
-            if (values.hasBeenSet(key)) {
-                Object value = values.get(key);
-                if (!isPrimitiveType(value)) {
-                    value = GraalRuntimeAccessor.ENGINE.getUnparsedOptionValue(values, key);
-                }
-                if (value != null) {
-                    map.put(desc.getName(), value);
-                }
-            }
-        }
-        return map;
-    }
-
-    private static boolean isPrimitiveType(Object value) {
-        Class<?> valueClass = value.getClass();
-        return valueClass == Boolean.class ||
-                        valueClass == Byte.class ||
-                        valueClass == Short.class ||
-                        valueClass == Character.class ||
-                        valueClass == Integer.class ||
-                        valueClass == Long.class ||
-                        valueClass == Float.class ||
-                        valueClass == Double.class ||
-                        valueClass == String.class;
     }
 
     protected int getObjectAlignment() {

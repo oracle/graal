@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import java.util.Map;
-
 /**
  * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
  */
@@ -33,8 +31,6 @@ public interface TruffleCompiler {
 
     /**
      * Initializes the compiler before the first compilation.
-     *
-     * @param options the options for initialization
      * @param compilable the Truffle AST that triggered the initialization
      * @param firstInitialization first initialization. For a multi-isolate compiler the
      *            {@code firstInitialization} must be {@code true} for an initialization in the
@@ -42,15 +38,13 @@ public interface TruffleCompiler {
      *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options, CompilableTruffleAST compilable, boolean firstInitialization);
+    void initialize(CompilableTruffleAST compilable, boolean firstInitialization);
 
     /**
      * Compiles {@code compilable} to machine code.
-     *
-     * @param options option values relevant to compilation
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, Map<String, Object> options, TruffleCompilerListener listener);
+    void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, TruffleCompilerListener listener);
 
     /**
      * Returns a unique name for the configuration in use by this compiler.

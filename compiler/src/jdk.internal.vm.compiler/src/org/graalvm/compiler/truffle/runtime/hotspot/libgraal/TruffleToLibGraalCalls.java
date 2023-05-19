@@ -86,7 +86,7 @@ final class TruffleToLibGraalCalls {
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
 
     @TruffleToLibGraal(InitializeCompiler)
-    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options, CompilableTruffleAST compilable, boolean firstInitialization);
+    static native void initializeCompiler(long isolateThreadId, long compilerHandle, CompilableTruffleAST compilable, boolean firstInitialization);
 
     @TruffleToLibGraal(GetCompilerConfigurationName)
     static native String getCompilerConfigurationName(long isolateThreadId, long handle);
@@ -96,7 +96,6 @@ final class TruffleToLibGraalCalls {
                     long compilerHandle,
                     TruffleCompilationTask task,
                     CompilableTruffleAST compilable,
-                    byte[] options,
                     TruffleCompilerListener listener);
 
     @TruffleToLibGraal(InstallTruffleCallBoundaryMethod)

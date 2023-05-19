@@ -33,7 +33,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -298,8 +297,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 EngineData engine = callTarget.engine;
                 profilingEnabled = engine.profilingEnabled;
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
-                Map<String, Object> options = getOptionsForCompiler(callTarget);
-                compiler.initialize(options, callTarget, true);
+                compiler.initialize(callTarget, true);
 
                 installCallBoundaryMethods(compiler);
                 if (jvmciReservedReference0Offset != -1) {

@@ -156,7 +156,7 @@ final class TruffleToLibGraalEntryPoints {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
             CompilableTruffleAST compilable = new HSCompilableTruffleAST(s, hsCompilable);
-            compiler.initialize(options, compilable, firstInitialization);
+            compiler.initialize(compilable, firstInitialization);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -215,7 +215,7 @@ final class TruffleToLibGraalEntryPoints {
                 HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
                 Map<String, Object> options = decodeOptions(env, hsOptions);
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
-                compiler.doCompile(task, compilable, options, listener);
+                compiler.doCompile(task, compilable, listener);
             } finally {
                 doReferenceHandling();
             }

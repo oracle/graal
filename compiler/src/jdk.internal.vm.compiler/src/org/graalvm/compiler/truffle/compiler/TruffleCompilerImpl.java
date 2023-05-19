@@ -201,7 +201,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     @Override
     @SuppressWarnings("try")
-    public final void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, Map<String, Object> optionsMap, TruffleCompilerListener listener) {
+    public final void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, TruffleCompilerListener listener) {
         try (TruffleCompilation compilation = openCompilation(task, compilable)) {
             doCompile(compilation, listener);
         }
@@ -287,7 +287,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     @Override
     @SuppressWarnings("try")
-    public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
+    public void initialize(CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {

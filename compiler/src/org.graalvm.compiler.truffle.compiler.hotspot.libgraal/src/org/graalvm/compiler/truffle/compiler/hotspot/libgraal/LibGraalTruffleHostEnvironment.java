@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import java.util.Collections;
-
 import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
@@ -54,7 +52,7 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
     @Override
     protected TruffleCompilerImpl createCompiler(CompilableTruffleAST ast) {
         HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime());
-        compiler.initialize(Collections.emptyMap(), ast, true);
+        compiler.initialize(ast, true);
         return compiler;
     }
 
