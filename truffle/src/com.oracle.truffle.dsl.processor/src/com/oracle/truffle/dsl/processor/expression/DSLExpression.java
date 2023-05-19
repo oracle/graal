@@ -199,7 +199,7 @@ public abstract class DSLExpression {
                     if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
                                     (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
                         String name = resolvedVar.getSimpleName().toString();
-                        if (!name.equals("null") && !name.equals("this") && !name.equals(NodeParser.NODE_KEYWORD)) {
+                        if (!name.equals("null") && !name.equals("this") && !name.equals("$root") && !name.equals(NodeParser.NODE_KEYWORD)) {
                             bindsReceiver.set(true);
                         }
                     }

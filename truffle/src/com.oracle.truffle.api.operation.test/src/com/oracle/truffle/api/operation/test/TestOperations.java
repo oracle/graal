@@ -48,6 +48,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -157,9 +158,10 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        @Bind("$bci") int bci,
+                        // TODO: decide how/whether to handle $bci
+                        // @Bind("$bci") int bci,
                         @Bind("$root") Node node) {
-            throw new TestException("fail", node, bci, value);
+            throw new TestException("fail", node, -1, value);
         }
     }
 
@@ -328,7 +330,7 @@ abstract class SomeOperationNode extends Node {
     abstract int execute();
 
     @Specialization
-    static int doMagic() {
+    public static int doMagic() {
         return 1337;
     }
 }

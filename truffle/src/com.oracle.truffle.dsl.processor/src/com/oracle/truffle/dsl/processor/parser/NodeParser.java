@@ -174,6 +174,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final ParseMode mode;
     private final TypeMirror exportLibraryType;
     private final TypeElement exportDeclarationType;
+    private final TypeElement operationRootNodeType;
     private final boolean substituteThisToParent;
 
     /*
@@ -182,11 +183,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private NodeData parsingParent;
     private final List<TypeMirror> cachedAnnotations;
 
-    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
+    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, TypeElement operationRootNodeType, boolean substituteThisToParent) {
         this.mode = mode;
         this.exportLibraryType = exportLibraryType;
         this.exportDeclarationType = exportDeclarationType;
         this.cachedAnnotations = getCachedAnnotations();
+        this.operationRootNodeType = operationRootNodeType;
         this.substituteThisToParent = substituteThisToParent;
     }
 
@@ -196,18 +198,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
-        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, null, substituteThisToParent);
         // the ExportsParse will take care of removing the specializations if the option is set
         parser.setGenerateSlowPathOnly(false);
         return parser;
     }
 
     public static NodeParser createDefaultParser() {
-        return new NodeParser(ParseMode.DEFAULT, null, null, false);
+        return new NodeParser(ParseMode.DEFAULT, null, null, null, false);
     }
 
-    public static NodeParser createOperationParser() {
-        return new NodeParser(ParseMode.OPERATION, null, null, false);
+    public static NodeParser createOperationParser(TypeElement operationRootNodeType) {
+        return new NodeParser(ParseMode.OPERATION, null, null, operationRootNodeType, false);
     }
 
     @Override
@@ -504,10 +506,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
         globalMembers.addAll(members);
         globalMembers.add(new CodeVariableElement(types.Node, "this"));
         globalMembers.add(new CodeVariableElement(types.Node, NODE_KEYWORD));
+        TypeElement accessingType = node.getTemplateType();
         if (mode == ParseMode.OPERATION) {
             globalMembers.add(new CodeVariableElement(types.Node, "$root"));
+            // The generated OperationRootNode is not in the same hierarchy as the template, so all
+            // DSL expressions should be accessible from the package of the OperationRootNode.
+            accessingType = new CodeTypeElement(Set.of(), ElementKind.CLASS, ElementUtils.findPackageElement(operationRootNodeType), "PlaceholderOperationNode");
         }
-        return new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
+        return new DSLExpressionResolver(context, accessingType, globalMembers);
     }
 
     private static final class NodeSizeEstimate {
