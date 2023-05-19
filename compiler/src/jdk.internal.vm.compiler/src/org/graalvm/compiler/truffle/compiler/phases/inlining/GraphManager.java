@@ -42,7 +42,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
@@ -58,7 +58,7 @@ final class GraphManager {
     public static final int TRIVIAL_NODE_COUNT_LIMIT = 500;
     private final PartialEvaluator partialEvaluator;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
-    private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
+    private final EconomicMap<TruffleCompilable, GraphManager.Entry> irCache = EconomicMap.create();
     private final TruffleTierContext rootContext;
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
     private final boolean useSize;
@@ -72,7 +72,7 @@ final class GraphManager {
     }
 
     @SuppressWarnings("try")
-    Entry pe(CompilableTruffleAST truffleAST) {
+    Entry pe(TruffleCompilable truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             // the guest scope represents the guest language method of truffle
@@ -98,7 +98,7 @@ final class GraphManager {
         return entry;
     }
 
-    private TruffleTierContext newContext(CompilableTruffleAST truffleAST, boolean finalize) {
+    private TruffleTierContext newContext(TruffleCompilable truffleAST, boolean finalize) {
         return new TruffleTierContext(
                         partialEvaluator,
                         rootContext.compilerOptions,
@@ -128,12 +128,12 @@ final class GraphManager {
         return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
     }
 
-    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
+    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, TruffleCompilable truffleAST, InliningUtil.InlineeReturnAction returnAction) {
         return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
                         "cost-benefit analysis", AgnosticInliningPhase.class.getName(), returnAction);
     }
 
-    void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
+    void finalizeGraph(Invoke invoke, TruffleCompilable truffleAST) {
         final TruffleTierContext context = newContext(truffleAST, true);
         partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override

@@ -66,7 +66,7 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -317,7 +317,7 @@ public abstract class PartialEvaluator {
      *
      * @param compilable the Truffle AST being compiled.
      */
-    public ResolvedJavaMethod rootForCallTarget(CompilableTruffleAST compilable) {
+    public ResolvedJavaMethod rootForCallTarget(TruffleCompilable compilable) {
         return types.OptimizedCallTarget_profiledPERoot;
     }
 
@@ -327,15 +327,15 @@ public abstract class PartialEvaluator {
      *
      * @param compilable the Truffle AST being compiled.
      */
-    public ResolvedJavaMethod inlineRootForCallTarget(CompilableTruffleAST compilable) {
+    public ResolvedJavaMethod inlineRootForCallTarget(TruffleCompilable compilable) {
         return types.OptimizedCallTarget_callInlined;
     }
 
     private class InterceptReceiverPlugin implements ParameterPlugin {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
 
-        InterceptReceiverPlugin(CompilableTruffleAST compilable) {
+        InterceptReceiverPlugin(TruffleCompilable compilable) {
             this.compilable = compilable;
         }
 

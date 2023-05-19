@@ -54,7 +54,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
@@ -154,9 +154,9 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
 
     private final class DeoptEffect extends Effect {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
 
-        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, CompilableTruffleAST compilable) {
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, TruffleCompilable compilable) {
             super(frame, insertBefore, index);
             this.compilable = compilable;
         }
@@ -282,10 +282,10 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
 
     private final class ReentrantIterator extends NodeIteratorClosure<State> {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
         private final ArrayList<Effect> effects;
 
-        ReentrantIterator(CompilableTruffleAST compilable, ArrayList<Effect> effects) {
+        ReentrantIterator(TruffleCompilable compilable, ArrayList<Effect> effects) {
             this.compilable = compilable;
             this.effects = effects;
         }

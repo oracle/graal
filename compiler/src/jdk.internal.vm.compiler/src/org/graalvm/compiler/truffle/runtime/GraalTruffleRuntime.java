@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -221,13 +221,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * This method allows retrieval of the compiler configuration without requiring to initialize
-     * the {@link TruffleCompiler} with {@link #getTruffleCompiler(CompilableTruffleAST)
+     * the {@link TruffleCompiler} with {@link #getTruffleCompiler(TruffleCompilable)
      * getTruffleCompiler}. The result of this method should always match
      * {@link TruffleCompiler#getCompilerConfigurationName()}.
      */
     protected abstract String getCompilerConfigurationName();
 
-    public abstract TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
+    public abstract TruffleCompiler getTruffleCompiler(TruffleCompilable compilable);
 
     public abstract TruffleCompilerOptionDescriptor[] listCompilerOptions();
 
@@ -251,7 +251,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         return asObject(OptimizedCallTarget.class, constant);
     }
 
@@ -868,7 +868,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()), tier);
             }
         } finally {
-            Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
+            Supplier<String> serializedException = () -> TruffleCompilable.serializeException(t);
             callTarget.onCompilationFailed(serializedException, isSuppressedTruffleRuntimeException(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
@@ -1039,18 +1039,18 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+    public void log(String loggerId, TruffleCompilable compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
     }
 
     @Override
-    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+    public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
     }
 
     /**
      * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
-     * thrown during VM exit. Unlike {@link #isSuppressedFailure(CompilableTruffleAST, Supplier)}
+     * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)}
      * this method is called only for exceptions thrown on the Truffle runtime side, so it does not
      * need to stringify the passed exception.
      */

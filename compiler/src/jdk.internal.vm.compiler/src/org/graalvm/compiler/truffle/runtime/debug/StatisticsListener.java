@@ -38,7 +38,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
@@ -231,7 +231,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
     private static Collection<Class<?>> nodeClasses(AbstractCompilationTask task) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
-        for (CompilableTruffleAST ast : task.inlinedTargets()) {
+        for (TruffleCompilable ast : task.inlinedTargets()) {
             ((OptimizedCallTarget) ast).accept(new NodeVisitor() {
                 @Override
                 public boolean visit(Node node) {
@@ -564,7 +564,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         private int loopCount;
 
         CallTargetNodeStatistics(AbstractCompilationTask task) {
-            for (CompilableTruffleAST ast : task.inlinedTargets()) {
+            for (TruffleCompilable ast : task.inlinedTargets()) {
                 ((OptimizedCallTarget) ast).accept(this::visitNode);
             }
             callCountDirectInlined = task.countInlinedCalls();

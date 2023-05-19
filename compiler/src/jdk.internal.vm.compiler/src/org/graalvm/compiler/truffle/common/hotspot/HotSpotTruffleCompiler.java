@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,7 +43,7 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      */
     void installTruffleReservedOopMethod(ResolvedJavaMethod method);
 
-    int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable);
+    int pendingTransferToInterpreterOffset(TruffleCompilable compilable);
 
     /**
      * Releases caches used for PE/compilation.

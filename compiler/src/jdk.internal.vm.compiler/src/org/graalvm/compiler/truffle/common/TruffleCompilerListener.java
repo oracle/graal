@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.common;
 
 /**
- * A listener for events related to the compilation of a {@link CompilableTruffleAST}. The events
+ * A listener for events related to the compilation of a {@link TruffleCompilable}. The events
  * are described only in terms of types that can be easily serialized or proxied across a heap
  * boundary.
  */
@@ -100,7 +100,7 @@ public interface TruffleCompilerListener {
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph);
+    void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph);
 
     /**
      * Notifies this object when compilation of {@code compilable} has completed partial evaluation
@@ -113,7 +113,7 @@ public interface TruffleCompilerListener {
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph);
+    void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph);
 
     /**
      * Notifies this object when compilation of {@code compilable} succeeds.
@@ -130,7 +130,7 @@ public interface TruffleCompilerListener {
      *            method returns will result in an {@link IllegalStateException}.
      * @param tier Which compilation tier was the compilation
      */
-    default void onSuccess(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
+    default void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
     }
 
     /**
@@ -147,7 +147,7 @@ public interface TruffleCompilerListener {
      *            {@code bailout == false}.
      * @param tier Which compilation tier was the compilation
      */
-    default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
 
     }
 
@@ -158,6 +158,6 @@ public interface TruffleCompilerListener {
      * @param compilable the Truffle AST which is going to be re-compiled.
      * @param task Which compilation task is in question.
      */
-    default void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    default void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
     }
 }

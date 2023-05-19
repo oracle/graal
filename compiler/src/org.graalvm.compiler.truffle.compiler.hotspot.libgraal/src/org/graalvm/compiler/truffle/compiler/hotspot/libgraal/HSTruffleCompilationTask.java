@@ -62,7 +62,7 @@ import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
@@ -119,7 +119,7 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
 
     @TruffleFromLibGraal(AddTargetToDequeue)
     @Override
-    public void addTargetToDequeue(CompilableTruffleAST target) {
+    public void addTargetToDequeue(TruffleCompilable target) {
         JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
         callAddTargetToDequeue(env(), getHandle(), hsCompilable);
     }
@@ -132,7 +132,7 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
 
     @TruffleFromLibGraal(AddInlinedTarget)
     @Override
-    public void addInlinedTarget(CompilableTruffleAST target) {
+    public void addInlinedTarget(TruffleCompilable target) {
         JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
         callAddInlinedTarget(env(), getHandle(), hsCompilable);
     }

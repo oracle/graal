@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -104,7 +104,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * </pre>
  */
 @SuppressWarnings({"hiding"})
-public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
+public abstract class OptimizedCallTarget implements TruffleCompilable, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     private static final String VALID_ROOT_ASSUMPTION_NAME = "validRootAssumption";
@@ -915,7 +915,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Gets the speculation log used to collect all failed speculations in the compiled code for
      * this call target. Note that this may differ from the speculation log
-     * {@linkplain CompilableTruffleAST#getCompilationSpeculationLog() used for compilation}.
+     * {@linkplain TruffleCompilable#getCompilationSpeculationLog() used for compilation}.
      */
     public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
@@ -939,7 +939,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public final boolean isSameOrSplit(TruffleCompilable ast) {
         if (!(ast instanceof OptimizedCallTarget)) {
             return false;
         }

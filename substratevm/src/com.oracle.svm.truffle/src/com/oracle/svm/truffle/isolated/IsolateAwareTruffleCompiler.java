@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
@@ -81,7 +81,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     }
 
     @Override
-    public void initialize(CompilableTruffleAST compilable, boolean firstInitialization) {
+    public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
         if (SubstrateOptions.shouldCompileInIsolates()) {
             // Nothing; we initialize the compiler in our isolate
         } else {
@@ -91,7 +91,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
 
     @Override
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "False positive.")
-    public void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, TruffleCompilerListener listener) {
+    public void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener) {
 
         if (!SubstrateOptions.shouldCompileInIsolates()) {
             delegate.doCompile(task, compilable, listener);

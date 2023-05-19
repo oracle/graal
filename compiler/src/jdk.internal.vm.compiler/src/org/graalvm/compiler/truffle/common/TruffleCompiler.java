@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.common;
 
 /**
- * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
+ * A compiler that partially evaluates and compiles a {@link TruffleCompilable} to machine code.
  */
 public interface TruffleCompiler {
 
@@ -38,13 +38,13 @@ public interface TruffleCompiler {
      *
      * @since 20.0.0
      */
-    void initialize(CompilableTruffleAST compilable, boolean firstInitialization);
+    void initialize(TruffleCompilable compilable, boolean firstInitialization);
 
     /**
      * Compiles {@code compilable} to machine code.
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, TruffleCompilerListener listener);
+    void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);
 
     /**
      * Returns a unique name for the configuration in use by this compiler.

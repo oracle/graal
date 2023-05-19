@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * A Truffle AST that can be compiled by a {@link TruffleCompiler}.
  */
-public interface CompilableTruffleAST {
+public interface TruffleCompilable {
     /**
      * Gets this AST as a compiler constant.
      */
@@ -55,7 +55,7 @@ public interface CompilableTruffleAST {
      *            representing the reason for compilation failure. See
      *            {@link #serializeException(Throwable)}.
      * @param suppressed specifies whether the failure was suppressed and should be silent. Use the
-     *            {@link TruffleCompilerRuntime#isSuppressedFailure(CompilableTruffleAST, Supplier)}
+     *            {@link TruffleCompilerRuntime#isSuppressedFailure(TruffleCompilable, Supplier)}
      *            to determine if the failure should be suppressed.
      * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
      *            bailout means the compiler aborted the compilation based on some of property of
@@ -107,7 +107,7 @@ public interface CompilableTruffleAST {
      * @return true if this ast and the argument are the same, one is a split of the other or they
      *         are both splits of the same ast. False otherwise.
      */
-    boolean isSameOrSplit(CompilableTruffleAST ast);
+    boolean isSameOrSplit(TruffleCompilable ast);
 
     /**
      * @return How many direct callers is this ast known to have.

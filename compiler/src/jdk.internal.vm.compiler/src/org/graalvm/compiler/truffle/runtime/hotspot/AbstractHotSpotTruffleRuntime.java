@@ -37,7 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
@@ -213,7 +213,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+    public TruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         if (truffleCompiler == null) {
             initializeTruffleCompiler(compilable);
@@ -287,7 +287,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         truffleCompilerInitializationException = null;
     }
 
-    private synchronized void initializeTruffleCompiler(CompilableTruffleAST compilable) {
+    private synchronized void initializeTruffleCompiler(TruffleCompilable compilable) {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();
@@ -332,7 +332,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode) {
+    public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         HotSpotOptimizedCallTarget callTarget = (HotSpotOptimizedCallTarget) compilable;
         callTarget.setInstalledCode(installedCode);
     }

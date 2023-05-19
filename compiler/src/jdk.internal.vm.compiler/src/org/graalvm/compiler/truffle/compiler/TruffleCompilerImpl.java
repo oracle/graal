@@ -85,7 +85,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -186,9 +186,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
      * Implementations of this method must guarantee that the {@link Verbosity#ID} for each returned
      * value is unique.
      */
-    public abstract TruffleCompilationIdentifier createCompilationIdentifier(TruffleCompilationTask task, CompilableTruffleAST compilable);
+    public abstract TruffleCompilationIdentifier createCompilationIdentifier(TruffleCompilationTask task, TruffleCompilable compilable);
 
-    protected abstract DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable, PrintStream logStream);
+    protected abstract DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, TruffleCompilable compilable, PrintStream logStream);
 
     public static PartialEvaluatorConfiguration createPartialEvaluatorConfiguration(String name) {
         for (PartialEvaluatorConfiguration candidate : GraalServices.load(PartialEvaluatorConfiguration.class)) {
@@ -201,7 +201,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     @Override
     @SuppressWarnings("try")
-    public final void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, TruffleCompilerListener listener) {
+    public final void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener) {
         try (TruffleCompilation compilation = openCompilation(task, compilable)) {
             doCompile(compilation, listener);
         }
@@ -215,7 +215,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     @SuppressWarnings("try")
     public final void doCompile(TruffleCompilation compilation, TruffleCompilerListener listener) {
-        CompilableTruffleAST compilable = compilation.getCompilable();
+        TruffleCompilable compilable = compilation.getCompilable();
         TruffleCompilationTask task = compilation.getTask();
         OptionValues compilerOptions = getOrCreateCompilerOptions(compilation.getCompilable());
 
@@ -236,7 +236,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
     }
 
-    public OptionValues getOrCreateCompilerOptions(CompilableTruffleAST compilable) throws IllegalArgumentException {
+    public OptionValues getOrCreateCompilerOptions(TruffleCompilable compilable) throws IllegalArgumentException {
         // Options are guaranteed to be unchanged per engine.
         Long engineId = compilable.engineId();
         return cachedOptions.computeIfAbsent(engineId, (id) -> {
@@ -268,7 +268,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     @SuppressWarnings("static-method")
-    public final TruffleCompilation openCompilation(TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    public final TruffleCompilation openCompilation(TruffleCompilationTask task, TruffleCompilable compilable) {
         TruffleCompilation compilation = new TruffleCompilation(config.runtime(), task, compilable);
         compilation.setCompilationId(createCompilationIdentifier(task, compilable));
         return compilation;
@@ -279,7 +279,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         if (compilation == null) {
             debugContext = new Builder(compilerOptions).build();
         } else {
-            CompilableTruffleAST compilable = compilation.getCompilable();
+            TruffleCompilable compilable = compilation.getCompilable();
             debugContext = createDebugContext(compilerOptions, compilation.getCompilationId(), compilable, DebugContext.getDefaultLogStream());
         }
         return debugContext;
@@ -287,7 +287,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     @Override
     @SuppressWarnings("try")
-    public void initialize(CompilableTruffleAST compilable, boolean firstInitialization) {
+    public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
@@ -322,14 +322,14 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
      * @return a new opened {@code "Truffle"} scope or {@code null} if the current (unqualified)
      *         scope is already named {@code "Truffle"}
      */
-    private static Scope maybeOpenTruffleScope(TruffleCompilationTask task, CompilableTruffleAST compilable, DebugContext debug) throws Throwable {
+    private static Scope maybeOpenTruffleScope(TruffleCompilationTask task, TruffleCompilable compilable, DebugContext debug) throws Throwable {
         if (debug.getCurrentScopeName().endsWith(".Truffle")) {
             return null;
         }
         return debug.scope("Truffle", new TruffleDebugJavaMethod(task, compilable));
     }
 
-    private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e, boolean silent) {
+    private static void notifyCompilableOfFailure(TruffleCompilable compilable, Throwable e, boolean silent) {
         Throwable error = e;
         boolean graphTooBig = false;
         if (error instanceof GraphTooBigBailoutException) {
@@ -342,7 +342,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;
         boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
         Throwable finalError = error;
-        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(finalError), silent, bailout != null, permanentBailout, graphTooBig);
+        compilable.onCompilationFailed(() -> TruffleCompilable.serializeException(finalError), silent, bailout != null, permanentBailout, graphTooBig);
     }
 
     @Override
@@ -460,7 +460,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Used for tests and should be removed
     public void compileAST(
                     DebugContext debug,
-                    final CompilableTruffleAST compilable,
+                    final TruffleCompilable compilable,
                     CompilationIdentifier compilationId,
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener) {
@@ -474,7 +474,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     @SuppressWarnings("try")
     private void compileAST(TruffleCompilationWrapper wrapper, DebugContext debug) {
         TruffleCompilationTask task = wrapper.task;
-        CompilableTruffleAST compilable = wrapper.compilable;
+        TruffleCompilable compilable = wrapper.compilable;
 
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(task, compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
@@ -579,7 +579,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public CompilationResult compilePEGraph(StructuredGraph graph,
                     String name,
                     PhaseSuite<HighTierContext> graphBuilderSuite,
-                    CompilableTruffleAST compilable,
+                    TruffleCompilable compilable,
                     CompilationRequest compilationRequest,
                     TruffleCompilerListener listener,
                     TruffleCompilationTask task,
@@ -631,7 +631,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return result;
     }
 
-    protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
+    protected abstract InstalledCode createInstalledCode(TruffleCompilable compilable);
 
     /**
      * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
@@ -644,7 +644,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     /**
      * Creates the {@link CompilationResult} to be used for a Truffle compilation.
      */
-    protected abstract CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable);
+    protected abstract CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, TruffleCompilable compilable);
 
     public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite(TruffleTierConfiguration tier);
 
@@ -656,8 +656,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return truffleTier;
     }
 
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
-        return config.snippetReflection().asObject(CompilableTruffleAST.class, constant);
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
+        return config.snippetReflection().asObject(TruffleCompilable.class, constant);
     }
 
     @Override
@@ -671,7 +671,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
      * Wrapper for performing a Truffle compilation that can retry upon failure.
      */
     final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
-        final CompilableTruffleAST compilable;
+        final TruffleCompilable compilable;
         final TruffleCompilationTask task;
         final TruffleCompilerListener listener;
         final CompilationIdentifier compilationId;
@@ -683,7 +683,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                         OptionValues compilerOptions,
                         DiagnosticsOutputDirectory outputDirectory,
                         Map<ExceptionAction, Integer> problemsHandledPerAction,
-                        CompilableTruffleAST optimizedCallTarget,
+                        TruffleCompilable optimizedCallTarget,
                         TruffleCompilationTask task,
                         CompilationIdentifier compilationId,
                         TruffleCompilerListener listener) {
@@ -752,18 +752,18 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     /**
      * Handles a Truffle compilation failure by calling {@code failure.handle()}.
      */
-    private boolean isSuppressedFailure(CompilableTruffleAST compilable, Throwable cause) {
+    private boolean isSuppressedFailure(TruffleCompilable compilable, Throwable cause) {
         return config.runtime().isSuppressedFailure(
-                        compilable, () -> CompilableTruffleAST.serializeException(cause));
+                        compilable, () -> TruffleCompilable.serializeException(cause));
     }
 
     /**
-     * Gets the {@link CompilableTruffleAST} associated with {@code result}.
+     * Gets the {@link TruffleCompilable} associated with {@code result}.
      *
-     * @param result a {@link CompilationResult} that may have a non-null
-     *            {@link CompilableTruffleAST} associated with it
+     * @param result a {@link CompilationResult} that may have a non-null {@link TruffleCompilable}
+     *            associated with it
      */
-    protected CompilableTruffleAST getCompilable(CompilationResult result) {
+    protected TruffleCompilable getCompilable(CompilationResult result) {
         return null;
     }
 
@@ -818,7 +818,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                      */
                     dependency = (OptimizedAssumptionDependency) installedCode;
                 } else {
-                    CompilableTruffleAST compilable = getCompilable(compilationResult);
+                    TruffleCompilable compilable = getCompilable(compilationResult);
                     dependency = new TruffleCompilerAssumptionDependency(compilable, installedCode);
                 }
                 notifyAssumptions(dependency);

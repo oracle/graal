@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
@@ -49,7 +49,7 @@ final class HotSpotTruffleHostEnvironment extends TruffleHostEnvironment {
     }
 
     @Override
-    protected TruffleCompilerImpl createCompiler(CompilableTruffleAST compilable) {
+    protected TruffleCompilerImpl createCompiler(TruffleCompilable compilable) {
         /*
          * If we directly compile in the host, we can just lookup the host compiler.
          */

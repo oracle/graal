@@ -36,7 +36,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
@@ -52,7 +52,7 @@ public final class TruffleTierContext extends HighTierContext {
     public final DebugContext debug;
 
     public final JavaConstant compilableConstant;
-    public final CompilableTruffleAST compilable;
+    public final TruffleCompilable compilable;
     public final CompilationIdentifier compilationId;
     public final SpeculationLog log;
 
@@ -64,7 +64,7 @@ public final class TruffleTierContext extends HighTierContext {
     public TruffleTierContext(PartialEvaluator partialEvaluator,
                     OptionValues compilerOptions,
                     DebugContext debug,
-                    CompilableTruffleAST compilable, ResolvedJavaMethod method,
+                    TruffleCompilable compilable, ResolvedJavaMethod method,
                     CompilationIdentifier compilationId, SpeculationLog log,
                     TruffleCompilationTask task, PerformanceInformationHandler handler) {
         super(partialEvaluator.getProviders(), new PhaseSuite<>(), OptimisticOptimizations.NONE);

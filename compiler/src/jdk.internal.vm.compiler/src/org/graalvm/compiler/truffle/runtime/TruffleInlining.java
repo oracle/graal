@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 
 /**
  * @deprecated this class is schedule for removal. Use {@link AbstractCompilationTask} instead.
@@ -46,11 +46,11 @@ public class TruffleInlining {
         return task.countInlinedCalls();
     }
 
-    public CompilableTruffleAST[] inlinedTargets() {
+    public TruffleCompilable[] inlinedTargets() {
         return task.inlinedTargets();
     }
 
-    public void addInlinedTarget(CompilableTruffleAST target) {
+    public void addInlinedTarget(TruffleCompilable target) {
         task.addInlinedTarget(target);
     }
 
@@ -58,7 +58,7 @@ public class TruffleInlining {
         task.setCallCounts(total, inlined);
     }
 
-    public void addTargetToDequeue(CompilableTruffleAST target) {
+    public void addTargetToDequeue(TruffleCompilable target) {
         task.addTargetToDequeue(target);
     }
 

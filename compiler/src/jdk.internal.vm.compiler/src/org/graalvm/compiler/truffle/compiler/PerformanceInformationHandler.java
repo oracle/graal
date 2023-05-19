@@ -53,7 +53,7 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
 
@@ -106,18 +106,18 @@ public final class PerformanceInformationHandler implements Closeable {
                         TreatPerformanceWarningsAsErrors.getValue(handler.options).kinds().contains(warningKind);
     }
 
-    public static void logPerformanceWarning(PerformanceWarningKind warningKind, CompilableTruffleAST compilable, List<? extends Node> locations, String details,
+    public static void logPerformanceWarning(PerformanceWarningKind warningKind, TruffleCompilable compilable, List<? extends Node> locations, String details,
                     Map<String, Object> properties) {
         PerformanceInformationHandler handler = instance.get();
         handler.addWarning(warningKind);
         handler.logPerformanceWarningImpl(compilable, "perf warn", details, properties, handler.getPerformanceStackTrace(locations));
     }
 
-    private void logPerformanceInfo(CompilableTruffleAST compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
+    private void logPerformanceInfo(TruffleCompilable compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
         logPerformanceWarningImpl(compilable, "perf info", details, properties, instance.get().getPerformanceStackTrace(locations));
     }
 
-    private void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
+    private void logPerformanceWarningImpl(TruffleCompilable compilable, String event, String details, Map<String, Object> properties, String message) {
         runtime.logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
     }
 

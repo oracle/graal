@@ -59,7 +59,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.jniutils.HSObject;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
  */
-final class HSCompilableTruffleAST extends HSObject implements CompilableTruffleAST {
+final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable {
 
     private volatile String cachedName;
 
@@ -226,7 +226,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
 
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
-    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public boolean isSameOrSplit(TruffleCompilable ast) {
         JObject astHandle = ((HSCompilableTruffleAST) ast).getHandle();
         return callIsSameOrSplit(env(), getHandle(), astHandle);
     }

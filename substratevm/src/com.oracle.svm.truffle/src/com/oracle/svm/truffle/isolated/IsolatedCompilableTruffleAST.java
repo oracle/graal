@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
@@ -118,7 +118,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public boolean isSameOrSplit(TruffleCompilable ast) {
         IsolatedCompilableTruffleAST other = (IsolatedCompilableTruffleAST) ast;
         return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, other.handle);
     }
@@ -235,7 +235,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
-        CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
+        TruffleCompilable ast = IsolatedCompileClient.get().unhand(handle);
         ast.prepareForCompilation();
     }
 
@@ -254,9 +254,9 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @SuppressWarnings("unused")
     private static void getCompilerOptions0(ClientIsolateThread client,
-                    ClientHandle<? extends CompilableTruffleAST> inliningHandle,
+                    ClientHandle<? extends TruffleCompilable> inliningHandle,
                     CompilerHandle<Map<String, String>> targetProperties) {
-        CompilableTruffleAST task = IsolatedCompileClient.get().unhand(inliningHandle);
+        TruffleCompilable task = IsolatedCompileClient.get().unhand(inliningHandle);
         Map<String, String> debugProperties = task.getCompilerOptions();
         ByteArrayBinaryOutput out = BinaryOutput.create();
         writeCompilerOptions(out, debugProperties);

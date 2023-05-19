@@ -52,7 +52,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.CompilationTier;
 
 import jdk.vm.ci.meta.JavaType;
@@ -64,7 +64,7 @@ final class ExpansionStatistics {
 
     private final Set<CompilationTier> enabledStages = new HashSet<>();
     private final PartialEvaluator partialEvaluator;
-    private volatile CompilableTruffleAST previousCompilation;
+    private volatile TruffleCompilable previousCompilation;
     private final Set<CompilationTier> traceMethodExpansion;
     private final Set<CompilationTier> traceNodeExpansion;
     private final Map<CompilationTier, Map<ResolvedJavaMethod, Stats>> methodExpansionStatistics = new HashMap<>();
@@ -116,20 +116,20 @@ final class ExpansionStatistics {
         return false;
     }
 
-    void afterPartialEvaluation(CompilableTruffleAST compilable, StructuredGraph graph) {
+    void afterPartialEvaluation(TruffleCompilable compilable, StructuredGraph graph) {
         this.previousCompilation = compilable;
         handleStage(compilable, graph, CompilationTier.peTier);
     }
 
-    void afterTruffleTier(CompilableTruffleAST compilable, StructuredGraph graph) {
+    void afterTruffleTier(TruffleCompilable compilable, StructuredGraph graph) {
         handleStage(compilable, graph, CompilationTier.truffleTier);
     }
 
-    void afterLowTier(CompilableTruffleAST compilable, StructuredGraph graph) {
+    void afterLowTier(TruffleCompilable compilable, StructuredGraph graph) {
         handleStage(compilable, graph, CompilationTier.lowTier);
     }
 
-    private void handleStage(CompilableTruffleAST compilable, StructuredGraph graph, CompilationTier tier) {
+    private void handleStage(TruffleCompilable compilable, StructuredGraph graph, CompilationTier tier) {
         boolean methodExpansion = this.traceMethodExpansion.contains(tier);
         boolean nodeExpansion = this.traceNodeExpansion.contains(tier);
         boolean methodExpansionStat = this.methodExpansionStatistics.containsKey(tier);
@@ -184,7 +184,7 @@ final class ExpansionStatistics {
     }
 
     void onShutdown() {
-        CompilableTruffleAST ast = this.previousCompilation;
+        TruffleCompilable ast = this.previousCompilation;
         if (ast == null) {
             // cannot print without any compilations
             return;
@@ -200,7 +200,7 @@ final class ExpansionStatistics {
         }
     }
 
-    private <T, S> void printHistogram(CompilableTruffleAST ast, CompilationTier tier,
+    private <T, S> void printHistogram(TruffleCompilable ast, CompilationTier tier,
                     Map<T, Stats> statsMap, Function<T, String> labelFunction,
                     Map<S, Stats> subGroupMap, Function<S, String> subGroupLabelFunction,
                     Function<S, T> subGroupToGroup, String kind) {
@@ -339,7 +339,7 @@ final class ExpansionStatistics {
         }
     }
 
-    private void printExpansionTree(CompilableTruffleAST compilable, TreeNode tree, CompilationTier tier) {
+    private void printExpansionTree(TruffleCompilable compilable, TreeNode tree, CompilationTier tier) {
         StringWriter writer = new StringWriter();
         try (PrintWriter w = new PrintWriter(writer)) {
             tree.print(w);

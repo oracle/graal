@@ -28,7 +28,7 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -53,7 +53,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     private final LibGraalTruffleRuntime runtime;
 
-    private long resolveIsolateHandle(CompilableTruffleAST compilable, boolean firstInitialization) {
+    private long resolveIsolateHandle(TruffleCompilable compilable, boolean firstInitialization) {
         return resolveIsolateHandleImpl(() -> {
             long isolateThread = getIsolateThread();
             long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, runtime.handle());
@@ -78,7 +78,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @SuppressWarnings("try")
     @Override
-    public void initialize(CompilableTruffleAST compilable, boolean firstInitialization) {
+    public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
         /*
          * There can only be a single set of options a compiler can be configured with. The first
          * Truffle engine of a process typically initializes the compiler which also determines the
@@ -96,7 +96,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     public void doCompile(
                     TruffleCompilationTask task,
-                    CompilableTruffleAST compilable,
+                    TruffleCompilable compilable,
                     TruffleCompilerListener listener) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             TruffleToLibGraalCalls.doCompile(getIsolateThread(), resolveIsolateHandle(compilable, false), task, compilable, listener);
@@ -139,7 +139,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @SuppressWarnings("try")
     @Override
-    public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
+    public int pendingTransferToInterpreterOffset(TruffleCompilable compilable) {
         if (pendingTransferToInterpreterOffset == null) {
             try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
                 pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), resolveIsolateHandle(compilable, false),

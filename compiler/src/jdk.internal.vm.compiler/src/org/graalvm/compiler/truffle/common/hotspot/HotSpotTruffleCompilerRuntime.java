@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -34,8 +34,8 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
     /**
      * Notifies this runtime once {@code installedCode} has been installed in the code cache.
      *
-     * @param compilable the {@link CompilableTruffleAST compilable} to install code into
+     * @param compilable the {@link TruffleCompilable compilable} to install code into
      * @param installedCode code that has just been installed in the code cache
      */
-    void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
+    void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
 }

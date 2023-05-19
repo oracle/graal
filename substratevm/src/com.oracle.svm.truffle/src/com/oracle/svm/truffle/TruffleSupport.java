@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
@@ -148,7 +148,7 @@ public class TruffleSupport {
         return new BackgroundCompileQueue(runtime);
     }
 
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         if (isIsolatedCompilation()) {
             return IsolatedTruffleRuntimeSupport.asCompilableTruffleAST(constant);
         }
@@ -156,14 +156,14 @@ public class TruffleSupport {
     }
 
     @SuppressWarnings("unused")
-    public boolean tryLog(SubstrateTruffleRuntime runtime, String loggerId, CompilableTruffleAST compilable, String message) {
+    public boolean tryLog(SubstrateTruffleRuntime runtime, String loggerId, TruffleCompilable compilable, String message) {
         if (isIsolatedCompilation()) {
             return IsolatedTruffleRuntimeSupport.tryLog(loggerId, compilable, message);
         }
         return false;
     }
 
-    public TriState tryIsSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+    public TriState tryIsSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         if (isIsolatedCompilation()) {
             return IsolatedTruffleRuntimeSupport.tryIsSuppressedFailure(compilable, serializedException);
         }

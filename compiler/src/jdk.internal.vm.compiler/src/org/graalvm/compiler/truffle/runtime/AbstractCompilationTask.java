@@ -35,7 +35,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 
@@ -86,17 +86,17 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
         return inlinedCallCount;
     }
 
-    public CompilableTruffleAST[] inlinedTargets() {
-        return inlinedTargets.toArray(new CompilableTruffleAST[0]);
+    public TruffleCompilable[] inlinedTargets() {
+        return inlinedTargets.toArray(new TruffleCompilable[0]);
     }
 
     @Override
-    public void addInlinedTarget(CompilableTruffleAST target) {
+    public void addInlinedTarget(TruffleCompilable target) {
         inlinedTargets.add((OptimizedCallTarget) target);
     }
 
     @Override
-    public void addTargetToDequeue(CompilableTruffleAST target) {
+    public void addTargetToDequeue(TruffleCompilable target) {
         targetsToDequeue.add((OptimizedCallTarget) target);
     }
 
