@@ -375,8 +375,8 @@ final class BundleSupport {
         try {
             p = pb.start();
             p.waitFor();
-            (new BufferedReader(new InputStreamReader(p.getInputStream())))
-                    .lines()
+            try (var processResult = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                processResult.lines()
                     .toList()
                     .forEach(env -> {
                         String[] envParts = SubstrateUtil.split(env,"=",2);
@@ -384,6 +384,7 @@ final class BundleSupport {
                             containerEnvironment.put(envParts[0], envParts[1]);
                         }
                     });
+            }
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
@@ -408,11 +409,10 @@ final class BundleSupport {
         try {
             p = pb.start();
             int status = p.waitFor();
-            if(status == 0 && imageId != null) {
-                Stream<String> result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).lines();
-                if(!imageId.equals(getFirstProcessResultLine(pbCheckForImage))) {
+            if(status == 0 && imageId != null && !imageId.equals(getFirstProcessResultLine(pbCheckForImage))) {
+                try (var processResult = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                     nativeImage.showMessage(String.format("%sUpdated container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
-                    result.forEach(System.out::println);
+                    processResult.lines().forEach(System.out::println);
                 }
             }
             return status;
@@ -446,7 +446,9 @@ final class BundleSupport {
         try {
             p = pb.start();
             p.waitFor();
-            return (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
+            try (var processResult = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                return processResult.readLine();
+            }
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
