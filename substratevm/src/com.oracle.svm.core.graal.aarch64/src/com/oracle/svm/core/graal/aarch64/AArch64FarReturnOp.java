@@ -96,7 +96,14 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
                 Register scratchReg = scratch.getRegister();
                 masm.mov(64, scratchReg, asRegister(ip));
 
-                AArch64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result));
+                AArch64CalleeSavedRegisters calleeSavedRegistersSupport = AArch64CalleeSavedRegisters.singleton();
+                calleeSavedRegistersSupport.emitRestore(masm, 0, asRegister(result));
+                if (calleeSavedRegistersSupport.restoreFPAtFarReturn()) {
+                    assert !SubstrateOptions.PreserveFramePointer.getValue() : "FP can't be both preserved and callee saved.";
+                    AArch64Address fpAddress = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, AArch64.sp,
+                                    -2 * FrameAccess.wordSize());
+                    masm.ldr(64, fp, fpAddress);
+                }
                 masm.ret(scratchReg);
             }
         } else {
