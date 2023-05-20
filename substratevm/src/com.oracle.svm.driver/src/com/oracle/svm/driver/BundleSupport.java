@@ -219,49 +219,7 @@ final class BundleSupport {
 
             Arrays.stream(options)
                     .skip(1)
-                    .forEach(option -> {
-                        String optionValue = null;
-                        String[] optionParts = SubstrateUtil.split(option, "=", 2);
-                        if (optionParts.length == 2) {
-                            option = optionParts[0];
-                            optionValue = optionParts[1];
-                        }
-                        switch (ExtendedBundleOptions.get(option)) {
-                            case dry_run -> nativeImage.setDryRun(true);
-                            case container -> {
-                                if (bundleSupport.useContainer) {
-                                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
-                                }
-                                bundleSupport.useContainer = true;
-                                if (optionValue != null) {
-                                    if (!SUPPORTED_CONTAINER_TOOLS.contains(optionValue)) {
-                                        throw NativeImage.showError(String.format("Container Tool '%s' is not supported, please use one of the following tools: %s", optionValue, SUPPORTED_CONTAINER_TOOLS));
-                                    }
-                                    bundleSupport.containerTool = optionValue;
-                                }
-                            }
-                            case dockerfile -> {
-                                if (!bundleSupport.useContainer) {
-                                    throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", option, ExtendedBundleOptions.container));
-                                }
-                                if (bundleSupport.dockerfile != null) {
-                                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
-                                }
-                                if (optionValue != null) {
-                                    bundleSupport.dockerfile = Path.of(optionValue);
-                                    if (!Files.isReadable(bundleSupport.dockerfile)) {
-                                        throw NativeImage.showError(String.format("Dockerfile '%s' is not readable", bundleSupport.dockerfile.toAbsolutePath()));
-                                    }
-                                }
-                            }
-                            default -> {
-                                String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
-                                        .map(Enum::toString)
-                                        .collect(Collectors.joining(", "));
-                                throw NativeImage.showError(String.format("Unknown option %s. Valid options are: %s.", option, suggestedOptions));
-                            }
-                        }
-                    });
+                    .forEach(bundleSupport::parseExtendedOption);
 
             if(bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
@@ -281,6 +239,50 @@ final class BundleSupport {
         } catch (StringIndexOutOfBoundsException | IllegalArgumentException e) {
             String suggestedVariants = StringUtil.joinSingleQuoted(Arrays.stream(BundleOptionVariants.values()).map(v -> BUNDLE_OPTION + "-" + v).toList());
             throw NativeImage.showError("Unknown option '" + bundleArg + "'. Valid variants are " + suggestedVariants + ".");
+        }
+    }
+
+    private void parseExtendedOption(String option) {
+        String optionValue = null;
+        String[] optionParts = SubstrateUtil.split(option, "=", 2);
+        if (optionParts.length == 2) {
+            option = optionParts[0];
+            optionValue = optionParts[1];
+        }
+        switch (ExtendedBundleOptions.get(option)) {
+            case dry_run -> nativeImage.setDryRun(true);
+            case container -> {
+                if (useContainer) {
+                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
+                }
+                useContainer = true;
+                if (optionValue != null) {
+                    if (!SUPPORTED_CONTAINER_TOOLS.contains(optionValue)) {
+                        throw NativeImage.showError(String.format("Container Tool '%s' is not supported, please use one of the following tools: %s", optionValue, SUPPORTED_CONTAINER_TOOLS));
+                    }
+                    containerTool = optionValue;
+                }
+            }
+            case dockerfile -> {
+                if (!useContainer) {
+                    throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", option, ExtendedBundleOptions.container));
+                }
+                if (dockerfile != null) {
+                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
+                }
+                if (optionValue != null) {
+                    dockerfile = Path.of(optionValue);
+                    if (!Files.isReadable(dockerfile)) {
+                        throw NativeImage.showError(String.format("Dockerfile '%s' is not readable", dockerfile.toAbsolutePath()));
+                    }
+                }
+            }
+            default -> {
+                String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
+                        .map(Enum::toString)
+                        .collect(Collectors.joining(", "));
+                throw NativeImage.showError(String.format("Unknown option %s. Valid options are: %s.", option, suggestedOptions));
+            }
         }
     }
 
