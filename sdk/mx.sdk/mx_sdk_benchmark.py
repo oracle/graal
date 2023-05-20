@@ -195,6 +195,9 @@ class NativeImageBenchmarkMixin(object):
             add_opens_add_extracts = mx_benchmark._add_opens_and_exports_from_manifest(distribution.path)
         return mx.get_runtime_jvm_args([self.dist], jdk=jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes) + add_opens_add_extracts
 
+    def extra_jvm_arg(self, benchmark, args):
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-jvm-arg=', args)
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.
 
