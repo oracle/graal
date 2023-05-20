@@ -301,7 +301,7 @@ final class BundleSupport {
                 if(nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
                     dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
                 }
-                Files.write(dockerfile, dockerfileText.getBytes());
+                Files.writeString(dockerfile, dockerfileText);
                 dockerfile.toFile().deleteOnExit();
                 containerImage = SubstrateUtil.digest(dockerfileText);
             } else {
