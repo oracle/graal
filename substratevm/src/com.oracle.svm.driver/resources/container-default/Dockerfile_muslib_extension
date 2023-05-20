@@ -1,0 +1,29 @@
+FROM base as muslib
+
+ARG TEMP_REGION=""
+ARG MUSL_LOCATION=http://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz
+ARG ZLIB_LOCATION=https://zlib.net/fossils/zlib-1.2.11.tar.gz
+
+ENV TOOLCHAIN_DIR=/usr/local/musl \
+    CC=$TOOLCHAIN_DIR/bin/gcc
+
+RUN echo "$TEMP_REGION" > /etc/dnf/vars/ociregion \
+    && rm -rf /etc/yum.repos.d/ol8_graalvm_community.repo \
+    && mkdir -p $TOOLCHAIN_DIR \
+    && microdnf install -y wget tar gzip make \
+    && wget $MUSL_LOCATION && tar -xvf  x86_64-linux-musl-native.tgz -C $TOOLCHAIN_DIR --strip-components=1  \
+    && wget $ZLIB_LOCATION && tar -xvf zlib-1.2.11.tar.gz \
+    && cd zlib-1.2.11 \
+    && ./configure --prefix=$TOOLCHAIN_DIR --static \
+    && make && make install \
+
+
+FROM base as final
+
+COPY --from=muslib /usr/local/musl /usr/local/musl
+
+RUN echo "" > /etc/dnf/vars/ociregion
+
+ENV TOOLCHAIN_DIR=/usr/local/musl \
+    CC=$TOOLCHAIN_DIR/bin/gcc \
+    PATH=$TOOLCHAIN_DIR/bin:$PATH
