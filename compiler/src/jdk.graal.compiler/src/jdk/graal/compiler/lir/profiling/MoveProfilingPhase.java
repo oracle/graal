@@ -131,7 +131,8 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
                                 increments.toArray(new Value[size]));
                 assert inst != null;
                 buffer.init(instructions);
-                buffer.append(1, inst);
+                int insertionIndex = lirGenRes.getFirstInsertPosition(block);
+                buffer.append(insertionIndex, inst);
                 buffer.finish();
             }
         }

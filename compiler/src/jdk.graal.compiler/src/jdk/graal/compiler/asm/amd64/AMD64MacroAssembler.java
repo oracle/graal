@@ -37,8 +37,10 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.InvokeTarget;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -363,6 +365,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
+     * Functional interface used for performing actions after a call has been emitted.
+     */
+    public interface PostCallAction {
+        PostCallAction NONE = (before, after) -> {
+        };
+
+        void apply(int beforePos, int afterPos);
+    }
+
+    /**
      * Emits alignment before a direct call to a fixed address. The alignment consists of two parts:
      * 1) when {@code align} is true, the fixed address, i.e., the displacement of the call
      * instruction, should be aligned to 4 bytes; 2) when {@code useBranchesWithin32ByteBoundary} is
@@ -398,13 +410,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     /**
      * Emits an indirect call instruction.
-     */
-    public final int indirectCall(Register callReg) {
-        return indirectCall(callReg, false);
-    }
-
-    /**
-     * Emits an indirect call instruction.
      *
      * The {@code NativeCall::is_call_before(address pc)} function in HotSpot determines that there
      * is a direct call instruction whose last byte is at {@code pc - 1} if the byte at
@@ -415,7 +420,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *
      * @return the position of the emitted call instruction
      */
-    public final int indirectCall(Register callReg, boolean mitigateDecodingAsDirectCall) {
+    public int indirectCall(PostCallAction postCallAction, Register callReg, boolean mitigateDecodingAsDirectCall, InvokeTarget callTarget,
+                    CallingConvention.Type callingConventionType) {
         int indirectCallSize = needsRex(callReg) ? 3 : 2;
         int insertedNops = mitigateJCCErratum(indirectCallSize);
 
@@ -440,20 +446,31 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             GraalError.guarantee(directCallPos >= 0 && getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE,
                             "This indirect call can be decoded as a direct call.");
         }
+
+        int afterCall = position();
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
+
         return beforeCall;
     }
 
-    public final int directCall(long address, Register scratch) {
+    public int directCall(PostCallAction postCallAction, long address, Register scratch, InvokeTarget callTarget) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
         mitigateJCCErratum(bytesToEmit);
         int beforeCall = position();
         movq(scratch, address);
         call(scratch);
-        assert beforeCall + bytesToEmit == position() : Assertions.errorMessage(beforeCall, bytesToEmit, position());
+        int afterCall = position();
+        assert beforeCall + bytesToEmit == afterCall : Assertions.errorMessage(beforeCall, bytesToEmit, afterCall);
+
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
         return beforeCall;
     }
 
-    public final int directJmp(long address, Register scratch) {
+    public int directJmp(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
         mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
@@ -461,6 +478,17 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jmpWithoutAlignment(scratch);
         assert beforeJmp + bytesToEmit == position() : Assertions.errorMessage(beforeJmp, bytesToEmit, position());
         return beforeJmp;
+    }
+
+    public int call(PostCallAction postCallAction, InvokeTarget callTarget) {
+        int beforeCall = position();
+        call();
+        int afterCall = position();
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
+
+        return beforeCall;
     }
 
     // This should guarantee that the alignment in AMD64Assembler.jcc methods will be not triggered.

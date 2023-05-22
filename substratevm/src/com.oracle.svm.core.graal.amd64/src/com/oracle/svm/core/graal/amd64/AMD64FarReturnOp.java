@@ -26,6 +26,11 @@ package com.oracle.svm.core.graal.amd64;
 
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
+import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -35,13 +40,9 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
-
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 @Opcode("FAR_RETURN")
 public final class AMD64FarReturnOp extends AMD64BlockEndOp {
@@ -50,6 +51,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
     @Use({REG, ILLEGAL}) AllocatableValue result;
     @Use(REG) AllocatableValue sp;
     @Use(REG) AllocatableValue ip;
+    @Temp({REG, ILLEGAL}) AllocatableValue cfiTargetRegister;
     private final boolean fromMethodWithCalleeSavedRegisters;
 
     public AMD64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip, boolean fromMethodWithCalleeSavedRegisters) {
@@ -58,6 +60,8 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         this.sp = sp;
         this.ip = ip;
         this.fromMethodWithCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
+        this.cfiTargetRegister = fromMethodWithCalleeSavedRegisters && SubstrateControlFlowIntegrity.useSoftwareCFI() ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister().asValue()
+                        : Value.ILLEGAL;
     }
 
     @Override
@@ -70,31 +74,42 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
              * the corresponding RBP value was spilled to the stack by the callee.
              */
             Label done = new Label();
-            masm.cmpqAndJcc(AMD64.rsp, ValueUtil.asRegister(sp), ConditionFlag.Equal, done, true);
+            masm.cmpqAndJcc(AMD64.rsp, asRegister(sp), ConditionFlag.Equal, done, true);
             /*
              * The callee pushes two word-sized values: first the return address, then the saved
              * RBP. The stack grows downwards, so the offset is negative relative to the new stack
              * pointer.
              */
-            masm.movq(AMD64.rbp, new AMD64Address(ValueUtil.asRegister(sp), -(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize())));
+            masm.movq(AMD64.rbp, new AMD64Address(asRegister(sp), -(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize())));
             masm.bind(done);
         }
 
-        masm.movq(AMD64.rsp, ValueUtil.asRegister(sp));
+        masm.movq(AMD64.rsp, asRegister(sp));
 
         if (fromMethodWithCalleeSavedRegisters) {
-            /*
-             * Restoring the callee saved registers is going to overwrite the register that holds
-             * the new instruction pointer (ip). We therefore spill the new ip to the stack, and do
-             * the indirect jump with an address operand to avoid a temporary register.
-             */
-            AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
-            masm.movq(ipAddress, ValueUtil.asRegister(ip));
-            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result), crb);
-            masm.jmp(ipAddress);
-
+            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                /*
+                 * The new instruction pointer (ip) must be moved to the targetRegister. Note the
+                 * target register is never callee saved.
+                 */
+                var targetRegister = asRegister(cfiTargetRegister);
+                masm.movq(targetRegister, asRegister(ip));
+                AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result), crb);
+                masm.jmp(targetRegister);
+            } else {
+                /*
+                 * Restoring the callee saved registers is going to overwrite the register that
+                 * holds the new instruction pointer (ip). We therefore spill the new ip to the
+                 * stack, and do the indirect jump with an address operand to avoid a temporary
+                 * register.
+                 */
+                AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
+                masm.movq(ipAddress, asRegister(ip));
+                AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result), crb);
+                masm.jmp(ipAddress);
+            }
         } else {
-            masm.jmp(ValueUtil.asRegister(ip));
+            masm.jmp(asRegister(ip));
         }
     }
 }

@@ -257,8 +257,12 @@ Use `--enable-sbom` to include an SBOM in the native executable.
 For more information, see [Inspection Tool](InspectTool.md)
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
-Control-Flow Integrity (CFI) can be enforced with the experimental `-H:+EnableCFI` option.
+Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
 This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
+
+#### <a name="glossary-sw-cfi"></a>Software Control-Flow Integrity (CFI)
+Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` or `-H:CFI=SW` option.
+This feature is currently only available for Linux AMD64 and validates targets of indirect branches and method returns.
 
 ## Recommendations
 
