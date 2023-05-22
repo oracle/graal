@@ -39,7 +39,7 @@ import mx
 import mx_benchmark
 from mx_benchmark import ParserEntry
 import mx_sdk_benchmark
-
+from mx_sdk_benchmark import NativeImageBenchmarkMixin, NativeImageBundleBasedBenchmarkMixin
 
 _suite = mx.suite('java-benchmarks')
 
@@ -228,24 +228,17 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
         raise NotImplementedError()
 
 
-class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-    def mainClass(self):
-        raise NotImplementedError()
-
+class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        lib = self.applicationDist()
-        classpath = os.path.join(lib, "BOOT-INF/classes")
-        classpath += ':' + os.path.join(lib, "classes")
-        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
-            if filename.endswith(".jar"):
-                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
-        mainclass = self.mainClass()
-        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
+
+    def extra_image_build_argument(self, _, args):
+        return super(BaseSpringBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
     def get_application_startup_regex(self):
-        # Example of SpringBoot startup log:
-        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
-        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$"
+        # Example of SpringBoot 3 startup log:
+        # 2023-05-16T14:08:54.033+02:00  INFO 24381 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 3.774 seconds (process running for 4.1)
+        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(process running for (?P<startup>\d*[.,]?\d*)\)$"
 
     def get_application_startup_units(self):
         return 's'
@@ -254,24 +247,19 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         # This method overrides NativeImageMixin.stages
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+    def uses_bundles(self):
+        return True
+
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    """
-    Version 0.1.7 MIGHT NOT be fully functional. So far, it was used only to collect image build time metrics.
-    """
     def availableSuiteVersions(self):
-        # 0.1.6 is still based on org.springframework.experimental
-        # 0.1.7 is based on Spring 3, hence with official GraalVM NI support, requires Java 17 or newer
-        return ["0.1.6", "0.1.7"]
+        return ["3.0.0"]
 
     def defaultSuiteVersion(self):
-        return self.availableSuiteVersions()[0]
+        return "3.0.0"
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "org.springframework.samples.petclinic.PetClinicApplication"
 
 
 class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -309,14 +297,14 @@ mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
 
 class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def version(self):
-        return "1.0.1"
+    def availableSuiteVersions(self):
+        return ["3.0.5"]
+
+    def defaultSuiteVersion(self):
+        return "3.0.5"
 
     def applicationDist(self):
         return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "com.example.webmvc.WebmvcApplication"
 
 
 class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
