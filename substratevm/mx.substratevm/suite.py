@@ -678,6 +678,9 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "include",
+            "jacocoExcludePackage": [
+                "com.oracle.svm.hosted.dashboard",
+            ],
         },
 
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
