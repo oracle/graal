@@ -525,8 +525,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
                         /* For virtual methods we follow back type reachability. */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
-                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable()
-                                        : declaringClass + " is not reachable";
+                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
                         return "implementation invoked";
                     }
                 } else if (aMethod.isInlined()) {
@@ -539,8 +538,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
                          */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
-                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable()
-                                        : declaringClass + " is not reachable";
+                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
                         return "inlined";
                     }
                 } else if (aMethod.isIntrinsicMethod()) {
