@@ -919,12 +919,17 @@ class NativeImageVM(GraalVm):
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
-            jdk_profiles = f"JDK{mx.get_jdk().javaCompliance}_PROFILES"
-            adopted_profiles_zip = mx.library(jdk_profiles).get_path(True)
-            adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
-            with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
-                zip_ref.extractall(adopted_profiles_dir)
-            adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
+            jdk_version = mx.get_jdk().javaCompliance
+            jdk_profiles = f"JDK{jdk_version}_PROFILES"
+            adopted_profiles_zip = mx.library(jdk_profiles).get_path(False)
+            if adopted_profiles_zip:
+                adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
+                with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
+                    zip_ref.extractall(adopted_profiles_dir)
+                adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
+            else:
+                mx.warn('SubstrateVM Enterprise with JDK{} does not contains JDK profiles.'.format(jdk_version))
+                adopted_profile = join(mx.suite('substratevm-enterprise').dir, 'mx.substratevm-enterprise', 'empty.iprof')
             jdk_profiles_args = [f'-H:AdoptedPGOEnabled={adopted_profile}']
         else:
             jdk_profiles_args = []
