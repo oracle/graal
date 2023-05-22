@@ -44,7 +44,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
@@ -121,7 +121,7 @@ final class Target_java_lang_invoke_MethodHandle {
     }
 
     @Delete
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static native Object linkToNative(Object... args) throws Throwable;
 }
 

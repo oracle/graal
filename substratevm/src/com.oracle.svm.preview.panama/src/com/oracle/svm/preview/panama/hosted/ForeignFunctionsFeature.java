@@ -78,7 +78,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
     }
 
-    private static final int FIRST_SUPPORTED_PREVIEW = 20;
+    private static final int FIRST_SUPPORTED_PREVIEW = 21;
     private static final int FIRST_SUPPORTED_NON_PREVIEW = Integer.MAX_VALUE - 1; // TBD
 
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
@@ -181,8 +181,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         for (NativeEntryPointInfo nepi : stubsToRegister) {
             stubsToCreate.computeIfAbsent(nepi, ignored -> {
-                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped()); // Why
-                                                                                                       // getWrapped?
+                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false);
                 return analysisStub;

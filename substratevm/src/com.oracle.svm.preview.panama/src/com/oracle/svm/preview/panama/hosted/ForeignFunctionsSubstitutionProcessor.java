@@ -75,7 +75,7 @@ class ForeignFunctionsSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
         if (method instanceof LinkToNative ps) {
-            return ps.original;
+            return ps.getOriginal();
         }
         return method;
     }
@@ -83,11 +83,15 @@ class ForeignFunctionsSubstitutionProcessor extends SubstitutionProcessor {
 
 class LinkToNative extends NonBytecodeMethod {
 
-    ResolvedJavaMethod original;
+    private final ResolvedJavaMethod original;
 
     LinkToNative(ResolvedJavaMethod original) {
         super(original.getName(), original.isStatic(), original.getDeclaringClass(), original.getSignature(), original.getConstantPool());
         this.original = original;
+    }
+
+    public ResolvedJavaMethod getOriginal() {
+        return original;
     }
 
     @Override

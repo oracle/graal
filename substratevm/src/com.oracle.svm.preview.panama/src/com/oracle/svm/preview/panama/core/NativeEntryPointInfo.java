@@ -28,7 +28,7 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.svm.core.graal.code.MemoryAssignment;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.CapturableState;
@@ -40,8 +40,8 @@ import jdk.internal.foreign.abi.VMStorage;
  */
 public final class NativeEntryPointInfo {
     private final MethodType methodType;
-    private final MemoryAssignment[] parameterAssignments;
-    private final MemoryAssignment[] returnBuffering;
+    private final AssignedLocation[] parameterAssignments;
+    private final AssignedLocation[] returnBuffering;
     private final int capturedStateMask;
 
     /**
@@ -55,7 +55,7 @@ public final class NativeEntryPointInfo {
      *
      * where <actual arg i>s are the arguments which end up passed to the C native function
      */
-    public NativeEntryPointInfo(MethodType methodType, MemoryAssignment[] cc, MemoryAssignment[] returnBuffering, int stateCaptureMask) {
+    public NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, int stateCaptureMask) {
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
@@ -143,12 +143,12 @@ public final class NativeEntryPointInfo {
         return (capture.mask() & capturedStateMask) != 0;
     }
 
-    public MemoryAssignment[] parametersAssignment() {
+    public AssignedLocation[] parametersAssignment() {
         assert parameterAssignments.length == this.nativeMethodType().parameterCount() : Arrays.toString(parameterAssignments) + " ; " + nativeMethodType();
         return parameterAssignments;
     }
 
-    public MemoryAssignment[] returnsAssignment() {
+    public AssignedLocation[] returnsAssignment() {
         return returnBuffering;
     }
 

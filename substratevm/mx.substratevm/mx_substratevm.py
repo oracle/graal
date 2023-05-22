@@ -1111,6 +1111,7 @@ llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "a
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
+<<<<<<< HEAD
 # Legacy Truffle Macro
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=suite,
@@ -1154,7 +1155,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     jlink=False,
 ))
 
-if mx.get_jdk(tag='default').javaCompliance >= '20':
+if mx.get_jdk(tag='default').javaCompliance >= '21':
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
         name='SubstrateVM Preview Panama Feature',
@@ -1164,7 +1165,7 @@ if mx.get_jdk(tag='default').javaCompliance >= '20':
         license_files=[],
         third_party_license_files=[],
         dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:PANAMA'],
+        builder_jar_distributions=['substratevm:SVM_PREVIEW_PANAMA'],
         installable=False,
         jlink=False,
     ))

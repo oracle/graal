@@ -61,6 +61,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * <p>
      * See scopedMemoryAccess.cpp in HotSpot.
      */
-    @Delete("Arena.openShared is not supported.")
+    @Delete("Arena.ofShared is not supported.")
     native boolean closeScope0(MemorySessionImpl session);
 }

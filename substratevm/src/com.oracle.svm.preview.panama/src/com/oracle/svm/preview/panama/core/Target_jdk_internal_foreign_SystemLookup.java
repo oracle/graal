@@ -29,6 +29,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
+ * System lookups allow to search for symbols in a fixed set of OS-dependent, standard, "curated"
+ * libraries. The provided libraries are not really defined in the documentation.
+ *
  * System lookups are currently unsupported, but this would be possible and might be useful to do
  * so. There would be two issues to solve; other than that, the JDK's implementation can be reused:
  * <ul>

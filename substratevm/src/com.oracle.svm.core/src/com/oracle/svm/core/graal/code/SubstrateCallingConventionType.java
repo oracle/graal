@@ -40,8 +40,8 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     /** Determines if this is a request for the outgoing argument locations at a call site. */
     public final boolean outgoing;
 
-    public final MemoryAssignment[] fixedParameterAssignment;
-    public final MemoryAssignment[] returnSaving;
+    public final AssignedLocation[] fixedParameterAssignment;
+    public final AssignedLocation[] returnSaving;
 
     static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> outgoingTypes;
     static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> incomingTypes;
@@ -55,7 +55,7 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
         }
     }
 
-    private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing, MemoryAssignment[] fixedRegisters, MemoryAssignment[] returnSaving) {
+    private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing, AssignedLocation[] fixedRegisters, AssignedLocation[] returnSaving) {
         this.kind = kind;
         this.outgoing = outgoing;
         this.fixedParameterAssignment = fixedRegisters;
@@ -70,7 +70,7 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
      * Allows to manually assign which location (i.e. which register or stack location) to use for
      * each argument.
      */
-    public SubstrateCallingConventionType withParametersAssigned(MemoryAssignment[] fixedRegisters) {
+    public SubstrateCallingConventionType withParametersAssigned(AssignedLocation[] fixedRegisters) {
         assert nativeABI();
         return new SubstrateCallingConventionType(this.kind, this.outgoing, fixedRegisters, returnSaving);
     }
@@ -86,7 +86,7 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
      * argument (i.e. the pointer to the return buffer) should not be assigned to a location, as
      * this will be handled by the backend.
      */
-    public SubstrateCallingConventionType withReturnSaving(MemoryAssignment[] newReturnSaving) {
+    public SubstrateCallingConventionType withReturnSaving(AssignedLocation[] newReturnSaving) {
         assert nativeABI();
         return new SubstrateCallingConventionType(this.kind, this.outgoing, this.fixedParameterAssignment, newReturnSaving);
     }
