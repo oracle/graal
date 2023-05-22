@@ -218,11 +218,13 @@ public final class UnmanagedMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord compareLongs(Pointer x, Pointer y, UnsignedWord size) {
+        assert size.unsignedRemainder(8).equal(0);
         UnsignedWord offset = WordFactory.zero();
-        UnsignedWord next = offset.add(Long.BYTES);
-        while (next.belowOrEqual(size) && x.readLong(offset) == y.readLong(offset)) {
-            offset = next;
-            next = offset.add(Long.BYTES);
+        while (offset.belowThan(size)) {
+            if (x.readLong(offset) != y.readLong(offset)) {
+                return offset;
+            }
+            offset = offset.add(Long.BYTES);
         }
         return offset;
     }
