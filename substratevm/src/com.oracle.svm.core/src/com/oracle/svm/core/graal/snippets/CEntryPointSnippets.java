@@ -403,6 +403,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
+        CEntryPointListenerSupport.singleton().beforeThreadAttach();
         if (MultiThreaded.getValue()) {
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
@@ -413,7 +414,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 if (error != CEntryPointErrors.NO_ERROR) {
                     return error;
                 }
-                RuntimeSupport.executeAfterThreadAttachHooks();
+                CEntryPointListenerSupport.singleton().afterThreadAttach();
             } else {
                 writeCurrentVMThread(thread);
                 if (ensuringJavaThread && !PlatformThreads.isCurrentAssigned()) {
@@ -479,7 +480,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state going away.")
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
-            RuntimeSupport.executeBeforeThreadDetachHooks();
+            CEntryPointListenerSupport.singleton().beforeThreadDetach();
             VMThreads.singleton().detachThread(currentThread);
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
