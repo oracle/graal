@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.util.VMError;
@@ -236,7 +237,7 @@ public class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            if (value instanceof String || value instanceof Boolean) {
+            if (value instanceof String || value instanceof Boolean || value instanceof List) {
                 helper.putGeneralInfo(this, value);
             } else {
                 VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());

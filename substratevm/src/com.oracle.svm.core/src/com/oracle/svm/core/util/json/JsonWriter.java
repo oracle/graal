@@ -100,6 +100,8 @@ public class JsonWriter implements AutoCloseable {
             quote(key).append(':');
             if (value instanceof Map) {
                 print((Map<String, Object>) value); // Must always be <String, Object>
+            } else if (value instanceof List) {
+                print((List<String>) value); // Must always be <String>
             } else {
                 quote(value);
             }
