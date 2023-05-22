@@ -350,9 +350,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute @InjectAccessors(CachedConstructorAccessors.class) //
     private Constructor<?> cachedConstructor;
 
-    @UnknownObjectField(types = DynamicHubMetadata.class, canBeNull = true) private DynamicHubMetadata hubMetadata;
+    @UnknownObjectField(canBeNull = true) private DynamicHubMetadata hubMetadata;
 
-    @UnknownObjectField(types = ReflectionMetadata.class, canBeNull = true) private ReflectionMetadata reflectionMetadata;
+    @UnknownObjectField(canBeNull = true) private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,

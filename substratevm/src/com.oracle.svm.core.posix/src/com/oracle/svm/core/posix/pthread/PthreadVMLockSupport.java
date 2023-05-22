@@ -147,12 +147,10 @@ final class PthreadVMLockFeature implements InternalFeature {
 
 public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = PthreadVMMutex[].class)//
-    PthreadVMMutex[] mutexes;
+    @UnknownObjectField PthreadVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = PthreadVMCondition[].class)//
-    PthreadVMCondition[] conditions;
+    @UnknownObjectField PthreadVMCondition[] conditions;
 
     /**
      * Raw memory for the pthread lock structures. Since we know that native image objects are never
@@ -160,8 +158,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
      * into this array is stored in {@link PthreadVMMutex#structOffset} and
      * {@link PthreadVMCondition#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] pthreadStructs;
+    @UnknownObjectField byte[] pthreadStructs;
 
     @Fold
     public static PthreadVMLockSupport singleton() {

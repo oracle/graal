@@ -36,8 +36,7 @@ public final class BootModuleLayerSupport {
         return ImageSingletons.lookup(BootModuleLayerSupport.class);
     }
 
-    @UnknownObjectField(types = ModuleLayer.class) //
-    private ModuleLayer bootLayer;
+    @UnknownObjectField private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setBootLayer(ModuleLayer bootLayer) {

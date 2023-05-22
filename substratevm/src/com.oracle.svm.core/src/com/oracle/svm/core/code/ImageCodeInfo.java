@@ -59,13 +59,13 @@ public class ImageCodeInfo {
     @UnknownPrimitiveField private UnsignedWord codeAndDataMemorySize;
 
     private final Object[] objectFields;
-    @UnknownObjectField(types = {byte[].class}) byte[] codeInfoIndex;
-    @UnknownObjectField(types = {byte[].class}) byte[] codeInfoEncodings;
-    @UnknownObjectField(types = {byte[].class}) byte[] referenceMapEncoding;
-    @UnknownObjectField(types = {byte[].class}) byte[] frameInfoEncodings;
-    @UnknownObjectField(types = {Object[].class}) Object[] frameInfoObjectConstants;
-    @UnknownObjectField(types = {Class[].class}) Class<?>[] frameInfoSourceClasses;
-    @UnknownObjectField(types = {String[].class}) String[] frameInfoSourceMethodNames;
+    @UnknownObjectField byte[] codeInfoIndex;
+    @UnknownObjectField byte[] codeInfoEncodings;
+    @UnknownObjectField byte[] referenceMapEncoding;
+    @UnknownObjectField byte[] frameInfoEncodings;
+    @UnknownObjectField Object[] frameInfoObjectConstants;
+    @UnknownObjectField Class<?>[] frameInfoSourceClasses;
+    @UnknownObjectField String[] frameInfoSourceMethodNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {

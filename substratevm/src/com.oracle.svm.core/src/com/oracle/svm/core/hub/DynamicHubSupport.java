@@ -38,7 +38,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 public final class DynamicHubSupport {
 
     private int maxTypeId;
-    @UnknownObjectField(types = {byte[].class}) private byte[] referenceMapEncoding;
+    @UnknownObjectField private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHubSupport() {
