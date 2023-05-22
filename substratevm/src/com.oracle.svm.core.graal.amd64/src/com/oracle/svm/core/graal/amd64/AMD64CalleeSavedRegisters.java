@@ -56,6 +56,7 @@ import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
@@ -95,6 +96,11 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         List<Register> calleeSavedMaskRegisters = new ArrayList<>();
 
         boolean isRuntimeCompilationEnabled = RuntimeCompilation.isEnabled();
+
+        // The CFI target register cannot be saved across calls
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            calleeSavedRegisters.remove(SubstrateControlFlowIntegrity.singleton().getCFITargetRegister());
+        }
 
         /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,

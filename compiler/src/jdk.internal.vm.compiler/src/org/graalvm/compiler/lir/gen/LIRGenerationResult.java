@@ -29,6 +29,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -157,5 +158,16 @@ public class LIRGenerationResult {
             return "<unknown>";
         }
         return compilationId.toString(Verbosity.NAME);
+    }
+
+    /**
+     * Given a block, return the first position to insert a LIR instruction. No instruction should
+     * be inserted before this position.
+     *
+     * @param block the basic block
+     * @return index of the first insert position
+     */
+    public int getFirstInsertPosition(BasicBlock<?> block) {
+        return 1;
     }
 }

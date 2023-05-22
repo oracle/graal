@@ -25,10 +25,13 @@
 package com.oracle.svm.core.thread;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
+import com.oracle.svm.core.SubstrateControlFlowIntegrityFeature;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -45,6 +48,11 @@ import com.oracle.svm.util.ReflectionUtil;
 @AutomaticallyRegisteredFeature
 public class ContinuationsFeature implements InternalFeature {
     private boolean finishedRegistration = false;
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(SubstrateControlFlowIntegrityFeature.class);
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -68,7 +76,7 @@ public class ContinuationsFeature implements InternalFeature {
                     RuntimeClassInitialization.initializeAtRunTime("jdk.internal.vm.Continuation");
                 }
             }
-            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && !SubstrateControlFlowIntegrity.enabled();
+            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && SubstrateControlFlowIntegrity.singleton().continuationsSupported();
         }
 
         /*

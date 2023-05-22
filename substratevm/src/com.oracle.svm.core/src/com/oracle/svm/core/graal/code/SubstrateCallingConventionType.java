@@ -77,11 +77,11 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     }
 
     public boolean nativeABI() {
-        return kind == SubstrateCallingConventionKind.Native || customABI();
+        return kind.isNativeABI();
     }
 
     public boolean customABI() {
-        return kind == SubstrateCallingConventionKind.Custom;
+        return kind.isCustom();
     }
 
     /**

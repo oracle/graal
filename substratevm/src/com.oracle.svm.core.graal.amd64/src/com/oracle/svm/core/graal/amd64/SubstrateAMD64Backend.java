@@ -28,15 +28,15 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PR
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -62,6 +62,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -133,12 +134,12 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
@@ -231,6 +232,15 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return !hostedCPUFeatures.contains(AVX) && runtimeCPUFeatures.contains(AVX);
     }
 
+    /**
+     * When software control flow integrity is enabled, the CFITargetRegister is overwritten in
+     * calls. This must be explicitly stated to ensure the register allocator knows this register
+     * will be killed by the call.
+     */
+    private static AllocatableValue getCFITargetRegister() {
+        return SubstrateControlFlowIntegrity.useSoftwareCFI() ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister().asValue() : Value.ILLEGAL;
+    }
+
     @Opcode("CALL_DIRECT")
     public static class SubstrateAMD64DirectCallOp extends AMD64Call.DirectCallOp {
         public static final LIRInstructionClass<SubstrateAMD64DirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAMD64DirectCallOp.class);
@@ -242,6 +252,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         private final boolean destroysCallerSavedRegisters;
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
 
+        @Temp({REG, OperandFlag.ILLEGAL}) private AllocatableValue cfiTargetRegister;
+
         public SubstrateAMD64DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
                         Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
             super(TYPE, callTarget, result, parameters, temps, state);
@@ -250,8 +262,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             this.javaFrameAnchorTemp = javaFrameAnchorTemp;
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
+            this.cfiTargetRegister = getCFITargetRegister();
 
-            assert differentRegisters(parameters, temps, javaFrameAnchor, javaFrameAnchorTemp);
+            assert differentRegisters(parameters, temps, javaFrameAnchor, javaFrameAnchorTemp, cfiTargetRegister);
         }
 
         @Override
@@ -280,16 +293,20 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Def({REG}) private Value[] multipleResults;
 
+        @Temp({REG, OperandFlag.ILLEGAL}) AllocatableValue cfiTargetRegister;
+
+        private SubstrateCallingConventionType callingConventionType;
+
         public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
                         LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
                         BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
             this(callTarget, result, parameters, temps, targetAddress, state, javaFrameAnchor, javaFrameAnchorTemp, newThreadStatus, destroysCallerSavedRegisters, exceptionTemp, offsetRecorder,
-                            new Value[0]);
+                            new Value[0], null);
         }
 
         public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
                         LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
-                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder, Value[] multipleResults) {
+                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder, Value[] multipleResults, SubstrateCallingConventionType callingConventionType) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.newThreadStatus = newThreadStatus;
             this.javaFrameAnchor = javaFrameAnchor;
@@ -298,14 +315,16 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             this.exceptionTemp = exceptionTemp;
             this.offsetRecorder = offsetRecorder;
             this.multipleResults = multipleResults;
+            this.callingConventionType = callingConventionType;
+            this.cfiTargetRegister = getCFITargetRegister();
 
-            assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp);
+            assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp, cfiTargetRegister);
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             maybeTransitionToNative(crb, masm, javaFrameAnchor, javaFrameAnchorTemp, state, newThreadStatus);
-            int offset = AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+            int offset = AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state, callingConventionType);
             if (offsetRecorder != null) {
                 offsetRecorder.accept(crb, offset);
             }
@@ -326,6 +345,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Temp({REG}) private Value addressBaseTemp;
 
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
+        @Temp({REG, OperandFlag.ILLEGAL}) private AllocatableValue cfiTargetRegister;
         private final Computation[] addressComputation;
         private final LIRKindTool lirKindTool;
         private final SharedConstantReflectionProvider constantReflection;
@@ -337,9 +357,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             this.addressBase = this.addressBaseTemp = addressBase;
             this.exceptionTemp = exceptionTemp;
             this.addressComputation = addressComputation;
+            this.cfiTargetRegister = getCFITargetRegister();
             this.lirKindTool = lirKindTool;
             this.constantReflection = constantReflection;
-            assert differentRegisters(parameters, temps, addressBase);
+            assert differentRegisters(parameters, temps, addressBase, cfiTargetRegister);
         }
 
         @Override
@@ -548,6 +569,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public SharedMethod getMethod() {
             return method;
         }
+
+        @Override
+        public int getFirstInsertPosition(BasicBlock<?> block) {
+            /*
+             * If control flow integrity is enabled and the block is the target of an indirect
+             * branch, the first insert position is 2, as on position 0 there is the LabelOp and on
+             * position 1 there is the EndbranchOp. The EndbranchOp has to remain the first "actual"
+             * instruction of the block.
+             *
+             */
+            if (SubstrateControlFlowIntegrity.enabled() && block.isIndirectBranchTarget()) {
+                return 2;
+            }
+            return super.getFirstInsertPosition(block);
+        }
+
     }
 
     /**
@@ -594,7 +631,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 operand = resultOperandFor(kind, input.getValueKind());
                 emitMove(operand, input);
             }
-            append(new AMD64ReturnOp(operand));
+            append(emitReturnOp(operand));
+        }
+
+        protected AMD64ReturnOp emitReturnOp(AllocatableValue operand) {
+            return new AMD64ReturnOp(operand);
         }
 
         @Override
@@ -802,7 +843,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
-            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && block.isIndirectBranchTarget()) {
+            if (SubstrateControlFlowIntegrity.enabled() && block.isIndirectBranchTarget()) {
                 List<LIRInstruction> lir = gen.getResult().getLIR().getLIRforBlock(block);
                 GraalError.guarantee(lir.size() == 1 && lir.get(0) instanceof LabelOp, "block may only contain an initial LabelOp before emitting endbranch");
                 gen.append(EndbranchOp.create());
@@ -982,16 +1023,16 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
 
             Value[] multipleResults = new Value[0];
-            var cc = (SubstrateCallingConventionType) callTarget.callType();
-            if (cc.customABI() && cc.usesReturnBuffer()) {
-                multipleResults = Arrays.stream(cc.returnSaving)
+            var callingConventionType = (SubstrateCallingConventionType) callTarget.callType();
+            if (callingConventionType.customABI() && callingConventionType.usesReturnBuffer()) {
+                multipleResults = Arrays.stream(callingConventionType.returnSaving)
                                 .map(SubstrateAMD64NodeLIRBuilder::asReturnedValue)
                                 .toList().toArray(new Value[0]);
             }
 
             append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults, callingConventionType));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
@@ -1105,11 +1146,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         protected void emitEndBranch(CompilationResultBuilder crb) {
-            /*
-             * Emit an endbranch instruction if we are runtime compiling or the method can be
-             * dynamically bound.
-             */
-            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && (ImageInfo.inImageRuntimeCode() || !method.canBeStaticallyBound())) {
+            if (SubstrateControlFlowIntegrity.enabled()) {
                 ((AMD64Assembler) crb.asm).endbranch();
             }
         }
@@ -1467,7 +1504,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
-        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options, true);
+        AMD64MacroAssembler masm = createAssembler(options);
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -1493,6 +1530,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                         uncompressedNullRegister, lir);
         tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         return tasm;
+    }
+
+    protected AMD64MacroAssembler createAssembler(OptionValues options) {
+        return new AMD64MacroAssembler(getTarget(), options, true);
     }
 
     protected FrameContext createFrameContext(SharedMethod method, CallingConvention callingConvention) {
@@ -1530,9 +1571,21 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
              * method object and read the entry point.
              */
             asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
-            asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
+            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                var jumpTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
+                asm.movq(jumpTargetRegister, new AMD64Address(rax, methodObjEntryPointOffset));
+                asm.jmp(jumpTargetRegister);
+            } else {
+                asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
+            }
         } else { // methodId is absolute address
-            asm.jmp(new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
+            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                var jumpTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
+                asm.movq(jumpTargetRegister, new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
+                asm.jmp(jumpTargetRegister);
+            } else {
+                asm.jmp(new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
+            }
         }
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
         result.recordMark(asm.position(), PROLOGUE_END);
