@@ -276,7 +276,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testIndirectCallDoesNotDeoptNotInliningDirectCaller() {
-        setupContext("engine.MultiTier", "false", "engine.Inlining", "false");
+        setupContext("engine.MultiTier", "false", "compiler.Inlining", "false");
 
         final OptimizedCallTarget callee = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         final Object[] directArguments = new Object[]{"direct arg"};

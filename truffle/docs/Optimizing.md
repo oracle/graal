@@ -535,7 +535,7 @@ To make the best use of the former options, limit what is compiled to the method
 
 * `--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
 
-* `--engine.Inlining=false` disables inlining which can make code easier to understand.
+* `--compiler.Inlining=false` disables inlining which can make code easier to understand.
 
 * `--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
 

@@ -50,7 +50,8 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.LanguageAgnosticInlining", Boolean.TRUE.toString()).option("engine.InliningInliningBudget",
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.LanguageAgnosticInlining", Boolean.TRUE.toString()).option(
+                        "compiler.InliningInliningBudget",
                         "1").build());
     }
 
