@@ -808,22 +808,23 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         args.append("-D" + key + "=" + value)
 
 
-    native_image_args = ["--native-image-info",
-                         '-H:+VerifyNamingConventions',
-                         '-cp', classpath('com.oracle.svm.test'),
-                         '-Dgraal.LogFile=graal.log',
-                         '-g',
-                         '-H:+SourceLevelDebug',
-                         '-H:DebugInfoSourceSearchPath=' + sourcepath,
-                         # We do not want to step into class initializer, so initialize everything at build time.
-                         '--initialize-at-build-time=hello',
-                         'hello.Hello'] + args
+    native_image_args = [
+        '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.c=ALL-UNNAMED',
+        '-H:CLibraryPath=' + sourcepath,
+        '--native-image-info',
+        '-H:+VerifyNamingConventions',
+        '-cp', classpath('com.oracle.svm.test'),
+        '-Dgraal.LogFile=graal.log',
+        '-g',
+        '-H:+SourceLevelDebug',
+        '-H:DebugInfoSourceSearchPath=' + sourcepath,
+    ] + args
 
-    def build_debug_test(variant_name, extra_args):
+    def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
         mkpath(per_build_path)
         build_args = native_image_args + extra_args + [
-            '-o', join(per_build_path, 'hello_image')
+            '-o', join(per_build_path, image_name)
         ]
         mx.log('native_image {}'.format(build_args))
         return native_image(build_args)
@@ -833,19 +834,28 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         os.environ.update({'debuginfotest_musl' : 'yes'})
 
     testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
-
-    hello_binary = build_debug_test('isolates_on', ['-H:+SpawnIsolates'])
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
+    testhello_args = [
+        # We do not want to step into class initializer, so initialize everything at build time.
+        '--initialize-at-build-time=hello',
+        'hello.Hello'
+    ]
+    cstruct_args = [
+        'com.oracle.svm.test.debug.CStructTests'
+    ]
+    hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + ['-H:+SpawnIsolates'])
+    cstruct_binary = build_debug_test('isolates_on', 'cstruct_image', cstruct_args + ['-H:+SpawnIsolates'])
+    # if mx.get_os() == 'linux' and not build_only:
+    #     os.environ.update({'debuginfotest_arch' : mx.get_arch()})
+    # if mx.get_os() == 'linux' and not build_only:
+    #     os.environ.update({'debuginfotest_isolates' : 'yes'})
+    #     mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
     if not with_isolates_only:
-        hello_binary = build_debug_test('isolates_off', ['-H:-SpawnIsolates'])
-        if mx.get_os() == 'linux' and not build_only:
-            os.environ.update({'debuginfotest_isolates' : 'no'})
-            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
+        hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + ['-H:-SpawnIsolates'])
+        cstruct_binary = build_debug_test('isolates_off', 'cstruct_image', cstruct_args + ['-H:-SpawnIsolates'])
+        # if mx.get_os() == 'linux' and not build_only:
+        #     os.environ.update({'debuginfotest_isolates' : 'no'})
+        #     mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
