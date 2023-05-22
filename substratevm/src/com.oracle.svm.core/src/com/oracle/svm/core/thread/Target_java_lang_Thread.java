@@ -62,6 +62,7 @@ import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(Thread.class)
@@ -561,14 +562,21 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static void sleep(long millis) throws InterruptedException {
-        PlatformThreads.sleep(millis);
+        PlatformThreads.sleep(TimeUtils.millisToNanos(millis));
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
-    private static void sleep0(long millis) throws InterruptedException {
+    @TargetElement(name = "sleep0", onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
+    private static void sleep0JDK20(long millis) throws InterruptedException {
         // Virtual threads are handled in sleep()
-        PlatformThreads.sleep(millis);
+        PlatformThreads.sleep(TimeUtils.millisToNanos(millis));
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private static void sleep0(long nanos) throws InterruptedException {
+        // Virtual threads are handled in sleep()
+        PlatformThreads.sleep(nanos);
     }
 
     @Substitute

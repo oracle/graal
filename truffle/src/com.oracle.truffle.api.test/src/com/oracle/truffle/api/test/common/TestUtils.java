@@ -42,10 +42,21 @@ package com.oracle.truffle.api.test.common;
 
 import com.oracle.truffle.api.TruffleLanguage;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.util.List;
+
 public class TestUtils {
 
     public static String getDefaultLanguageId(Class<? extends TruffleLanguage<?>> clazz) {
         return clazz.getName().replaceAll("[.$]", "_").toLowerCase();
     }
 
+    public static boolean isJaCoCoAttached() {
+        RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+        List<String> jvmArgs = runtimeMXBean.getInputArguments();
+        return jvmArgs.stream().filter((arg) -> arg.startsWith("-javaagent:")).//
+                        map((arg) -> arg.substring("-javaagent:".length())).//
+                        anyMatch((arg) -> arg.toLowerCase().contains("jacoco"));
+    }
 }

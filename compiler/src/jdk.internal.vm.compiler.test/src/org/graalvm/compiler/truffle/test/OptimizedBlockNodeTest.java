@@ -38,12 +38,14 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.sl.runtime.SLStrings;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode.PartialBlocks;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -445,6 +447,7 @@ public class OptimizedBlockNodeTest {
 
     @Test
     public void testHierarchicalUnbalanced() {
+        Assume.assumeFalse("JaCoCo causes GraphTooBigBailoutException", SubprocessUtil.isJaCoCoAttached());
         OptimizedBlockNode<TestElement> block;
         OptimizedCallTarget target;
         PartialBlocks<TestElement> partialBlocks;

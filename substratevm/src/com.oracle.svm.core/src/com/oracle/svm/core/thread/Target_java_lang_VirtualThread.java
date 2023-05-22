@@ -77,14 +77,28 @@ public final class Target_java_lang_VirtualThread {
     @Substitute
     @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiMount(boolean hide, boolean firstMount) {
+    private void notifyJvmtiStart() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiEnd() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiMount(boolean hide) {
         // unimplemented (GR-45392)
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiUnmount(boolean hide, boolean lastUnmount) {
+    private void notifyJvmtiUnmount(boolean hide) {
         // unimplemented (GR-45392)
     }
 

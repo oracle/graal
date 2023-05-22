@@ -444,9 +444,13 @@ public final class UnimplementedGraalIntrinsics {
                 // JDK-8282664
                 add(toBeInvestigated, "jdk/internal/util/ArraysSupport.vectorizedHashCode(Ljava/lang/Object;IIII)I");
                 // JDK-8304303
+                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiEnd()V");
                 add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiHideFrames(Z)V");
+                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiMount(Z)V");
                 add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiMount(ZZ)V");
+                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiStart()V");
                 add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiUnmount(ZZ)V");
+                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiUnmount(Z)V");
             }
 
             // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8294198
