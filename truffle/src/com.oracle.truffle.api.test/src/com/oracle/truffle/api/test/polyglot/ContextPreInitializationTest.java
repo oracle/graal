@@ -2911,8 +2911,8 @@ public class ContextPreInitializationTest {
         private final ContextLocal<AtomicInteger> state;
 
         public ContextPreInitializationTestFirstLanguage() {
-            threadState = createContextThreadLocal((context, thread) -> new AtomicInteger());
-            state = createContextLocal((context) -> new AtomicInteger());
+            threadState = locals.createContextThreadLocal((context, thread) -> new AtomicInteger());
+            state = locals.createContextLocal((context) -> new AtomicInteger());
         }
 
         @Override
@@ -3146,15 +3146,14 @@ public class ContextPreInitializationTest {
         private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSharedLanguage.class);
     }
 
-    @SuppressWarnings("this-escape")
     public abstract static class BaseInstrument extends TruffleInstrument implements ContextsListener {
 
         private Env environment;
         private EventBinding<BaseInstrument> contextsListenerBinding;
         private EventBinding<?> verifyContextLocalBinding;
 
-        final ContextLocal<TruffleContext> contextLocal = createContextLocal((c) -> c);
-        final ContextThreadLocal<TruffleContext> contextThreadLocal = createContextThreadLocal((c, t) -> c);
+        final ContextLocal<TruffleContext> contextLocal = locals.createContextLocal((c) -> c);
+        final ContextThreadLocal<TruffleContext> contextThreadLocal = locals.createContextThreadLocal((c, t) -> c);
         private final Set<Pair<TruffleContext, Thread>> initializedThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         @Override
