@@ -144,7 +144,7 @@ public abstract class DebugInfoBase {
      */
     private HeaderTypeEntry headerType;
     /**
-     * Handle on type entry for void typ-e.
+     * Handle on type entry for void type.
      */
     private TypeEntry voidType;
     /**
