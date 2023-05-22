@@ -154,7 +154,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
              * com.oracle.svm.core.windows.headers.WinBase#GetLastError does not transition to
              * native
              */
-            captureBuffer.write(i, WindowsAPIs.GetLastError());
+            captureBuffer.write(i, WindowsAPIs.getLastError());
             ++i;
         }
         if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
@@ -162,7 +162,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
              * com.oracle.svm.core.windows.headers.WinSock#WSAGetLastError does not transition to
              * native
              */
-            captureBuffer.write(i, WindowsAPIs.WSAGetLastError());
+            captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
             ++i;
         }
         if ((statesToCapture & CapturableState.ERRNO.mask()) != 0 && LibC.isSupported()) {
