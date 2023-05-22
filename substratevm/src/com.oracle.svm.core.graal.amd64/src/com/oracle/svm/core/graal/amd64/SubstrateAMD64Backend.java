@@ -142,7 +142,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.graal.code.MemoryAssignment;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -862,12 +862,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 RegisterValue scratch = r10.asValue(parameters[0].getValueKind());
                 gen.emitMove(scratch, baseSaveLocation);
                 long offset = 0;
-                for (MemoryAssignment ret : cc.returnSaving) {
+                for (AssignedLocation ret : cc.returnSaving) {
                     Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
                     if (ret.assignsToStack()) {
                         throw unsupportedFeature("Return should never happen on stack.");
                     }
-                    var register = AMD64.allRegisters.get(ret.registerIndex());
+                    var register = ret.register();
                     LIRKind kind;
                     // There might a better/more natural way to check this
                     if (register.getRegisterCategory().equals(AMD64.CPU)) {

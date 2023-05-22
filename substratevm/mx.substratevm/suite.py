@@ -675,8 +675,8 @@ suite = {
                     "jdk.vm.ci.amd64",
                 ],
             },
-            "javaCompliance" : "20+",
-            "javaPreviewNeeded": "20+",
+            "javaCompliance" : "21+",
+            "javaPreviewNeeded": "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1903,7 +1903,7 @@ suite = {
             },
         },
 
-        "PANAMA": {
+        "SVM_PREVIEW_PANAMA": {
             "subDir": "src",
             "description" : "SubstrateVM support for project Panama",
             "dependencies": [

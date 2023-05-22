@@ -56,7 +56,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
@@ -136,9 +135,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         /*
-         * This method is called from inside the CFunction prologue, more precisely before
-         * transitioning back into Java. This means that the calls we do here should not transition
-         * to/from native, as this would introduce a safepoint.
+         * This method is called from inside the CFunction prologue before transitioning back into
+         * Java. This means that the calls we do here should not transition to/from native, as this
+         * would introduce a safepoint.
          *
          * Note that the states must be captured in the same order as in the JDK: GET_LAST_ERROR,
          * WSA_GET_LAST_ERROR, ERRNO
@@ -150,18 +149,10 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          */
         int i = 0;
         if ((statesToCapture & CapturableState.GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
-            /*
-             * com.oracle.svm.core.windows.headers.WinBase#GetLastError does not transition to
-             * native
-             */
             captureBuffer.write(i, WindowsAPIs.getLastError());
             ++i;
         }
         if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
-            /*
-             * com.oracle.svm.core.windows.headers.WinSock#WSAGetLastError does not transition to
-             * native
-             */
             captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
             ++i;
         }
@@ -175,7 +166,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     private static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(CFunctionSnippets.class, "captureCallState", false, LocationIdentity.any());
 
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
-    public static native void call(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
+    public static native void callCaptureCallState(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
 
     @Fold
     static boolean checkIfCaptureNeeded(int states) {
@@ -190,7 +181,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          * if-the-else is itself folded.
          */
         if (checkIfCaptureNeeded(statesToCapture)) {
-            call(CAPTURE_CALL_STATE, statesToCapture, captureBuffer);
+            callCaptureCallState(CAPTURE_CALL_STATE, statesToCapture, captureBuffer);
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -267,12 +258,11 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             args.addConst("oldThreadStatus", oldThreadStatus);
             args.addConst("statesToCapture", CapturableState.mask(node.getStatesToCapture()), StampFactory.objectNonNull());
             ValueNode buffer = node.getCaptureBuffer();
-            if (buffer != null) {
-                args.add("captureBuffer", buffer);
-            } else {
-                ValueNode nullPtr = node.graph().unique(ConstantNode.forLong(WordFactory.nullPointer().rawValue()));
-                args.add("captureBuffer", nullPtr);
+            if (buffer == null) {
+                // Set it to the null pointer
+                buffer = ConstantNode.forLong(0, node.graph());
             }
+            args.add("captureBuffer", buffer);
 
             SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);

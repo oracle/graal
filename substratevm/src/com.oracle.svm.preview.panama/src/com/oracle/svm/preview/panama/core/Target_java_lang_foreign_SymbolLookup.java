@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.preview.panama.core;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.SymbolLookup;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
@@ -50,6 +51,6 @@ public final class Target_java_lang_foreign_SymbolLookup {
     @Alias
     static native Target_java_lang_foreign_SymbolLookup loaderLookup();
 
-    @Delete("Library lookup are not supported.")
-    static native <Z> Target_java_lang_foreign_SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentScope libScope);
+    @Delete("Library lookups are not supported.")
+    private static native <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, Arena libArena);
 }

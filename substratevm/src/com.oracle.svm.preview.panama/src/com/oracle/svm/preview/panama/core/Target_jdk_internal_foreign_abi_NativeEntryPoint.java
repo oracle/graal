@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.preview.panama.core;
 
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import java.lang.invoke.MethodType;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -51,7 +53,11 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     VMStorage[] argMoves, VMStorage[] returnMoves,
                     MethodType methodType,
                     boolean needsReturnBuffer,
-                    int capturedStateMask) {
+                    int capturedStateMask,
+                    boolean needsTransition) {
+        if (!needsTransition) {
+            throw unsupportedFeature("``Trivial'' calls are not yet supported.");
+        }
         var info = NativeEntryPointInfo.make(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask);
         long addr = ForeignFunctionsRuntime.singleton().getStubPointer(info).rawValue();
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr);

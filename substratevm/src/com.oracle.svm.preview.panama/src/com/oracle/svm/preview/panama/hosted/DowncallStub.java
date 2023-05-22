@@ -45,7 +45,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
@@ -66,7 +65,7 @@ import jdk.vm.ci.meta.Signature;
  * <li>Provide it with a memory assignment for the arguments;</li>
  * <li>If a buffered return is required, provide the return assignment as well.</li>
  * </ul>
- * <li>If (part of) the call state must be captured, perform the necessary calls to get said * call
+ * <li>If (part of) the call state must be captured, perform the necessary calls to get said call
  * state and store the result in the appropriate place</li>
  * </ul>
  * In particular, this latest point means that not safepoint can be placed between the requested
@@ -139,18 +138,14 @@ class DowncallStub extends NonBytecodeMethod {
         return kit.finalizeGraph();
     }
 
-    private static void checkKind(JavaKind kind, String id) {
-        UserError.guarantee(kind.isPrimitive(), "Only primitive types are supported; got " + kind + "@" + id);
-    }
-
-    private static void checkClass(Class<?> clazz, String id) {
-        checkKind(JavaKind.fromJavaClass(clazz), id);
+    private static void checkIsPrimitiveType(Class<?> clazz, String id) {
+        assert clazz.isPrimitive() : "Only primitive types are supported; got " + clazz + "@" + id;
     }
 
     private static void checkSignature(MethodType signature) {
-        checkClass(signature.returnType(), "ret");
+        checkIsPrimitiveType(signature.returnType(), "ret");
         for (int i = 0; i < signature.parameterCount(); ++i) {
-            checkClass(signature.parameterType(i), "param" + i);
+            checkIsPrimitiveType(signature.parameterType(i), "param" + i);
         }
     }
 

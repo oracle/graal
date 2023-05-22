@@ -26,7 +26,7 @@ package com.oracle.svm.preview.panama.hosted;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,15 +133,15 @@ public final class FunctionDescriptorParser {
 
         private MemoryLayout parseLayout() {
             MemoryLayout layout = switch (Character.toUpperCase(peek())) {
-                case 'Z' -> parseValueLayout(boolean.class);
-                case 'B' -> parseValueLayout(byte.class);
-                case 'S' -> parseValueLayout(short.class);
-                case 'C' -> parseValueLayout(char.class);
-                case 'I' -> parseValueLayout(int.class);
-                case 'J' -> parseValueLayout(long.class);
-                case 'F' -> parseValueLayout(float.class);
-                case 'D' -> parseValueLayout(double.class);
-                case 'A' -> parseValueLayout(MemorySegment.class);
+                case 'Z' -> parseValueLayout(ValueLayout.JAVA_BOOLEAN);
+                case 'B' -> parseValueLayout(ValueLayout.JAVA_BYTE);
+                case 'S' -> parseValueLayout(ValueLayout.JAVA_SHORT);
+                case 'C' -> parseValueLayout(ValueLayout.JAVA_CHAR);
+                case 'I' -> parseValueLayout(ValueLayout.JAVA_INT);
+                case 'J' -> parseValueLayout(ValueLayout.JAVA_LONG);
+                case 'F' -> parseValueLayout(ValueLayout.JAVA_FLOAT);
+                case 'D' -> parseValueLayout(ValueLayout.JAVA_DOUBLE);
+                case 'A' -> parseValueLayout(ValueLayout.ADDRESS);
                 case '[' -> parseSequenceLayout();
                 case '{' -> parseStructLayout();
                 case '<' -> parseUnionLayout();
@@ -185,13 +185,13 @@ public final class FunctionDescriptorParser {
             return MemoryLayout.sequenceLayout(size, element);
         }
 
-        private MemoryLayout parseValueLayout(Class<?> carrier) {
+        private MemoryLayout parseValueLayout(ValueLayout baseLayout) {
             ByteOrder order = ByteOrder.BIG_ENDIAN;
             if (Character.isLowerCase(peek())) {
                 order = ByteOrder.LITTLE_ENDIAN;
             }
             consume();
-            MemoryLayout layout = MemoryLayout.valueLayout(carrier, order);
+            MemoryLayout layout = baseLayout.withOrder(order);
             long size = parseInt();
             assert layout.bitSize() == size;
 

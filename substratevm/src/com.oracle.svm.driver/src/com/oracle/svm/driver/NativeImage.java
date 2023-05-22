@@ -1717,7 +1717,7 @@ public class NativeImage {
     }
 
     public enum PreviewFeatures {
-        PANAMA(JavaVersionUtil.JAVA_SPEC >= 20, "panama");
+        PANAMA(JavaVersionUtil.JAVA_SPEC >= 21, "svm-preview-panama");
 
         private final boolean requirementsMet;
         private final String libName;

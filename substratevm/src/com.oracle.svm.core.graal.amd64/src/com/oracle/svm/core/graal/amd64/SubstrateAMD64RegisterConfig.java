@@ -64,6 +64,7 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -73,6 +74,7 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -267,15 +269,18 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         JavaKind[] kinds = new JavaKind[locations.length];
 
         if (type.returnSaving != null) {
-            // returnSaving implies an additional (prefix) parameter pointing to the buffer to use
-            // for saving.
-            // We pretend it is the first stack argument to the function: this means the function
-            // will safely ignore it,
-            // but we will be able to access it right after the call concludes.
+            /*
+             * returnSaving implies an additional (prefix) parameter pointing to the buffer to use
+             * for saving. We pretend it is the first stack argument to the function: this means the
+             * function will safely ignore it, but we will be able to access it right after the call
+             * concludes.
+             */
             firstActualArgument = 1;
-            // The actual allocation is done after allocating all other parameters, as it must be
-            // done last
-            // (it needs to be placed first on the stack, and this is done in reverse order)
+            /*
+             * The actual allocation is done after allocating all other parameters, as it must be
+             * done last (it needs to be placed first on the stack, and this is done in reverse
+             * order)
+             */
         }
 
         if (type.fixedParameterAssignment == null) {
@@ -342,7 +347,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         } else {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
-            assert parameterTypes.length == type.fixedParameterAssignment.length + firstActualArgument;
+            VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length + firstActualArgument,
+                            "Parameters/assignments size mismatch.%nParameter types: %s%nPrefix arguments count: %d%nAssignment:  %s", Arrays.toString(parameterTypes), firstActualArgument,
+                            Arrays.toString(type.fixedParameterAssignment));
 
             for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
@@ -350,15 +357,20 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
 
-                var storage = type.fixedParameterAssignment[i - firstActualArgument];
+                int actualArgumentIndex = i - firstActualArgument;
+                AssignedLocation storage = type.fixedParameterAssignment[actualArgumentIndex];
                 if (storage.assignsToRegister()) {
                     if (!kind.isNumericInteger() && !kind.isNumericFloat()) {
-                        throw unsupportedFeature("Unsupported storage/kind pair. Storage: " + storage + " ; Kind: " + kind);
+                        throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
-                    Register reg = AMD64.allRegisters.get(storage.registerIndex());
-                    assert target.arch.canStoreValue(reg.getRegisterCategory(), paramValueKind.getPlatformKind());
+                    Register reg = storage.register();
+                    VMError.guarantee(target.arch.canStoreValue(reg.getRegisterCategory(), paramValueKind.getPlatformKind()),
+                                    "Cannot assign value to register.%nAssignment index: %d (+ %d for parameter)%nParameters: %s%nAssignment: %s",
+                                    actualArgumentIndex, firstActualArgument, Arrays.toString(parameterTypes), Arrays.toString(type.fixedParameterAssignment));
                     locations[i] = reg.asValue(paramValueKind);
-                    assert !usedRegisters.contains(reg);
+                    VMError.guarantee(!usedRegisters.contains(reg),
+                                    "Register %s was already used.%nAssignment index: %d%nAssignment: %s",
+                                    reg, actualArgumentIndex, Arrays.toString(type.fixedParameterAssignment));
                     usedRegisters.add(reg);
                 } else {
                     /*
@@ -367,7 +379,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                      * "in order". This assumption might not be necessary, but simplifies the check
                      * tremendously.
                      */
-                    assert currentStackOffset == baseStackOffset + storage.stackOffset();
+                    VMError.guarantee(currentStackOffset == baseStackOffset + storage.stackOffset(),
+                                    "Potential stack ``completeness'' violation.%nAssignment index: %d%nExpected offset: %d%nActual offset: %d%nAssignment: %s",
+                                    actualArgumentIndex, currentStackOffset, baseStackOffset + storage.stackOffset(),
+                                    Arrays.toString(type.fixedParameterAssignment));
                     locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
                     currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
                 }
