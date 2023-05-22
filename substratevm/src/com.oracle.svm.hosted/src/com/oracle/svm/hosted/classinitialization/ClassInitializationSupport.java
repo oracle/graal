@@ -48,6 +48,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -86,7 +87,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         if (ClassInitializationOptions.UseNewExperimentalClassInitialization.getValue()) {
-            System.out.println("WARNING: using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
+            LogUtils.warning("Using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
             return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
         }
         return new ProvenSafeClassInitializationSupport(metaAccess, loader);

@@ -47,6 +47,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -91,7 +92,7 @@ public class SourceCache {
             Path javaHomePath = Paths.get("", javaHome);
             Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
             if (!srcZipPath.toFile().exists()) {
-                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes%n", srcZipPath);
+                LogUtils.warning("Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes.", srcZipPath);
                 return;
             }
             try {

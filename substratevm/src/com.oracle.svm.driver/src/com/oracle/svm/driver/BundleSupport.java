@@ -70,6 +70,7 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
 
 final class BundleSupport {
 
@@ -806,7 +807,7 @@ final class BundleSupport {
                     throw NativeImage.showError(message);
                 } else if (major == BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
                     if (minor > BUNDLE_FILE_FORMAT_VERSION_MINOR) {
-                        NativeImage.showWarning(message);
+                        LogUtils.warning(message);
                     }
                 }
             } catch (NumberFormatException e) {

@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -429,16 +430,16 @@ public class HeapSnapshotVerifier {
 
     private void info(String info) {
         if (printInfo()) {
-            System.out.println("INFO: " + info);
+            LogUtils.info(info);
         }
     }
 
     private void warning(ScanReason reason, String format, Object... args) {
-        System.out.println("WARNING: " + message(reason, format, "Object was reached by", args));
+        LogUtils.warning(message(reason, format, "Object was reached by", args));
     }
 
     private void analysisWarning(ScanReason reason, String format, Object... args) {
-        System.out.println("WARNING: " + message(reason, format, "This leads to an analysis state change when", args));
+        LogUtils.warning(message(reason, format, "This leads to an analysis state change when", args));
     }
 
     private RuntimeException error(ScanReason reason, String format, Object... args) {

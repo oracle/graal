@@ -86,6 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -257,7 +258,7 @@ public final class ResourcesFeature implements InternalFeature {
             scheduledExecutor.scheduleAtFixedRate(() -> {
                 if (initialReport) {
                     initialReport = false;
-                    System.out.println("WARNING: Resource scanning is taking a long time. " +
+                    LogUtils.warning("Resource scanning is taking a long time. " +
                                     "This can be caused by class-path or module-path entries that point to large directory structures. " +
                                     "Please make sure class-/module-path entries are easily accessible to native-image");
                 }

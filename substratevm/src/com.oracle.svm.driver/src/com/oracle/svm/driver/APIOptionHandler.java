@@ -61,6 +61,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -371,7 +372,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (option != null) {
             if (!option.deprecationWarning.isEmpty()) {
-                NativeImage.showWarning("Using a deprecated option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + ". " + option.deprecationWarning);
+                LogUtils.warning("Using a deprecated option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + ". " + option.deprecationWarning);
             }
             String builderOption = option.builderOption;
             /* If option is in group, defaultValue has different use */

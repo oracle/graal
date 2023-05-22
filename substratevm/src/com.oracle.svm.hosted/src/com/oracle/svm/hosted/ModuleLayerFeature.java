@@ -66,6 +66,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -152,11 +153,11 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
                         .collect(Collectors.toList());
         if (!bootLayerAutomaticModules.isEmpty()) {
-            System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:" + System.lineSeparator() +
-                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())) +
-                            System.lineSeparator() + "Extending the image builder with automatic modules is not supported and might result in failed build. " +
-                            "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
-                            "Please ensure that only proper modules are found on the module-path");
+            LogUtils.warning(
+                            "Detected automatic module(s) on the module-path of the image builder:\n%s\nExtending the image builder with automatic modules is not supported and might result in failed build. " +
+                                            "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
+                                            "Please ensure that only proper modules are found on the module-path.",
+                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())));
         }
     }
 
