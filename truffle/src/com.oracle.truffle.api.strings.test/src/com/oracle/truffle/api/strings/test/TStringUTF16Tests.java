@@ -140,4 +140,10 @@ public class TStringUTF16Tests extends TStringTestBase {
         TruffleStringBuilderUTF16 sb = TruffleStringBuilder.createUTF16();
         sb.appendCodePointUncached(Character.MAX_CODE_POINT, Integer.MAX_VALUE - 10, false);
     }
+
+    @Test
+    public void testToJavaString() {
+        TruffleString a = TruffleString.fromCharArrayUTF16Uncached(new char[]{'a', 'b', 'c'});
+        Assert.assertEquals("abc", a.toJavaStringUncached());
+    }
 }
