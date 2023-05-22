@@ -145,7 +145,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
         for (var modulePackages : REQUIRES_CONCEALED.entrySet()) {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ForeignFunctionsFeature.class, false, modulePackages.getKey(), modulePackages.getValue());
         }
-        ModuleSupport.allowNativeAccess(ForeignFunctionsFeature.class);
     }
 
     @Override
