@@ -20,6 +20,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44217 (Breaking change) If your language or instrument was specified as Java module, any usages of `@ExportLibrary(useForAOT = true)` or `@GenerateLibrary(defaultExportLookupEnabled = true)` now need to be registered with `@Registration#aotLibraryExports` and `@Registration#defaultLibraryExports`. If your language did not use any of these features, no changes are necessary.
 
 * GR-44222 Deprecated several experimental engine options and moved them to use the `compiler` prefix instead of the `engine` prefix.
+* GR-44222 The following deprecated debugging options were removed in this release:
+	* `engine.InvalidationReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.ReplaceReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.PerformanceWarningsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` and `compiler.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>` instead.
+	* `engine.PrintExpansionHistogram`: Superseded by `engine.TraceMethodExpansion`.
+	* `engine.ForceFrameLivenessAnalysis`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.CompilationExceptionsArePrinted`: Use `engine.CompilationFailureAction=Print` instead.
+	* `engine.CompilationExceptionsAreThrown`: Use `engine.CompilationFailureAction=Throw` instead.
+	* `engine.CompilationExceptionsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` instead.
 
 
 ## Version 23.0.0
