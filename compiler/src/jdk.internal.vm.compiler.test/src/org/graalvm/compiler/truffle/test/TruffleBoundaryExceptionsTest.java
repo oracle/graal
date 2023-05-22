@@ -94,7 +94,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         };
 
-        setupContext("engine.InvalidationReprofileCount", "0", "engine.MultiTier", "false");
+        setupContext("engine.MultiTier", "false");
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
 

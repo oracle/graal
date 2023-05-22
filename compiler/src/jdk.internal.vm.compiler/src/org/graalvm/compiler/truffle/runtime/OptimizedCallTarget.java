@@ -1031,13 +1031,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             properties.put("AST", getNonTrivialNodeCount());
             rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
-                String reason;
-                if (getOptionValue(OptimizedRuntimeOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
-                    reason = "engine.CompilationFailureAction=ExitVM";
-                } else {
-                    reason = "engine.PerformanceWarningsAreFatal=true";
-                }
-                log(String.format("Exiting VM due to %s", reason));
+                log(String.format("Exiting VM due to %s", "engine.CompilationFailureAction=ExitVM"));
                 System.exit(-1);
             }
         }

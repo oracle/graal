@@ -69,6 +69,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
+    @SuppressWarnings("try")
     @Override
     public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
@@ -89,6 +90,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
+    @SuppressWarnings("try")
     @Override
     public String validateCompilerOption(String key, String value) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
@@ -96,6 +98,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
+    @SuppressWarnings("try")
     @Override
     public boolean existsCompilerOption(String key) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {

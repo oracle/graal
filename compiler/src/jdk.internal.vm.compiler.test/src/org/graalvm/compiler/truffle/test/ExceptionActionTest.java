@@ -134,6 +134,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        "engine.CompilationFailureAction", "ExitVM",
                         "compiler.PerformanceWarningsAreFatal", "all");
     }
 

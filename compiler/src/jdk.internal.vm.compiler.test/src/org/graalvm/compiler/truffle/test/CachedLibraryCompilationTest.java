@@ -53,7 +53,7 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
     @Before
     public void setup() {
         cleanup();
-        context = Context.newBuilder().allowExperimentalOptions(true).option("engine.PerformanceWarningsAreFatal", "all").build();
+        context = Context.newBuilder().allowExperimentalOptions(true).option("compiler.PerformanceWarningsAreFatal", "all").build();
         context.enter();
     }
 
