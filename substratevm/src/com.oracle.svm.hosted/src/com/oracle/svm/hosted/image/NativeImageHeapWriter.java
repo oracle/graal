@@ -385,14 +385,16 @@ public final class NativeImageHeapWriter {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
             JavaConstant constant = info.getConstant();
+
+            int length = heap.hConstantReflection.readArrayLength(constant);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
+
             if (constant instanceof ImageHeapConstant) {
                 if (clazz.getComponentType().isPrimitive()) {
                     ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
-                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), imageHeapArray.getLength());
+                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
                 } else {
-                    int length = heap.hConstantReflection.readArrayLength(constant);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                     heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
                         final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, index));
                         writeConstant(buffer, elementIndex, kind, element, info);
@@ -400,9 +402,6 @@ public final class NativeImageHeapWriter {
                 }
             } else {
                 Object array = info.getObject();
-                int length = Array.getLength(array);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                 if (array instanceof Object[]) {
                     Object[] oarray = (Object[]) array;
                     assert oarray.length == length;
