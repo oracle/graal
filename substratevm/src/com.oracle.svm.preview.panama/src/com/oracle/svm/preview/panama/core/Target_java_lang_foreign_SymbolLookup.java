@@ -27,12 +27,9 @@ package com.oracle.svm.preview.panama.core;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
-import java.util.Optional;
 import java.util.function.BiFunction;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -42,17 +39,13 @@ import jdk.internal.loader.RawNativeLibraries;
 @TargetClass(className = "java.lang.foreign.SymbolLookup")
 @SuppressWarnings("unused")
 public final class Target_java_lang_foreign_SymbolLookup {
-    @Alias
-    native Optional<MemorySegment> find(String name);
-
     /**
-     * Note that this method will have a behavior which is slightly different from the one in the
-     * JDK: like loadLibrary, the lookup is classloader agnostic, which means that loading a library
-     * in a classloader and then looking it up from another one will succeed. See
+     * Note that {@link java.lang.foreign.SymbolLookup#loaderLookup} will have a behavior which is
+     * slightly different from the one in the JDK: like loadLibrary, the lookup is classloader
+     * agnostic, which means that loading a library in a classloader and then looking it up from
+     * another one will succeed. See
      * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
      */
-    @Alias
-    static native Target_java_lang_foreign_SymbolLookup loaderLookup();
 
     @Substitute
     private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, Arena libArena) {
