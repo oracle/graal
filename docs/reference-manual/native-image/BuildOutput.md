@@ -94,7 +94,8 @@ See [here](#recommendation-cpu) for recommendations on how to use this option.
 
 On Oracle GraalVM, the line also shows information about [Profile-Guided Optimizations (PGO)](#recommendation-pgo).
 - `off`: PGO is not used
-- `user-provided`: PGO is enabled and uses a user-provided profile
+- `instrument`: The generated executable or shared library is instrumented to collect data for PGO (`--pgo-instrument`)
+- `user-provided`: PGO is enabled and uses a user-provided profile (for example `--pgo default.iprof`)
 - `ML-inferred`: A machine learning (ML) model is used to infer profiles for control split branches statically.
 
 #### <a name="glossary-ccompiler"></a>C Compiler
