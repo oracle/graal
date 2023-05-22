@@ -601,7 +601,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "jacoco" : "include",
+            "jacoco" : "exclude", # experimental code not used in production
         },
 
         "com.oracle.svm.hosted": {
