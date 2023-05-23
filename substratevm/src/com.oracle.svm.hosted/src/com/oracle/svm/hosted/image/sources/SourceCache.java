@@ -39,11 +39,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -504,6 +507,12 @@ public class SourceCache {
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class SourceCacheFeature implements InternalFeature {
+
+    public static class Options {
+        @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
+        static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+    }
+
     ImageClassLoader imageClassLoader;
 
     @Override
@@ -520,7 +529,7 @@ class SourceCacheFeature implements InternalFeature {
     }
 
     static List<Path> getSourceSearchPath() {
-        return SubstrateOptions.DebugInfoSourceSearchPath.getValue().values();
+        return Options.DebugInfoSourceSearchPath.getValue().values();
     }
 }
 
