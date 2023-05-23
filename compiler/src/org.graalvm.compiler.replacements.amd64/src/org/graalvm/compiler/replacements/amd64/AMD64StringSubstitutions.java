@@ -42,6 +42,7 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.word.WordFactory;
 
 // JaCoCo Exclude
 
@@ -53,6 +54,14 @@ public class AMD64StringSubstitutions {
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     static final MetaAccessProvider INJECTED = null;
+
+    private static Word pointer(char[] target) {
+        return Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED));
+    }
+
+    public static Word charOffsetPointer(char[] value, int offset) {
+        return pointer(value).add(WordFactory.signed(offset).multiply(WordFactory.unsigned(charArrayIndexScale(INJECTED))));
+    }
 
     // Only exists in JDK <= 8
     @MethodSubstitution(isStatic = true, optional = true)
@@ -90,8 +99,8 @@ public class AMD64StringSubstitutions {
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
                     return totalOffset;
                 } else {
-                    Pointer cmpSourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
-                    Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
+                    Pointer cmpSourcePointer = charOffsetPointer(source, totalOffset);
+                    Pointer targetPointer = charOffsetPointer(target, targetOffset);
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char))) {
                         return totalOffset;
                     }

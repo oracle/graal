@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -67,6 +69,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This is a helper class for writing moderately complex
@@ -169,19 +172,38 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.add(new ArrayLengthNode(x));
     }
 
-    public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
-        int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
-        ValueNode offset = ConstantNode.forInt(arrayBaseOffset);
-        if (index != null) {
-            offset = add(offset, scale(index, kind));
-        }
-
-        return b.add(new ComputeObjectAddressNode(array, asWord(offset)));
+    /**
+     * Computes the address of an array element. The {@code array} is expected to be a byte[] while
+     * the {@code kind} may be some larger primitive type.
+     */
+    public ValueNode arrayElementPointerScaled(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, true);
     }
 
-    public ValueNode scale(ValueNode index, JavaKind kind) {
-        int arrayIndexShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind));
-        return shl(index, arrayIndexShift);
+    /**
+     * Computes the address of an array element. The {@code kind} is expected to match type of the
+     * {@code array}.
+     */
+    public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, false);
+    }
+
+    private ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean scaled) {
+        // Permit scaled addressing within byte arrays
+        JavaKind actualKind = scaled ? JavaKind.Byte : kind;
+        // The visible type of the stamp should either be array type or Object. It's sometimes
+        // Object because of cycles that hide the underlying type.
+        ResolvedJavaType type = StampTool.typeOrNull(array);
+        assert type == null || (type.isArray() && type.getComponentType().getJavaKind() == actualKind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
+        int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
+        ValueNode offset = ConstantNode.forIntegerKind(wordKind, arrayBaseOffset);
+        if (index != null) {
+            ValueNode scaledIndex = shl(asWord(index), CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind)));
+            offset = add(offset, scaledIndex);
+        }
+
+        GraalError.guarantee(offset.getStackKind() == wordKind, "should have been promoted to word: %s", index);
+        return b.add(new ComputeObjectAddressNode(array, offset));
     }
 
     public ValueNode asWord(ValueNode index) {
@@ -200,6 +222,7 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
+        // canonicalizedCondition.mustNegate() is expected to be handled by the caller
         return createCompare(canonicalizedCondition.getCanonicalCondition(), x, y);
     }
 
@@ -213,8 +236,11 @@ public class InvocationPluginHelper implements DebugCloseable {
                     return IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
                 }
             case LT:
-                assert x.getStackKind() != JavaKind.Object;
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
                 return IntegerLessThanNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
+            case BT:
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
+                return IntegerBelowNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
             default:
                 throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
         }
@@ -235,6 +261,28 @@ public class InvocationPluginHelper implements DebugCloseable {
         Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
         LogicNode compare = createCompare(x, y, canonicalizedCondition);
         return b.intrinsicRangeCheck(compare, canonicalizedCondition.mustNegate());
+    }
+
+    /**
+     * Check that all indexes in the half open range [{@code index}, {@code index + offset}) are
+     * within {@code array}.
+     */
+    public void intrinsicArrayRangeCheck(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        intrinsicRangeCheck(add(index, offset), Condition.AT, length);
+    }
+
+    /**
+     * Check that all indexes in the half open range [{@code 2 * index},
+     * {@code 2 * (index + offset)}) are within {@code array}. To avoid overflow issues, the
+     * underlying length is divided by 2.
+     */
+    public void intrinsicArrayRangeCheckScaled(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        ValueNode shiftedLength = shr(length, 1);
+        intrinsicRangeCheck(add(index, offset), Condition.AT, shiftedLength);
     }
 
     public AbstractBeginNode emitReturnIf(LogicNode condition, ValueNode returnValue, double returnProbability) {

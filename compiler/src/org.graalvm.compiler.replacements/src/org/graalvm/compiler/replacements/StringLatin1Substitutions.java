@@ -41,6 +41,7 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.word.WordFactory;
 
 /**
  * Substitutions for {@code java.lang.StringLatin1} methods.
@@ -58,7 +59,7 @@ public class StringLatin1Substitutions {
     }
 
     private static Word byteOffsetPointer(byte[] source, int offset) {
-        return pointer(source).add(offset * byteArrayIndexScale(INJECTED));
+        return pointer(source).add(WordFactory.signed(offset).multiply(WordFactory.unsigned(byteArrayIndexScale(INJECTED))));
     }
 
     @MethodSubstitution
