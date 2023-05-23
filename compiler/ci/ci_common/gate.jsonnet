@@ -387,7 +387,7 @@
     ]
     for jdk in [
       "17",
-      if $.contains(task, "coverage") then "20" else "21" # JaCoCo does not yet support JDK 21 (GR-46006)
+      "21"
     ]
     for os_arch in all_os_arches
   ],
@@ -441,9 +441,6 @@
     ]
   ],
 
-  # JaCoCo does not yet support JDK 21
-  local coverage_avx3_builds = [self.make_build("20", "linux-amd64", "coverage_avx3").build],
-
   # Run the style build only on linux-amd64-jdk20 as code quality tools
   # only need to run on one platform. Furthermore they should be run on
   # JDK-(latest - 1) as most tools won't support JDK-latest until it has
@@ -463,7 +460,6 @@
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
-    coverage_avx3_builds +
     linux_amd64_jdk21_builds +
     linux_amd64_jdk21Debug_builds,
 
