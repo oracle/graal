@@ -134,7 +134,7 @@ public class Driver {
         return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
     }
 
-    public Path getSulongHome() {
+    public static Path getSulongHome() {
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;
