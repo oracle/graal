@@ -1050,9 +1050,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
-     * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)}
-     * this method is called only for exceptions thrown on the Truffle runtime side, so it does not
-     * need to stringify the passed exception.
+     * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)} this
+     * method is called only for exceptions thrown on the Truffle runtime side, so it does not need
+     * to stringify the passed exception.
      */
     @SuppressWarnings("unused")
     protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
@@ -1267,7 +1267,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 OptionDescriptor.Builder b = OptionDescriptor.newBuilder(getOrCreateOptionKey(optionName), optionName);
                 if (isLegacyOption(optionName)) {
                     b.deprecated(true).deprecationMessage(
-                                    String.format("The option %s is now deprecated. Please use the new option name '%s' instead to resolve this.", optionName, newOptionName)).build();
+                                    String.format("The option %s is now deprecated. Please use the new option name '%s' instead to resolve this.", optionName, newOptionName));
                 }
                 return b.build();
             }
