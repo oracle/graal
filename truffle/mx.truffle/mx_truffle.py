@@ -831,8 +831,8 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
-    name='Truffle',
-    short_name='tfl',
+    name='Truffle API',
+    short_name='tfla',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
@@ -840,6 +840,24 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
+    ],
+    stability="supported",
+))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle',
+    short_name='tfl',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Truffle API',
+        'GraalVM Launcher Common'
+    ],
+    jar_distributions=[],
+    jvmci_parent_jars=[
         'truffle:LOCATOR',
     ],
     stability="supported",
