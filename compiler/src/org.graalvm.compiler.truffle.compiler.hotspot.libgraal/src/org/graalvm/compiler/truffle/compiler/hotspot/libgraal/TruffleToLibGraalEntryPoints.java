@@ -45,14 +45,10 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
-import static org.graalvm.jniutils.JNIUtil.GetArrayLength;
-import static org.graalvm.jniutils.JNIUtil.GetByteArrayElements;
 import static org.graalvm.jniutils.JNIUtil.NewObjectArray;
-import static org.graalvm.jniutils.JNIUtil.ReleaseByteArrayElements;
 import static org.graalvm.jniutils.JNIUtil.SetObjectArrayElement;
 import static org.graalvm.jniutils.JNIUtil.createHSString;
 
-import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.hotspot.CompilationContext;
@@ -71,7 +67,6 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
-import org.graalvm.jniutils.JNI.JArray;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -87,9 +82,6 @@ import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -150,11 +142,10 @@ final class TruffleToLibGraalEntryPoints {
     @TruffleToLibGraal(InitializeCompiler)
     @SuppressWarnings("unused")
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeCompiler")
-    public static void initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JByteArray hsOptions, JObject hsCompilable,
+    public static void initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JObject hsCompilable,
                     boolean firstInitialization) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, InitializeCompiler, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
-            Map<String, Object> options = decodeOptions(env, hsOptions);
             TruffleCompilable compilable = new HSCompilableTruffleAST(s, hsCompilable);
             compiler.initialize(compilable, firstInitialization);
         } catch (Throwable t) {
@@ -206,14 +197,12 @@ final class TruffleToLibGraalEntryPoints {
                     long compilerHandle,
                     JObject hsTask,
                     JObject hsCompilable,
-                    JByteArray hsOptions,
                     JObject hsListener) {
         try (JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, DoCompile, env)) {
             HSCompilableTruffleAST compilable = new HSCompilableTruffleAST(scope, hsCompilable);
             TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
             try (CompilationContext hotSpotObjectConstantScope = HotSpotGraalServices.openLocalCompilationContext(compilable)) {
                 HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
-                Map<String, Object> options = decodeOptions(env, hsOptions);
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
                 compiler.doCompile(task, compilable, listener);
             } finally {
@@ -280,20 +269,6 @@ final class TruffleToLibGraalEntryPoints {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return 0;
         }
-    }
-
-    private static Map<String, Object> decodeOptions(JNIEnv env, JByteArray hsOptions) {
-        Map<String, Object> options;
-        int len = GetArrayLength(env, hsOptions);
-        CCharPointer optionsCPointer = GetByteArrayElements(env, hsOptions, WordFactory.nullPointer());
-        try {
-            byte[] optionsBuffer = new byte[len];
-            CTypeConversion.asByteBuffer(optionsCPointer, len).get(optionsBuffer);
-            options = OptionsEncoder.decode(optionsBuffer);
-        } finally {
-            ReleaseByteArrayElements(env, hsOptions, optionsCPointer, JArray.MODE_RELEASE);
-        }
-        return options;
     }
 
     @TruffleToLibGraal(GetSuppliedString)
