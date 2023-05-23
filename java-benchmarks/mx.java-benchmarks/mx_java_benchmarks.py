@@ -374,6 +374,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
                 '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
+                '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType'
                 '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
