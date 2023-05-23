@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1390,7 +1391,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             Map<String, String> options = null;
             for (var entry : NAMES.entrySet()) {
                 if (options == null) {
-                    options = new HashMap<>();
+                    options = new LinkedHashMap<>();
                 }
                 String optionName = entry.getValue();
                 if (!values.hasBeenSet(entry.getKey())) {
@@ -1402,7 +1403,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
                 options.put(optionName, optionValue);
             }
-            return options == null ? Map.of() : options;
+            return options == null ? new LinkedHashMap<>() : options;
         }
 
         static OptionCategory matchCategory(TruffleCompilerOptionDescriptor d) {
