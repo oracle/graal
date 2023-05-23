@@ -332,7 +332,9 @@ final class BacktraceVisitor extends StackFrameVisitor {
     private void visitAOTFrame(CodePointer ip) {
         long rawValue = ip.rawValue();
         VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
-        VMError.guarantee(!isSourceReference(rawValue), "Not a code pointer: 0x%x", rawValue);
+        if (isSourceReference(rawValue)) {
+            throw VMError.shouldNotReachHere("Not a code pointer: 0x" + Long.toHexString(rawValue));
+        }
         ensureSize(index + 1);
         trace[index++] = rawValue;
         numFrames++;
@@ -412,7 +414,9 @@ final class BacktraceVisitor extends StackFrameVisitor {
      */
     static int writeSourceReference(long[] backtrace, int pos, int sourceLineNumber, Class<?> sourceClass, String sourceMethodName) {
         long encodedLineNumber = encodeLineNumber(sourceLineNumber);
-        VMError.guarantee(isSourceReference(encodedLineNumber), "Encoded line number looks like a code pointer: %s", encodedLineNumber);
+        if (!isSourceReference(encodedLineNumber)) {
+            throw VMError.shouldNotReachHere("Encoded line number looks like a code pointer: " + encodedLineNumber);
+        }
         backtrace[pos] = encodedLineNumber;
         if (useCompressedReferences()) {
             long sourceClassOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceClass).rawValue());
