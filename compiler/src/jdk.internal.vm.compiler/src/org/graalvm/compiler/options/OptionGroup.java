@@ -29,15 +29,17 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.graalvm.options.OptionDescriptor;
-
 /**
  * Describes the attributes of an option whose {@link OptionKey value} is in a static field
  * annotated by this annotation type.
  *
  * @see OptionDescriptor
  */
-@Retention(RetentionPolicy.SOURCE)
+/*
+ * Needs to be runtime retention in order to filter groups that should be registered as service in
+ * native-image runtime options.
+ */
+@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface OptionGroup {
 
