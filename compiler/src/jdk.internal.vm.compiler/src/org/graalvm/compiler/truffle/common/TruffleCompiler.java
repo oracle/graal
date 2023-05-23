@@ -31,6 +31,7 @@ public interface TruffleCompiler {
 
     /**
      * Initializes the compiler before the first compilation.
+     *
      * @param compilable the Truffle AST that triggered the initialization
      * @param firstInitialization first initialization. For a multi-isolate compiler the
      *            {@code firstInitialization} must be {@code true} for an initialization in the
@@ -42,6 +43,7 @@ public interface TruffleCompiler {
 
     /**
      * Compiles {@code compilable} to machine code.
+     *
      * @param listener a listener receiving events about compilation success or failure
      */
     void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);

@@ -25,9 +25,8 @@
 package org.graalvm.compiler.truffle.common;
 
 /**
- * A listener for events related to the compilation of a {@link TruffleCompilable}. The events
- * are described only in terms of types that can be easily serialized or proxied across a heap
- * boundary.
+ * A listener for events related to the compilation of a {@link TruffleCompilable}. The events are
+ * described only in terms of types that can be easily serialized or proxied across a heap boundary.
  */
 public interface TruffleCompilerListener {
 

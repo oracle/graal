@@ -175,8 +175,8 @@ public interface TruffleCompilerRuntime {
     /**
      * Gets the {@link TruffleCompilable} represented by {@code constant}.
      *
-     * @return {@code null} if {@code constant} does not represent a {@link TruffleCompilable} or
-     *         it cannot be converted to a {@link TruffleCompilable} in the calling context
+     * @return {@code null} if {@code constant} does not represent a {@link TruffleCompilable} or it
+     *         cannot be converted to a {@link TruffleCompilable} in the calling context
      */
     TruffleCompilable asCompilableTruffleAST(JavaConstant constant);
 
