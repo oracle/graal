@@ -150,7 +150,9 @@ final class InstrumentCache {
     static <T> Iterable<T> loadTruffleService(Class<T> type) {
         List<T> result = new ArrayList<>();
         for (InstrumentCache cache : load()) {
-            cache.providerAdapter.loadTruffleService(type).forEach(result::add);
+            for (T service : cache.providerAdapter.loadTruffleService(type)) {
+                result.add(service);
+            }
         }
         return result;
     }
@@ -167,7 +169,7 @@ final class InstrumentCache {
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
-            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
         }
         /*
          * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
@@ -186,12 +188,12 @@ final class InstrumentCache {
     }
 
     @SuppressWarnings("deprecation")
-    private static Stream<? extends ProviderAdapter> loadDeprecatedProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(DeprecatedProvider::new);
+    private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
     private static Stream<? extends ProviderAdapter> loadProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(NewProvider::new);
+        return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(ModuleAwareProvider::new);
     }
 
     private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
@@ -200,7 +202,7 @@ final class InstrumentCache {
         ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
-            emitWarning("Provider %s is missing @Registration annotation.", providerClass);
+            emitWarning("Warning Truffle instrument ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
         String className = providerAdapter.getInstrumentClassName();
@@ -273,7 +275,7 @@ final class InstrumentCache {
 
     private static void emitWarning(String message, Object... args) {
         PrintStream out = System.err;
-        out.printf("[engine] " + message + "%n", args);
+        out.printf(message + "%n", args);
     }
 
     private interface ProviderAdapter {
@@ -288,12 +290,17 @@ final class InstrumentCache {
         <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
+    /**
+     * Provider adapter for deprecated {@code TruffleInstrument.Provider}. GR-46292 Remove the
+     * deprecated {@code TruffleInstrument.Provider} and this adapter. When removed, the
+     * {@link ModuleAwareProvider} should also be removed.
+     */
     @SuppressWarnings("deprecation")
-    private static final class DeprecatedProvider implements ProviderAdapter {
+    private static final class LegacyProvider implements ProviderAdapter {
 
         private final TruffleInstrument.Provider provider;
 
-        DeprecatedProvider(TruffleInstrument.Provider provider) {
+        LegacyProvider(TruffleInstrument.Provider provider) {
             Objects.requireNonNull(provider, "Provider must be non null");
             this.provider = provider;
         }
@@ -324,11 +331,15 @@ final class InstrumentCache {
         }
     }
 
-    private static final class NewProvider implements ProviderAdapter {
+    /**
+     * Provider adapter for {@link TruffleInstrumentProvider}. When the {@link LegacyProvider} is
+     * removed, this class should also be removed.
+     */
+    private static final class ModuleAwareProvider implements ProviderAdapter {
 
         private final TruffleInstrumentProvider provider;
 
-        NewProvider(TruffleInstrumentProvider provider) {
+        ModuleAwareProvider(TruffleInstrumentProvider provider) {
             Objects.requireNonNull(provider, "Provider must be non null");
             this.provider = provider;
         }

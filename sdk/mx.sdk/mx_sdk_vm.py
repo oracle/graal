@@ -977,10 +977,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
         class TempJmods:
             """
-            Utility to delete temporary .jmod files created for alternative moduleInfos.
-            The alternative moduleInfo has a qualifier in its name. Before we create a new JVM distribution
-            we need to create a temporary .jmod file with the name without the qualifier. These temporary
-            files are deleted after the jlink execution.
+            Utility to manage temporary .jmod files created for alternative moduleInfos.
+            The jmod file containing an alternative moduleInfo includes a qualifier in its name. For instance,
+            the closed truffle org.graalvm.truffle_closed.jmod file has the _closed qualifier. Prior to creating
+            a new JVM distribution, it is necessary to generate a temporary jmod file with the qualifier removed
+            from the name. In the given example, it would be the org.graalvm.truffle.jmod file. These temporary
+            files are deleted once the jlink execution is completed.
             """
 
             def __init__(self):

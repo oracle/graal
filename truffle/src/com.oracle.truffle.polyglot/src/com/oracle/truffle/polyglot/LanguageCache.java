@@ -166,7 +166,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, false, hostLanguageProvider.getServicesClassNames(),
-                        ContextPolicy.SHARED, new NewProvider(hostLanguageProvider), "", SandboxPolicy.UNTRUSTED);
+                        ContextPolicy.SHARED, new ModuleAwareProvider(hostLanguageProvider), "", SandboxPolicy.UNTRUSTED);
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
     }
@@ -220,7 +220,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
     static <T> Iterable<T> loadTruffleService(Class<T> type) {
         List<T> result = new ArrayList<>();
         for (LanguageCache cache : languages().values()) {
-            cache.providerAdapter.loadTruffleService(type).forEach(result::add);
+            for (T service : cache.providerAdapter.loadTruffleService(type)) {
+                result.add(service);
+            }
         }
         return result;
     }
@@ -247,7 +249,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 continue;
             }
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
-            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
         }
 
         Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
@@ -274,12 +276,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("deprecation")
-    private static Stream<? extends ProviderAdapter> loadDeprecatedProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(DeprecatedProvider::new);
+    private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
     private static Stream<? extends ProviderAdapter> loadProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleLanguageProvider.class, loader).spliterator(), false).map(NewProvider::new);
+        return StreamSupport.stream(ServiceLoader.load(TruffleLanguageProvider.class, loader).spliterator(), false).map(ModuleAwareProvider::new);
     }
 
     private static boolean hasSameCodeSource(LanguageCache first, LanguageCache second) {
@@ -301,7 +303,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
-            emitWarning("Provider %s is missing @Registration annotation.", providerClass);
+            emitWarning("Warning Truffle language ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
         String className = providerAdapter.getLanguageClassName();
@@ -634,7 +636,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static void emitWarning(String message, Object... args) {
         PrintStream out = System.err;
-        out.printf("[engine] " + message + "%n", args);
+        out.printf(message + "%n", args);
     }
 
     private static final class HostLanguageProvider extends TruffleLanguageProvider {
@@ -687,12 +689,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
         <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
+    /**
+     * Provider adapter for deprecated {@code TruffleLanguage.Provider}. GR-46292 Remove the
+     * deprecated {@code TruffleLanguage.Provider} and this adapter. When removed, the
+     * {@link ModuleAwareProvider} should also be removed.
+     */
     @SuppressWarnings("deprecation")
-    private static final class DeprecatedProvider implements ProviderAdapter {
+    private static final class LegacyProvider implements ProviderAdapter {
 
         private final TruffleLanguage.Provider provider;
 
-        DeprecatedProvider(TruffleLanguage.Provider provider) {
+        LegacyProvider(TruffleLanguage.Provider provider) {
             Objects.requireNonNull(provider, "Provider must be non null");
             this.provider = provider;
         }
@@ -727,11 +734,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static final class NewProvider implements ProviderAdapter {
+    /**
+     * Provider adapter for {@link TruffleLanguageProvider}. When the {@link LegacyProvider} is
+     * removed, this class should also be removed.
+     */
+    private static final class ModuleAwareProvider implements ProviderAdapter {
 
         private final TruffleLanguageProvider provider;
 
-        NewProvider(TruffleLanguageProvider provider) {
+        ModuleAwareProvider(TruffleLanguageProvider provider) {
             Objects.requireNonNull(provider, "Provider must be non null");
             this.provider = provider;
         }

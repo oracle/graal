@@ -67,17 +67,17 @@ public class InstrumentRegistrationTest {
 
     }
 
-    @ExpectError("The class registered in the defaultLibraryExports must be a library export. " +
-                    "To resolve this, add the @ExportLibrary to NoLibrary or remove the NoLibrary from the defaultLibraryExports.")
+    @ExpectError("The class InstrumentRegistrationTest.DefaultExportProviderRegistration1.NoLibrary must have the @ExportLibrary annotation. " +
+                    "To resolve this, add the @ExportLibrary annotation to the library class or remove the library from the defaultLibraryExports list.")
     @Registration(id = "tooldefaultexportprovider1", name = "tooldefaultexportprovider1", defaultLibraryExports = DefaultExportProviderRegistration1.NoLibrary.class)
     public static class DefaultExportProviderRegistration1 extends ProxyInstrument {
         public static class NoLibrary {
         }
     }
 
-    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
-                    "or remove the InvalidToolLibrary2 from the defaultLibraryExports.")
+    @ExpectError("The class LanguageRegistrationTest.NoDefaultExportLibrary1 must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type LanguageRegistrationTest.NoDefaultExportLibrary1 " +
+                    "or remove the InstrumentRegistrationTest.DefaultExportProviderRegistration2.InvalidToolLibrary2 from the defaultLibraryExports list.")
     @Registration(id = "tooldefaultexportprovider2", name = "tooldefaultexportprovider2", defaultLibraryExports = DefaultExportProviderRegistration2.InvalidToolLibrary2.class)
     public static class DefaultExportProviderRegistration2 extends ProxyInstrument {
 
@@ -90,9 +90,9 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1, NoDefaultExportLibrary2 " +
-                    "or remove the InvalidToolLibrary3 from the defaultLibraryExports.")
+    @ExpectError("The class LanguageRegistrationTest.NoDefaultExportLibrary1, LanguageRegistrationTest.NoDefaultExportLibrary2 must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type LanguageRegistrationTest.NoDefaultExportLibrary1, LanguageRegistrationTest.NoDefaultExportLibrary2 " +
+                    "or remove the InstrumentRegistrationTest.DefaultExportProviderRegistration3.InvalidToolLibrary3 from the defaultLibraryExports list.")
     @Registration(id = "tooldefaultexportprovider3", name = "tooldefaultexportprovider3", defaultLibraryExports = DefaultExportProviderRegistration3.InvalidToolLibrary3.class)
     public static class DefaultExportProviderRegistration3 extends ProxyInstrument {
 
@@ -110,12 +110,12 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError({"The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
-                    "or remove the InvalidToolLibrary4A from the defaultLibraryExports.",
-                    "The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary2 " +
-                                    "or remove the InvalidToolLibrary4B from the defaultLibraryExports."})
+    @ExpectError({"The class LanguageRegistrationTest.NoDefaultExportLibrary1 must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type LanguageRegistrationTest.NoDefaultExportLibrary1 " +
+                    "or remove the InstrumentRegistrationTest.DefaultExportProviderRegistration4.InvalidToolLibrary4A from the defaultLibraryExports list.",
+                    "The class LanguageRegistrationTest.NoDefaultExportLibrary2 must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type LanguageRegistrationTest.NoDefaultExportLibrary2 " +
+                                    "or remove the InstrumentRegistrationTest.DefaultExportProviderRegistration4.InvalidToolLibrary4B from the defaultLibraryExports list."})
     @Registration(id = "tooldefaultexportprovider4", name = "tooldefaultexportprovider4", defaultLibraryExports = {DefaultExportProviderRegistration4.InvalidToolLibrary4A.class,
                     DefaultExportProviderRegistration4.InvalidToolLibrary4B.class})
     public static class DefaultExportProviderRegistration4 extends ProxyInstrument {
@@ -192,9 +192,9 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
-                    "or remove the InvalidToolLibrary5 from the defaultLibraryExports.")
+    @ExpectError("The class LanguageRegistrationTest.NoDefaultExportLibrary1 must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type LanguageRegistrationTest.NoDefaultExportLibrary1 " +
+                    "or remove the InstrumentRegistrationTest.DefaultExportProviderRegistration8.InvalidToolLibrary5 from the defaultLibraryExports list.")
     @Registration(id = "tooldefaultexportprovider8", name = "tooldefaultexportprovider8", defaultLibraryExports = {DefaultExportProviderRegistration8.ValidToolLibrary4.class,
                     DefaultExportProviderRegistration8.InvalidToolLibrary5.class})
     public static class DefaultExportProviderRegistration8 extends ProxyInstrument {
@@ -217,18 +217,18 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                    "To resolve this, set the @ExportLibrary.useForAOT to true on NoLibrary " +
-                    "or remove the NoLibrary from aotLibraryExports.")
+    @ExpectError("The class InstrumentRegistrationTest.EagerExportProviderRegistration1.NoLibrary must set @ExportLibrary(useForAOT = true). " +
+                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration1.NoLibrary " +
+                    "or remove the library from the aotLibraryExports list.")
     @Registration(id = "tooleagerexportprovider1", name = "tooleagerexportprovider1", aotLibraryExports = EagerExportProviderRegistration1.NoLibrary.class)
     public static class EagerExportProviderRegistration1 extends ProxyInstrument {
         public static class NoLibrary {
         }
     }
 
-    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary6 " +
-                    "or remove the InvalidToolLibrary6 from aotLibraryExports.")
+    @ExpectError("The class InstrumentRegistrationTest.EagerExportProviderRegistration2.InvalidToolLibrary6 must set @ExportLibrary(useForAOT = true). " +
+                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration2.InvalidToolLibrary6" +
+                    " or remove the library from the aotLibraryExports list.")
     @Registration(id = "tooleagerexportprovider2", name = "tooleagerexportprovider2", aotLibraryExports = EagerExportProviderRegistration2.InvalidToolLibrary6.class)
     public static class EagerExportProviderRegistration2 extends ProxyInstrument {
         @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
@@ -241,9 +241,9 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary7 " +
-                    "or remove the InvalidToolLibrary7 from aotLibraryExports.")
+    @ExpectError("The class InstrumentRegistrationTest.EagerExportProviderRegistration3.InvalidToolLibrary7 must set @ExportLibrary(useForAOT = true). " +
+                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration3.InvalidToolLibrary7 " +
+                    "or remove the library from the aotLibraryExports list.")
     @Registration(id = "tooleagerexportprovider3", name = "tooleagerexportprovider3", aotLibraryExports = EagerExportProviderRegistration3.InvalidToolLibrary7.class)
     public static class EagerExportProviderRegistration3 extends ProxyInstrument {
         @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
@@ -262,12 +262,12 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError({"The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8A " +
-                    "or remove the InvalidToolLibrary8A from aotLibraryExports.",
-                    "The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8B " +
-                                    "or remove the InvalidToolLibrary8B from aotLibraryExports."})
+    @ExpectError({"The class InstrumentRegistrationTest.EagerExportProviderRegistration4.InvalidToolLibrary8A must set @ExportLibrary(useForAOT = true). " +
+                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration4.InvalidToolLibrary8A " +
+                    "or remove the library from the aotLibraryExports list.",
+                    "The class InstrumentRegistrationTest.EagerExportProviderRegistration4.InvalidToolLibrary8B must set @ExportLibrary(useForAOT = true). " +
+                                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration4.InvalidToolLibrary8B " +
+                                    "or remove the library from the aotLibraryExports list."})
     @Registration(id = "tooleagerexportprovider4", name = "tooleagerexportprovider4", aotLibraryExports = {EagerExportProviderRegistration4.InvalidToolLibrary8A.class,
                     EagerExportProviderRegistration4.InvalidToolLibrary8B.class})
     public static class EagerExportProviderRegistration4 extends ProxyInstrument {
@@ -342,9 +342,9 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8 " +
-                    "or remove the InvalidToolLibrary8 from aotLibraryExports.")
+    @ExpectError("The class InstrumentRegistrationTest.EagerExportProviderRegistration8.InvalidToolLibrary8 must set @ExportLibrary(useForAOT = true). " +
+                    "To resolve this, set ExportLibrary(useForAOT = true) on type InstrumentRegistrationTest.EagerExportProviderRegistration8.InvalidToolLibrary8 " +
+                    "or remove the library from the aotLibraryExports list.")
     @Registration(id = "tooleagerexportprovider8", name = "tooleagerexportprovider8", aotLibraryExports = {EagerExportProviderRegistration8.ValidToolLibrary8.class,
                     EagerExportProviderRegistration8.InvalidToolLibrary8.class})
     public static class EagerExportProviderRegistration8 extends ProxyInstrument {

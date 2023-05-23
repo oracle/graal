@@ -46,7 +46,7 @@ import com.oracle.truffle.object.DynamicObjectLibraryImplGen.DynamicObjectLibrar
 
 import java.util.List;
 
-final class ObjectSupportImpl extends Accessor.ObjectSupport {
+final class DynamicObjectSupportImpl extends Accessor.DynamicObjectSupport {
 
     @Override
     public <T> Iterable<T> lookupTruffleService(Class<T> type) {

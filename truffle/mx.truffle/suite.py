@@ -1254,7 +1254,7 @@ suite = {
     "TRUFFLE_SL" : {
       "subDir" : "src",
       "moduleInfo" : {
-        "name" : "com.oracle.truffle.sl",
+        "name" : "org.graalvm.sl",
       },
       "javaCompliance" : "17+",
       "dependencies" : [

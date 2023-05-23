@@ -1331,6 +1331,7 @@ suite = {
                 "POINTSTO",
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
+                "truffle:TRUFFLE_API",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",

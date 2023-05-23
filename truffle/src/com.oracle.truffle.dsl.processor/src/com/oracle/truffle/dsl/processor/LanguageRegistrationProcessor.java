@@ -75,7 +75,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
 
-    private static final Set<String> NOT_COPIED_ATTRS = Set.of("services", "fileTypeDetectors", "defaultExportProviders", "eagerExportProviders");
+    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "fileTypeDetectors", "defaultExportProviders", "eagerExportProviders");
 
     static String resolveLanguageId(Element annotatedElement, AnnotationMirror registration) {
         String id = ElementUtils.getAnnotationValue(String.class, registration, "id");
@@ -228,7 +228,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleLanguage_Registration;
         CodeAnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
-                        (t) -> !NOT_COPIED_ATTRS.contains(t.getSimpleName().toString()));
+                        (t) -> !IGNORED_ATTRIBUTES.contains(t.getSimpleName().toString()));
         if (ElementUtils.getAnnotationValue(String.class, registration, "id").isEmpty()) {
             registration.setElementValue(registration.findExecutableElement("id"), new CodeAnnotationValue(getDefaultLanguageId(annotatedElement)));
         }
@@ -317,14 +317,14 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(fileTypeDetectorImplElement));
             Set<Modifier> modifiers = fileTypeDetectorImplElement.getModifiers();
             if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
-                emitError(String.format("The %s must be a public class or package protected class in %s package. To resolve this, make the %s public or move it to %s.",
-                                fileTypeDetectorImplElement.getQualifiedName(), targetPackage.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName(), targetPackage.getQualifiedName()),
+                emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
+                                getScopedName(fileTypeDetectorImplElement), targetPackage.getQualifiedName(), getScopedName(fileTypeDetectorImplElement), targetPackage.getQualifiedName()),
                                 annotatedElement, mirror, value);
                 return false;
             }
             if (fileTypeDetectorImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
-                emitError(String.format("The %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
-                                fileTypeDetectorImplElement.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName()), annotatedElement, mirror, value);
+                emitError(String.format("The class %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
+                                getScopedName(fileTypeDetectorImplElement), fileTypeDetectorImplElement.getSimpleName()), annotatedElement, mirror, value);
                 return false;
             }
             boolean foundConstructor = false;
@@ -340,8 +340,8 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 break;
             }
             if (!foundConstructor) {
-                emitError(String.format("The %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
-                                fileTypeDetectorImplElement.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName()), annotatedElement, mirror, value);
+                emitError(String.format("The class %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
+                                getScopedName(fileTypeDetectorImplElement), ElementUtils.getSimpleName(fileTypeDetectorImplElement)), annotatedElement, mirror, value);
                 return false;
             }
         }

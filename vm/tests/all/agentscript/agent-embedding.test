@@ -21,7 +21,7 @@ OK 2 times!
 # Register instrument using deprecated -Dtruffle.class.path.append
 # ##################################################################
 >[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
-\[engine\] The deprecated -Dtruffle\.class\.path\.append option is used.*
+\[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
 
 Exception in thread "main" Stop: 0
 .*at.*js.*insight.js.*
@@ -36,7 +36,7 @@ Exception in thread "main" Stop: 0
 .*at.*EmbeddingRegisterSymbols.exportAndTest.*
 .*at.*EmbeddingRegisterSymbols.main.*
 >[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols object
-\[engine\] The deprecated -Dtruffle\.class\.path\.append option is used.*
+\[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
 
 Exception in thread "main" Stop: 0
 .*at.*js.*insight.js.*

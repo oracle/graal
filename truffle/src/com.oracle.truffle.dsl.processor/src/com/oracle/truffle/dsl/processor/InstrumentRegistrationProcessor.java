@@ -61,7 +61,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 @SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
-    private static final Set<String> NOT_COPIED_ATTRS = Set.of("services", "defaultExportProviders", "eagerExportProviders");
+    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "defaultExportProviders", "eagerExportProviders");
 
     @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
@@ -108,7 +108,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleInstrument_Registration;
         AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
-                        (t) -> !NOT_COPIED_ATTRS.contains(t.getSimpleName().toString()));
+                        (t) -> !IGNORED_ATTRIBUTES.contains(t.getSimpleName().toString()));
         return Collections.singleton(registration);
     }
 

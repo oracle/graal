@@ -71,6 +71,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
@@ -248,10 +249,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         if (services.isEmpty()) {
             builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
         } else {
+            Types types = context.getEnvironment().getTypeUtils();
             builder.startReturn();
             builder.startStaticCall(context.getType(Arrays.class), "asList");
             for (TypeMirror service : services) {
-                builder.startGroup().doubleQuote(binaryName(service, context)).end();
+                builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
             }
             builder.end(2);
         }
@@ -284,12 +286,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             builder.startReturn().startStaticCall(list, "of").end(2);
             builder.end();
         }
-    }
-
-    private static String binaryName(TypeMirror type, ProcessorContext context) {
-        Elements elements = context.getEnvironment().getElementUtils();
-        Types types = context.getEnvironment().getTypeUtils();
-        return elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(type)).asElement()).toString();
     }
 
     /**
@@ -342,24 +338,46 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         for (TypeMirror libraryExport : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "defaultLibraryExports")) {
             if (findDefaultExports((DeclaredType) libraryExport, context).findAny().isEmpty()) {
                 valid = false;
-                String simpleName = ElementUtils.getSimpleName(libraryExport);
+                String scopedName = getScopedName(libraryExport);
                 List<? extends CharSequence> exportedLibraryNames = findAllExports((DeclaredType) libraryExport, context).//
                                 map(ExportsLibrary::getLibrary).//
                                 map(LibraryData::getTemplateType).//
-                                map(Element::getSimpleName).toList();
+                                map(AbstractRegistrationProcessor::getScopedName).toList();
                 if (exportedLibraryNames.isEmpty()) {
-                    emitError(String.format("The class registered in the defaultLibraryExports must be a library export. " +
-                                    "To resolve this, add the @ExportLibrary to %s or remove the %s from the defaultLibraryExports.", simpleName, simpleName),
+                    emitError(String.format("The class %s must have the @ExportLibrary annotation. " +
+                                    "To resolve this, add the @ExportLibrary annotation to the library class or remove the library from the defaultLibraryExports list.", scopedName),
                                     annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "defaultLibraryExports", false));
                 } else {
-                    emitError(String.format("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
-                                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on %s or remove the %s from the defaultLibraryExports.",
-                                    String.join(", ", exportedLibraryNames), simpleName),
+                    String exportedLibraryNamesString = String.join(", ", exportedLibraryNames);
+                    emitError(String.format("The class %s must set @GenerateLibrary(defaultExportLookupEnabled = true). " +
+                                    "To resolve this, set the @GenerateLibrary(defaultExportLookupEnabled = true) attribute on type %s or remove the %s from the defaultLibraryExports list.",
+                                    exportedLibraryNamesString, exportedLibraryNamesString, scopedName),
                                     annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "defaultLibraryExports", false));
                 }
             }
         }
         return valid;
+    }
+
+    static String getScopedName(TypeMirror mirror) {
+        if (mirror.getKind() == TypeKind.DECLARED) {
+            return getScopedName((TypeElement) ((DeclaredType) mirror).asElement());
+        } else {
+            return ElementUtils.getSimpleName(mirror);
+        }
+    }
+
+    static String getScopedName(TypeElement element) {
+        StringBuilder name = new StringBuilder();
+        Element current = element;
+        while (current.getKind().isClass() || current.getKind().isInterface()) {
+            if (name.length() > 0) {
+                name.insert(0, '.');
+            }
+            name.insert(0, ElementUtils.getSimpleName((TypeElement) current));
+            current = current.getEnclosingElement();
+        }
+        return name.toString();
     }
 
     private static Stream<ExportsLibrary> findDefaultExports(DeclaredType libraryExport, ProcessorContext context) {
@@ -377,9 +395,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         for (TypeMirror libraryExport : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "aotLibraryExports")) {
             if (findAOTExports((DeclaredType) libraryExport, context).findAny().isEmpty()) {
                 valid = false;
-                emitError(String.format("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
-                                "To resolve this, set the @ExportLibrary.useForAOT to true on %s or remove the %s from aotLibraryExports.",
-                                ElementUtils.getSimpleName(libraryExport), ElementUtils.getSimpleName(libraryExport)),
+                String scopedName = getScopedName(libraryExport);
+                emitError(String.format("The class %s must set @ExportLibrary(useForAOT = true). " +
+                                "To resolve this, set ExportLibrary(useForAOT = true) on type %s or remove the library from the aotLibraryExports list.",
+                                scopedName, scopedName),
                                 annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "aotLibraryExports", false));
             }
         }

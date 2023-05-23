@@ -100,7 +100,6 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -150,7 +149,7 @@ final class EngineAccessor extends Accessor {
     static final HostSupport HOST = ACCESSOR.hostSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
-    static final ObjectSupport OBJECT = ACCESSOR.objectSupport();
+    static final DynamicObjectSupport DYNAMIC_OBJECT = ACCESSOR.dynamicObjectSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -160,8 +159,9 @@ final class EngineAccessor extends Accessor {
         if (loaders == null) {
             return null;
         }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(1 + loaders.size());
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(2 + loaders.size());
         suppliers.add(new ModulePathLoaderSupplier(ClassLoader.getSystemClassLoader()));
+        suppliers.add(new WeakModulePathLoaderSupplier(Thread.currentThread().getContextClassLoader()));
         for (ClassLoader loader : loaders) {
             suppliers.add(new StrongClassLoaderSupplier(loader));
         }
@@ -295,22 +295,13 @@ final class EngineAccessor extends Accessor {
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
             // 1) Add known Truffle DynamicObjectLibraryProvider service.
-            OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 2) Library providers exported by Truffle are not on the GuestLangToolsLoader path.
-            // Deprecated, remove in 23.1 + 2
-            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
-                ClassLoader loader = type.getClassLoader();
-                ModuleUtils.exportToUnnamedModuleOf(loader);
-                for (T service : ServiceLoader.load(type, loader)) {
-                    found.putIfAbsent(service.getClass(), service);
-                }
-            }
-            // 3) Search guest languages using TruffleLanguageProvider lookup
+            DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 2) Search guest languages using TruffleLanguageProvider lookup
             LanguageCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 4) Search guest tools using TruffleInstrumentProvider lookup
+            // 3) Search guest tools using TruffleInstrumentProvider lookup
             InstrumentCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 5) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
-            // Deprecated, remove in 23.1 + 2
+            // 4) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
+            // GR-46293 Remove the deprecated ServiceLoader lookup.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
@@ -2093,7 +2084,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    private static final class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    private static class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final Reference<ClassLoader> classLoaderRef;
 
@@ -2105,6 +2096,18 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoaderRef.get();
+        }
+    }
+
+    private static final class WeakModulePathLoaderSupplier extends WeakClassLoaderSupplier {
+
+        WeakModulePathLoaderSupplier(ClassLoader loader) {
+            super(loader);
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
         }
     }
 

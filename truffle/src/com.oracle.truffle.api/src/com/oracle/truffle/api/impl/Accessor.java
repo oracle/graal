@@ -1259,11 +1259,11 @@ public abstract class Accessor {
         public abstract <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type);
     }
 
-    public abstract static class ObjectSupport extends Support {
+    public abstract static class DynamicObjectSupport extends Support {
 
-        static final String IMPL_CLASS_NAME = "com.oracle.truffle.object.ObjectSupportImpl";
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.object.DynamicObjectSupportImpl";
 
-        protected ObjectSupport() {
+        protected DynamicObjectSupport() {
             super(IMPL_CLASS_NAME);
         }
 
@@ -1296,7 +1296,7 @@ public abstract class Accessor {
         private static final Accessor.RuntimeSupport RUNTIME;
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
-        private static final Accessor.ObjectSupport OBJECT;
+        private static final DynamicObjectSupport DYNAMIC_OBJECT;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1314,7 +1314,7 @@ public abstract class Accessor {
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
             LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
-            OBJECT = loadSupport(ObjectSupport.IMPL_CLASS_NAME);
+            DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1418,8 +1418,8 @@ public abstract class Accessor {
         return Constants.INSTRUMENT_PROVIDER;
     }
 
-    public final ObjectSupport objectSupport() {
-        return Constants.OBJECT;
+    public final DynamicObjectSupport dynamicObjectSupport() {
+        return Constants.DYNAMIC_OBJECT;
     }
 
     /**

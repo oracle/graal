@@ -49,8 +49,9 @@ copy_tree("../src/com.oracle.truffle.sl.launcher/src/com/", "simplelanguage/laun
 copy_tree("../src/com.oracle.truffle.sl.tck/src", "simplelanguage/tck/src")
 
 # Create simplelanguage module-info
+# GR-46339 Mx supports module-info in the project sources.
 module_info = """
-module com.oracle.truffle.sl {
+module org.graalvm.sl {
   requires java.base;
   requires java.logging;
   requires jdk.unsupported;

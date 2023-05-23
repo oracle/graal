@@ -44,7 +44,6 @@ import java.lang.module.ModuleDescriptor;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -85,21 +84,30 @@ final class ModuleUtils {
                 if (classLoader != null && !classLoader.equals(platformClassLoader)) {
                     targetModules.add(module);
                     ModuleDescriptor descriptor = module.getDescriptor();
-                    if (descriptor != null) {
-                        if (descriptor.isAutomatic()) {
-                            /*
-                             * An automatic module descriptor does not have requires directives but
-                             * automatic modules reads the whole module graph. So we need to export
-                             * truffle to all automatic modules in the layer.
-                             */
-                            module.getLayer().modules().stream().filter((m) -> m.getDescriptor().isAutomatic()).forEach(targetModules::add);
-                            break;
-                        } else {
-                            descriptor.requires().stream().//
-                                            map((d) -> findModule(layer, d)).//
-                                            filter(Objects::nonNull).//
-                                            forEach(todo::add);
-                        }
+                    if (descriptor == null) {
+                        /*
+                         * Unnamed module: Deprecated. The unnamed module does not have a module
+                         * descriptor, but reads the entire module graph. For unnamed modules we do
+                         * not do transitive export because we would have to open the Truffle module
+                         * to all modules in the module layer.
+                         */
+                    } else if (descriptor.isAutomatic()) {
+                        /*
+                         * Automatic module: An unnamed module has an artificial module descriptor,
+                         * with only the mandated `requires java.base` directive. But an automatic
+                         * module reads the entire module graph. For automatic modules we do not do
+                         * transitive export because we would have to open the Truffle module to all
+                         * modules in the module layer.
+                         */
+                    } else {
+                        /*
+                         * Named module with a module descriptor: Export transitively to all modules
+                         * required by the named module.
+                         */
+                        descriptor.requires().stream().//
+                                        map((d) -> findModule(layer, d)).//
+                                        filter(Objects::nonNull).//
+                                        forEach(todo::add);
                     }
                 }
             }
@@ -115,7 +123,7 @@ final class ModuleUtils {
             // Optional runtime dependency may not be available.
             return null;
         } else {
-            throw new NoSuchElementException(requires.name());
+            throw new AssertionError(String.format("A non-optional module %s not found in the module layer %s.", requires.name(), layer));
         }
     }
 
