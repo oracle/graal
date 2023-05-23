@@ -405,8 +405,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
 
     private final Integer biasedLockMaskInPlace = getConstant(markWordField("biased_lock_mask_in_place"), Integer.class, null, JDK < 18);
-    private final Integer lockMaskInPlace = getConstant(markWordField("lock_mask_in_place"), Integer.class, null,
-                    JVMCI ? (JDK == 20 && jvmciGE(JVMCI_23_1_b02)) || (JDK >= 21 && jvmciGE(JVMCI_23_1_b04)) : (JDK == 21 && JDK_BUILD >= 23) || JDK >= 22);
+    private final Integer lockMaskInPlace = getConstant(markWordField("lock_mask_in_place"), Integer.class, null, JDK == 20 && jvmciGE(JVMCI_23_0_b12));
 
     public int getLockMaskInPlace() {
         if (JDK >= 18) {
