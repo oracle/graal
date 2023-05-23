@@ -928,8 +928,8 @@ class NativeImageVM(GraalVm):
                     zip_ref.extractall(adopted_profiles_dir)
                 adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
             else:
-                mx.warn('SubstrateVM Enterprise with JDK{} does not contains JDK profiles.'.format(jdk_version))
-                adopted_profile = join(mx.suite('substratevm-enterprise').dir, 'mx.substratevm-enterprise', 'empty.iprof')
+                mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')
+                adopted_profile = join(mx.suite('substratevm-enterprise').mxDir, 'empty.iprof')
             jdk_profiles_args = [f'-H:AdoptedPGOEnabled={adopted_profile}']
         else:
             jdk_profiles_args = []
