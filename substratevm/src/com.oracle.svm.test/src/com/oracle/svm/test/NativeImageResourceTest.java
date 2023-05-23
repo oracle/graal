@@ -33,11 +33,15 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -120,6 +124,38 @@ public class NativeImageResourceTest {
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    /**
+     * <p>
+     * Access a resource using {@link URLClassLoader}.
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> Test inspired by issues: </br>
+     * <ol>
+     * <li><a href="https://github.com/oracle/graal/issues/1956">1956</a></li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void accessResourceUsingURLClassLoader() {
+        try {
+            Path file = Files.createTempFile("", "");
+            String fileName = file.getFileName().toString();
+            File path = new File(file.getParent().toUri());
+            URL url = path.toURI().toURL();
+            URL[] urls = {url};
+            try (URLClassLoader ucl = new URLClassLoader(urls)) {
+                Assert.assertNotNull(ucl.getResourceAsStream(fileName));
+                Assert.assertNotNull(ucl.getResource(fileName));
+                Assert.assertNotNull(ucl.findResource(fileName));
+                Assert.assertTrue(ucl.getResources(fileName).hasMoreElements());
+                Assert.assertTrue(ucl.findResources(fileName).hasMoreElements());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in URLClassLoader.(get|find)Resource(s): " + e.getMessage());
+        }
     }
 
     @Test
