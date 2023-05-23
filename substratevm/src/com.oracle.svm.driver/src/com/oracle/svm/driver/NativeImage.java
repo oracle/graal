@@ -1557,7 +1557,7 @@ public class NativeImage {
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
 
-        if(useBundle() && bundleSupport.useContainer) {
+        if (useBundle() && bundleSupport.useContainer) {
             bundleSupport.replacePathsForContainerBuild(arguments);
             bundleSupport.replacePathsForContainerBuild(finalImageBuilderArgs);
             Path binJava = Paths.get("bin", "java");
@@ -1567,7 +1567,7 @@ public class NativeImage {
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
-        if(!isDryRun() && useBundle() && bundleSupport.useContainer) {
+        if (useBundle() && bundleSupport.useContainer) {
             command.addAll(bundleSupport.createContainerCommand(argFile, builderArgFile));
         }
 
@@ -1577,7 +1577,7 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment;
-        if(useBundle() && bundleSupport.useContainer) {
+        if (useBundle() && bundleSupport.useContainer) {
             environment = bundleSupport.containerEnvironment;
         } else {
             environment = pb.environment();
@@ -1607,6 +1607,9 @@ public class NativeImage {
 
         List<String> completeCommandList = new ArrayList<>();
         completeCommandList.addAll(environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
+        if (useBundle() && bundleSupport.useContainer) {
+            completeCommandList.addAll(bundleSupport.createContainerCommand(argFile, builderArgFile));
+        }
         completeCommandList.add(javaExecutable);
         completeCommandList.addAll(arguments);
         completeCommandList.addAll(finalImageBuilderArgs);
