@@ -29,11 +29,11 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
-public final class EmptyMemoryAcessProvider implements MemoryAccessProvider {
+public final class EmptyMemoryAccessProvider implements MemoryAccessProvider {
 
-    public static final MemoryAccessProvider SINGLETON = new EmptyMemoryAcessProvider();
+    public static final MemoryAccessProvider SINGLETON = new EmptyMemoryAccessProvider();
 
-    private EmptyMemoryAcessProvider() {
+    private EmptyMemoryAccessProvider() {
     }
 
     @Override

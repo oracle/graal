@@ -89,7 +89,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
-        return EmptyMemoryAcessProvider.SINGLETON;
+        return EmptyMemoryAccessProvider.SINGLETON;
     }
 
     private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
