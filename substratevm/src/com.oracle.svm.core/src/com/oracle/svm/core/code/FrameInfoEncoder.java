@@ -564,13 +564,13 @@ public class FrameInfoEncoder {
         frameInfo.isDeoptEntry = isDeoptEntry;
 
         ValueInfo[] valueInfos = null;
-        if (needLocalValues) {
-            SharedMethod method = (SharedMethod) frame.getMethod();
-            if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
-                frameInfo.methodId = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
-                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, frameInfo.methodId);
-            }
+        SharedMethod method = (SharedMethod) frame.getMethod();
+        if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
+            frameInfo.methodId = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
+            ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, frameInfo.methodId);
+        }
 
+        if (needLocalValues) {
             if (customization.storeDeoptTargetMethod()) {
                 frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));

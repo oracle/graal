@@ -27,9 +27,13 @@ package com.oracle.svm.core.sampler;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.Safepoint;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CallStackFrameMethodInfo {
@@ -40,6 +44,7 @@ public class CallStackFrameMethodInfo {
     @UnknownPrimitiveField private int enterSafepointCheckId = INITIAL_METHOD_ID;
     @UnknownPrimitiveField private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
         String formattedMethod = formatted(method);
         sampledMethods.put(methodId, formattedMethod);
@@ -51,10 +56,12 @@ public class CallStackFrameMethodInfo {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected static String formatted(ResolvedJavaMethod method) {
         return method.format("%H.%n");
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected static String formatted(SnippetRuntime.SubstrateForeignCallDescriptor descriptor) {
         return String.format("%s.%s",
                         descriptor.getDeclaringClass().getCanonicalName(),
