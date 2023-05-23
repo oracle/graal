@@ -961,7 +961,11 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "jacoco" : "exclude",
+            "jacoco" : "include",
+            "jacocoExcludePackages": [
+                "com.oracle.svm.graal.meta",
+                "com.oracle.svm.graal.substitutions",
+            ],
         },
 
         "com.oracle.svm.graal.test": {

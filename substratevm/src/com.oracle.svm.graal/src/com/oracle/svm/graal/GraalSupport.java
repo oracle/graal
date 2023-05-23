@@ -411,4 +411,16 @@ public class GraalSupport {
     public static void setRuntimeBackendProvider(Function<Providers, SubstrateBackend> backendProvider) {
         get().runtimeBackendProvider = backendProvider;
     }
+
+    public EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> getBasePhaseStatistics() {
+        return basePhaseStatistics;
+    }
+
+    public EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> getLirPhaseStatistics() {
+        return lirPhaseStatistics;
+    }
+
+    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+        return debugHandlersFactories;
+    }
 }
