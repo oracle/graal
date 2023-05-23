@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,7 +59,7 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
     private static final int EXPECTED_EVENTS = THREADS;
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
-    private final Set<Long> expectedThreads = new HashSet<>();
+    private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>());
 
     @Before
     public void checkJavaVersion() {
