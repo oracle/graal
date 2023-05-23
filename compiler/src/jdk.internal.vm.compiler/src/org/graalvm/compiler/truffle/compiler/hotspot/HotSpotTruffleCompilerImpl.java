@@ -285,7 +285,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * {@link TruffleCallBoundaryInstrumentationFactory}.
      */
     @Override
-    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
+    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
             final Backend backend = config.lastTier().backend();
             return compileTruffleStub(debug, javaMethod, compilationId, getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName()), new InvocationPlugins());
@@ -307,7 +307,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * reserved oop field. See HotSpotFastThreadLocal.
      */
     @Override
-    public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
+    public void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         int jvmciReservedReference0Offset = hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset;
         if (jvmciReservedReference0Offset == -1) {
             throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available."); // ExcludeFromJacocoGeneratedReport

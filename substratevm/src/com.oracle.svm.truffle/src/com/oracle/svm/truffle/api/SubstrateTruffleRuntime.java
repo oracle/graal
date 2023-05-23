@@ -47,6 +47,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
@@ -247,6 +248,17 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             profilingEnabled = getEngineData(rootNode).profilingEnabled;
         }
         OptimizedCallTarget callTarget = TruffleSupport.singleton().createOptimizedCallTarget(source, rootNode);
+        ensureInitializedAtRuntime(callTarget);
+        return callTarget;
+    }
+
+    @Override
+    protected OptimizedCallTarget createOptimizedCallTarget(EngineData engine) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (profilingEnabled == null) {
+            profilingEnabled = engine.profilingEnabled;
+        }
+        OptimizedCallTarget callTarget = TruffleSupport.singleton().createOptimizedCallTarget(engine);
         ensureInitializedAtRuntime(callTarget);
         return callTarget;
     }

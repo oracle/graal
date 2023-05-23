@@ -239,7 +239,7 @@ final class TruffleToLibGraalEntryPoints {
     public static void installTruffleCallBoundaryMethod(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle, long methodHandle) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, InstallTruffleCallBoundaryMethod, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(handle, HotSpotTruffleCompilerImpl.class);
-            compiler.installTruffleCallBoundaryMethod(LibGraal.unhand(ResolvedJavaMethod.class, methodHandle));
+            compiler.installTruffleCallBoundaryMethod(LibGraal.unhand(ResolvedJavaMethod.class, methodHandle), null);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -251,7 +251,7 @@ final class TruffleToLibGraalEntryPoints {
     public static void installTruffleReservedOopMethod(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle, long methodHandle) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.InstallTruffleReservedOopMethod, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(handle, HotSpotTruffleCompilerImpl.class);
-            compiler.installTruffleReservedOopMethod(LibGraal.unhand(ResolvedJavaMethod.class, methodHandle));
+            compiler.installTruffleReservedOopMethod(LibGraal.unhand(ResolvedJavaMethod.class, methodHandle), null);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

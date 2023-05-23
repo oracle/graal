@@ -40,6 +40,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -82,6 +83,10 @@ public class TruffleSupport {
 
     public SubstrateOptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
+    }
+
+    public SubstrateOptimizedCallTarget createOptimizedCallTarget(EngineData engine) {
+        return new SubstrateOptimizedCallTarget(engine);
     }
 
     private static Method getOptimizedCallTargetInvokeMethod() {

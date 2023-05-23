@@ -53,17 +53,13 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     private final LibGraalTruffleRuntime runtime;
 
-    private long resolveIsolateHandle(TruffleCompilable compilable, boolean firstInitialization) {
+    private long getOrCreateIsolate(TruffleCompilable compilable, boolean firstInitialization) {
         return resolveIsolateHandleImpl(() -> {
             long isolateThread = getIsolateThread();
             long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, runtime.handle());
             TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, compilable, firstInitialization);
             return new Handle(compilerHandle);
         });
-    }
-
-    long resolveIsolateHandle() {
-        return resolveIsolateHandle(null, false);
     }
 
     private static long resolveIsolateHandleImpl(Supplier<Handle> handleSupplier) {
@@ -79,17 +75,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     @Override
     public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
-        /*
-         * There can only be a single set of options a compiler can be configured with. The first
-         * Truffle engine of a process typically initializes the compiler which also determines the
-         * compiler configuration. Any options specified after that will be ignored. So it is safe
-         * to store the previous options here and reuse later for recreating a disposed isolate if
-         * needed.
-         */
-        // Force installation of the Truffle call boundary methods.
-        // See AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod
-        // for further details.
-        resolveIsolateHandle(compilable, firstInitialization);
+        getOrCreateIsolate(compilable, firstInitialization);
     }
 
     @Override
@@ -99,7 +85,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
                     TruffleCompilable compilable,
                     TruffleCompilerListener listener) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.doCompile(getIsolateThread(), resolveIsolateHandle(compilable, false), task, compilable, listener);
+            TruffleToLibGraalCalls.doCompile(getIsolateThread(), getOrCreateIsolate(compilable, false), task, compilable, listener);
         }
     }
 
@@ -121,17 +107,17 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @Override
     @SuppressWarnings("try")
-    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
+    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), resolveIsolateHandle(), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
         }
     }
 
     @Override
     @SuppressWarnings("try")
-    public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
+    public void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), resolveIsolateHandle(), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
         }
     }
 
@@ -142,7 +128,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     public int pendingTransferToInterpreterOffset(TruffleCompilable compilable) {
         if (pendingTransferToInterpreterOffset == null) {
             try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-                pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), resolveIsolateHandle(compilable, false),
+                pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), getOrCreateIsolate(compilable, false),
                                 compilable);
             }
         }

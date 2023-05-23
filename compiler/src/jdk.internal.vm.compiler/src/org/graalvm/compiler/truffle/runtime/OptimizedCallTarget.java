@@ -355,6 +355,18 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         id = idCounter.getAndIncrement();
     }
 
+    protected OptimizedCallTarget(EngineData engine) {
+        this.speculationLog = null;
+        this.rootNode = null;
+        this.engine = engine;
+        this.resetCompilationProfile();
+        this.uninitializedNodeCount = 0;
+        this.sourceCallTarget = null;
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
+        // node(s).
+        id = idCounter.getAndIncrement();
+    }
+
     private int uninitializedNodeCount(RootNode rootNode) {
         if (isOSR()) {
             return -1;

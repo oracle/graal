@@ -161,6 +161,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final GraalTruffleRuntimeListenerDispatcher listeners = new GraalTruffleRuntimeListenerDispatcher();
 
     protected volatile TruffleCompiler truffleCompiler;
+    protected volatile OptimizedCallTarget initializeCallTarget;
 
     protected KnownMethods knownMethods;
 
@@ -794,6 +795,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public abstract SpeculationLog createSpeculationLog();
 
     protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
+
+    protected abstract OptimizedCallTarget createOptimizedCallTarget(EngineData engine);
 
     public void addListener(GraalTruffleRuntimeListener listener) {
         listeners.add(listener);
