@@ -142,10 +142,10 @@ suite = {
     },
 
     "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
-      "digest" : "sha512:b9f95acd4373acc5c86c2863e797313f7e97b39fa41566768a67f792f9cf3e642343fcbde2e6433069debc53babe766b09697eb775301f6f08773e75cfad9e83",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
-      "sourceDigest" : "sha512:fe05059681fa01023a290a4a653e26007df0b76ecec81e2796828d34c7906986a502b0321f308578a15b695251b5a00b4b38cbc36a8165fbc3676cf4ac9b6ef9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
+      "digest" : "sha512:2b48819e94ca82472ffbdd3befc214351e1cfd0f87eb97d4aed092b48f11b53a7d82a637b008e022254781d2439aefe45ca4794eea8ad05de69934c5317c9a27",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227-src.jar"],
+      "sourceDigest" : "sha512:ecf08ea386398a9834f560e0afbb1bc2630037e3b170fe6d5c60e23ed4e198072cec2cd3569bdc1cae22318cd5fb97123dc5bb6d1e138c08f8d5c612f486956a",
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
