@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -126,43 +126,22 @@ suite = {
       }
     },
     "JLINE3" : {
-      "digest" : "sha512:d9518c40e206950b3815593de83b1e3632896096407937f15646c81c69f167900c67bd88f3ff2b86258960bbd108d3c0cf09a1ad7cfbf1be489b2af4feccbb58",
-      "version" : "3.16.0.3",
+      "digest" : "sha512:38a2dc2225b9a788b34fb8beb57b0b40fac556fbe5324c5f8b159f7a0750973d3bc4d5003e96c08813d9919c9fef158596320cd8baaf4a1efe384f57924654eb",
+      "version" : "3.23.0.1",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new",
       "requires" : ["java.logging"],
       "exports" : [
-        "org.graalvm.shadowed.org.fusesource.hawtjni.runtime",
-        "org.graalvm.shadowed.org.fusesource.jansi",
-        "org.graalvm.shadowed.org.fusesource.jansi.internal",
         "org.graalvm.shadowed.org.jline.builtins",
-        "org.graalvm.shadowed.org.jline.builtins.ssh",
-        "org.graalvm.shadowed.org.jline.builtins.telnet",
-        "org.graalvm.shadowed.org.jline.console",
-        "org.graalvm.shadowed.org.jline.console.impl",
         "org.graalvm.shadowed.org.jline.keymap",
         "org.graalvm.shadowed.org.jline.reader",
         "org.graalvm.shadowed.org.jline.reader.impl",
         "org.graalvm.shadowed.org.jline.reader.impl.completer",
         "org.graalvm.shadowed.org.jline.reader.impl.history",
-        "org.graalvm.shadowed.org.jline.style",
         "org.graalvm.shadowed.org.jline.terminal",
         "org.graalvm.shadowed.org.jline.terminal.impl",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.freebsd",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.linux",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.osx",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.solaris",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.win",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna.freebsd",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna.linux",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna.osx",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna.solaris",
-        "org.graalvm.shadowed.org.jline.terminal.impl.jna.win",
         "org.graalvm.shadowed.org.jline.terminal.spi",
         "org.graalvm.shadowed.org.jline.utils",
-        "org.graalvm.shadowed.org.jline.widget",
       ],
     },
     "LLVM_ORG" : {
