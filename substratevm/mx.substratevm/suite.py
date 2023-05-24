@@ -244,7 +244,6 @@ suite = {
             ],
             "requires" : [
                 "java.compiler",
-                "java.logging",
                 "java.scripting",
                 "jdk.httpserver",
                 "jdk.jfr",

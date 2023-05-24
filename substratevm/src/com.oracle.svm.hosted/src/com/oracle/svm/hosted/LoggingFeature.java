@@ -25,15 +25,18 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
+import java.util.Optional;
 import java.util.logging.LogManager;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -41,9 +44,13 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 @AutomaticallyRegisteredFeature
 public class LoggingFeature implements InternalFeature {
 
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("java.logging");
+    }
+
     public static class Options {
         @Option(help = "Enable the feature that provides support for logging.")//
-        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(true);
+        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(requiredModule().isPresent());
 
         @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
@@ -57,11 +64,18 @@ public class LoggingFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return LoggingFeature.Options.EnableLoggingFeature.getValue();
+        Boolean loggingEnabled = Options.EnableLoggingFeature.getValue();
+        if (loggingEnabled && requiredModule().isEmpty()) {
+            throw UserError.abort("Option %s requires JDK module java.logging to be available",
+                            SubstrateOptionsParser.commandArgument(Options.EnableLoggingFeature, "+"));
+        }
+        return loggingEnabled;
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        LoggingFeature.class.getModule().addReads(requiredModule().get());
+
         /* Ensure that the log manager is initialized and the initial configuration is read. */
         LogManager.getLogManager();
         loggersField = ((DuringSetupAccessImpl) access).findField("sun.util.logging.PlatformLogger", "loggers");
