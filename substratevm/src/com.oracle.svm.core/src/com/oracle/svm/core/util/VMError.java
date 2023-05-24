@@ -123,6 +123,16 @@ public final class VMError {
         }
     }
 
+    /**
+     * Throws a runtime exception with a formatted message.
+     *
+     * This method uses {@link String#format} which is currently not safe to be used at run time as
+     * it pulls in high amounts of JDK code. This might change in the future, e.g., if parse-once is
+     * fully supported (GR-39237). Until then, the format string variants of
+     * {@link VMError#shouldNotReachHere} and {@link VMError#guarantee} can only be used in
+     * hosted-only code.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static RuntimeException shouldNotReachHere(String msg, Object... args) {
         throw shouldNotReachHere(String.format(msg, formatArguments(args)));
     }
