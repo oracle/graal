@@ -168,7 +168,7 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
     }
 
     public CodePointSet createInverse(CodePointSet allCharacters, CompilationBuffer compilationBuffer) {
-        return createInverse(compilationBuffer.getEncoding()).subtract(allCharacters, compilationBuffer);
+        return createInverse(compilationBuffer.getEncoding()).createIntersection(allCharacters, compilationBuffer);
     }
 
     public static CodePointSet createInverse(SortedListOfRanges src, Encoding encoding) {

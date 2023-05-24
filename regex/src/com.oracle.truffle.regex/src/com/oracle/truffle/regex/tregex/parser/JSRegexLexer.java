@@ -128,7 +128,7 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected CodePointSet complementClassSet(CodePointSet codePointSet) {
         if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
-            return codePointSet.createInverse(Constants.FOLDABLE_CHARACTERS, compilationBuffer);
+            return codePointSet.createInverse(Constants.FOLDED_CHARACTERS, compilationBuffer);
         } else {
             return codePointSet.createInverse(source.getEncoding());
         }
