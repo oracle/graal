@@ -464,6 +464,19 @@ public class SubstrateOptions {
     @Option(help = "JNI functions will return more specific error codes.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIEnhancedErrorCodes = new HostedOptionKey<>(false);
 
+    @Option(help = "Enable JVM Tool Interface (JVMTI) support.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JVMTI = new HostedOptionKey<>(false);
+
+    // TEMP (chaeubl): we need to support multiple values
+    @Option(help = "Loads the specified native agent library specified by the absolute path name. " +
+                    "After the library path, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> AgentPath = new RuntimeOptionKey<>(null);
+
+    // TEMP (chaeubl): we need to support multiple values
+    @Option(help = "Loads the specified native agent library. " +
+                    "After the library name, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> AgentLib = new RuntimeOptionKey<>(null);
+
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 

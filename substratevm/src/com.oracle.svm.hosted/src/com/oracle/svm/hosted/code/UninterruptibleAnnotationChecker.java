@@ -30,6 +30,7 @@ import java.util.TreeSet;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -217,7 +218,7 @@ public final class UninterruptibleAnnotationChecker {
                                 System.lineSeparator() + invoke.getNodeSourcePosition());
             } else {
                 if (directCallerAnnotation.calleeMustBe()) {
-                    if (!Uninterruptible.Utils.isUninterruptible(callee)) {
+                    if (!Uninterruptible.Utils.isUninterruptible(callee) && !AnnotationAccess.isAnnotationPresent(callee, CEnumValue.class)) {
                         violations.add("Unannotated callee: " + callee.format("%H.%n(%p):%r") + " called by annotated caller " + caller.format("%H.%n(%p):%r") +
                                         System.lineSeparator() + invoke.getNodeSourcePosition());
                     }

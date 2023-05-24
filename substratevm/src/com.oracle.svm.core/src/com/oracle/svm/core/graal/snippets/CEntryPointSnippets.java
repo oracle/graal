@@ -77,6 +77,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jvmti.JvmtiAgents;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -398,6 +399,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         /* Initialize the physical memory size. */
         PhysicalMemory.size();
 
+        if (SubstrateOptions.JVMTI.getValue()) {
+            JvmtiAgents.singleton().load();
+        }
+
         assert !isolateInitialized;
         isolateInitialized = true;
 
@@ -632,6 +637,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         VMThreads.singleton().threadExit();
+
+        if (SubstrateOptions.JVMTI.getValue()) {
+            JvmtiAgents.singleton().unload();
+        }
+
         return true;
     }
 
