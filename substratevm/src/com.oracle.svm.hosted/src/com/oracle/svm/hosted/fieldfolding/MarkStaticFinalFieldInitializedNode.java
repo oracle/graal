@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
 import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -52,6 +53,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSplit implements Simplifiable {
     public static final NodeClass<MarkStaticFinalFieldInitializedNode> TYPE = NodeClass.create(MarkStaticFinalFieldInitializedNode.class);
 
+    /**
+     * When the node is created, this is an {@link AnalysisField}. After analysis,
+     * {@link AnalysisToHostedGraphTransplanter} rewrites it to a {@link HostedField}.
+     */
     private final ResolvedJavaField field;
 
     protected MarkStaticFinalFieldInitializedNode(ResolvedJavaField field) {
