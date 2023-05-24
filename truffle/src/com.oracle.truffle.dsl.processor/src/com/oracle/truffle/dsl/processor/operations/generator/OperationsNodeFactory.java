@@ -2681,9 +2681,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         String arg = "localSetter" + localSetterIndex;
                         b.startAssign("int " + arg);
                         if (inEmit) {
-                            b.string("((OperationLocalImpl) arg" + (localSetterIndex + i) + ").index");
+                            b.string("((OperationLocalImpl) arg" + i + ").index");
                         } else {
-                            b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + i) + "]).index");
+                            b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + i + "]).index");
                         }
                         b.end();
                         b.startStatement();

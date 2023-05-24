@@ -60,9 +60,9 @@ public final class Argument {
         public String toString(Object value) {
             switch (this) {
                 case LOCAL:
-                    return String.format("local(%d)", (int) value);
+                    return String.format("local(%d)", (short) value);
                 case ARGUMENT:
-                    return String.format("arg(%d)", (int) value);
+                    return String.format("arg(%d)", (short) value);
                 case BOXING:
                     return String.format("boxing(%s)", value);
                 case CONSTANT:
@@ -72,11 +72,11 @@ public final class Argument {
                         return String.format("const(%s %s)", value.getClass().getSimpleName(), value);
                     }
                 case CHILD_OFFSET:
-                    return String.format("child(-%d)", (int) value);
+                    return String.format("child(-%d)", (short) value);
                 case VARIADIC:
-                    return String.format("variadic(%d)", (int) value);
+                    return String.format("variadic(%d)", (short) value);
                 case BRANCH_OFFSET:
-                    return String.format("branch(%04x)", (int) value);
+                    return String.format("branch(%04x)", (short) value);
                 default:
                     throw new UnsupportedOperationException("Unexpected value: " + this);
             }

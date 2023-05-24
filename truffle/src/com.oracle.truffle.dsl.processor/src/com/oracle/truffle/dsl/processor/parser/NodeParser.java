@@ -257,10 +257,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private NodeData parseRootType(TypeElement rootType) {
         List<NodeData> enclosedNodes = new ArrayList<>();
-        for (TypeElement enclosedType : ElementFilter.typesIn(rootType.getEnclosedElements())) {
-            NodeData enclosedChild = parseRootType(enclosedType);
-            if (enclosedChild != null) {
-                enclosedNodes.add(enclosedChild);
+        // Only top-level nodes need to be parsed for the Operation DSL. If a node used as an
+        // Operation has nested nodes, they will be processed during regular node generation.
+        if (mode != ParseMode.OPERATION) {
+            for (TypeElement enclosedType : ElementFilter.typesIn(rootType.getEnclosedElements())) {
+                NodeData enclosedChild = parseRootType(enclosedType);
+                if (enclosedChild != null) {
+                    enclosedNodes.add(enclosedChild);
+                }
             }
         }
         NodeData node;
@@ -507,10 +511,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         globalMembers.add(new CodeVariableElement(types.Node, "this"));
         globalMembers.add(new CodeVariableElement(types.Node, NODE_KEYWORD));
         TypeElement accessingType = node.getTemplateType();
+
         if (mode == ParseMode.OPERATION) {
+            // Operation nodes resolve expressions differently. In particular, they have extra bind
+            // variables, and names used in expressions should be visible from the package of the
+            // generated OperationRootNode.
             globalMembers.add(new CodeVariableElement(types.Node, "$root"));
-            // The generated OperationRootNode is not in the same hierarchy as the template, so all
-            // DSL expressions should be accessible from the package of the OperationRootNode.
             accessingType = new CodeTypeElement(Set.of(), ElementKind.CLASS, ElementUtils.findPackageElement(operationRootNodeType), "PlaceholderOperationNode");
         }
         return new DSLExpressionResolver(context, accessingType, globalMembers);
