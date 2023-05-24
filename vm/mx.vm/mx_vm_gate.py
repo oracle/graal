@@ -24,6 +24,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import shutil
 
 import mx
 import mx_benchmark
@@ -104,7 +105,7 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
         mx.log(compiler_log)
     remove(compiler_log_file)
 
-def _test_libgraal_basic(extra_vm_arguments):
+def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
@@ -112,7 +113,7 @@ def _test_libgraal_basic(extra_vm_arguments):
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     graalvm_jdk = mx.JDKConfig(graalvm_home)
-    jres = [graalvm_home]
+    jres = [(graalvm_home, [])]
 
     if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
@@ -120,8 +121,21 @@ def _test_libgraal_basic(extra_vm_arguments):
         if exists(libgraal_jre):
             mx.rmtree(libgraal_jre)
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
-        jres.append(libgraal_jre)
+        jres.append((libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
+
+    # Tests that dropping libgraal into OracleJDK works
+    oraclejdk = mx.get_env('ORACLEJDK_JAVA_HOME')
+    if oraclejdk:
+        libjvmci = libgraal_location
+        assert exists(libjvmci), ('missing', libjvmci)
+        oraclejdk_libgraal = abspath('oraclejdk_libgraal')
+        if exists(oraclejdk_libgraal):
+            mx.rmtree(oraclejdk_libgraal)
+        shutil.copytree(oraclejdk, oraclejdk_libgraal)
+        shutil.copy(libjvmci, join(oraclejdk_libgraal, 'lib'))
+        jres.append((oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
+        atexit.register(mx.rmtree, oraclejdk_libgraal)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
@@ -163,9 +177,9 @@ def _test_libgraal_basic(extra_vm_arguments):
             '-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre in jres:
+    for jre, jre_args in jres:
         try:
-            mx.run([join(jre, 'bin', 'java')] + args)
+            mx.run([join(jre, 'bin', 'java')] + jre_args + args)
         finally:
             _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
@@ -447,7 +461,7 @@ def gate_body(args, tasks):
                     extra_vm_arguments += args.extra_vm_argument
 
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_basic(extra_vm_arguments)
+                    if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:

@@ -4,6 +4,7 @@
   local jvm_config = config.compiler.default_jvm_config,
   local s = self,
   local t(limit) = {timelimit: limit},
+  local utils = import '../../../ci/ci_common/common-utils.libsonnet',
 
   local jmh_benchmark_test = {
     run+: [
@@ -168,9 +169,6 @@
     capabilities+: ["manycores"]
   },
 
-  # Returns true if `str` contains `needle` as a substring.
-  contains(str, needle):: std.findSubstr(needle, str) != [],
-
   # Returns the value of the `name` field if it exists in `obj` otherwise `default`.
   get(obj, name, default=null)::
       if obj == null then default else
@@ -309,7 +307,7 @@
     local is_daily = $.manifest_match(dailies_manifest, daily_name),
     local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
     local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
-    local is_windows = $.contains(os_arch, "windows"),
+    local is_windows = utils.contains(os_arch, "windows"),
     local extra = if is_gate then
         $.get(gates_manifest, gate_name, {})
       else if is_daily then
