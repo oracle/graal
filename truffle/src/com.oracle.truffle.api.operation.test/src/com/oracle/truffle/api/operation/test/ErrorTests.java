@@ -62,6 +62,7 @@ import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.operation.test.subpackage.NestedNodeOperationProxy;
 import com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy;
 import com.oracle.truffle.api.operation.test.subpackage.NonPublicSpecializationOperationProxy;
 import com.oracle.truffle.api.source.SourceSection;
@@ -342,6 +343,7 @@ public class ErrorTests {
     @OperationProxy(PackagePrivateSpecializationOperationProxy.class)
     @OperationProxy(NonPublicSpecializationOperationProxy.class)
     @OperationProxy(NonPublicGuardExpressionOperationProxy.class)
+    @OperationProxy(NestedNodeOperationProxy.class)
     public abstract static class BadSpecializationOrDSLTests extends RootNode implements OperationRootNode {
 
         protected BadSpecializationOrDSLTests(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
