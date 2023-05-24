@@ -927,30 +927,29 @@ final class BundleSupport {
             nativeImage.deleteAllFiles(metaInfDir);
         }
 
-        Path launcherFilePath = rootDir.resolve(BundleLauncher.class.getName().replace(".","/") + ".class");
+        Path launcherPackagePath = rootDir.resolve(BundleLauncher.class.getPackageName().replace(".", "/"));
+        String driverJarPath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
 
-        try {
-            Files.createDirectories(launcherFilePath.getParent());
-            Files.copy(BundleLauncher.class.getResourceAsStream(BundleLauncher.class.getSimpleName() + ".class"), launcherFilePath);
+        try (JarFile archive = new JarFile(driverJarPath)) {
+            Enumeration<JarEntry> jarEntries = archive.entries();
+            while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
+                JarEntry jarEntry = jarEntries.nextElement();
+                Path bundleEntry = rootDir.resolve(jarEntry.getName());
+                if (bundleEntry.startsWith(launcherPackagePath)) {
+                    try {
+                        Path bundleFileParent = bundleEntry.getParent();
+                        if (bundleFileParent != null) {
+                            Files.createDirectories(bundleFileParent);
+                        }
+                        Files.copy(archive.getInputStream(jarEntry), bundleEntry);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
+                    }
+                }
+            }
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-file " + launcherFilePath, e);
+            throw NativeImage.showError("Failed to write bundle-files for bundle launcher " + launcherPackagePath, e);
         }
-
-        /*
-        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(launcherFilePath))) {
-            //String jarEntryName = BundleLauncher.class.getName().replace(".","/") + ".class";
-            String jarEntryName = BundleLauncher.class.getSimpleName() + ".class";
-            JarEntry entry = new JarEntry(jarEntryName);
-            jarOutStream.putNextEntry(entry);
-            Path tempLauncherFile = Files.createTempFile(BundleLauncher.class.getSimpleName(), null);
-            Files.copy(BundleLauncher.class.getResourceAsStream(BundleLauncher.class.getSimpleName() + ".class"), tempLauncherFile, StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(tempLauncherFile, jarOutStream);
-            Files.delete(tempLauncherFile);
-            jarOutStream.closeEntry();
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-file " + launcherFilePath, e);
-        }
-        */
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
