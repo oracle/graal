@@ -876,8 +876,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     stability="supported",
 ))
 
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+truffle_nfi_component = mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
@@ -890,7 +889,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_nfi_component)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
