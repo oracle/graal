@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,52 +24,52 @@
  */
 package org.graalvm.profdiff.command;
 
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.args.StringArgument;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
-import org.graalvm.profdiff.args.ArgumentParser;
-import org.graalvm.profdiff.args.StringArgument;
 import org.graalvm.profdiff.parser.ExperimentParser;
 import org.graalvm.profdiff.parser.ExperimentParserError;
-import org.graalvm.profdiff.core.Writer;
 
 /**
- * Compares a JIT-compiled experiment with an AOT experiment. All methods that are hot in JIT or
- * inlined in a hot JIT method are marked as hot in the AOT experiment. It is also possible to
- * provide an additional AOT profile.
+ * Compares two AOT experiments using an external profile from a JIT experiment. The JIT experiment
+ * is used to identify hot methods. All methods that are hot in JIT or inlined in a hot JIT method
+ * are marked as hot in both AOT experiments.
  */
-public class JITAOTCommand implements Command {
+public class AOTAOTExternalProfileCommand implements Command {
     private final ArgumentParser argumentParser;
 
     private final StringArgument jitOptimizationLogArgument;
 
-    private final StringArgument jitProftoolArgument;
+    private final StringArgument proftoolArgument;
 
-    private final StringArgument aotOptimizationLogArgument;
+    private final StringArgument aotOptimizationLogArgument1;
 
-    private final StringArgument aotProftoolArgument;
+    private final StringArgument aotOptimizationLogArgument2;
 
-    public JITAOTCommand() {
+    public AOTAOTExternalProfileCommand() {
         argumentParser = new ArgumentParser();
         jitOptimizationLogArgument = argumentParser.addStringArgument(
                         "jit_optimization_log", "directory with optimization logs for each compilation unit in the JIT experiment");
-        jitProftoolArgument = argumentParser.addStringArgument(
-                        "jit_proftool_output", "proftool output of the JIT experiment in JSON");
-        aotOptimizationLogArgument = argumentParser.addStringArgument(
-                        "aot_optimization_log", "directory with optimization logs of the AOT compilation");
-        aotProftoolArgument = argumentParser.addStringArgument(
-                        "aot_proftool_output", "proftool output of the AOT experiment in JSON");
+        proftoolArgument = argumentParser.addStringArgument(
+                        "proftool_output", "proftool output of the JIT experiment in JSON");
+        aotOptimizationLogArgument1 = argumentParser.addStringArgument(
+                        "aot_optimization_log_1", "directory with optimization logs of the first AOT experiment");
+        aotOptimizationLogArgument2 = argumentParser.addStringArgument(
+                        "aot_optimization_log_2", "directory with optimization logs of the second AOT experiment");
     }
 
     @Override
     public String getName() {
-        return "jit-vs-aot";
+        return "aot-vs-aot-ext-prof";
     }
 
     @Override
     public String getDescription() {
-        return "compare a JIT experiment with an AOT compilation";
+        return "compare two AOT experiments using an execution profile from JIT";
     }
 
     @Override
@@ -83,28 +83,31 @@ public class JITAOTCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, jitProftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.AUXILIARY, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
-        if (aotProftoolArgument.isSet()) {
-            writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot);
-        }
-        aot.writeExperimentSummary(writer);
+        Experiment aot1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument1.getValue(), writer);
+        aot1.writeExperimentSummary(writer);
+
+        writer.writeln();
+        Experiment aot2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument2.getValue(), writer);
+        aot2.writeExperimentSummary(writer);
+
         for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
             if (!jitUnit.isHot()) {
                 continue;
             }
             jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
                 if (node.isPositive() && node.getName() != null) {
-                    aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                    aot1.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                    aot2.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
                 }
             });
         }
 
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
-        matcher.match(new ExperimentPair(jit, aot));
+        matcher.match(new ExperimentPair(aot1, aot2));
     }
 }

@@ -15,15 +15,15 @@ the `-Dgraal.OptimizationLog` flag (`-H:OptimizationLog` for Native Image). Read
 
 ## Usage
 
-There are 3 general use cases:
+These are the general use cases:
 
-- display the optimization log of one experiment, optionally providing proftool data,
-- compare 2 JIT experiments including proftool data,
-- compare a JIT experiment (including proftool data) with an AOT experiment.
+- `mx profdiff report`: display the optimization log of an experiment, optionally providing proftool data,
+- `mx profdiff jit-vs-jit`: compare two JIT experiments including proftool data,
+- `mx profdiff jit-vs-aot`: compare a JIT experiment (including proftool data) with an AOT experiment,
+- `mx profdiff aot-vs-aot`: compare two AOT experiments including proftool data,
+- `mx profdiff aot-vs-aot-ext-prof`: compare two AOT experiments using an external profile from a JIT experiment.
 
-These use cases are implemented as the commands `mx profdiff report`, `mx profdiff jit-vs-jit`,
-and `mx profdiff jit-vs-aot` respectively. Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND`
-to show help for a command.
+Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND` to show help for a command.
 
 ## Example: benchmark without a profile
 
@@ -74,7 +74,7 @@ Finally, use profdiff to view the results:
 mx profdiff report scrabble_log scrabble_prof.json
 ```
 
-## Example: compare 2 JIT benchmarks
+## Example: compare two JIT benchmarks
 
 Run a benchmark with the optimization log, node source positions and proftool. After that, convert the proftool data to
 JSON.
@@ -97,7 +97,7 @@ mx profjson -E proftool_scrabble_2022-07-05_141855 -o scrabble_prof2.json
 Use the tool to diff the experiments:
 
 ```sh
-mx profdiff jit-vs-jit scrabble_prof.json scrabble_log scrabble_prof2.json scrabble_log2
+mx profdiff jit-vs-jit scrabble_log scrabble_prof.json scrabble_log2 scrabble_prof2.json
 ```
 
 ## Example: compare JIT and AOT

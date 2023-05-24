@@ -33,6 +33,7 @@ import org.graalvm.profdiff.args.MissingArgumentException;
 import org.graalvm.profdiff.args.ProgramArgumentParser;
 import org.graalvm.profdiff.args.UnknownArgumentException;
 import org.graalvm.profdiff.command.AOTAOTCommand;
+import org.graalvm.profdiff.command.AOTAOTExternalProfileCommand;
 import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
@@ -158,6 +159,7 @@ public class Profdiff {
         commandGroup.addCommand(new JITJITCommand());
         commandGroup.addCommand(new JITAOTCommand());
         commandGroup.addCommand(new AOTAOTCommand());
+        commandGroup.addCommand(new AOTAOTExternalProfileCommand());
         commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
 
         programArguments.parseOrExit(args);

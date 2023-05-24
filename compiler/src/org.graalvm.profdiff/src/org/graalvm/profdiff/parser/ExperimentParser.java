@@ -125,21 +125,14 @@ public class ExperimentParser {
      * @throws ExperimentParserTypeError the experiment files had an in incorrect format
      */
     public Experiment parse() throws IOException, ExperimentParserError {
-        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = parsePartialCompilationUnits();
+        List<PartialCompilationUnit> partialCompilationUnits = parsePartialCompilationUnits();
         Experiment experiment;
         Optional<FileView> proftoolLogFile = experimentFiles.getProftoolOutput();
         if (proftoolLogFile.isPresent()) {
-            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get());
-            for (ProftoolMethod method : proftoolLog.methods) {
-                if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL || method.getCompilationId() == null) {
-                    continue;
-                }
-                PartialCompilationUnit unit = partialCompilationUnits.get(method.getCompilationId());
-                if (unit == null) {
-                    warningWriter.writeln("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
-                } else {
-                    unit.period = method.getPeriod();
-                }
+            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get(), experimentFiles.getCompilationKind());
+            switch (experimentFiles.getCompilationKind()) {
+                case JIT -> linkJITProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
+                case AOT -> linkAOTProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
             }
             experiment = new Experiment(
                             proftoolLog.executionId,
@@ -150,11 +143,60 @@ public class ExperimentParser {
         } else {
             experiment = new Experiment(experimentFiles.getExperimentId(), experimentFiles.getCompilationKind());
         }
-        for (PartialCompilationUnit unit : partialCompilationUnits.getValues()) {
+        for (PartialCompilationUnit unit : partialCompilationUnits) {
             CompilationUnitTreeParser treeParser = new CompilationUnitTreeParser(experimentFiles.getExperimentId(), unit.fileView);
             experiment.addCompilationUnit(unit.methodName, unit.compilationId, unit.period, treeParser);
         }
         return experiment;
+    }
+
+    /**
+     * Assigns the sampled execution periods from a JIT profile to partial compilation units.
+     * Compilation units are linked using compilation IDs.
+     *
+     * @param partialCompilationUnits partial compilation units
+     * @param proftoolLog the JIT profile
+     */
+    private void linkJITProfilesToCompilationUnits(List<PartialCompilationUnit> partialCompilationUnits, ProftoolLog proftoolLog) {
+        EconomicMap<String, PartialCompilationUnit> units = EconomicMap.create();
+        for (PartialCompilationUnit unit : partialCompilationUnits) {
+            units.put(unit.compilationId, unit);
+        }
+        for (ProftoolMethod method : proftoolLog.methods) {
+            if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL || method.getCompilationId() == null) {
+                continue;
+            }
+            PartialCompilationUnit unit = units.get(method.getCompilationId());
+            if (unit == null) {
+                warningWriter.writeln("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
+            } else {
+                unit.period = method.getPeriod();
+            }
+        }
+    }
+
+    /**
+     * Assigns the sampled execution periods from an AOT profile to partial compilation units.
+     * Compilation units are linked using their names. This is because compilation IDs are
+     * unavailable in AOT profiles.
+     *
+     * @param partialCompilationUnits partial compilation units
+     * @param proftoolLog the AOT profile
+     */
+    private void linkAOTProfilesToCompilationUnits(List<PartialCompilationUnit> partialCompilationUnits, ProftoolLog proftoolLog) {
+        EconomicMap<String, PartialCompilationUnit> units = EconomicMap.create();
+        for (PartialCompilationUnit unit : partialCompilationUnits) {
+            units.put(unit.methodName, unit);
+        }
+        for (ProftoolMethod method : proftoolLog.methods) {
+            if (method.getName() == null) {
+                continue;
+            }
+            PartialCompilationUnit unit = units.get(method.getName());
+            if (unit != null) {
+                unit.period = method.getPeriod();
+            }
+        }
     }
 
     /**
@@ -163,8 +205,8 @@ public class ExperimentParser {
      * @return the parsed partial compilation units
      * @throws IOException failed to read the optimization logs
      */
-    private EconomicMap<String, PartialCompilationUnit> parsePartialCompilationUnits() throws IOException {
-        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = EconomicMap.create();
+    private List<PartialCompilationUnit> parsePartialCompilationUnits() throws IOException {
+        List<PartialCompilationUnit> partialCompilationUnits = new ArrayList<>();
         Pattern compilationUnitPattern = Pattern.compile(COMPILATION_UNIT_REGEX);
         for (FileView fileView : experimentFiles.getOptimizationLogs()) {
             final long[] lineNumber = {0};
@@ -178,7 +220,7 @@ public class ExperimentParser {
                     compilationUnit.fileView = lineView;
                     compilationUnit.methodName = matcher.group(1);
                     compilationUnit.compilationId = matcher.group(2);
-                    partialCompilationUnits.put(compilationUnit.compilationId, compilationUnit);
+                    partialCompilationUnits.add(compilationUnit);
                 } else {
                     warningWriter.writeln("Warning: Invalid compilation unit in file " + fileView.getSymbolicPath() + " on line " + lineNumber[0]);
                 }
@@ -191,15 +233,18 @@ public class ExperimentParser {
      * Parses proftool logs from a file view.
      *
      * @param fileView a view of a JSON file with the proftool log
+     * @param compilationKind the kind of compilation, i.e., JIT or AOT
      * @return the parsed proftool logs
      * @throws IOException failed to read the file
      * @throws ExperimentParserError failed to parse the file
      */
-    private ProftoolLog parseProftoolLog(FileView fileView) throws IOException, ExperimentParserError {
+    private ProftoolLog parseProftoolLog(FileView fileView, Experiment.CompilationKind compilationKind) throws IOException, ExperimentParserError {
         ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), fileView);
         ProftoolLog proftoolLog = new ProftoolLog();
         ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-        proftoolLog.executionId = map.property("executionId").asString();
+        if (compilationKind == Experiment.CompilationKind.JIT) {
+            proftoolLog.executionId = map.property("executionId").asString();
+        }
         proftoolLog.totalPeriod = map.property("totalPeriod").asLong();
         for (ExperimentJSONParser.JSONLiteral codeObject : map.property("code").asList()) {
             ExperimentJSONParser.JSONMap code = codeObject.asMap();
