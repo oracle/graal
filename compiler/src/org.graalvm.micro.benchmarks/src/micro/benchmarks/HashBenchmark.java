@@ -47,4 +47,9 @@ public class HashBenchmark extends BenchmarkBase {
         }
         return value;
     }
+
+    @Benchmark
+    public int identityHashCode(ThreadState state) {
+        return System.identityHashCode(state.characters);
+    }
 }

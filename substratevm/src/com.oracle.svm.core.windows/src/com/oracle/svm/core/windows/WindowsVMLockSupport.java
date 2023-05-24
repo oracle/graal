@@ -139,16 +139,13 @@ final class WindowsVMLockFeature implements InternalFeature {
 
 public final class WindowsVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMMutex[].class)//
-    WindowsVMMutex[] mutexes;
+    @UnknownObjectField WindowsVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMCondition[].class)//
-    WindowsVMCondition[] conditions;
+    @UnknownObjectField WindowsVMCondition[] conditions;
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMSemaphore[].class)//
-    WindowsVMSemaphore[] semaphores;
+    @UnknownObjectField WindowsVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the Condition Variable structures. Since we know that native image objects are
@@ -156,8 +153,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
      * offset into this array is stored in {@link WindowsVMMutex#structOffset} and
      * {@link WindowsVMCondition#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] syncStructs;
+    @UnknownObjectField byte[] syncStructs;
 
     @Fold
     public static WindowsVMLockSupport singleton() {

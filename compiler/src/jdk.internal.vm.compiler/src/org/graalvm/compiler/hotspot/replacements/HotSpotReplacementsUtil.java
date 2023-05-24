@@ -511,18 +511,13 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
-     * Mask for a biasable, locked or unlocked mark word.
-     *
-     * <pre>
-     * +----------------------------------+-+-+
-     * |                                 1|1|1|
-     * +----------------------------------+-+-+
-     * </pre>
-     *
+     * Mask for a biasable, locked or unlocked mark word. It is the least significant 3 bits prior
+     * to Java 18 (1 bit for biased locking and 2 bits for stack locking or heavy locking), and 2
+     * bits afterwards due to elimination of the biased locking.
      */
     @Fold
-    public static int biasedLockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.biasedLockMaskInPlace;
+    public static int lockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.getLockMaskInPlace();
     }
 
     @Fold

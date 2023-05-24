@@ -110,17 +110,10 @@ public class GraalSupport {
      * not prematurely constant folded we must mark them as unknown object fields.
      */
 
-    @UnknownObjectField(types = SubstrateMethod[].class) //
-    private SubstrateMethod[] methodsToCompile;
-
-    @UnknownObjectField(types = byte[].class) //
-    private byte[] graphEncoding;
-
-    @UnknownObjectField(types = Object[].class) //
-    private Object[] graphObjects;
-
-    @UnknownObjectField(types = NodeClass[].class) //
-    private NodeClass<?>[] graphNodeTypes;
+    @UnknownObjectField private SubstrateMethod[] methodsToCompile;
+    @UnknownObjectField private byte[] graphEncoding;
+    @UnknownObjectField private Object[] graphObjects;
+    @UnknownObjectField private NodeClass<?>[] graphNodeTypes;
 
     public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();

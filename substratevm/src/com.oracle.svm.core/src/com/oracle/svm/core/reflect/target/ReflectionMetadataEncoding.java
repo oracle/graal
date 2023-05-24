@@ -32,7 +32,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 
 @AutomaticallyRegisteredImageSingleton
 public class ReflectionMetadataEncoding {
-    @UnknownObjectField(types = {byte[].class}) private byte[] encoding;
+    @UnknownObjectField private byte[] encoding;
 
     public byte[] getEncoding() {
         return encoding;
