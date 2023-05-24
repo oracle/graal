@@ -72,6 +72,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
@@ -359,6 +360,8 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedLanguageOptionContext() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Context.Builder b = Context.newBuilder().option(DeprecatedOptionLanguage.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
         Context e = b.build();
@@ -374,6 +377,8 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedInstrumentOptionEngine() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Engine.Builder b = Engine.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
         Engine e = b.build();
