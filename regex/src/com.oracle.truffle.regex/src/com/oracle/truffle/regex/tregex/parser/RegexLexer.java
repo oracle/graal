@@ -656,14 +656,6 @@ public abstract class RegexLexer {
         return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
     }
 
-    private Token classSet(ClassSetContents contents) {
-        if (featureEnabledIgnoreCase()) {
-            return Token.createClassSetExpression(contents);
-        } else {
-            return Token.createClassSetExpression(contents);
-        }
-    }
-
     /* lexer */
 
     private Token getNext() throws RegexSyntaxException {
@@ -743,7 +735,7 @@ public abstract class RegexLexer {
                 } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
                     ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
                     if (featureEnabledClassSetExpressions()) {
-                        return classSet(unicodePropertyContents);
+                        return Token.createClassSetExpression(unicodePropertyContents);
                     } else {
                         assert unicodePropertyContents.isCodePointSetOnly();
                         return charClass(unicodePropertyContents.getCodePointSet());

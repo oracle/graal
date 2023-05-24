@@ -191,7 +191,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     }
 
     public boolean isEitherUnicode() {
-        return isUnicode() || isUnicodeSets();
+        return isSet(UNICODE | UNICODE_SETS);
     }
 
     public boolean isNone() {
