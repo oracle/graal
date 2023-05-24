@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class VMThreadLocalMTSupport {
     @UnknownPrimitiveField public int vmThreadSize = -1;
-    @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
+    @UnknownObjectField public byte[] vmThreadReferenceMapEncoding;
     @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
