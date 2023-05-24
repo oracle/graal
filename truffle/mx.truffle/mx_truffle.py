@@ -871,7 +871,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
     stability="supported",
 ))
