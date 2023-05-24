@@ -249,7 +249,7 @@ public final class Constants {
                     HEX_CHARS
     };
 
-    public static final CodePointSet FOLDABLE_CHARACTERS = CodePointSet.create(CaseFoldTable.SIMPLE_CASE_FOLDING_ENTRIES);
+    public static final CodePointSet FOLDABLE_CHARACTERS = CodePointSet.createNoDedup(CaseFoldTable.SIMPLE_CASE_FOLDING_ENTRIES);
 
     public static final CodePointSet FOLDED_CHARACTERS = FOLDABLE_CHARACTERS.createInverse(Encodings.UTF_16);
 

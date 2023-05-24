@@ -108,12 +108,15 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return constant;
     }
 
-    public static CodePointSet create(SortedListOfRanges ranges) {
-        CodePointSetAccumulator accum = new CodePointSetAccumulator();
+    /**
+     * Expects {@code ranges} to be a list of sorted and disjoint ranges (can be adjacent though).
+     */
+    public static CodePointSet createNoDedup(SortedListOfRanges ranges) {
+        IntRangesBuffer buf = new IntRangesBuffer(2 * ranges.size());
         for (int i = 0; i < ranges.size(); i++) {
-            accum.addRange(ranges.getLo(i), ranges.getHi(i));
+            buf.appendRangeConcatAdjacent(ranges.getLo(i), ranges.getHi(i));
         }
-        return accum.toCodePointSet();
+        return createNoDedup(buf.toArray());
     }
 
     private static CodePointSet checkConstants(int[] ranges, int length) {
