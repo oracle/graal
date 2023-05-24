@@ -299,7 +299,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                  * The init call target deliberately only saves the engine data and does not keep a
                  * strong reference to the root node to avoid memory leaks.
                  */
-                OptimizedCallTarget initCallTarget = createOptimizedCallTarget(engine);
+                OptimizedCallTarget initCallTarget = createInitializationCallTarget(engine);
 
                 profilingEnabled = engine.profilingEnabled;
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
@@ -339,10 +339,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected OptimizedCallTarget createOptimizedCallTarget(EngineData engine) {
-        OptimizedCallTarget target = new HotSpotOptimizedCallTarget(engine);
-        ensureInitialized(target);
-        return target;
+    protected OptimizedCallTarget createInitializationCallTarget(EngineData engine) {
+        return new HotSpotOptimizedCallTarget(engine);
     }
 
     @Override

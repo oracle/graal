@@ -378,6 +378,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     @Override
     public final void prepareForCompilation() {
+        if (rootNode == null) {
+            throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
+        }
         if (nodeRewritingAssumption == null) {
             initializeNodeRewritingAssumption();
         }

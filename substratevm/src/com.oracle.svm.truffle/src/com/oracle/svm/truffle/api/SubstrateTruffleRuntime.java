@@ -253,14 +253,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected OptimizedCallTarget createOptimizedCallTarget(EngineData engine) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (profilingEnabled == null) {
-            profilingEnabled = engine.profilingEnabled;
-        }
-        OptimizedCallTarget callTarget = TruffleSupport.singleton().createOptimizedCallTarget(engine);
-        ensureInitializedAtRuntime(callTarget);
-        return callTarget;
+    protected OptimizedCallTarget createInitializationCallTarget(EngineData engine) {
+        return TruffleSupport.singleton().createOptimizedCallTarget(engine);
     }
 
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {

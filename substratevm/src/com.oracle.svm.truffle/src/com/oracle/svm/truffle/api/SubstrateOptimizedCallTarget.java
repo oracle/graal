@@ -67,6 +67,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         assert this.installedCode != null : "Must never be null";
     }
 
+    @SuppressWarnings("this-escape")
     public SubstrateOptimizedCallTarget(EngineData engine) {
         super(engine);
         this.installedCode = createInitializationInstalledCode();
