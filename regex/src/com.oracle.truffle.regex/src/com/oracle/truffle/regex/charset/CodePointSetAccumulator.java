@@ -126,6 +126,10 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         SortedListOfRanges.intersect(tmp, other, acc);
     }
 
+    public void subtract(CodePointSet other, Encoding encoding) {
+        intersectWith(other.createInverse(encoding));
+    }
+
     @Override
     public Iterator<Range> iterator() {
         return acc.rangesIterator();

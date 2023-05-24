@@ -70,7 +70,7 @@ public class ClassSetContentsAccumulator {
     }
 
     public void removeAll(ClassSetContents classSet, Encoding encoding) {
-        codePointSet.intersectWith(classSet.getCodePointSet().createInverse(encoding));
+        codePointSet.subtract(classSet.getCodePointSet(), encoding);
         strings.removeAll(classSet.getStrings());
     }
 
