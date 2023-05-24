@@ -244,7 +244,6 @@ suite = {
             ],
             "requires" : [
                 "java.compiler",
-                "java.scripting",
                 "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
@@ -1363,7 +1362,6 @@ suite = {
                     "java.smartcardio",
                     "java.net.http",
                     "jdk.sctp",
-                    "jdk.scripting.nashorn@11..14",
                     "jdk.management.agent",
                     "jdk.management.jfr",
                 ],
