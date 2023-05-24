@@ -52,6 +52,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADCX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADOX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.IMUL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
@@ -1767,6 +1768,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPERMT2B        = new VexRVMOp("VPERMT2B",    P_66, M_0F38, W0,  0x7D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W0);
 
         public static final VexRVMOp MOVLHPS         = new VexRVMOp("MOVLHPS",     P_,   M_0F,   WIG, 0x16, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.FVM,       W0);
+
+        public static final VexRVMOp VPHADDW         = new VexRVMOp("VPHADDW",     P_66, M_0F38, WIG, 0x01, VEXOpAssertion.AVX1_2);
+        public static final VexRVMOp VPHADDD         = new VexRVMOp("VPHADDD",     P_66, M_0F38, WIG, 0x02, VEXOpAssertion.AVX1_2);
         // @formatter:on
 
         protected VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -2433,7 +2437,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         op.emit(this, size, dst, src);
     }
 
+    public final void emit(VexRMOp op, Register dst, AMD64Address src, AVXSize size) {
+        op.emit(this, size, dst, src);
+    }
+
     public final void emit(VexRMIOp op, Register dst, Register src, int imm8, AVXSize size) {
+        op.emit(this, size, dst, src, imm8);
+    }
+
+    public final void emit(VexMRIOp op, Register dst, Register src, int imm8, AVXSize size) {
         op.emit(this, size, dst, src, imm8);
     }
 
@@ -4166,6 +4178,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         INC.emit(this, DWORD, dst);
     }
 
+    public final void imull(Register dst, Register src) {
+        IMUL.emit(this, DWORD, dst, src);
+    }
+
     public final void addq(Register dst, int imm32) {
         ADD.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
@@ -4339,10 +4355,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void imulq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xAF);
-        emitModRM(dst, src);
+        IMUL.emit(this, QWORD, dst, src);
     }
 
     public final void incq(Register dst) {

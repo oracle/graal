@@ -441,8 +441,6 @@ public final class UnimplementedGraalIntrinsics {
                             // @formatter:on
             );
             if (JAVA_SPEC >= 21) {
-                // JDK-8282664
-                add(toBeInvestigated, "jdk/internal/util/ArraysSupport.vectorizedHashCode(Ljava/lang/Object;IIII)I");
                 // JDK-8304303
                 add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiEnd()V");
                 add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiHideFrames(Z)V");
@@ -470,6 +468,11 @@ public final class UnimplementedGraalIntrinsics {
                                 "java/lang/Integer.expand(II)I",
                                 "java/lang/Long.compress(JJ)J",
                                 "java/lang/Long.expand(JJ)J");
+
+                if (JAVA_SPEC >= 21) {
+                    // not implemented yet, watch JDK-8282664
+                    add(toBeInvestigated, "jdk/internal/util/ArraysSupport.vectorizedHashCode(Ljava/lang/Object;IIII)I");
+                }
             }
         }
 
