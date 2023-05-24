@@ -72,6 +72,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.StackSlot;
@@ -464,11 +465,19 @@ public class FrameInfoEncoder {
     private final Encoders encoders;
     private final CompressedFrameInfoEncodingMetadata frameMetadata;
 
+    private final CalleeSavedRegisters calleeSavedRegisters;
+
     protected FrameInfoEncoder(Customization customization, Encoders encoders) {
         this.customization = customization;
         this.encoders = encoders;
         this.allDebugInfos = new ArrayList<>();
         this.frameMetadata = new CompressedFrameInfoEncodingMetadata();
+
+        if (CalleeSavedRegisters.supportedByPlatform()) {
+            calleeSavedRegisters = CalleeSavedRegisters.singleton();
+        } else {
+            calleeSavedRegisters = null;
+        }
     }
 
     protected FrameData addDebugInfo(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint, int totalFrameSize) {
@@ -644,21 +653,25 @@ public class FrameInfoEncoder {
             result.isCompressedReference = isCompressedReference(register);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
-        } else if (CalleeSavedRegisters.supportedByPlatform() && value instanceof RegisterValue) {
+        } else if (calleeSavedRegisters != null && value instanceof RegisterValue) {
             if (isDeoptEntry) {
                 throw VMError.shouldNotReachHere("Cannot encode registers in deoptimization entry point: value " + value + " in method " +
                                 data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
             }
 
-            RegisterValue register = (RegisterValue) value;
+            RegisterValue registerValue = (RegisterValue) value;
+            Register register = ValueUtil.asRegister(registerValue);
+            if (!calleeSavedRegisters.calleeSaveable(register)) {
+                throw VMError.shouldNotReachHere("Register is not calleeSaveable: register " + registerValue + " in method " + data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
+            }
             result.type = ValueType.Register;
-            result.data = CalleeSavedRegisters.singleton().getOffsetInFrame(ValueUtil.asRegister(register));
+            result.data = calleeSavedRegisters.getOffsetInFrame(register);
             // TODO BS GR-42085 The first check is needed when safe-point sampling is on. Is this
             // OK?
-            // e.g. register -> xmm0|V128_SINGLE,
-            // register.getPlatformKind() -> V128_SINGLE,
-            // register.getPlatformKind().getVectorLength() -> 4
-            result.isCompressedReference = register.getPlatformKind().getVectorLength() == 1 && isCompressedReference(register);
+            // e.g. registerValue -> xmm0|V128_SINGLE,
+            // registerValue.getPlatformKind() -> V128_SINGLE,
+            // registerValue.getPlatformKind().getVectorLength() -> 4
+            result.isCompressedReference = registerValue.getPlatformKind().getVectorLength() == 1 && isCompressedReference(registerValue);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
         } else if (value instanceof JavaConstant) {
