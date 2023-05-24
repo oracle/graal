@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.driver.launcher;
 
+import com.oracle.svm.driver.launcher.configuration.ArgsParser;
+import com.oracle.svm.driver.launcher.configuration.EnvironmentParser;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -34,8 +37,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
@@ -59,16 +68,6 @@ public class BundleLauncher {
 
         String bundleFilePath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         unpackBundle(Path.of(bundleFilePath));
-
-        Path environmentFile = stageDir.resolve("environment.json");
-        if (Files.isReadable(environmentFile)) {
-            try (Reader reader = Files.newBufferedReader(environmentFile)) {
-                //new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
-            }
-        }
-
 
         List<String> classpath = new ArrayList<>();
         if (Files.isDirectory(classPathDir)) {
@@ -105,16 +104,39 @@ public class BundleLauncher {
 
         Path buildArgsFile = stageDir.resolve("run.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
-            command.addAll(parseArray(readFully(reader)));
+            List<String> argsFromFile = new ArrayList<>();
+            new ArgsParser(argsFromFile).parseAndRegister(reader);
+            command.addAll(argsFromFile);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read bundle-file " + buildArgsFile, e);
         }
 
-        if (System.getenv("BUNDLE_LAUNCHER_VERBOSE") != null) {
-            System.out.println("Exec: " + String.join(" ", command));
+        ProcessBuilder pb = new ProcessBuilder(command);
+
+        Path environmentFile = stageDir.resolve("environment.json");
+        if (Files.isReadable(environmentFile)) {
+            try (Reader reader = Files.newBufferedReader(environmentFile)) {
+                Map<String, String> launcherEnvironment = new HashMap<>();
+                new EnvironmentParser(launcherEnvironment).parseAndRegister(reader);
+                sanitizeJVMEnvironment(pb.environment(), launcherEnvironment);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
+            }
         }
 
-        ProcessBuilder pb = new ProcessBuilder(command);
+        if (System.getenv("BUNDLE_LAUNCHER_VERBOSE") != null) {
+            List<String> environmentList = pb.environment()
+                    .entrySet()
+                    .stream()
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .sorted()
+                    .toList();
+            System.out.println("Executing [");
+            System.out.println(String.join(" \\\n", environmentList));
+            System.out.println(String.join(" \\\n", command));
+            System.out.println("]");
+        }
+
         Process p = null;
         try {
             p = pb.inheritIO().start();
@@ -126,6 +148,50 @@ public class BundleLauncher {
                 p.destroy();
             }
         }
+    }
+
+    private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
+        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
+        requiredKeys.add("SRCHOME"); /* Remove once GR-44676 is fixed */
+        Function<String, String> keyMapper;
+        if (System.getProperty("os.name").contains("Windows")) {
+            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
+            keyMapper = String::toUpperCase;
+        } else {
+            keyMapper = Function.identity();
+        }
+        Map<String, String> restrictedEnvironment = new HashMap<>();
+        environment.forEach((key, val) -> {
+            if (requiredKeys.contains(keyMapper.apply(key))) {
+                restrictedEnvironment.put(key, val);
+            }
+        });
+        for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
+            Map.Entry<String, String> entry = iterator.next();
+            if (entry.getValue() != null) {
+                restrictedEnvironment.put(entry.getKey(), entry.getValue());
+            } else {
+                environment.forEach((key, val) -> {
+                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                        /*
+                         * Record key as it was given by -E<key-name> (by using `entry.getKey()`
+                         * instead of `key`) to allow creating bundles on Windows that will also
+                         * work on Linux. `System.getEnv(val)` is case-insensitive on Windows but
+                         * not on Linux.
+                         */
+                        restrictedEnvironment.put(entry.getKey(), val);
+                        /* Capture found value for storing vars in bundle */
+                        entry.setValue(val);
+                    }
+                });
+                if (entry.getValue() == null) {
+                    /* Remove undefined environment for storing vars in bundle */
+                    iterator.remove();
+                }
+            }
+        }
+        environment.clear();
+        environment.putAll(restrictedEnvironment);
     }
 
 
@@ -163,149 +229,6 @@ public class BundleLauncher {
     private static void showError(String s) {
         System.err.println("Error: " + s);
         System.exit(1);
-    }
-
-    private static String readFully(final Reader reader) throws IOException {
-        final char[] arr = new char[1024];
-        final StringBuilder sb = new StringBuilder();
-
-        try {
-            int numChars;
-            while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
-                sb.append(arr, 0, numChars);
-            }
-        } finally {
-            reader.close();
-        }
-
-        return sb.toString();
-    }
-
-
-    private static final int STATE_EMPTY = 0;
-    private static final int STATE_ELEMENT_PARSED = 1;
-    private static final int STATE_COMMA_PARSED = 2;
-
-    private static int pos;
-
-    private static List<String> parseArray(String jsonArray) {
-        List<String> result = new ArrayList<>();
-        int state = STATE_EMPTY;
-        pos = 0;
-
-        skipWhiteSpace(jsonArray);
-        if(jsonArray.charAt(pos) != '[') {
-            throw new RuntimeException("Expected [ but found " + jsonArray.charAt(pos));
-        }
-        pos++;
-
-        while (pos < jsonArray.length()) {
-            pos = skipWhiteSpace(jsonArray);
-
-            switch (jsonArray.charAt(pos)) {
-                case ',' -> {
-                    if (state != STATE_ELEMENT_PARSED) {
-                        throw new RuntimeException("Trailing comma is not allowed in JSON");
-                    }
-                    state = STATE_COMMA_PARSED;
-                    pos++;
-                }
-                case ']' -> {
-                    if (state == STATE_COMMA_PARSED) {
-                        throw new RuntimeException("Trailing comma is not allowed in JSON");
-                    }
-                    return result;
-                }
-                default -> {
-                    if (state == STATE_ELEMENT_PARSED) {
-                        throw new RuntimeException("Expected , or ] but found " + jsonArray.charAt(pos));
-                    }
-                    result.add(parseString(jsonArray));
-                    state = STATE_ELEMENT_PARSED;
-                }
-            }
-        }
-
-        throw new RuntimeException("Expected , or ] but found eof");
-    }
-
-    private static String parseString(String json) {
-        // String buffer is only instantiated if string contains escape sequences.
-        int start = ++pos;
-        StringBuilder sb = null;
-
-        while (pos < json.length()) {
-            final int c = json.charAt(pos);
-            pos++;
-            if (c <= 0x1f) {
-                // Characters < 0x1f are not allowed in JSON strings.
-                throw new RuntimeException("String contains control character");
-
-            } else if (c == '\\') {
-                if (sb == null) {
-                    sb = new StringBuilder(pos - start + 16);
-                }
-                sb.append(json, start, pos - 1);
-                sb.append(parseEscapeSequence(json));
-                start = pos;
-
-            } else if (c == '"') {
-                if (sb != null) {
-                    sb.append(json, start, pos - 1);
-                    return sb.toString();
-                }
-                return json.substring(start, pos - 1);
-            }
-        }
-
-        throw new RuntimeException("Missing close quote");
-    }
-
-    private static char parseEscapeSequence(String json) {
-        final int c = json.charAt(pos);
-        pos++;
-        return switch (c) {
-            case '"' -> '"';
-            case '\\' -> '\\';
-            case '/' -> '/';
-            case 'b' -> '\b';
-            case 'f' -> '\f';
-            case 'n' -> '\n';
-            case 'r' -> '\r';
-            case 't' -> '\t';
-            case 'u' -> parseUnicodeEscape(json);
-            default -> throw new RuntimeException("Invalid escape character");
-        };
-    }
-
-    private static char parseUnicodeEscape(String json) {
-        return (char) (parseHexDigit(json) << 12 | parseHexDigit(json) << 8 | parseHexDigit(json) << 4 | parseHexDigit(json));
-    }
-
-    private static int parseHexDigit(String json) {
-        final int c = json.charAt(pos);
-        pos++;
-        if (c >= '0' && c <= '9') {
-            return c - '0';
-        } else if (c >= 'A' && c <= 'F') {
-            return c + 10 - 'A';
-        } else if (c >= 'a' && c <= 'f') {
-            return c + 10 - 'a';
-        }
-        throw new RuntimeException("Invalid hex digit");
-    }
-
-    private static int skipWhiteSpace(String str) {
-        while (pos < str.length()) {
-            switch (str.charAt(pos)) {
-                case '\t', '\r', '\n', ' ' -> pos++;
-                default -> {
-                    return pos;
-                }
-            }
-        }
-
-        return pos;
     }
 
     private static final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
