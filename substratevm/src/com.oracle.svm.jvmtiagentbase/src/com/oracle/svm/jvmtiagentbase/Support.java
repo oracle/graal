@@ -26,6 +26,7 @@ package com.oracle.svm.jvmtiagentbase;
 
 import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.core.util.VMError.guaranteeConcat;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -446,7 +447,7 @@ public final class Support {
     }
 
     public static void check(JvmtiError resultCode) {
-        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
+        guaranteeConcat(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with ", resultCode);
     }
 
     public static void checkPhase(JvmtiError resultCode) {
