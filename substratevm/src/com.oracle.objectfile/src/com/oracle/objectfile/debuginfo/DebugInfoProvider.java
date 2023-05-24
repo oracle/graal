@@ -165,6 +165,8 @@ public interface DebugInfoProvider {
 
         boolean isWord();
 
+
+        boolean isStruct();
         boolean isPointer();
 
         boolean isIntegral();
@@ -172,6 +174,8 @@ public interface DebugInfoProvider {
         boolean isFloat();
 
         boolean isSigned();
+
+        ResolvedJavaType parent();
 
         ResolvedJavaType pointerTo();
     }
