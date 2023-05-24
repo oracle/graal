@@ -137,24 +137,40 @@ public final class VMError {
         throw shouldNotReachHere(String.format(msg, formatArguments(args)));
     }
 
+    /**
+     * @see #shouldNotReachHere(String, Object...)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void guarantee(boolean condition, String msg, Object arg1) {
         if (!condition) {
             throw shouldNotReachHere(msg, arg1);
         }
     }
 
+    /**
+     * @see #shouldNotReachHere(String, Object...)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void guarantee(boolean condition, String msg, Object arg1, Object arg2) {
         if (!condition) {
             throw shouldNotReachHere(msg, arg1, arg2);
         }
     }
 
+    /**
+     * @see #shouldNotReachHere(String, Object...)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3) {
         if (!condition) {
             throw shouldNotReachHere(msg, arg1, arg2, arg3);
         }
     }
 
+    /**
+     * @see #shouldNotReachHere(String, Object...)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3, Object arg4) {
         if (!condition) {
             throw shouldNotReachHere(msg, arg1, arg2, arg3, arg4);
