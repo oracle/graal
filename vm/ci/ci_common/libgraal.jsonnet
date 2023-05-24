@@ -32,7 +32,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   },
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
-  libgraal_compiler:: self.libgraal_compiler_base(),
+  libgraal_compiler:: self.libgraal_compiler_base() {
+    # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
+    downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
+  },
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
