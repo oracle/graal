@@ -84,14 +84,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         return readFieldValue((SubstrateField) field, receiver);
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!canBoxPrimitive(source)) {
-            return null;
-        }
-        return super.boxPrimitive(source);
-    }
-
     protected boolean canBoxPrimitive(JavaConstant source) {
         boolean result = source.getJavaKind().isPrimitive() && isCachedPrimitive(source);
         assert !result || source.asBoxedPrimitive() == source.asBoxedPrimitive() : "value must be cached";

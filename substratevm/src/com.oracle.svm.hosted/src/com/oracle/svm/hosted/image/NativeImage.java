@@ -541,8 +541,8 @@ public abstract class NativeImage extends AbstractImage {
                 } else {
                     // Relocations from other sections go to the section containing the target.
                     // Pass along the information about the target.
-                    final Object targetObject = info.getTargetObject();
-                    final ObjectInfo targetObjectInfo = heap.getObjectInfo(targetObject);
+                    final JavaConstant targetConstant = (JavaConstant) info.getTargetObject();
+                    final ObjectInfo targetObjectInfo = heap.getConstantInfo(targetConstant);
                     markDataRelocationSite(sectionImpl, offset, info, targetObjectInfo);
                 }
             }

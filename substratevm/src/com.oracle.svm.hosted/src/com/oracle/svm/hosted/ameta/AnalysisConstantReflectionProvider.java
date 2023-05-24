@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.ameta;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -91,21 +92,26 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return EmptyMemoryAcessProvider.SINGLETON;
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
-    }
+    private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         if (!source.getJavaKind().isObject()) {
             return null;
         }
-        if (source instanceof ImageHeapConstant heapConstant) {
-            return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(heapConstant.getHostedObject()));
+        if (source instanceof ImageHeapConstant imageHeapConstant) {
+            /*
+             * Unbox by reading the known single field "value", which is a primitive field of the
+             * correct unboxed type.
+             */
+            AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
+            if (BOXING_CLASSES.contains(type.getJavaClass())) {
+                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                assert fields.length == 1 && fields[0].getName().equals("value");
+                return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
+            }
+            /* Not a valid boxed primitive. */
+            return null;
         }
         return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
     }
