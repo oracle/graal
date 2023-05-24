@@ -34,17 +34,20 @@ import org.graalvm.compiler.debug.DebugContext;
 
 public class ForeignTypeEntry extends ClassEntry {
     private static final int FLAG_WORD = 1 << 0;
-    private static final int FLAG_POINTER = 1 << 1;
-    private static final int FLAG_INTEGRAL = 1 << 2;
-    private static final int FLAG_SIGNED = 1 << 3;
-    private static final int FLAG_FLOAT = 1 << 4;
+    private static final int FLAG_STRUCT = 1 << 1;
+    private static final int FLAG_POINTER = 1 << 2;
+    private static final int FLAG_INTEGRAL = 1 << 3;
+    private static final int FLAG_SIGNED = 1 << 4;
+    private static final int FLAG_FLOAT = 1 << 5;
     String typedefName;
+    ForeignTypeEntry parent;
     TypeEntry pointerTo;
     int flags;
 
     public ForeignTypeEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);
         typedefName = null;
+        parent = null;
         pointerTo = null;
         flags = 0;
     }
@@ -62,6 +65,14 @@ public class ForeignTypeEntry extends ClassEntry {
         this.typedefName = debugForeignTypeInfo.typedefName();
         if (debugForeignTypeInfo.isWord()) {
             flags = FLAG_WORD;
+        } else if (debugForeignTypeInfo.isStruct()) {
+            flags = FLAG_STRUCT;
+            ResolvedJavaType parentIdType = debugForeignTypeInfo.parent();
+            if (parentIdType != null) {
+                TypeEntry parentTypeEntry = debugInfoBase.lookupClassEntry(parentIdType);
+                assert parentTypeEntry instanceof ForeignTypeEntry;
+                parent = (ForeignTypeEntry) parentTypeEntry;
+            }
         } else if (debugForeignTypeInfo.isPointer()) {
             flags = FLAG_POINTER;
             ResolvedJavaType referent = debugForeignTypeInfo.pointerTo();
@@ -87,12 +98,20 @@ public class ForeignTypeEntry extends ClassEntry {
         return typedefName;
     }
 
+    public ForeignTypeEntry getParent() {
+        return parent;
+    }
+
     public TypeEntry getPointerTo() {
         return pointerTo;
     }
 
     public boolean isWord() {
         return (flags & FLAG_WORD) != 0;
+    }
+
+    public boolean isStruct() {
+        return (flags & FLAG_STRUCT) != 0;
     }
 
     public boolean isPointer() {

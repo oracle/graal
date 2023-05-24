@@ -900,6 +900,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public boolean isStruct() {
+            return elementInfo instanceof StructInfo;
+        }
+
+        @Override
         public boolean isPointer() {
             if (elementInfo != null && elementInfo instanceof SizableInfo) {
                 return ((SizableInfo) elementInfo).getKind() == SizableInfo.ElementKind.POINTER;
@@ -932,6 +937,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // special cases are SignedWord which, obviously, points to a signed word and
             // anything pointing to an integral type that is nto tagged as unsigned
             return (nativeLibs.isSigned(hostedType.getWrapped()) || (isIntegral() && !((SizableInfo) elementInfo).isUnsigned()));
+        }
+
+        @Override
+        public ResolvedJavaType parent() {
+            if (isStruct()) {
+                // look for the first interface that also has an associated StructInfo
+                for (HostedInterface hostedInterface : hostedType.getInterfaces()) {
+                    ElementInfo otherInfo = nativeLibs.findElementInfo(hostedInterface);
+                    if (otherInfo instanceof StructInfo) {
+                        return getOriginal(hostedInterface);
+                    }
+                }
+            }
+            return null;
         }
 
         @Override
