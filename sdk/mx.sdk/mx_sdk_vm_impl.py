@@ -2381,7 +2381,7 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return False, None
 
     def build(self):
-        mx.ensure_dir_exists(basename(self.subject.output_file()))
+        mx.ensure_dir_exists(dirname(self.subject.output_file()))
         graalvm_jimage_home = self.subject.jimage_project.output_directory()
 
         # 1. copy the jmod file from the jimage to the output path
