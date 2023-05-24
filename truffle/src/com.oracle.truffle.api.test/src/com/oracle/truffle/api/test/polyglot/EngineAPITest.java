@@ -72,7 +72,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
