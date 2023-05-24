@@ -67,7 +67,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.launcher.BundleLauncher;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
 import org.graalvm.util.json.JSONParser;
 import org.graalvm.util.json.JSONParserException;
 
@@ -136,7 +135,6 @@ final class BundleSupport {
     private static final String CONTAINER_TOOL_JSON_KEY = "containerTool";
     private static final String CONTAINER_TOOL_VERSION_JSON_KEY = "containerToolVersion";
     private static final String CONTAINER_IMAGE_JSON_KEY = "containerImage";
-    final Map<String, String> containerEnvironment = new HashMap<>();
 
 
     enum BundleOptionVariants {
@@ -362,7 +360,7 @@ final class BundleSupport {
 
         int exitStatusCode = createContainer();
         switch (ExitStatus.of(exitStatusCode)) {
-            case OK -> fetchContainerEnvironment();
+            case OK -> {}
             case BUILDER_ERROR ->
                 /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
@@ -374,31 +372,6 @@ final class BundleSupport {
                 String message = String.format("Container build request for '%s' failed with exit status %d",
                         nativeImage.imageName, exitStatusCode);
                 throw NativeImage.showError(message, null, exitStatusCode);
-            }
-        }
-    }
-
-    private void fetchContainerEnvironment() {
-        ProcessBuilder pb = new ProcessBuilder(containerTool, "run", "--rm", containerImage, "bash", "-c", "/usr/bin/env");
-        Process p = null;
-        try {
-            p = pb.start();
-            p.waitFor();
-            try (var processResult = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                processResult.lines()
-                        .toList()
-                        .forEach(env -> {
-                            String[] envParts = SubstrateUtil.split(env, "=", 2);
-                            if (envParts.length == 2) {
-                                containerEnvironment.put(envParts[0], envParts[1]);
-                            }
-                        });
-            }
-        } catch (IOException | InterruptedException e) {
-            throw NativeImage.showError(e.getMessage());
-        } finally {
-            if (p != null) {
-                p.destroy();
             }
         }
     }
