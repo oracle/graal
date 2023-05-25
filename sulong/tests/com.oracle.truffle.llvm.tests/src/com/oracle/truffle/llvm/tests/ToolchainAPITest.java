@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,13 +54,18 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.tck.TruffleRunner;
 
 public class ToolchainAPITest {
-    @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(getContextBuilder());
+
+    @Rule public final TruffleRunner.RunWithPolyglotRule runWithPolyglot;
 
     private static final String TOOLCHAIN_PATH_PATTERN_NAME = "sulongtest.toolchainPathPattern";
     private static final String TOOLCHAIN_PATH_PATTERN = System.getProperty(TOOLCHAIN_PATH_PATTERN_NAME);
 
-    protected Context.Builder getContextBuilder() {
-        return Context.newBuilder().allowAllAccess(true);
+    public ToolchainAPITest() {
+        this(Context.newBuilder().allowAllAccess(true));
+    }
+
+    protected ToolchainAPITest(Context.Builder contextBuilder) {
+        runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(contextBuilder);
     }
 
     protected Value load(File file) {

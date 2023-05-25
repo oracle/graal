@@ -245,7 +245,7 @@ public abstract class ClangLikeBase extends Driver {
             sulongArgs.add("-Wl," + String.join(",", WindowsLinker.getLinkerFlags()));
         } else if (os == OS.DARWIN) {
             sulongArgs.add("-fuse-ld=" + DarwinLinker.LD_NAME);
-            sulongArgs.add("-Wl," + String.join(",", DarwinLinker.getLinkerFlags(this)));
+            sulongArgs.add("-Wl," + String.join(",", DarwinLinker.getLinkerFlags()));
         }
     }
 

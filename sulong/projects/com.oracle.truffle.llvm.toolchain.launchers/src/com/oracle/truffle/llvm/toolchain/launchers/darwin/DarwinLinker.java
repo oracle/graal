@@ -51,8 +51,8 @@ public final class DarwinLinker extends Driver {
         super(LD, false);
     }
 
-    public static List<String> getLinkerFlags(Driver d) {
-        return Arrays.asList("-lto_library", d.getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
+    public static List<String> getLinkerFlags() {
+        return Arrays.asList("-lto_library", getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
     }
 
     public static void link(String[] args) {
