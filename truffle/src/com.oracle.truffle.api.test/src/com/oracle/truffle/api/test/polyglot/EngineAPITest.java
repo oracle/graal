@@ -417,6 +417,7 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedInstrumentOptionContext() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Context.Builder b = Context.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
         Context e = b.build();
