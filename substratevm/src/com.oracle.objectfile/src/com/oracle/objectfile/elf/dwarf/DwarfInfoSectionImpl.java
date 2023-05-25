@@ -340,7 +340,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 assert (fieldSize % valueSize == 0) : "embedded field size is not a multiple of value type size!";
                 // declare a local array of the embedded type and use it as the value type
                 valueTypeIdx = pos;
-                pos = writeEmbeddedArrayDataType(context, (ClassEntry) valueType, valueSize, fieldSize/valueSize, buffer, pos);
+                pos = writeEmbeddedArrayDataType(context, (ClassEntry) valueType, valueSize, fieldSize / valueSize, buffer, pos);
             } else {
                 valueTypeIdx = getIndirectLayoutIndex((ClassEntry) valueType);
             }
@@ -899,14 +899,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             // use a suitably sized signed or unsigned integral type as the layout type
             pos = writeForeignIntegerLayout(context, foreignTypeEntry, size, foreignTypeEntry.isSigned(), buffer, pos);
         } else if (foreignTypeEntry.isFloat()) {
-            // use a suitably sized signed or unsigned float type as the layout type
+            // use a suitably sized float type as the layout type
             pos = writeForeignFloatLayout(context, foreignTypeEntry, size, buffer, pos);
         } else if (foreignTypeEntry.isStruct()) {
             // define this type using a structure layout
             pos = writeForeignStructLayout(context, foreignTypeEntry, size, buffer, pos);
         } else {
-            // pointer or unknown - layout id as a foreign stucture if we have fields otherwise use
-            // by default the referent of the pointer type will be void
+            // this must be a pointer. if the target type is known use it to declare the pointer
+            // type
+            // otherwise default to 'void *'
             layoutOffset = voidOffset;
             String referentName = "void";
             if (foreignTypeEntry.isPointer()) {
@@ -984,7 +985,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         byte bitCount = (byte) (byteSize * 8);
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
-        // treat the layout as an unsigned word
+        // treat the layout as a signed or unsigned word of the relevant size
         byte encoding = (isSigned ? DwarfDebugInfo.DW_ATE_signed : DwarfDebugInfo.DW_ATE_unsigned);
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);
@@ -1007,7 +1008,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         byte bitCount = (byte) (byteSize * 8);
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
-        // treat the layout as an unsigned word
+        // treat the layout as a signed or unsigned word of the relevant size
         byte encoding = (isSigned ? DwarfDebugInfo.DW_ATE_signed : DwarfDebugInfo.DW_ATE_unsigned);
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);
@@ -1030,7 +1031,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         byte bitCount = (byte) (byteSize * 8);
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
-        // treat the layout as an unsigned word
+        // treat the layout as a float of the relevant size
         byte encoding = DwarfDebugInfo.DW_ATE_float;
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);

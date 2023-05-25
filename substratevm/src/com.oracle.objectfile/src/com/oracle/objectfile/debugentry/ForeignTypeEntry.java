@@ -39,10 +39,10 @@ public class ForeignTypeEntry extends ClassEntry {
     private static final int FLAG_INTEGRAL = 1 << 3;
     private static final int FLAG_SIGNED = 1 << 4;
     private static final int FLAG_FLOAT = 1 << 5;
-    String typedefName;
-    ForeignTypeEntry parent;
-    TypeEntry pointerTo;
-    int flags;
+    private String typedefName;
+    private ForeignTypeEntry parent;
+    private TypeEntry pointerTo;
+    private int flags;
 
     public ForeignTypeEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);

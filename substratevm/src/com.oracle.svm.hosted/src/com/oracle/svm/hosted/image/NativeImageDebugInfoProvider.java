@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
@@ -144,8 +145,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
     HostedType hubType;
-    private HostedType wordBaseType;
-    HashMap<JavaKind, HostedType> javaKindToHostedType;
+    private final HostedType wordBaseType;
+    final HashMap<JavaKind, HostedType> javaKindToHostedType;
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
         super();
@@ -631,7 +632,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public boolean isEmbedded()  {
+        public boolean isEmbedded() {
             return false;
         }
 
@@ -792,7 +793,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public boolean isEmbedded()  {
+            public boolean isEmbedded() {
                 return false;
             }
 
@@ -946,7 +947,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public boolean isSigned() {
             // pretty much everything is unsigned by default
             // special cases are SignedWord which, obviously, points to a signed word and
-            // anything pointing to an integral type that is nto tagged as unsigned
+            // anything pointing to an integral type that is not tagged as unsigned
             return (nativeLibs.isSigned(hostedType.getWrapped()) || (isIntegral() && !((SizableInfo) elementInfo).isUnsigned()));
         }
 
@@ -1182,7 +1183,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         debugContext.log("element size = %d", size);
         debugContext.log("%s", (isUnsigned ? "<unsigned>" : "<signed>"));
         if (typedefName != null) {
-            debugContext.log("typedef %s = *%s", typedefName, hostedType.toJavaName());
+            debugContext.log("typedefname = %s", typedefName);
         }
         dumpElementInfo(pointerToInfo);
     }
@@ -1191,89 +1192,32 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign struct type %s %s", hostedType.toJavaName(), elementKind(structInfo).toString());
         assert hostedType.isInterface();
         boolean isIncomplete = structInfo.isIncomplete();
-        Integer size;
         if (isIncomplete) {
             debugContext.log("<incomplete>");
-            size = 0;
         } else {
-            size = elementSize(structInfo);
-            debugContext.log("complete : element size = %d", (size != null ? size.intValue() : 0));
+            debugContext.log("complete : element size = %d", elementSize(structInfo));
         }
         String typedefName = structInfo.getTypedefName();
         if (typedefName != null) {
             debugContext.log("    typedefName = %s", typedefName);
         }
         dumpElementInfo(structInfo);
-        // The target may be a struct or a typedef for a struct. In the former case
-        // the keyword struct will be part of the name (the typedefName for the
-        // elementInfo appears always to be null).
-        debugContext.log("typedef %s *%s;", structInfo.getName(), hostedType.toJavaName());
-        List<StructFieldInfo> orderedFields = orderedFieldsStream(structInfo).toList();
-        if (orderedFields.isEmpty()) {
-            debugContext.log("raw struct with no fields!");
-        }
-        int currentOffset = -1;
-        int totalSize = 0;
-        debugContext.log("  typedef struct {");
-        for (StructFieldInfo field : orderedFields) {
-            int nextOffset = field.getOffsetInfo().getProperty();
-            if (nextOffset != totalSize) {
-                debugContext.log("    // int gap : %d", nextOffset - totalSize);
-                totalSize = nextOffset;
-            }
-            int nextSize = elementSize(field);
-            assert nextOffset > currentOffset : "raw struct has two fields at same offset " + currentOffset;
-            String fieldName = field.getName();
-            ResolvedJavaType type = getFieldType(field);
-            debugContext.log("    %s %s;", type.toJavaName(), fieldName);
-            totalSize += nextSize;
-        }
-        if (totalSize != size) {
-            debugContext.log("    // int gap : %d", size - totalSize);
-        }
-        debugContext.log("  } %s;", structInfo.getName());
     }
 
     private void logRawStructureInfo(HostedType hostedType, RawStructureInfo rawStructureInfo) {
         debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign raw struct type %s %s", hostedType.toJavaName(), elementKind(rawStructureInfo).toString());
         assert hostedType.isInterface();
-        Integer size = elementSize(rawStructureInfo);
-        debugContext.log("element size = %d", (size != null ? size.intValue() : 0));
+        debugContext.log("element size = %d", elementSize(rawStructureInfo));
         String typedefName = rawStructureInfo.getTypedefName();
         if (typedefName != null) {
             debugContext.log("    typedefName = %s", typedefName);
         }
         dumpElementInfo(rawStructureInfo);
-        debugContext.log("typedef %s *%s;", rawStructureInfo.getName(), hostedType.toJavaName());
-        List<StructFieldInfo> orderedFields = orderedFieldsStream(rawStructureInfo).toList();
-        if (orderedFields.isEmpty()) {
-            debugContext.log("raw struct with no fields!");
-        }
-        int currentOffset = -1;
-        int totalSize = 0;
-        debugContext.log("  typedef struct {");
-        for (StructFieldInfo field : orderedFields) {
-            int nextOffset = field.getOffsetInfo().getProperty();
-            if (nextOffset != totalSize) {
-                debugContext.log("    // int gap : %d", nextOffset - totalSize);
-                totalSize = nextOffset;
-            }
-            int nextSize = elementSize(field);
-            assert nextOffset > currentOffset : "raw struct has two fields at same offset " + currentOffset;
-            String fieldName = field.getName();
-            ResolvedJavaType type = getFieldType(field);
-            debugContext.log("    %s %s;", type.toJavaName(), fieldName);
-            totalSize += nextSize;
-        }
-        if (totalSize != size) {
-            debugContext.log("    // int gap : %d", size - totalSize);
-        }
-        debugContext.log("  } %s;", rawStructureInfo.getName());
     }
 
     private HostedType getFieldType(StructFieldInfo field) {
-        // we should always some sort of accessor, preferably a GETTER or a SETTER
-        // but possibly an ADDRESS accessor or even just an OFFSET accessor
+        // we should always have some sort of accessor, preferably a GETTER or a SETTER
+        // but possibly an ADDRESS accessor
         for (ElementInfo elt : field.getChildren()) {
             if (elt instanceof AccessorInfo) {
                 AccessorInfo accessorInfo = (AccessorInfo) elt;
@@ -1305,8 +1249,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private boolean fieldTypeIsEmbedded(StructFieldInfo field) {
-        // we should always some sort of accessor, preferably a GETTER or a SETTER
-        // but possibly an ADDRESS accessor or even just an OFFSET accessor
+        // we should always have some sort of accessor, preferably a GETTER or a SETTER
+        // but possibly an ADDRESS
         for (ElementInfo elt : field.getChildren()) {
             if (elt instanceof AccessorInfo) {
                 AccessorInfo accessorInfo = (AccessorInfo) elt;
@@ -1331,10 +1275,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 }
             }
         }
-        assert false : "Field %s must have a GETTER, SETTER, ADDRESS or OFFSET accessor".formatted(field);
-        // treat it as a word?
-        // n.b. we want a hosted type not an analysis type
-        return false;
+        throw VMError.shouldNotReachHere("Field %s must have a GETTER, SETTER, ADDRESS or OFFSET accessor".formatted(field));
     }
 
     private int structFieldComparator(StructFieldInfo f1, StructFieldInfo f2) {
@@ -1343,7 +1284,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return offset1 - offset2;
     }
 
-    int elementSize(ElementInfo elementInfo) {
+    private int elementSize(ElementInfo elementInfo) {
         if (elementInfo == null || !(elementInfo instanceof SizableInfo)) {
             return 0;
         }
@@ -1363,11 +1304,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    SizableInfo.ElementKind elementKind(SizableInfo sizableInfo) {
+    private SizableInfo.ElementKind elementKind(SizableInfo sizableInfo) {
         return sizableInfo.getKind();
     }
 
-    Stream<StructFieldInfo> orderedFieldsStream(ElementInfo elementInfo) {
+    private Stream<StructFieldInfo> orderedFieldsStream(ElementInfo elementInfo) {
         if (elementInfo instanceof RawStructureInfo || elementInfo instanceof StructInfo) {
             return elementInfo.getChildren().stream().filter(elt -> isTypedField(elt))
                             .map(elt -> ((StructFieldInfo) elt))
@@ -1377,7 +1318,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    boolean isTypedField(ElementInfo elementInfo) {
+    private boolean isTypedField(ElementInfo elementInfo) {
         if (elementInfo instanceof StructFieldInfo) {
             for (ElementInfo child : elementInfo.getChildren()) {
                 if (child instanceof AccessorInfo) {
@@ -1681,7 +1622,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      * @return true if the type models a foreign memory word or pointer type
      */
     private boolean isForeignWordType(JavaType type, ResolvedJavaType accessingType) {
-        assert accessingType instanceof HostedType : "must be!";
         HostedType resolvedJavaType = (HostedType) type.resolve(accessingType);
         return isForeignWordType(resolvedJavaType);
     }
