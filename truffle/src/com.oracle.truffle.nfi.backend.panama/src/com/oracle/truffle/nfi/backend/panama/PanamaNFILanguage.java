@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,7 +109,7 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     public final ContextThreadLocal<ErrorContext> createErrorContext() {
         try {
-            return createContextThreadLocal(ErrorContext::new);
+            return locals.createContextThreadLocal(ErrorContext::new);
         } catch (UnsupportedClassVersionError e) {
             /*
              * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
