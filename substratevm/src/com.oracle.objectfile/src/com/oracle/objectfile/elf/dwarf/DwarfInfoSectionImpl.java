@@ -356,10 +356,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeStrSectionOffset(fieldName, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, valueTypeIdx, valueType.getTypeName());
         pos = writeInfoSectionOffset(valueTypeIdx, buffer, pos);
-        byte offset = (byte) fieldEntry.getOffset();
+        short offset = (short) fieldEntry.getOffset();
         int size = fieldEntry.getSize();
         log(context, "  [0x%08x]     offset 0x%x (size 0x%x)", pos, offset, size);
-        pos = writeAttrData1(offset, buffer, pos);
+        pos = writeAttrData2(offset, buffer, pos);
         int modifiers = fieldEntry.getModifiers();
         log(context, "  [0x%08x]     modifiers %s", pos, fieldEntry.getModifiersString());
         return writeAttrAccessibility(modifiers, buffer, pos);
@@ -1367,7 +1367,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeInfoSectionOffset(arrayDataTypeIdx, buffer, pos);
         int size = 0;
         log(context, "  [0x%08x]     offset 0x%x (size 0x%x)", pos, offset, size);
-        pos = writeAttrData1((byte) offset, buffer, pos);
+        pos = writeAttrData2((short) offset, buffer, pos);
         int modifiers = Modifier.PUBLIC;
         log(context, "  [0x%08x]     modifiers %s", pos, "public");
         return writeAttrAccessibility(modifiers, buffer, pos);
