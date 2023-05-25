@@ -72,7 +72,18 @@ public class ExperimentParser {
      */
     private static class ProftoolLog {
         /**
-         * The execution ID of the experiment.
+         * The name of Native Image as a VM executing an experiment.
+         */
+        public static final String NATIVE_IMAGE = "native-image";
+
+        /**
+         * The name of the VM that executed the experiment (e.g., {@link #NATIVE_IMAGE}).
+         * {@code null} if unknown.
+         */
+        String vm;
+
+        /**
+         * The execution ID of the experiment. {@code null} if unknown.
          */
         String executionId;
 
@@ -85,6 +96,13 @@ public class ExperimentParser {
          * A list of sampled methods.
          */
         List<ProftoolMethod> methods = new ArrayList<>();
+
+        /**
+         * Infers the actual compilation kind of the parsed proftool log.
+         */
+        public Experiment.CompilationKind compilationKind() {
+            return NATIVE_IMAGE.equals(vm) ? Experiment.CompilationKind.AOT : Experiment.CompilationKind.JIT;
+        }
     }
 
     /**
@@ -129,15 +147,19 @@ public class ExperimentParser {
         Experiment experiment;
         Optional<FileView> proftoolLogFile = experimentFiles.getProftoolOutput();
         if (proftoolLogFile.isPresent()) {
-            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get(), experimentFiles.getCompilationKind());
-            switch (experimentFiles.getCompilationKind()) {
+            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get());
+            if (experimentFiles.getCompilationKind() != null && proftoolLog.compilationKind() != experimentFiles.getCompilationKind()) {
+                throw new ExperimentParserError(experimentFiles.getExperimentId(), "profile",
+                                "mismatched experiment kind: expected " + experimentFiles.getCompilationKind() + ", got" + proftoolLog.compilationKind());
+            }
+            switch (proftoolLog.compilationKind()) {
                 case JIT -> linkJITProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
                 case AOT -> linkAOTProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
             }
             experiment = new Experiment(
                             proftoolLog.executionId,
                             experimentFiles.getExperimentId(),
-                            experimentFiles.getCompilationKind(),
+                            proftoolLog.compilationKind(),
                             proftoolLog.totalPeriod,
                             proftoolLog.methods);
         } else {
@@ -233,18 +255,16 @@ public class ExperimentParser {
      * Parses proftool logs from a file view.
      *
      * @param fileView a view of a JSON file with the proftool log
-     * @param compilationKind the kind of compilation, i.e., JIT or AOT
      * @return the parsed proftool logs
      * @throws IOException failed to read the file
      * @throws ExperimentParserError failed to parse the file
      */
-    private ProftoolLog parseProftoolLog(FileView fileView, Experiment.CompilationKind compilationKind) throws IOException, ExperimentParserError {
+    private ProftoolLog parseProftoolLog(FileView fileView) throws IOException, ExperimentParserError {
         ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), fileView);
         ProftoolLog proftoolLog = new ProftoolLog();
         ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-        if (compilationKind == Experiment.CompilationKind.JIT) {
-            proftoolLog.executionId = map.property("executionId").asString();
-        }
+        proftoolLog.vm = map.property("vm").asNullableString();
+        proftoolLog.executionId = map.property("executionId").asNullableString();
         proftoolLog.totalPeriod = map.property("totalPeriod").asLong();
         for (ExperimentJSONParser.JSONLiteral codeObject : map.property("code").asList()) {
             ExperimentJSONParser.JSONMap code = codeObject.asMap();

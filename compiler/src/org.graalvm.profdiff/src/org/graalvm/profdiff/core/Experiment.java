@@ -57,12 +57,12 @@ public class Experiment {
 
     /**
      * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
-     * ahead-of-time.
+     * ahead-of-time. {@code null} if unknown.
      */
     private final CompilationKind compilationKind;
 
     /**
-     * The execution ID of this experiment.
+     * The execution ID of this experiment. {@code null} if unknown.
      */
     private final String executionId;
 
@@ -147,7 +147,7 @@ public class Experiment {
     }
 
     /**
-     * Gets the execution ID.
+     * Gets the execution ID or {@code null} if unknown.
      */
     public String getExecutionId() {
         return executionId;
