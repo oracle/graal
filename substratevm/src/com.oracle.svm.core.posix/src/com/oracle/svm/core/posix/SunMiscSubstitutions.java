@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -49,7 +50,6 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -219,12 +219,11 @@ final class Util_jdk_internal_misc_Signal {
         for (Signal.SignalEnum value : Signal.SignalEnum.values()) {
             signalStateList.add(new SignalState(value.name(), value.getCValue()));
         }
-        if (IsDefined.isLinux()) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             for (Signal.LinuxSignalEnum value : Signal.LinuxSignalEnum.values()) {
                 signalStateList.add(new SignalState(value.name(), value.getCValue()));
             }
-        }
-        if (IsDefined.isDarwin()) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             for (Signal.DarwinSignalEnum value : Signal.DarwinSignalEnum.values()) {
                 signalStateList.add(new SignalState(value.name(), value.getCValue()));
             }

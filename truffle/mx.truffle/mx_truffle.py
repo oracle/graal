@@ -245,6 +245,8 @@ def _truffle_gate_runner(args, tasks):
                 if mx.project('com.oracle.truffle.nfi.backend.panama').javaPreviewNeeded:
                     args += ['--enable-preview']
                 unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
+    with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
+        if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
         with Task('Truffle DSL max state bit tests', tasks) as t:
             if t:

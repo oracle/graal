@@ -33,7 +33,6 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.graph.NodeClass;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 
@@ -393,7 +393,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
      * universe.
      */
     @SuppressWarnings("try")
-    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, ConstantFieldProvider constantFieldProvider) {
+    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, Providers providers) {
 
         for (Map.Entry<AnalysisType, SubstrateType> entry : types.entrySet()) {
             AnalysisType aType = entry.getKey();
@@ -425,7 +425,9 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             SubstrateField sField = entry.getValue();
             HostedField hField = hUniverse.lookup(aField);
 
-            JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) constantFieldProvider).isFinalField(hField, null) ? hField.readValue(null) : null;
+            JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
+                            ? providers.getConstantReflection().readFieldValue(hField, null)
+                            : null;
             sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten(), constantValue);
         }
     }

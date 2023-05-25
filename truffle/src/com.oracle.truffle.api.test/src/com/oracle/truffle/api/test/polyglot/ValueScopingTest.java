@@ -115,6 +115,7 @@ public class ValueScopingTest {
 
     public static class StoreAndPinTest {
         private Value value;
+        private Object object;
         private Map<String, Object> map;
 
         StoreAndPinTest() {
@@ -129,6 +130,21 @@ public class ValueScopingTest {
         @HostAccess.Export
         public void storeValue(Value v) {
             value = v;
+        }
+
+        @HostAccess.Export
+        public void storeValueMemberAsObject(Value v, String member) {
+            object = v.getMember(member).as(Object.class);
+        }
+
+        @HostAccess.Export
+        public void storeValueMember(Value v, String member) {
+            value = v.getMember(member);
+        }
+
+        @HostAccess.Export
+        public void storeObject(Object o) {
+            object = o;
         }
 
         @HostAccess.Export
@@ -192,6 +208,14 @@ public class ValueScopingTest {
             StoreAndPinTest o = new StoreAndPinTest();
             Map<String, Object> map = new HashMap<>();
             map.put("cafe", "42");
+            map.put("cafeboolean", true);
+            map.put("cafebyte", (byte) 42);
+            map.put("cafeshort", (short) 42);
+            map.put("cafeint", 42);
+            map.put("cafelong", 42L);
+            map.put("cafefloat", 42.0f);
+            map.put("cafedouble", 42.0d);
+            map.put("cafechar", (char) 42);
             map.put("array", ProxyArray.fromArray());
             ProxyObject proxy = ProxyObject.fromMap(map);
             Value test = context.asValue(o);
@@ -199,11 +223,68 @@ public class ValueScopingTest {
             // no-op
             test.pin();
 
+            // scoped primitive values preserve type (second level scoped objects (members of first
+            // level scoped object))
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafeboolean");
+            assertEquals(Boolean.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafebyte");
+            assertEquals(Byte.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafeshort");
+            assertEquals(Short.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafeint");
+            assertEquals(Integer.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafelong");
+            assertEquals(Long.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafefloat");
+            assertEquals(Float.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafedouble");
+            assertEquals(Double.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafechar");
+            assertEquals(Character.class, o.object.getClass());
+            test.invokeMember("storeValueMemberAsObject", proxy, "cafe");
+            assertEquals(String.class, o.object.getClass());
+
+            // primitive value accessed out of scope
+            test.invokeMember("storeValueMember", proxy, "cafe");
+            assertFails(() -> o.value.isString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.asString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
             // value accessed out of scope
             test.invokeMember("storeValue", proxy);
             assertFails(() -> o.value.isString(), IllegalStateException.class, SCOPE_RELEASED);
             assertFails(() -> o.value.asString(), IllegalStateException.class, SCOPE_RELEASED);
             assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
+            // primitive value accessed out of scope
+            test.invokeMember("storeValue", "42");
+            assertFails(() -> o.value.isString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.asString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
+            // value passed as Object parameter accessed out of scope
+            test.invokeMember("storeObject", proxy);
+            assertFails(() -> ((Map<?, ?>) o.object).get("cafe"), IllegalStateException.class, SCOPE_RELEASED);
+
+            // scoped primitive values preserve type (first level scoped)
+            test.invokeMember("storeObject", true);
+            assertEquals(Boolean.class, o.object.getClass());
+            test.invokeMember("storeObject", (byte) 42);
+            assertEquals(Byte.class, o.object.getClass());
+            test.invokeMember("storeObject", (short) 42);
+            assertEquals(Short.class, o.object.getClass());
+            test.invokeMember("storeObject", 42);
+            assertEquals(Integer.class, o.object.getClass());
+            test.invokeMember("storeObject", 42L);
+            assertEquals(Long.class, o.object.getClass());
+            test.invokeMember("storeObject", 42.0f);
+            assertEquals(Float.class, o.object.getClass());
+            test.invokeMember("storeObject", 42.0d);
+            assertEquals(Double.class, o.object.getClass());
+            test.invokeMember("storeObject", (char) 42);
+            assertEquals(Character.class, o.object.getClass());
+            test.invokeMember("storeObject", "42");
+            assertEquals(String.class, o.object.getClass());
 
             test.invokeMember("storeMap", proxy);
             assertFails(() -> o.map.get(""), IllegalStateException.class, SCOPE_RELEASED);

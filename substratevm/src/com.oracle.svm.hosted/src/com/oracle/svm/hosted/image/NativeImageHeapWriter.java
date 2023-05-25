@@ -55,7 +55,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -112,7 +111,7 @@ public final class NativeImageHeapWriter {
          */
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
-        for (HostedField field : heap.getUniverse().getFields()) {
+        for (HostedField field : heap.hUniverse.getFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
@@ -122,15 +121,15 @@ public final class NativeImageHeapWriter {
     }
 
     private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return snippetReflection().asObject(Object.class, field.readStorageValue(receiver));
+        return snippetReflection().asObject(Object.class, heap.hConstantReflection.readFieldValue(field, receiver));
     }
 
     private int referenceSize() {
-        return heap.getObjectLayout().getReferenceSize();
+        return heap.objectLayout.getReferenceSize();
     }
 
     private void mustBeReferenceAligned(int index) {
-        assert (index % heap.getObjectLayout().getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
+        assert (index % heap.objectLayout.getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
@@ -143,12 +142,12 @@ public final class NativeImageHeapWriter {
         int index = fields.getIndexInBuffer(field.getLocation());
         JavaConstant value;
         try {
-            value = field.readValue(receiver);
+            value = heap.hConstantReflection.readFieldValue(field, receiver);
         } catch (AnalysisError.TypeNotFoundError ex) {
             throw NativeImageHeap.reportIllegalType(ex.getType(), info);
         }
 
-        if (value.getJavaKind() == JavaKind.Object && heap.getMetaAccess().isInstanceOf(value, RelocatedPointer.class)) {
+        if (value.getJavaKind() == JavaKind.Object && heap.hMetaAccess.isInstanceOf(value, RelocatedPointer.class)) {
             addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
@@ -167,7 +166,7 @@ public final class NativeImageHeapWriter {
     private final CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
 
     void writeReference(RelocatableBuffer buffer, int index, JavaConstant target, Object reason) {
-        assert !(heap.getMetaAccess().isInstanceOf(target, WordBase.class)) : "word values are not references";
+        assert !(heap.hMetaAccess.isInstanceOf(target, WordBase.class)) : "word values are not references";
         mustBeReferenceAligned(index);
         if (target.isNonNull()) {
             ObjectInfo targetInfo = heap.getConstantInfo(target);
@@ -176,19 +175,19 @@ public final class NativeImageHeapWriter {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getAddress() >>> shift);
             } else {
-                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), snippetReflection().asObject(Object.class, target));
+                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
         }
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
-        if (heap.getMetaAccess().isInstanceOf(constant, RelocatedPointer.class)) {
+        if (heap.hMetaAccess.isInstanceOf(constant, RelocatedPointer.class)) {
             addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, constant));
             return;
         }
 
         final JavaConstant con;
-        if (heap.getMetaAccess().isInstanceOf(constant, WordBase.class)) {
+        if (heap.hMetaAccess.isInstanceOf(constant, WordBase.class)) {
             Object value = snippetReflection().asObject(Object.class, constant);
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) value).rawValue());
         } else if (constant.isNull() && kind == FrameAccess.getWordKind()) {
@@ -248,7 +247,7 @@ public final class NativeImageHeapWriter {
 
     private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
         assert !NativeImageHeap.spawnIsolates() || heapLayout.isReadOnlyRelocatable(index);
-        buffer.addRelocationWithAddend(index, referenceSize() == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, objectHeaderBits, target);
+        buffer.addRelocationWithAddend(index, referenceSize() == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, objectHeaderBits, snippetReflection().forObject(target));
         if (sectionOffsetOfARelocatablePointer == -1) {
             sectionOffsetOfARelocatablePointer = index;
         }
@@ -312,7 +311,7 @@ public final class NativeImageHeapWriter {
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.
          */
-        ObjectLayout objectLayout = heap.getObjectLayout();
+        ObjectLayout objectLayout = heap.objectLayout;
         final int indexInBuffer = info.getIndexInBuffer(objectLayout.getHubOffset());
         assert objectLayout.isAligned(indexInBuffer);
 
@@ -386,25 +385,23 @@ public final class NativeImageHeapWriter {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
             JavaConstant constant = info.getConstant();
+
+            int length = heap.hConstantReflection.readArrayLength(constant);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
+
             if (constant instanceof ImageHeapConstant) {
                 if (clazz.getComponentType().isPrimitive()) {
                     ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
-                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), imageHeapArray.getLength());
+                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
                 } else {
-                    AnalysisConstantReflectionProvider constantReflection = heap.getUniverse().getConstantReflectionProvider();
-                    int length = constantReflection.readArrayLength(constant);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
-                    constantReflection.forEachArrayElement(constant, (element, index) -> {
+                    heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
                         final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, index));
                         writeConstant(buffer, elementIndex, kind, element, info);
                     });
                 }
             } else {
                 Object array = info.getObject();
-                int length = Array.getLength(array);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                 if (array instanceof Object[]) {
                     Object[] oarray = (Object[]) array;
                     assert oarray.length == length;
@@ -433,14 +430,14 @@ public final class NativeImageHeapWriter {
 
     private Object maybeReplace(Object object, Object reason) {
         try {
-            return heap.getAnalysisUniverse().replaceObject(object);
+            return heap.aUniverse.replaceObject(object);
         } catch (AnalysisError.TypeNotFoundError ex) {
             throw NativeImageHeap.reportIllegalType(ex.getType(), reason);
         }
     }
 
     private SnippetReflectionProvider snippetReflection() {
-        return heap.getUniverse().getSnippetReflection();
+        return heap.hUniverse.getSnippetReflection();
     }
 
 }

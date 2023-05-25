@@ -237,7 +237,7 @@ public abstract class NativeImageCodeCache {
             return;
         }
 
-        HostedType hostedType = imageHeap.getMetaAccess().lookupJavaType((JavaConstant) constant);
+        HostedType hostedType = imageHeap.hMetaAccess.lookupJavaType((JavaConstant) constant);
         if (!hostedType.isInstantiated()) {
             throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + hostedType.getName() + "." +
                             (reason != null ? " Method: " + reason : ""));
@@ -262,8 +262,8 @@ public abstract class NativeImageCodeCache {
             encodeMethod(codeInfoEncoder, pair);
         }
 
-        HostedUniverse hUniverse = imageHeap.getUniverse();
-        HostedMetaAccess hMetaAccess = imageHeap.getMetaAccess();
+        HostedUniverse hUniverse = imageHeap.hUniverse;
+        HostedMetaAccess hMetaAccess = imageHeap.hMetaAccess;
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(hUniverse.getSnippetReflection(), encoders);
         ReflectionHostedSupport reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
 
@@ -436,7 +436,7 @@ public abstract class NativeImageCodeCache {
         deoptEntries.sort(Comparator.comparing(e -> e.getKey().format("%H.%n(%p)")));
 
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
-            HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
+            HostedMethod method = imageHeap.hUniverse.lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
 
             if (method.hasCalleeSavedRegisters()) {
                 System.out.println("DeoptEntry has callee saved registers: " + method.format("%H.%n(%p)"));
@@ -600,7 +600,7 @@ public abstract class NativeImageCodeCache {
             writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
         writer.println("--- vtables:");
-        for (HostedType type : imageHeap.getUniverse().getTypes()) {
+        for (HostedType type : imageHeap.hUniverse.getTypes()) {
             for (int i = 0; i < type.getVTable().length; i++) {
                 HostedMethod method = type.getVTable()[i];
                 if (method != null) {

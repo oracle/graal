@@ -4,6 +4,7 @@
   local jvm_config = config.compiler.default_jvm_config,
   local s = self,
   local t(limit) = {timelimit: limit},
+  local utils = import '../../../ci/ci_common/common-utils.libsonnet',
 
   local jmh_benchmark_test = {
     run+: [
@@ -123,7 +124,7 @@
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false " +
                   "-XX:+UseZGC",
-    extra_unittest_args="--very-verbose truffle") + {
+    extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"]
     },
@@ -134,7 +135,7 @@
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false " +
                   "-XX:+UseSerialGC",
-    extra_unittest_args="--very-verbose truffle") + {
+    extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"]
     },
@@ -167,9 +168,6 @@
   many_cores:: {
     capabilities+: ["manycores"]
   },
-
-  # Returns true if `str` contains `needle` as a substring.
-  contains(str, needle):: std.findSubstr(needle, str) != [],
 
   # Returns the value of the `name` field if it exists in `obj` otherwise `default`.
   get(obj, name, default=null)::
@@ -309,7 +307,7 @@
     local is_daily = $.manifest_match(dailies_manifest, daily_name),
     local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
     local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
-    local is_windows = $.contains(os_arch, "windows"),
+    local is_windows = utils.contains(os_arch, "windows"),
     local extra = if is_gate then
         $.get(gates_manifest, gate_name, {})
       else if is_daily then
@@ -387,7 +385,7 @@
     ]
     for jdk in [
       "17",
-      if $.contains(task, "coverage") then "20" else "21" # JaCoCo does not yet support JDK 21 (GR-46006)
+      "21"
     ]
     for os_arch in all_os_arches
   ],
@@ -441,9 +439,6 @@
     ]
   ],
 
-  # JaCoCo does not yet support JDK 21
-  local coverage_avx3_builds = [self.make_build("20", "linux-amd64", "coverage_avx3").build],
-
   # Run the style build only on linux-amd64-jdk20 as code quality tools
   # only need to run on one platform. Furthermore they should be run on
   # JDK-(latest - 1) as most tools won't support JDK-latest until it has
@@ -463,7 +458,6 @@
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
-    coverage_avx3_builds +
     linux_amd64_jdk21_builds +
     linux_amd64_jdk21Debug_builds,
 

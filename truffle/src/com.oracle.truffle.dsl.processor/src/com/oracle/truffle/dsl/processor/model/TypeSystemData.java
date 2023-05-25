@@ -206,10 +206,10 @@ public class TypeSystemData extends Template {
         if (legacyTypeIds == null) {
             legacyTypeIds = new HashSet<>();
             for (TypeMirror legacyType : legacyTypes) {
-                legacyTypeIds.add(ElementUtils.getTypeId(legacyType));
+                legacyTypeIds.add(ElementUtils.getTypeSimpleId(legacyType));
             }
         }
-        return legacyTypeIds.contains(ElementUtils.getTypeId(type));
+        return legacyTypeIds.contains(ElementUtils.getTypeSimpleId(type));
     }
 
 }

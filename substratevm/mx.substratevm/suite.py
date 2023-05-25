@@ -256,6 +256,7 @@ suite = {
                 "java.base" : [
                     "sun.invoke.util",
                     "sun.net",
+                    "sun.net.www",
                     "sun.nio.ch",
                     "sun.reflect.annotation",
                     "sun.reflect.generics.factory",
@@ -642,6 +643,13 @@ suite = {
                     "sun.util.locale",
                     "sun.invoke.util",
                 ],
+                "java.management": [
+                    "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
+                    "sun.management", # Needed for javadoc links (MappedMXBeanType)
+                ],
+                "java.rmi": [
+                    "sun.rmi.server",  # Needed for javadoc links (UnicastRef, UnicastRef2)
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
@@ -655,6 +663,11 @@ suite = {
                 "jdk.jfr": [
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "java.management.rmi": [
+                    "com.sun.jmx.remote.internal.rmi", # Needed for javadoc links (ProxyRef)
+                    "com.sun.jmx.remote.protocol.rmi", # Needed for javadoc links (ClientProvider, ServerProvider)
+                    "javax.management.remote.rmi", # Needed for javadoc links (RMIServer, RMIServerImpl_Stub, RMIConnection, RMIConnectionImpl_Stub)
                 ],
             },
             "javaCompliance" : "17+",

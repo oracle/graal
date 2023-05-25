@@ -28,6 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 
 @TargetClass(ThreadLocal.class)
 @SuppressWarnings({"unused"})
@@ -40,7 +41,7 @@ public final class Target_java_lang_ThreadLocal {
 @SuppressWarnings({"unused"})
 final class Target_java_lang_ThreadLocal_ThreadLocalMap {
     // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class}) //
     static Target_java_lang_ThreadLocal_ThreadLocalMap NOT_SUPPORTED;
     // Checkstyle: resume
 

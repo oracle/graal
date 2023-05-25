@@ -88,8 +88,8 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
-import org.graalvm.shadowed.org.jline.terminal.Terminal;
-import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");

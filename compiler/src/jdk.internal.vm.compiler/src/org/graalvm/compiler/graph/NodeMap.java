@@ -130,11 +130,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         Arrays.fill(values, null);
     }
 
-    // remove after GR-42126 is resolved
-    public Object[] rawValues() {
-        return values;
-    }
-
     @Override
     public Iterable<Node> getKeys() {
         return new Iterable<>() {
@@ -217,57 +212,44 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         };
     }
 
-    // Remove once GR-42126 is fixed
-    public class NodeMapIterable implements Iterable<T> {
-
-        int i;
-        int pos;
-
-        @Override
-        public Iterator<T> iterator() {
-            return new Iterator<>() {
-
-                @Override
-                public boolean hasNext() {
-                    forward();
-                    return i < NodeMap.this.values.length;
-                }
-
-                @SuppressWarnings("unchecked")
-                @Override
-                public T next() {
-                    pos = i;
-                    final T value = (T) NodeMap.this.values[pos];
-                    i++;
-                    forward();
-                    return value;
-                }
-
-                @Override
-                public void remove() {
-                    throw new UnsupportedOperationException();
-                }
-
-                private void forward() {
-                    while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
-                        i++;
-                    }
-                }
-            };
-        }
-
-        public int getI() {
-            return i;
-        }
-
-        public int getPos() {
-            return pos;
-        }
-    }
-
     @Override
     public Iterable<T> getValues() {
-        return new NodeMapIterable();
+        return new Iterable<>() {
+            @Override
+            public Iterator<T> iterator() {
+                return new Iterator<>() {
+
+                    int i;
+
+                    @Override
+                    public boolean hasNext() {
+                        forward();
+                        return i < NodeMap.this.values.length;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    @Override
+                    public T next() {
+                        final int pos = i;
+                        final T value = (T) NodeMap.this.values[pos];
+                        i++;
+                        forward();
+                        return value;
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    private void forward() {
+                        while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
+                            i++;
+                        }
+                    }
+                };
+            }
+        };
     }
 
     @Override

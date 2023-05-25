@@ -57,10 +57,10 @@ public class SubstrateType implements SharedType {
      * If it is not known if the type has an instance field (because the type metadata was created
      * at image runtime), it is null.
      */
-    @UnknownObjectField(types = SubstrateField[].class, canBeNull = true)//
+    @UnknownObjectField(canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField(types = {DynamicHub.class}) protected DynamicHub uniqueConcreteImplementation;
+    @UnknownObjectField protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;

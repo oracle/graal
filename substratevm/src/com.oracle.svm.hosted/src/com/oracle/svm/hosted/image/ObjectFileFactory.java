@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes;
+package com.oracle.svm.hosted.image;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.word.Pointer;
+import java.nio.file.Path;
 
-public final class VectorizedMismatchForeignCalls {
+import org.graalvm.nativeimage.ImageSingletons;
 
-    public static final ForeignCallDescriptor STUB = ForeignCalls.pureFunctionForeignCallDescriptor("vectorizedMismatch",
-                    int.class, Pointer.class, Pointer.class, int.class, int.class);
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.objectfile.ObjectFile;
+
+public interface ObjectFileFactory {
+
+    ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb);
+
+    static ObjectFileFactory singleton() {
+        return ImageSingletons.lookup(ObjectFileFactory.class);
+    }
 }

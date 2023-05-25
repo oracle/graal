@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -94,6 +95,7 @@ import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -130,6 +132,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerStrictMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
+                registerArraysSupportPlugins(invocationPlugins, arch, replacements);
             }
         });
     }
@@ -666,4 +669,45 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
     }
+
+    // Sync with ArraysSupport.java
+    public static final int T_BOOLEAN = 4;
+    public static final int T_CHAR = 5;
+    public static final int T_BYTE = 8;
+    public static final int T_SHORT = 9;
+    public static final int T_INT = 10;
+
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
+        Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InvocationPlugin("vectorizedHashCode", Object.class, int.class, int.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                                ValueNode array, ValueNode fromIndex, ValueNode length, ValueNode initialValue, ValueNode basicType) {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        if (basicType.isConstant()) {
+                            ValueNode arrayStart;
+                            int basicTypeAsInt = basicType.asJavaConstant().asInt();
+                            JavaKind componentType = switch (basicTypeAsInt) {
+                                case T_BOOLEAN -> JavaKind.Boolean;
+                                case T_CHAR -> JavaKind.Char;
+                                case T_BYTE -> JavaKind.Byte;
+                                case T_SHORT -> JavaKind.Short;
+                                case T_INT -> JavaKind.Int;
+                                default -> throw GraalError.shouldNotReachHere("Unsupported kind " + basicTypeAsInt);
+                            };
+
+                            // for T_CHAR, the intrinsic accepts both byte[] and char[]
+                            arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
+                            b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
 }

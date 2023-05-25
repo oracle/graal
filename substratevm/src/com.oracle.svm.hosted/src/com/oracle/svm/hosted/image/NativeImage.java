@@ -34,10 +34,8 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -48,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
@@ -88,6 +87,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -147,7 +147,7 @@ public abstract class NativeImage extends AbstractImage {
         relocationProvider = MethodPointerRelocationProvider.singleton();
 
         int pageSize = SubstrateOptions.getPageSize();
-        objectFile = ObjectFile.getNativeObjectFile(pageSize);
+        objectFile = ObjectFileFactory.singleton().newObjectFile(pageSize, ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), universe.getBigBang());
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
@@ -156,17 +156,13 @@ public abstract class NativeImage extends AbstractImage {
     @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
-    protected final void write(DebugContext context, Path outputFile) {
+    protected final void write(DebugContext context, Path outputFile, ForkJoinPool forkJoinPool) {
         try {
             Path outFileParent = outputFile.normalize().getParent();
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
-            try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-                objectFile.withDebugContext(context, "ObjectFile.write", () -> {
-                    objectFile.write(channel);
-                });
-            }
+            objectFile.write(context, outputFile, forkJoinPool);
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }
@@ -545,8 +541,8 @@ public abstract class NativeImage extends AbstractImage {
                 } else {
                     // Relocations from other sections go to the section containing the target.
                     // Pass along the information about the target.
-                    final Object targetObject = info.getTargetObject();
-                    final ObjectInfo targetObjectInfo = heap.getObjectInfo(targetObject);
+                    final JavaConstant targetConstant = (JavaConstant) info.getTargetObject();
+                    final ObjectInfo targetObjectInfo = heap.getConstantInfo(targetConstant);
                     markDataRelocationSite(sectionImpl, offset, info, targetObjectInfo);
                 }
             }
@@ -573,7 +569,7 @@ public abstract class NativeImage extends AbstractImage {
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
-        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         if (!target.isCompiled()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }

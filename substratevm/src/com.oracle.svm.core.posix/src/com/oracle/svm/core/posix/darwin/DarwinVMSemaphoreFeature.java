@@ -73,8 +73,7 @@ final class DarwinVMSemaphoreFeature implements InternalFeature {
 final class DarwinVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = DarwinVMSemaphore[].class)//
-    DarwinVMSemaphore[] semaphores;
+    @UnknownObjectField DarwinVMSemaphore[] semaphores;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")

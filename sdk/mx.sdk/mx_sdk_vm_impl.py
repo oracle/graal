@@ -2381,7 +2381,7 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return False, None
 
     def build(self):
-        mx.ensure_dir_exists(basename(self.subject.output_file()))
+        mx.ensure_dir_exists(dirname(self.subject.output_file()))
         graalvm_jimage_home = self.subject.jimage_project.output_directory()
 
         # 1. copy the jmod file from the jimage to the output path
@@ -3714,7 +3714,8 @@ def check_versions(jdk, expect_graalvm, check_jvmci):
     if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and (jdk_version <= mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11')):
         mx.abort("GraalVM requires >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk.home, jdk_version, out, check_env))
 
-    if not expect_graalvm and "GraalVM" in out:
+    # Benchmarks can be executed with --jvm=native-image-java-home, in which case the JAVA_HOME points to GraalVM and it is correct.
+    if not expect_graalvm and "GraalVM" in out and 'benchmark' not in sys.argv:
         mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk.home, check_env))
 
 

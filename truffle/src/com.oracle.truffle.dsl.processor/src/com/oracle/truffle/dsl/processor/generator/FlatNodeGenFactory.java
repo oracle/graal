@@ -48,7 +48,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterLowe
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeId;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeSimpleId;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getVisibility;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isObject;
@@ -890,7 +890,7 @@ public class FlatNodeGenFactory {
     }
 
     private static String createImplicitTypeStateLocalName(Parameter execution) {
-        String name = firstLetterLowerCase(getTypeId(execution.getType()));
+        String name = firstLetterLowerCase(getTypeSimpleId(execution.getType()));
         return name + "Cast" + execution.getSpecification().getExecution().getIndex();
     }
 
@@ -7221,7 +7221,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeExecutableElement method = constants.encodeConstants.get(typeId);
         if (method == null) {
-            String methodName = constants.reserveSymbol(mirror, "encode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeId(mirror)));
+            String methodName = constants.reserveSymbol(mirror, "encode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeSimpleId(mirror)));
             method = new CodeExecutableElement(modifiers(PRIVATE, STATIC), context.getType(int.class), methodName);
             method.addParameter(new CodeVariableElement(mirror, "e"));
             CodeTreeBuilder builder = method.createBuilder();
@@ -7239,7 +7239,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeExecutableElement method = constants.decodeConstants.get(typeId);
         if (method == null) {
-            String methodName = constants.reserveSymbol(mirror, "decode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeId(mirror)));
+            String methodName = constants.reserveSymbol(mirror, "decode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeSimpleId(mirror)));
             method = new CodeExecutableElement(modifiers(PRIVATE, STATIC), mirror, methodName);
             method.addParameter(new CodeVariableElement(context.getType(int.class), "state"));
             CodeTreeBuilder builder = method.createBuilder();
@@ -7257,7 +7257,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeVariableElement var = constants.enumValues.get(typeId);
         if (var == null) {
-            String constantName = constants.reserveSymbol(mirror, ElementUtils.createConstantName(ElementUtils.getTypeId(mirror)) + "_VALUES");
+            String constantName = constants.reserveSymbol(mirror, ElementUtils.createConstantName(ElementUtils.getTypeSimpleId(mirror)) + "_VALUES");
             var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), new ArrayCodeTypeMirror(mirror), constantName);
             addCompilationFinalAnnotation(var, 1);
             CodeTreeBuilder init = var.createInitBuilder();

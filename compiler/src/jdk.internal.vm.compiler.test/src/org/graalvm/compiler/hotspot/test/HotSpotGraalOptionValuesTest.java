@@ -35,13 +35,7 @@ import org.graalvm.compiler.options.OptionsParser;
 import org.junit.Assert;
 import org.junit.Test;
 
-import sun.instrument.InstrumentationImpl;
-
 public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
-
-    public static long objectSize(InstrumentationImpl impl, Object o) {
-        return impl.getObjectSize(o);
-    }
 
     @Test
     public void testPrintHelp() throws IOException {

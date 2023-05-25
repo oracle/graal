@@ -29,6 +29,7 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,32 +49,36 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         String[] events = new String[]{"jdk.ThreadCPULoad"};
         Recording recording = startRecording(events);
 
-        Thread thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 0.1);
-        Thread thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 1.0);
+        WeakReference<Thread> thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 0.1);
+        WeakReference<Thread> thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 1.0);
 
-        thread1.join();
-        thread2.join();
+        waitUntilCollected(thread1);
+        waitUntilCollected(thread2);
 
         stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
         assertEquals(2, events.size());
-        Map<String, Float> systemTimes = new HashMap<>();
+        Map<String, Float> userTimes = new HashMap<>();
+        Map<String, Float> cpuTimes = new HashMap<>();
 
         for (RecordedEvent e : events) {
+            String threadName = e.getThread().getJavaName();
             float userTime = e.<Float> getValue("user");
             float systemTime = e.<Float> getValue("system");
             assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
             assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
-            systemTimes.put(e.getThread().getJavaName(), systemTime);
+
+            userTimes.put(threadName, userTime);
+            cpuTimes.put(threadName, userTime + systemTime);
         }
 
-        assertTrue("Thread-1 system cpu time is greater than Thread-2 system cpu time",
-                        systemTimes.get(THREAD_NAME_1) < systemTimes.get(THREAD_NAME_2));
+        assertTrue(userTimes.get(THREAD_NAME_1) < userTimes.get(THREAD_NAME_2));
+        assertTrue(cpuTimes.get(THREAD_NAME_1) < cpuTimes.get(THREAD_NAME_2));
     }
 
-    private static Thread createAndStartBusyWaitThread(String name, double busyPercent) {
+    private static WeakReference<Thread> createAndStartBusyWaitThread(String name, double busyPercent) {
         Thread thread = new Thread(() -> {
             assert busyPercent >= 0 && busyPercent <= 1;
             long busyMs = (long) (DURATION_MS * busyPercent);
@@ -84,7 +89,7 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         });
         thread.setName(name);
         thread.start();
-        return thread;
+        return new WeakReference<>(thread);
     }
 
     private static void busyWait(long delay) {
@@ -98,6 +103,27 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException ignored) {
+        }
+    }
+
+    /**
+     * Waits until the thread object was garbage collected. Thread.join() is not sufficient because
+     * it may return before the ThreadCPULoad events are emitted in
+     * JfrThreadLocal.afterThreadExit().
+     */
+    private static void waitUntilCollected(WeakReference<Thread> thread) throws InterruptedException {
+        join(thread);
+
+        while (!thread.refersTo(null)) {
+            Thread.sleep(100);
+            System.gc();
+        }
+    }
+
+    private static void join(WeakReference<Thread> thread) throws InterruptedException {
+        Thread t = thread.get();
+        if (t != null) {
+            t.join();
         }
     }
 }

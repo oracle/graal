@@ -262,13 +262,19 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private void checkGraph(ResolvedJavaMethod method, StructuredGraph graph) {
+        Uninterruptible annotation = Uninterruptible.Utils.getAnnotation(method);
         for (Node node : graph.getNodes()) {
             if (isAllocationNode(node)) {
                 violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to allocate.");
             } else if (node instanceof MonitorEnterNode) {
                 violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to use 'synchronized'.");
-            } else if (node instanceof EnsureClassInitializedNode) {
-                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " not allowed to do class initialization.");
+            } else if (node instanceof EnsureClassInitializedNode && annotation.calleeMustBe()) {
+                /*
+                 * Class initialization nodes are lowered to some simple nodes and a foreign call.
+                 * It is therefore safe to have class initialization nodes in methods that are
+                 * annotated with calleeMustBe = false.
+                 */
+                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to do class initialization.");
             }
         }
     }

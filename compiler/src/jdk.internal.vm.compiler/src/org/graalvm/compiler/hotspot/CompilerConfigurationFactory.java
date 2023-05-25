@@ -45,6 +45,7 @@ import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
@@ -199,6 +200,9 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return candidates;
     }
 
+    // Ensures ShowConfiguration output is printed once per VM process.
+    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong(0L);
+
     /**
      * Selects and instantiates a {@link CompilerConfigurationFactory}. The selection algorithm is
      * as follows: if {@code name} is non-null, then select the factory with the same name else if
@@ -241,7 +245,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         assert factory != null;
 
         ShowConfigurationLevel level = Options.ShowConfiguration.getValue(options);
-        if (level != ShowConfigurationLevel.none) {
+        if (level != ShowConfigurationLevel.none && shownConfiguration.compareAndSet(0L, 1L)) {
             switch (level) {
                 case info: {
                     printConfigInfo(factory);

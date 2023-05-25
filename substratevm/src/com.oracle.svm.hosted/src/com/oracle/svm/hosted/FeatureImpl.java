@@ -590,7 +590,7 @@ public class FeatureImpl {
                     JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
                     for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, field.readValue(constant));
+                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, heap.hConstantReflection.readFieldValue(field, constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                         }
                     }

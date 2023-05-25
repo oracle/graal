@@ -260,11 +260,12 @@ public class DebugHelper {
             Log.log().string(hub.getName()).newline();
         }
 
-        @Uninterruptible(reason = "Called with a raw object pointer.")
+        @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
         @CEntryPoint(name = "svm_dbg_print_obj", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class)
         public static void printObject(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
             SubstrateDiagnostics.printObjectInfo(Log.log(), objPtr);
+            Log.log().newline();
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)

@@ -40,7 +40,6 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class LinuxPthread {
-
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
 

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core;
 
 import org.graalvm.compiler.options.Option;
 
@@ -32,6 +32,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 
 public class NativeImageClassLoaderOptions {
     public static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
+
     public static final String AddReadsFormat = "<module>=<target-module>(,<target-module>)*";
 
     @APIOption(name = "add-exports", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
@@ -51,11 +52,4 @@ public class NativeImageClassLoaderOptions {
     @APIOption(name = "list-modules")//
     @Option(help = "List observable modules and exit.")//
     public static final HostedOptionKey<Boolean> ListModules = new HostedOptionKey<>(false);
-
-    public static class ApplyNativeImageClassLoaderOptions implements NativeImageClassLoaderPostProcessing {
-        @Override
-        public void apply(NativeImageClassLoaderSupport support) {
-            support.processClassLoaderOptions();
-        }
-    }
 }

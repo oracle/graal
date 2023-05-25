@@ -30,6 +30,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 
 import java.lang.management.PlatformManagedObject;
 
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -45,6 +46,9 @@ import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+
+import javax.management.MBeanServer;
+import javax.management.remote.JMXServiceURL;
 
 @AutomaticallyRegisteredFeature
 public class JmxServerFeature implements InternalFeature {
@@ -68,7 +72,7 @@ public class JmxServerFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         handleNativeLibraries(access);
         registerJMXAgentResources();
-        configureReflection();
+        configureReflection(access);
         configureProxy(access);
         RuntimeSupport.getRuntimeSupport().addStartupHook(new ManagementAgentStartupHook());
     }
@@ -92,11 +96,18 @@ public class JmxServerFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
-    private static void configureReflection() {
-        /*
-         * Register all the custom substrate MXBeans. They won't be accounted for by the native
-         * image tracing agent so a user may not know they need to register them.
-         */
+    /**
+     * This method configures reflection metadata only required by a JMX server.
+     * <ul>
+     * <li>Here we register all the custom MXBeans of Substrate VM. They will not be accounted for
+     * by the native image tracing agent so a user may not know they need to register them.</li>
+     * <li>We also register {@link com.sun.jmx.remote.protocol.rmi.ServerProvider} which can be
+     * reflectively looked up on a code path starting from
+     * {@link javax.management.remote.JMXConnectorServerFactory#newJMXConnectorServer(JMXServiceURL, Map, MBeanServer)}
+     * </li>
+     * </ul>
+     */
+    private static void configureReflection(BeforeAnalysisAccess access) {
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
 
@@ -108,5 +119,8 @@ public class JmxServerFeature implements InternalFeature {
             Class<?> clazz = p.getClass();
             RuntimeReflection.register(clazz);
         }
+
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider"));
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider").getConstructors());
     }
 }

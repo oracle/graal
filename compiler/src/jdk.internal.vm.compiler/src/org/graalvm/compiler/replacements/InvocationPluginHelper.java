@@ -197,7 +197,7 @@ public class InvocationPluginHelper implements DebugCloseable {
      * the {@code kind} may be some larger primitive type.
      */
     public ValueNode arrayElementPointerScaled(ValueNode array, JavaKind kind, ValueNode index) {
-        return arrayElementPointer(array, kind, index, true);
+        return arrayElementPointer(array, kind, index, true, false);
     }
 
     /**
@@ -205,16 +205,23 @@ public class InvocationPluginHelper implements DebugCloseable {
      * {@code array}.
      */
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
-        return arrayElementPointer(array, kind, index, false);
+        return arrayElementPointer(array, kind, index, false, false);
     }
 
-    private ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean scaled) {
+    /**
+     * Unsafe variant of {@link #arrayElementPointer(ValueNode, JavaKind, ValueNode)}.
+     */
+    public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean skipComponentTypeCheck) {
+        return arrayElementPointer(array, kind, index, false, skipComponentTypeCheck);
+    }
+
+    private ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean scaled, boolean skipComponentTypeCheck) {
         // Permit scaled addressing within byte arrays
         JavaKind actualKind = scaled ? JavaKind.Byte : kind;
         // The visible type of the stamp should either be array type or Object. It's sometimes
         // Object because of cycles that hide the underlying type.
         ResolvedJavaType type = StampTool.typeOrNull(array);
-        assert type == null || (type.isArray() && type.getComponentType().getJavaKind() == actualKind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
+        assert skipComponentTypeCheck || type == null || (type.isArray() && type.getComponentType().getJavaKind() == actualKind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
         ValueNode offset = ConstantNode.forIntegerKind(wordKind, arrayBaseOffset);
         if (index != null) {

@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
 * GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
+* GR-46146 Added `TruffleLanguage#ContextLocalProvider` and `TruffleInstrument#ContextLocalProvider`, and deprecated `TruffleLanguage.createContextLocal`, `TruffleLanguage.createContextThreadLocal`, `TruffleInstrument.createContextLocal` and `TruffleInstrument.createContextThreadLocal`. Starting with JDK 21, the deprecated methods trigger the new this-escape warning. The replacement API avoids the warning.
 
 
 ## Version 23.0.0

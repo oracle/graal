@@ -603,12 +603,12 @@ public class ProgressReporter {
         if (!SubstrateOptions.BuildOutputRecommendations.getValue()) {
             return;
         }
-        l().printLineSeparator();
         List<UserRecommendation> recommendations = ImageSingletons.lookup(ProgressReporterFeature.class).getRecommendations();
         List<UserRecommendation> topApplicableRecommendations = recommendations.stream().filter(r -> r.isApplicable().get()).limit(5).toList();
         if (topApplicableRecommendations.isEmpty()) {
             return;
         }
+        l().printLineSeparator();
         l().yellowBold().a("Recommendations:").reset().println();
         for (UserRecommendation r : topApplicableRecommendations) {
             String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");

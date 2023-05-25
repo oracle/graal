@@ -40,6 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.util.LogUtils;
 
 public class BuildArtifactsExporter {
     private static final String ENV_VAR_REENABLE_DEPRECATED = "NATIVE_IMAGE_DEPRECATED_BUILD_ARTIFACTS_TXT";
@@ -47,6 +48,7 @@ public class BuildArtifactsExporter {
     public static void run(String imageName, BuildArtifacts buildArtifacts, Map<ArtifactType, List<Path>> buildArtifactsMap) {
         run(buildArtifacts, buildArtifactsMap);
         if ("true".equalsIgnoreCase(System.getenv().get(ENV_VAR_REENABLE_DEPRECATED))) {
+            LogUtils.warningDeprecatedEnvironmentVariable(ENV_VAR_REENABLE_DEPRECATED);
             reportDeprecatedBuildArtifacts(imageName, buildArtifacts, buildArtifactsMap);
         }
     }

@@ -154,7 +154,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         @Override
         public int hashCode() {
-            return Objects.hash(ElementUtils.getTypeId(libraryType), expressionKey);
+            return Objects.hash(ElementUtils.getTypeSimpleId(libraryType), expressionKey);
         }
 
         @Override

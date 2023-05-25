@@ -246,7 +246,7 @@ public abstract class PlatformThreads {
             while (isolateThread.isNonNull()) {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
                 if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
-                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(isolateThread, includeSystemTime);
                 }
                 isolateThread = VMThreads.nextThread(isolateThread);
             }
@@ -958,35 +958,39 @@ public abstract class PlatformThreads {
         }
     }
 
-    static void sleep(long millis) throws InterruptedException {
+    /**
+     * Sleeps for the given number of nanoseconds, dealing with JFR events, wakups and
+     * interruptions.
+     */
+    static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
         /* Starting with JDK 19, the thread sleep event is implemented as a Java-level event. */
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
                 Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
                 try {
-                    event.time = TimeUnit.MILLISECONDS.toNanos(millis);
+                    event.time = nanos;
                     event.begin();
-                    sleep0(millis);
+                    sleep0(nanos);
                 } finally {
                     event.commit();
                 }
             } else {
-                sleep0(millis);
+                sleep0(nanos);
             }
         } else {
             long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-            sleep0(millis);
-            ThreadSleepEventJDK17.emit(millis, startTicks);
+            sleep0(nanos);
+            ThreadSleepEventJDK17.emit(TimeUtils.roundNanosToMillis(nanos), startTicks);
         }
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static void sleep0(long millis) throws InterruptedException {
-        if (millis < 0) {
+    static void sleep0(long nanos) throws InterruptedException {
+        if (nanos < 0) {
             throw new IllegalArgumentException("Timeout value is negative");
         }
-        sleep1(TimeUtils.millisToNanos(millis));
+        sleep1(nanos);
         if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
             throw new InterruptedException();
         }

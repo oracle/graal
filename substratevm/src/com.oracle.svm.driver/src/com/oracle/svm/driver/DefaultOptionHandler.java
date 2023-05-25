@@ -459,7 +459,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHName + jarFileNameBase, origin));
         }
         Path finalFilePath = nativeImage.useBundle() ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
-        if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleMainClassAttribute)) {
+        if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleManifestFileAttributes)) {
             NativeImage.showError("No manifest in " + finalFilePath);
         }
         nativeImage.addCustomImageClasspath(finalFilePath);

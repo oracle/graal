@@ -40,7 +40,7 @@ public class AllocationCounter {
     /** Name of the method that increments this counter. */
     private final String name;
     /** Next allocation counter - this value is only written during compilation. */
-    @UnknownObjectField(types = AllocationCounter.class) private AllocationCounter next;
+    @UnknownObjectField private AllocationCounter next;
     /** Number of allocations. */
     private long count;
     /** Size of allocations in bytes. */

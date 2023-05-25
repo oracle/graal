@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -122,7 +123,7 @@ public abstract class AbstractImage {
     /**
      * Write the image to the named file.
      */
-    public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
+    public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool);
 
     // factory method
     public static AbstractImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
