@@ -229,6 +229,8 @@ public interface DebugInfoProvider {
         int offset();
 
         int size();
+
+        boolean isEmbedded();
     }
 
     interface DebugMethodInfo extends DebugMemberInfo {

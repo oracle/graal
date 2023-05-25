@@ -30,10 +30,13 @@ public class FieldEntry extends MemberEntry {
     private final int size;
     private final int offset;
 
-    public FieldEntry(FileEntry fileEntry, String fieldName, StructureTypeEntry ownerType, TypeEntry valueType, int size, int offset, int modifiers) {
+    private final boolean isEmbedded;
+
+    public FieldEntry(FileEntry fileEntry, String fieldName, StructureTypeEntry ownerType, TypeEntry valueType, int size, int offset, boolean isEmbedded, int modifiers) {
         super(fileEntry, fieldName, ownerType, valueType, modifiers);
         this.size = size;
         this.offset = offset;
+        this.isEmbedded = isEmbedded;
     }
 
     public String fieldName() {
@@ -46,5 +49,9 @@ public class FieldEntry extends MemberEntry {
 
     public int getOffset() {
         return offset;
+    }
+
+    public boolean isEmbedded() {
+        return isEmbedded;
     }
 }

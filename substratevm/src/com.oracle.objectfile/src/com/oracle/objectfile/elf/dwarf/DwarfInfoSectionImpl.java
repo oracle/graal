@@ -329,9 +329,26 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         String fieldName = fieldEntry.fieldName();
         TypeEntry valueType = fieldEntry.getValueType();
-        /* use the indirect type for the field so pointers get translated */
-        int valueTypeIdx = getIndirectTypeIndex(valueType);
-        log(context, "  [0x%08x] header field", pos);
+        int valueTypeIdx;
+        if (fieldEntry.isEmbedded()) {
+            assert valueType instanceof ClassEntry;
+            /* use the indirect layout type for the field */
+            /* handle special case when the field is an array */
+            int fieldSize = fieldEntry.getSize();
+            int valueSize = valueType.getSize();
+            if (fieldEntry.getSize() != valueType.getSize()) {
+                assert (fieldSize % valueSize == 0) : "embedded field size is not a multiple of value type size!";
+                // declare a local array of the embedded type and use it as the value type
+                valueTypeIdx = pos;
+                pos = writeEmbeddedArrayDataType(context, (ClassEntry) valueType, valueSize, fieldSize/valueSize, buffer, pos);
+            } else {
+                valueTypeIdx = getIndirectLayoutIndex((ClassEntry) valueType);
+            }
+        } else {
+            /* use the indirect type for the field so pointers get translated */
+            valueTypeIdx = getIndirectTypeIndex(valueType);
+        }
+        log(context, "  [0x%08x] struct field", pos);
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_header_field;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1296,7 +1313,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeArrayDataType(DebugContext context, TypeEntry elementType, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] array element data type", pos);
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type;
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type1;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int size = (elementType.isPrimitive() ? elementType.getSize() : 8);
@@ -1308,6 +1325,32 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeIdx, elementTypeName);
         pos = writeInfoSectionOffset(elementTypeIdx, buffer, pos);
         return pos;
+    }
+
+    private int writeEmbeddedArrayDataType(DebugContext context, ClassEntry elementType, int valueSize, int arraySize, byte[] buffer, int p) {
+        int pos = p;
+        log(context, "  [0x%08x] embedded array element data type", pos);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2;
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, arraySize);
+        pos = writeAttrData1((byte) arraySize, buffer, pos);
+        String elementTypeName = elementType.getTypeName();
+        /* use the indirect layout type for the element */
+        int elementTypeIdx = getIndirectLayoutIndex(elementType);
+        log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeIdx, elementTypeName);
+        pos = writeInfoSectionOffset(elementTypeIdx, buffer, pos);
+        // write subrange child DIE
+        log(context, "  [0x%08x] embedded array element range", pos);
+        abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_subrange;
+        log(context, "  [0x%08x] <3> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        log(context, "  [0x%08x]     count 0x%x", pos, arraySize);
+        pos = writeAttrData4(arraySize, buffer, pos);
+        /*
+         * Write a terminating null attribute.
+         */
+        return writeAttrNull(buffer, pos);
     }
 
     private int writeArrayElementField(DebugContext context, int offset, int arrayDataTypeIdx, byte[] buffer, int p) {
