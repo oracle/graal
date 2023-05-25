@@ -165,8 +165,8 @@ public interface DebugInfoProvider {
 
         boolean isWord();
 
-
         boolean isStruct();
+
         boolean isPointer();
 
         boolean isIntegral();

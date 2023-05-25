@@ -95,7 +95,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 UniqueShortNameProvider provider = ImageSingletons.lookup(UniqueShortNameProvider.class);
                 if (provider instanceof NativeImageBFDNameProvider) {
                     var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-                    ((NativeImageBFDNameProvider) provider).setNativeLibs(((FeatureImpl.BeforeAnalysisAccessImpl) access).getNativeLibraries());
+                    ((NativeImageBFDNameProvider) provider).setNativeLibs(accessImpl.getNativeLibraries());
                 }
             }
         }
