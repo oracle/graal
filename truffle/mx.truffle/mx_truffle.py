@@ -863,7 +863,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
@@ -873,6 +872,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
+    stability="supported",
+))
+
+# Typically not included in releases
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle DSL Processor',
+    short_name='tflp',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=['truffle:TRUFFLE_DSL_PROCESSOR'],
+    jvmci_parent_jars=[],
     stability="supported",
 ))
 
