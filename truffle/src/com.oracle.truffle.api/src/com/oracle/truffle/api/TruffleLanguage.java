@@ -75,6 +75,7 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 
 import org.graalvm.home.Version;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -517,6 +518,20 @@ public abstract class TruffleLanguage<C> {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of exported libraries with dynamic dispatch provided by this language.
+         *
+         * @since 23.1
+         */
+        Class<?>[] defaultLibraryExports() default {};
+
+        /**
+         * Declarative list of exported libraries with AOT compilation provided by this language.
+         *
+         * @since 23.1
+         */
+        Class<?>[] aotLibraryExports() default {};
     }
 
     /**
@@ -526,7 +541,9 @@ public abstract class TruffleLanguage<C> {
      * {@link Registration} and {@code ProvidedTags} annotations from the {@link TruffleLanguage}.
      *
      * @since 19.3.0
+     * @deprecated Use {@link TruffleLanguageProvider}.
      */
+    @Deprecated(since = "23.1")
     public interface Provider {
 
         /**

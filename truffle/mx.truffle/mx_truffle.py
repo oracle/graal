@@ -170,11 +170,13 @@ def _path_args(depNames=None):
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
+    The default Truffle moduleInfo is opened but closed version is deployed into graalvm.
+    To run benchmarks on the graalvm we need to open the closed Truffle packages.
     """
     assert mx.get_jdk().javaCompliance >= '1.9'
     truffle_api_dist = mx.distribution('TRUFFLE_API')
     truffle_api_module_name = truffle_api_dist.moduleInfo['name']
-    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo:open')['exports']
+    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo')['exports']
     args = []
     for export in module_info_open_exports:
         if ' to ' in export: # Qualified exports
@@ -194,24 +196,6 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-
-    # The arguments below are only actually needed if Truffle is deployed as a
-    # module. However, that's determined by the compiler suite which may not
-    # be present. In that case, adding these options results in annoying
-    # but harmless messages from the VM:
-    #
-    #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
-    #
-
-    # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
-
-    # This is required for the call to setAccessible in
-    # TruffleTCK.testValueWithSource to work.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-
-    # Needed for object model tests.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:

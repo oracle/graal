@@ -49,7 +49,6 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -296,12 +295,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator",
                         "Truffle classes are always initialized at build time");
 
-        for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
-            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
-        }
-        for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
-            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
-        }
         initializeTruffleReflectively(imageClassLoader);
         initializeHomeFinder();
         needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",

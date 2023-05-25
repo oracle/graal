@@ -1616,6 +1616,11 @@ suite = {
     "SULONG_NATIVE" : {
       "description" : "Sulong Native functionality (native memory support, native library support)",
       "subDir" : "projects",
+      # Fixed automatic module name until SULONG_NATIVE becomes regular named module
+      # native is a Java keyword and is not allowed as a part of a module fqn.
+      "manifestEntries" : {
+        "Automatic-Module-Name": "sulong.nativemode"
+      },
       "dependencies" : ["com.oracle.truffle.llvm.nativemode"],
       "distDependencies" : [
         "SULONG_CORE",

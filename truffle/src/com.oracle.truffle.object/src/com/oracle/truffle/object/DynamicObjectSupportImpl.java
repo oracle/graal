@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.api;
+package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.library.DefaultExportProvider;
+import com.oracle.truffle.object.DynamicObjectLibraryImplGen.DynamicObjectLibraryProvider;
 
-/**
- * This library contains a subset of {@link com.oracle.truffle.api.interop.InteropLibrary} messages
- * exported by some NFI objects. Those objects already implement the corresponding
- * {@link com.oracle.truffle.api.interop.InteropLibrary} messages, but they cannot be used in the
- * AOT mode, as {@link com.oracle.truffle.api.interop.InteropLibrary} is not an AOT-enabled library.
- */
-@GenerateLibrary
-@GenerateAOT
-@GenerateLibrary.DefaultExport(NativePointerLibrary.LongNativePointerLibrary.class)
-public abstract class NativePointerLibrary extends Library {
+import java.util.List;
 
-    @GenerateLibrary.Abstract(ifExported = {"asPointer"})
-    public boolean isPointer(@SuppressWarnings("unused") Object receiver) {
-        return false;
-    }
+final class DynamicObjectSupportImpl extends Accessor.DynamicObjectSupport {
 
-    @GenerateLibrary.Abstract(ifExported = {"isPointer"})
-    public long asPointer(@SuppressWarnings("unused") Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportLibrary(value = NativePointerLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
-    public static final class LongNativePointerLibrary {
-
-        @ExportMessage
-        public static boolean isPointer(Long receiver) {
-            assert receiver != null;
-            return true;
+    @Override
+    public <T> Iterable<T> lookupTruffleService(Class<T> type) {
+        if (type == DefaultExportProvider.class) {
+            return List.of(type.cast(new DynamicObjectLibraryProvider()));
         }
-
-        @ExportMessage
-        public static long asPointer(Long receiver) {
-            assert receiver != null;
-            return receiver;
-        }
+        return List.of();
     }
 }

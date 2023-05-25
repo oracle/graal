@@ -268,7 +268,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
     }
 
-    private static String createGenClassName(TypeElement templateType) {
+    public static String createGenClassName(TypeElement templateType) {
         return templateType.getSimpleName().toString() + "Gen";
     }
 
@@ -476,8 +476,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     CodeTypeElement createDefaultExportProvider(ExportsLibrary libraryExports) {
-        String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
-        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), libraryName + "Provider", null);
+        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), createDefaultExportProviderName(libraryExports), null);
         providerClass.getImplements().add(context.getTypes().DefaultExportProvider);
 
         for (ExecutableElement method : ElementFilter.methodsIn(context.getTypes().DefaultExportProvider.asElement().getEnclosedElements())) {
@@ -511,9 +510,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return providerClass;
     }
 
-    CodeTypeElement createAOTExportProvider(ExportsLibrary libraryExports, CodeTypeElement genClass) {
+    public static String createDefaultExportProviderName(ExportsLibrary libraryExports) {
         String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
-        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), libraryName + "EagerProvider", null);
+        return libraryName + "Provider";
+    }
+
+    CodeTypeElement createAOTExportProvider(ExportsLibrary libraryExports, CodeTypeElement genClass) {
+        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), createEagerExportProviderName(libraryExports), null);
         providerClass.getImplements().add(context.getTypes().EagerExportProvider);
 
         ExecutableElement init = ElementUtils.findMethod((DeclaredType) genClass.asType(), "init");
@@ -544,6 +547,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             throw new AssertionError();
         }
         return providerClass;
+    }
+
+    public static String createEagerExportProviderName(ExportsLibrary libraryExports) {
+        String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
+        return libraryName + "EagerProvider";
     }
 
     CodeTypeElement createCached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages) {

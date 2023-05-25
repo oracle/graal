@@ -974,49 +974,99 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
         module_path = patched_java_base + os.pathsep + jmods_dir
-        if modules and not use_upgrade_module_path:
-            module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
-        jlink.append('--module-path=' + module_path)
-        jlink.append('--output=' + dst_jdk_dir)
 
-        if dedup_legal_notices:
-            jlink.append('--dedup-legal-notices=error-if-not-same-content')
-        jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+        class TempJmods:
+            """
+            Utility to manage temporary .jmod files created for alternative moduleInfos.
+            The jmod file containing an alternative moduleInfo includes a qualifier in its name. For instance,
+            the closed truffle org.graalvm.truffle_closed.jmod file has the _closed qualifier. Prior to creating
+            a new JVM distribution, it is necessary to generate a temporary jmod file with the qualifier removed
+            from the name. In the given example, it would be the org.graalvm.truffle.jmod file. These temporary
+            files are deleted once the jlink execution is completed.
+            """
 
-        vm_options_path = join(upgrade_dir, 'vm_options')
-        vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules)
-        if vm_options:
-            jlink.append(f'--add-options={" ".join(vm_options)}')
-            jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
+            def __init__(self):
+                self._temp_folder = None
 
-        if jlink_supports_8232080(jdk) and vendor_info is not None:
-            for name, value in vendor_info.items():
-                jlink.append(f'--{name}={value}')
-                jlink_persist.append(f'--{name}="{value}"')
+            def __enter__(self):
+                return self
 
-        release_file = join(jdk.home, 'release')
-        if isfile(release_file):
-            jlink.append(f'--release-info={release_file}')
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self._temp_folder:
+                    shutil.rmtree(self._temp_folder, ignore_errors=True)
 
-        if jlink_has_save_jlink_argfiles(jdk):
-            jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
-            with open(jlink_persist_argfile, 'w') as fp:
-                fp.write('\n'.join(jlink_persist))
-            jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
+            def get_jmod_path_with_specified_module_info(self, m):
+                """
+                Gets the path to the .jmod file corresponding to given module descriptor.
+                If the distribution requires an alternative moduleInfo, it creates a temporary .jmod file for
+                the alternative module whose name does not contain a qualifier.
 
-        if exists(dst_jdk_dir):
-            if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
-                mx.logv('[Existing JDK image {} is up to date]'.format(dst_jdk_dir))
-                return False
-            mx.rmtree(dst_jdk_dir)
+                :param m: JavaModuleDescriptor the module to return .jmod file for
+                """
+                alt_module_info_name = None
+                if m.dist and not use_upgrade_module_path:
+                    deploy = getattr(m.dist, 'graalvm', None)
+                    if deploy:
+                        module_info_name = deploy.get('moduleInfo')
+                        if module_info_name:
+                            if not m.alternatives or module_info_name not in m.alternatives:
+                                mx.abort(f"Distribution {m.dist.name} does not specify alternative moduleInfo {module_info_name}.")
+                            alt_module_info_name = module_info_name
+                jmod_file = m.get_jmod_path(respect_stripping=not alt_module_info_name, alt_module_info_name=alt_module_info_name)
+                if alt_module_info_name:
+                    if not self._temp_folder:
+                        self._temp_folder = tempfile.mkdtemp(prefix='alternative_module_info_jmod_files')
+                    tmp_jmod_file = os.path.join(self._temp_folder, m.name + '.jmod')
+                    if mx.can_symlink():
+                        os.symlink(jmod_file, tmp_jmod_file)
+                    else:
+                        shutil.copy(jmod_file, tmp_jmod_file)
+                    jmod_file = tmp_jmod_file
+                return jmod_file
 
-        # TODO: investigate the options below used by OpenJDK to see if they should be used:
-        # --order-resources: specifies order of resources in generated lib/modules file.
-        #       This is apparently not so important if a CDS archive is available.
-        # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
-        #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-        mx.logv(f'[Creating JDK image in {dst_jdk_dir}]')
-        mx.run(jlink)
+        with TempJmods() as temp_jmods:
+            module_path = os.pathsep.join((temp_jmods.get_jmod_path_with_specified_module_info(m) for m in modules)) + os.pathsep + module_path
+            jlink.append('--module-path=' + module_path)
+            jlink.append('--output=' + dst_jdk_dir)
+
+            if dedup_legal_notices:
+                jlink.append('--dedup-legal-notices=error-if-not-same-content')
+            jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+            vm_options_path = join(upgrade_dir, 'vm_options')
+            vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules)
+            if vm_options:
+                jlink.append(f'--add-options={" ".join(vm_options)}')
+                jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
+
+            if jlink_supports_8232080(jdk) and vendor_info is not None:
+                for name, value in vendor_info.items():
+                    jlink.append(f'--{name}={value}')
+                    jlink_persist.append(f'--{name}="{value}"')
+
+            release_file = join(jdk.home, 'release')
+            if isfile(release_file):
+                jlink.append(f'--release-info={release_file}')
+
+            if jlink_has_save_jlink_argfiles(jdk):
+                jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
+                with open(jlink_persist_argfile, 'w') as fp:
+                    fp.write('\n'.join(jlink_persist))
+                jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
+
+            if exists(dst_jdk_dir):
+                if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
+                    mx.logv('[Existing JDK image {} is up to date]'.format(dst_jdk_dir))
+                    return False
+                mx.rmtree(dst_jdk_dir)
+
+            # TODO: investigate the options below used by OpenJDK to see if they should be used:
+            # --order-resources: specifies order of resources in generated lib/modules file.
+            #       This is apparently not so important if a CDS archive is available.
+            # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
+            #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
+            mx.logv(f'[Creating JDK image in {dst_jdk_dir}]')
+            mx.run(jlink)
 
         if use_upgrade_module_path:
             # Move synthetic upgrade modules into final location

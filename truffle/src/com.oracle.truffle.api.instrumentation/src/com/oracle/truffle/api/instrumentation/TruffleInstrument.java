@@ -97,6 +97,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -1419,6 +1420,20 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of exported libraries with dynamic dispatch provided by this language.
+         *
+         * @since 23.1
+         */
+        Class<?>[] defaultLibraryExports() default {};
+
+        /**
+         * Declarative list of exported libraries with AOT compilation provided by this language.
+         *
+         * @since 23.1
+         */
+        Class<?>[] aotLibraryExports() default {};
     }
 
     /**
@@ -1428,7 +1443,9 @@ public abstract class TruffleInstrument {
      * {@link Registration} annotations from the {@link TruffleInstrument}.
      *
      * @since 19.3.0
+     * @deprecated Use {@link TruffleInstrumentProvider}.
      */
+    @Deprecated(since = "23.1")
     public interface Provider {
 
         /**

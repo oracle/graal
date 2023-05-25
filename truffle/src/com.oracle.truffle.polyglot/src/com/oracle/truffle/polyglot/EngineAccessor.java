@@ -100,7 +100,6 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -148,6 +147,9 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
+    static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final DynamicObjectSupport DYNAMIC_OBJECT = ACCESSOR.dynamicObjectSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -157,7 +159,9 @@ final class EngineAccessor extends Accessor {
         if (loaders == null) {
             return null;
         }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(loaders.size());
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(2 + loaders.size());
+        suppliers.add(new ModulePathLoaderSupplier(ClassLoader.getSystemClassLoader()));
+        suppliers.add(new WeakModulePathLoaderSupplier(Thread.currentThread().getContextClassLoader()));
         for (ClassLoader loader : loaders) {
             suppliers.add(new StrongClassLoaderSupplier(loader));
         }
@@ -165,8 +169,7 @@ final class EngineAccessor extends Accessor {
     }
 
     private static List<AbstractClassLoaderSupplier> defaultLoaders() {
-        return Arrays.<AbstractClassLoaderSupplier> asList(
-                        new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+        return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
                         new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
                         new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
     }
@@ -291,17 +294,18 @@ final class EngineAccessor extends Accessor {
         @Override
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
-            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
-            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
-                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
-                    found.putIfAbsent(service.getClass(), service);
-                }
-            }
-            // Search guest languages and tools.
+            // 1) Add known Truffle DynamicObjectLibraryProvider service.
+            DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 2) Search guest languages using TruffleLanguageProvider lookup
+            LanguageCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 3) Search guest tools using TruffleInstrumentProvider lookup
+            InstrumentCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 4) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
+            // GR-46293 Remove the deprecated ServiceLoader lookup.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
-                    ModuleUtils.exportTo(loader, null);
+                    ModuleUtils.exportToUnnamedModuleOf(loader);
                     for (T service : ServiceLoader.load(type, loader)) {
                         found.putIfAbsent(service.getClass(), service);
                     }
@@ -2025,11 +2029,14 @@ final class EngineAccessor extends Accessor {
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
-
         private final int hashCode;
 
         AbstractClassLoaderSupplier(ClassLoader loader) {
             this.hashCode = loader == null ? 0 : loader.hashCode();
+        }
+
+        boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
+            return true;
         }
 
         @Override
@@ -2050,7 +2057,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static final class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    static class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final ClassLoader classLoader;
 
@@ -2065,7 +2072,19 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    private static final class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    private static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
+
+        ModulePathLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
+        }
+    }
+
+    private static class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final Reference<ClassLoader> classLoaderRef;
 
@@ -2077,6 +2096,18 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoaderRef.get();
+        }
+    }
+
+    private static final class WeakModulePathLoaderSupplier extends WeakClassLoaderSupplier {
+
+        WeakModulePathLoaderSupplier(ClassLoader loader) {
+            super(loader);
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
         }
     }
 

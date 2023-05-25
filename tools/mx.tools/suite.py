@@ -364,11 +364,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.chromeinspector",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
@@ -407,11 +402,9 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
+                "exports" : [
+                  "org.graalvm.tools.insight"
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
@@ -430,11 +423,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight.heap",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation",
-                    ],
-                },
             },
             "dependencies": [
                 "org.graalvm.tools.insight.heap"
@@ -480,11 +468,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.profiler",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
+                "exports" : [
+                    # chromeinspector and smoke tests use CPUSampler
+                    "com.oracle.truffle.tools.profiler",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
@@ -522,11 +509,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.coverage",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
@@ -564,11 +546,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.dap",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "com.oracle.truffle.tools.dap",
@@ -631,11 +608,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.lsp",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "org.graalvm.tools.api.lsp",

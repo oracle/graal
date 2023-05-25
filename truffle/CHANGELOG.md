@@ -16,6 +16,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
 * GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
 * GR-46146 Added `TruffleLanguage#ContextLocalProvider` and `TruffleInstrument#ContextLocalProvider`, and deprecated `TruffleLanguage.createContextLocal`, `TruffleLanguage.createContextThreadLocal`, `TruffleInstrument.createContextLocal` and `TruffleInstrument.createContextThreadLocal`. Starting with JDK 21, the deprecated methods trigger the new this-escape warning. The replacement API avoids the warning.
+* GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md). Truffle languages or instruments installed as a GraalVM component in the GraalVM JDK are still loaded in an unnamed module. However, GraalVM components will be deprecated, so languages and instruments should be migrated to the module path.
+* GR-44217 (Breaking change) If your language or instrument was specified as Java module, any usages of `@ExportLibrary(useForAOT = true)` or `@GenerateLibrary(defaultExportLookupEnabled = true)` now need to be registered with `@Registration#aotLibraryExports` and `@Registration#defaultLibraryExports`. If your language did not use any of these features, no changes are necessary.
+
 
 
 ## Version 23.0.0
