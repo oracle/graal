@@ -120,7 +120,6 @@ public final class Continuation {
     private Object enter1(boolean isContinue) {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
-        Pointer currentSP = KnownIntrinsics.readStackPointer();
 
         assert sp.isNull() && ip.isNull() && baseSP.isNull();
         if (isContinue) {
@@ -128,11 +127,11 @@ public final class Continuation {
             assert cont != null;
             this.ip = callerIP;
             this.sp = callerSP;
-            this.baseSP = currentSP;
+            this.baseSP = KnownIntrinsics.readStackPointer();
             this.stored = null;
 
             int framesSize = StoredContinuationAccess.getFramesSizeInBytes(cont);
-            Pointer topSP = currentSP.subtract(framesSize);
+            Pointer topSP = KnownIntrinsics.readStackPointer().subtract(framesSize);
             if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
                 throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
             }
@@ -144,7 +143,7 @@ public final class Continuation {
             assert stored == null;
             this.ip = callerIP;
             this.sp = callerSP;
-            this.baseSP = currentSP;
+            this.baseSP = KnownIntrinsics.readStackPointer();
 
             enter2();
             throw VMError.shouldNotReachHereAtRuntime();
