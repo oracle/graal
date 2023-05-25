@@ -34,8 +34,11 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,7 +59,6 @@ public class BundleLauncher {
     private static Path rootDir;
     private static Path inputDir;
     private static Path stageDir;
-    private static Path auxiliaryDir;
     private static Path classPathDir;
     private static Path modulePathDir;
 
@@ -65,6 +67,9 @@ public class BundleLauncher {
         List<String> command = new ArrayList<>();
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
+
+        List<String> programArgs = parseBundleLauncherOptions(args);
+        command.addAll(programArgs);
 
         String bundleFilePath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         unpackBundle(Path.of(bundleFilePath));
@@ -96,7 +101,7 @@ public class BundleLauncher {
                 throw new RuntimeException("Failed to iterate through directory " + modulePathDir, e);
             }
 
-            if(!modulePath.isEmpty()) {
+            if (!modulePath.isEmpty()) {
                 command.add("-p");
                 command.add(String.join(File.pathSeparator, modulePath));
             }
@@ -142,12 +147,39 @@ public class BundleLauncher {
             p = pb.inheritIO().start();
             p.waitFor();
         } catch (IOException | InterruptedException e) {
-            showError("Failed to run bundled application");
+            throw new RuntimeException("Failed to run bundled application");
         } finally {
-            if(p != null) {
+            if (p != null) {
                 p.destroy();
             }
         }
+    }
+
+    private static List<String> parseBundleLauncherOptions(String[] args) {
+        Deque<String> argQueue = new ArrayDeque<>(Arrays.asList(args));
+        List<String> programArgs = new ArrayList<>();
+
+        while (!argQueue.isEmpty()) {
+            String arg = argQueue.removeFirst();
+
+            if (arg.startsWith("--with-native-image-agent")) {
+                StringBuilder agentArgument = new StringBuilder("-agentlib:native-image-agent=");
+                String[] parts = arg.split("=", 2);
+                if (parts.length == 1) {
+                    agentArgument.append("config-output-dir=native-image-config");
+                } else {
+                    agentArgument.append(parts[1]);
+                }
+                programArgs.add(agentArgument.toString());
+            } else if (arg.equals("--")) {
+                programArgs.addAll(argQueue);
+                argQueue.clear();
+            } else {
+                programArgs.add(arg);
+            }
+        }
+
+        return programArgs;
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
@@ -212,7 +244,7 @@ public class BundleLauncher {
 
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
-            showError("No " + binJava + " and no environment variable JAVA_HOME");
+            throw new RuntimeException("No " + binJava + " and no environment variable JAVA_HOME");
         }
         try {
             javaCandidate = Paths.get(javaHome).resolve(binJava);
@@ -222,13 +254,7 @@ public class BundleLauncher {
         } catch (InvalidPathException e) {
             /* fallthrough */
         }
-        showError("No " + binJava + " and invalid JAVA_HOME=" + javaHome);
-        return null;
-    }
-
-    private static void showError(String s) {
-        System.err.println("Error: " + s);
-        System.exit(1);
+        throw new RuntimeException("No " + binJava + " and invalid JAVA_HOME=" + javaHome);
     }
 
     private static final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
@@ -254,12 +280,12 @@ public class BundleLauncher {
                 deletedPath = toDelete.resolveSibling(toDelete.getFileName() + deletedFileSuffix);
                 Files.move(toDelete, deletedPath);
             }
-            Files.walk(deletedPath).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            try (Stream<Path> walk = Files.walk(deletedPath)) {
+                walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            }
         } catch (IOException e) {
-            //if (isVerbose()) {
-                System.out.println("Could not recursively delete path: " + toDelete);
-                e.printStackTrace();
-            //}
+            System.out.println("Could not recursively delete path: " + toDelete);
+            e.printStackTrace();
         }
     }
 
@@ -299,7 +325,6 @@ public class BundleLauncher {
         try {
             inputDir = rootDir.resolve("input");
             stageDir = Files.createDirectories(inputDir.resolve("stage"));
-            auxiliaryDir = Files.createDirectories(inputDir.resolve("auxiliary"));
             Path classesDir = inputDir.resolve("classes");
             classPathDir = Files.createDirectories(classesDir.resolve("cp"));
             modulePathDir = Files.createDirectories(classesDir.resolve("p"));

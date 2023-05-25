@@ -360,7 +360,7 @@ final class BundleSupport {
 
         int exitStatusCode = createContainer();
         switch (ExitStatus.of(exitStatusCode)) {
-            case OK -> {}
+            case OK -> { }
             case BUILDER_ERROR ->
                 /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
