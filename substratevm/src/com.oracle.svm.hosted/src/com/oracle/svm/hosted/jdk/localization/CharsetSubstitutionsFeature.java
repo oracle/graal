@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk.localization;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.configure.ResourcesRegistry;
@@ -35,6 +36,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 class CharsetSubstitutionsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.create("java.lang.CharacterName"), "java/lang/uniName.dat");
+        access.registerReachabilityHandler((e) -> RuntimeResourceAccess.addResource(ModuleLayer.boot().findModule("java.base").get(), "java/lang/uniName.dat"), access.findClassByName("java.lang.CharacterName"));
     }
 }
