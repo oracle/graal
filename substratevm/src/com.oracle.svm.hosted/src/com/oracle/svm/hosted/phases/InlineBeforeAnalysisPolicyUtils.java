@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.invoke.MethodHandle;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -49,19 +54,24 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InlineBeforeAnalysisPolicyUtils {
     public static class Options {
@@ -74,6 +84,14 @@ public class InlineBeforeAnalysisPolicyUtils {
         @Option(help = "Maximum number of invokes for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
+
+    private static final Map<String, Set<String>> IGNORED_METHOD_HANDLE_METHODS = Map.of(
+                    "java.lang.invoke.MethodHandle", Set.of("bindTo"),
+                    "java.lang.invoke.MethodHandles", Set.of("dropArguments", "filterReturnValue", "foldArguments", "insertArguments"),
+                    "java.lang.invoke.Invokers", Set.of("spreadInvoker"));
+
+    private AnalysisType methodHandleType;
+    private AnalysisType varHandleGuardsType;
 
     public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
@@ -146,18 +164,43 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
+        protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
+            // always inlining
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "AlwaysInlineScope";
         }
     }
 
-    static class AccumulativeCounters {
-        final int maxNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
-        final int maxInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
-        final int maxInliningDepth = Options.InlineBeforeAnalysisAllowedDepth.getValue();
+    static final class AccumulativeCounters {
+        static AccumulativeCounters createRoot() {
+            return new AccumulativeCounters(Options.InlineBeforeAnalysisAllowedNodes.getValue(),
+                            Options.InlineBeforeAnalysisAllowedInvokes.getValue(),
+                            Options.InlineBeforeAnalysisAllowedDepth.getValue(),
+                            false);
+        }
+
+        static AccumulativeCounters createForMethodHandleIntrinsification(int startDepth) {
+            return new AccumulativeCounters(100, 20, startDepth + 20, true);
+        }
+
+        int maxNodes;
+        int maxInvokes;
+        final int maxInliningDepth;
+        final boolean inMethodHandleIntrinsification;
 
         int numNodes = 0;
         int numInvokes = 0;
+
+        private AccumulativeCounters(int maxNodes, int maxInvokes, int maxInliningDepth, boolean inMethodHandleIntrinsification) {
+            this.maxNodes = maxNodes;
+            this.maxInvokes = maxInvokes;
+            this.maxInliningDepth = maxInliningDepth;
+            this.inMethodHandleIntrinsification = inMethodHandleIntrinsification;
+        }
     }
 
     /**
@@ -165,7 +208,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * has exceeded a specified count, or an illegal node is inlined, then the process will be
      * aborted.
      */
-    public static AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, InlineBeforeAnalysisPolicyUtils inliningUtils) {
+    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -173,19 +216,60 @@ public class InlineBeforeAnalysisPolicyUtils {
              * The first level of method inlining, i.e., the top scope from the inlining policy
              * point of view.
              */
-            accumulativeCounters = new AccumulativeCounters();
             depth = 1;
-        } else {
-            /* Nested inlining. */
-            accumulativeCounters = outer.accumulativeCounters;
+            accumulativeCounters = AccumulativeCounters.createRoot();
+
+        } else if (!outer.accumulativeCounters.inMethodHandleIntrinsification && (intrinsifiedMethodHandle || isMethodHandleIntrinsificationRoot(metaAccess, method))) {
+            /*
+             * Method handle intrinsification root: create counters with relaxed limits and permit
+             * more types of nodes, but not recursively, i.e., not if we are already in a method
+             * handle intrinsification context.
+             */
             depth = outer.inliningDepth + 1;
+            accumulativeCounters = AccumulativeCounters.createForMethodHandleIntrinsification(depth);
+
+        } else {
+            /* Nested inlining (potentially during method handle intrinsification). */
+            depth = outer.inliningDepth + 1;
+            accumulativeCounters = outer.accumulativeCounters;
         }
-        return new AccumulativeInlineScope(accumulativeCounters, depth, inliningUtils);
+        return new AccumulativeInlineScope(accumulativeCounters, depth);
     }
 
-    public static class AccumulativeInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
+    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
+        return (isVarHandleMethod(metaAccess, method) || hasMethodHandleParameter(metaAccess, method)) && !isIgnoredMethodHandleMethod(method);
+    }
+
+    private boolean hasMethodHandleParameter(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
+        if (methodHandleType == null) {
+            methodHandleType = metaAccess.lookupJavaType(MethodHandle.class);
+        }
+        return Arrays.stream(method.toParameterTypes()).anyMatch(type -> methodHandleType.isAssignableFrom((ResolvedJavaType) type));
+    }
+
+    /**
+     * Checks if the method is the intrinsification root for a VarHandle. In the current VarHandle
+     * implementation, all guards are in the automatically generated class VarHandleGuards. All
+     * methods do have a VarHandle argument, and we expect it to be a compile-time constant.
+     * <p>
+     * See the documentation in {@link VarHandleFeature} for more information on the overall
+     * VarHandle support.
+     */
+    private boolean isVarHandleMethod(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
+        if (varHandleGuardsType == null) {
+            varHandleGuardsType = metaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandleGuards"));
+        }
+        return method.getDeclaringClass().equals(varHandleGuardsType);
+    }
+
+    private static boolean isIgnoredMethodHandleMethod(ResolvedJavaMethod method) {
+        String className = method.getDeclaringClass().toJavaName(true);
+        Set<String> ignoredMethods = IGNORED_METHOD_HANDLE_METHODS.get(className);
+        return ignoredMethods != null && ignoredMethods.contains(method.getName());
+    }
+
+    public final class AccumulativeInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
         final AccumulativeCounters accumulativeCounters;
-        final InlineBeforeAnalysisPolicyUtils inliningUtils;
 
         /**
          * The number of nodes and invokes which have been inlined from this method (and also
@@ -195,10 +279,13 @@ public class InlineBeforeAnalysisPolicyUtils {
         int numNodes = 0;
         int numInvokes = 0;
 
-        AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth, InlineBeforeAnalysisPolicyUtils inliningUtils) {
+        Boolean lenientForMethodHandleIntrinsic = null; // lazily initialized
+        boolean calleeMethodHandleIntrinsicFailed = false;
+        boolean methodHandleIntrinsicFailed = false;
+
+        AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth) {
             super(inliningDepth);
             this.accumulativeCounters = accumulativeCounters;
-            this.inliningUtils = inliningUtils;
         }
 
         @Override
@@ -210,7 +297,16 @@ public class InlineBeforeAnalysisPolicyUtils {
         @Override
         public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
             AccumulativeInlineScope calleeScope = (AccumulativeInlineScope) callee;
-            assert accumulativeCounters == calleeScope.accumulativeCounters;
+            if (accumulativeCounters != calleeScope.accumulativeCounters) {
+                assert !accumulativeCounters.inMethodHandleIntrinsification && calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
+
+                // Expand limits to hold the method handle intrinsification, but not more.
+                accumulativeCounters.maxNodes += calleeScope.numNodes;
+                accumulativeCounters.maxInvokes += calleeScope.numInvokes;
+
+                accumulativeCounters.numNodes += calleeScope.numNodes;
+                accumulativeCounters.numInvokes += calleeScope.numInvokes;
+            }
             numNodes += calleeScope.numNodes;
             numInvokes += calleeScope.numInvokes;
         }
@@ -218,14 +314,27 @@ public class InlineBeforeAnalysisPolicyUtils {
         @Override
         public void abortCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
             AccumulativeInlineScope calleeScope = (AccumulativeInlineScope) callee;
-            assert accumulativeCounters == calleeScope.accumulativeCounters;
-            accumulativeCounters.numNodes -= calleeScope.numNodes;
-            accumulativeCounters.numInvokes -= calleeScope.numInvokes;
+            if (accumulativeCounters == calleeScope.accumulativeCounters) {
+                accumulativeCounters.numNodes -= calleeScope.numNodes;
+                accumulativeCounters.numInvokes -= calleeScope.numInvokes;
+            } else {
+                assert !accumulativeCounters.inMethodHandleIntrinsification && calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
+            }
+            calleeMethodHandleIntrinsicFailed = calleeScope.methodHandleIntrinsicFailed;
         }
 
         @Override
         public boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node) {
-            if (inliningUtils.alwaysInlineInvoke(metaAccess, method)) {
+            if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode ||
+                            node instanceof CallTargetNode || node instanceof MethodHandleWithExceptionNode) {
+                /*
+                 * Infrastructure nodes and call targets are not intended to be visible to the
+                 * policy. Method handle calls must have been transformed to an invoke already.
+                 */
+                throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
+            }
+
+            if (alwaysInlineInvoke(metaAccess, method)) {
                 return true;
             }
 
@@ -234,10 +343,12 @@ public class InlineBeforeAnalysisPolicyUtils {
                 return false;
             }
 
-            if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode) {
-                /* Infrastructure nodes that are not even visible to the policy. */
-                throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
+            if (lenientForMethodHandleIntrinsic == Boolean.TRUE && calleeMethodHandleIntrinsicFailed) {
+                assert !methodHandleIntrinsicFailed : "must have failed earlier";
+                methodHandleIntrinsicFailed = true; // propagates to caller
+                return false;
             }
+
             if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof ValueAnchorNode || node instanceof FrameState ||
                             node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
                 /*
@@ -262,10 +373,11 @@ public class InlineBeforeAnalysisPolicyUtils {
                 return true;
             }
 
+            boolean allow = true;
+
             if (node instanceof AbstractNewObjectNode) {
                 /*
-                 * We never allow to inline any kind of allocations, because the machine code size
-                 * is large.
+                 * We do not inline any kind of allocations because the machine code size is large.
                  *
                  * With one important exception: we allow (and do not even count) arrays allocated
                  * with length 0. Such allocations occur when a method has a Java vararg parameter
@@ -282,7 +394,8 @@ public class InlineBeforeAnalysisPolicyUtils {
                         return true;
                     }
                 }
-                return false;
+                allow = false;
+
             } else if (node instanceof VirtualObjectNode) {
                 /*
                  * Same as the explicit allocation nodes above, but this time for the virtualized
@@ -294,16 +407,11 @@ public class InlineBeforeAnalysisPolicyUtils {
                         return true;
                     }
                 }
-                return false;
-            } else if (node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode) {
-                /*
-                 * Ignore nodes created by escape analysis in addition to the VirtualInstanceNode.
-                 */
-                return true;
-            }
+                allow = false;
 
-            if (node instanceof CallTargetNode) {
-                throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
+            } else if (node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode) {
+                /* Ignore nodes created by escape analysis in addition to the VirtualObjectNode. */
+                return true;
             }
 
             if (node instanceof Invoke) {
@@ -320,12 +428,57 @@ public class InlineBeforeAnalysisPolicyUtils {
             numNodes++;
             accumulativeCounters.numNodes++;
 
-            return true;
+            if (!allow && accumulativeCounters.inMethodHandleIntrinsification) {
+                if (lenientForMethodHandleIntrinsic == null) {
+                    lenientForMethodHandleIntrinsic = inlineForMethodHandleIntrinsification(method);
+                }
+                if (lenientForMethodHandleIntrinsic) {
+                    if (calleeMethodHandleIntrinsicFailed) {
+                        methodHandleIntrinsicFailed = true; // propagates to caller
+                        return false;
+                    }
+                    allow = true;
+                }
+            }
+            return allow;
+        }
+
+        @Override
+        protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
+            methodHandleIntrinsicFailed = true;
+            return false;
         }
 
         @Override
         public String toString() {
             return "AccumulativeInlineScope: " + numNodes + "/" + numInvokes + " (" + accumulativeCounters.numNodes + "/" + accumulativeCounters.numInvokes + ")";
         }
+    }
+
+    private static boolean inlineForMethodHandleIntrinsification(ResolvedJavaMethod method) {
+        String className = method.getDeclaringClass().toJavaName(true);
+        if (className.startsWith("java.lang.invoke.VarHandle") && (!className.equals("java.lang.invoke.VarHandle") || method.getName().equals("getMethodHandleUncached"))) {
+            /*
+             * Do not inline implementation methods of various VarHandle implementation classes.
+             * They are too complex and cannot be reduced to a single invoke or field access. There
+             * is also no need to inline them, because they are not related to any MethodHandle
+             * mechanism.
+             *
+             * Methods defined in VarHandle itself are fine and not covered by this rule, apart from
+             * well-known methods that are never useful to be inlined. If these methods are reached,
+             * intrinsification will not be possible in any case.
+             */
+            return false;
+        } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
+            /*
+             * Inline all helper methods used by method handles. We do not know exactly which ones
+             * they are, but they are all from the same package.
+             */
+            return true;
+        } else if (className.equals("sun.invoke.util.ValueConversions")) {
+            /* Inline trivial helper methods for value conversion. */
+            return true;
+        }
+        return false;
     }
 }

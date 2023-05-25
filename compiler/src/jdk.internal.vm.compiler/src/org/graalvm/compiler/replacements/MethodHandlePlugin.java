@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumRecursiveInlining;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -35,7 +36,8 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.replacements.nodes.MethodHandleNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -50,6 +52,15 @@ public class MethodHandlePlugin implements NodePlugin {
     public MethodHandlePlugin(MethodHandleAccessProvider methodHandleAccess, boolean safeForDeoptimization) {
         this.methodHandleAccess = methodHandleAccess;
         this.safeForDeoptimization = safeForDeoptimization;
+    }
+
+    protected Invoke createInvoke(CallTargetNode callTarget, int bci, Stamp stamp) {
+        return new InvokeNode(callTarget, bci, stamp);
+    }
+
+    protected MacroInvokable createMethodHandleNode(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args,
+                    IntrinsicMethod intrinsicMethod, InvokeKind invokeKind, StampPair invokeReturnStamp) {
+        return new MethodHandleNode(intrinsicMethod, MacroNode.MacroParams.of(invokeKind, b.getMethod(), method, b.bci(), invokeReturnStamp, args));
     }
 
     @Override
@@ -67,13 +78,13 @@ public class MethodHandlePlugin implements NodePlugin {
                     return b.add(node);
                 }
             };
-            InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(adder, methodHandleAccess, intrinsicMethod, method, b.bci(), invokeReturnStamp, args);
+            Invoke invoke = MethodHandleNode.tryResolveTargetInvoke(adder, this::createInvoke, methodHandleAccess, intrinsicMethod, method, b.bci(), invokeReturnStamp, args);
             if (invoke == null) {
-                MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, MacroParams.of(invokeKind, b.getMethod(), method, b.bci(), invokeReturnStamp, args));
+                MacroInvokable methodHandleNode = createMethodHandleNode(b, method, args, intrinsicMethod, invokeKind, invokeReturnStamp);
                 if (invokeReturnStamp.getTrustedStamp().getStackKind() == JavaKind.Void) {
-                    b.add(methodHandleNode);
+                    b.add(methodHandleNode.asNode());
                 } else {
-                    b.addPush(invokeReturnStamp.getTrustedStamp().getStackKind(), methodHandleNode);
+                    b.addPush(invokeReturnStamp.getTrustedStamp().getStackKind(), methodHandleNode.asNode());
                 }
             } else {
                 CallTargetNode callTarget = invoke.callTarget();

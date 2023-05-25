@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -44,8 +45,11 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import org.graalvm.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -68,16 +72,13 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
 
             if (caller == null) {
-                /*
-                 * The root method that we are decoding, i.e., inlining into. No policy, because the
-                 * whole method must of course be decoded.
-                 */
+                /* The root method that we are decoding, i.e., inlining into. */
                 policyScope = policy.createRootScope();
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             } else {
-                policyScope = policy.openCalleeScope(method, (cast(caller)).policyScope);
+                policyScope = policy.openCalleeScope(cast(caller).policyScope, bb.getMetaAccess(), method, invokeData.intrinsifiedMethodHandle);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
@@ -192,6 +193,42 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             return loopScope;
         }
         return super.processNextNode(methodScope, loopScope);
+    }
+
+    @Override
+    protected LoopScope handleMethodHandle(MethodScope s, LoopScope loopScope, InvokableData<MethodHandleWithExceptionNode> invokableData) {
+        MethodHandleWithExceptionNode node = invokableData.invoke;
+        Node replacement = node.trySimplify(providers.getConstantReflection().getMethodHandleAccess());
+        boolean intrinsifiedMethodHandle = (replacement != node);
+        InlineBeforeAnalysisMethodScope methodScope = cast(s);
+        if (!intrinsifiedMethodHandle) {
+            if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
+                if (!methodScope.policyScope.shouldInterpretMethodHandleInvoke(methodScope.method, node)) {
+                    abortInlining(methodScope);
+                    return loopScope;
+                }
+            }
+            replacement = node.replaceWithInvoke().asNode();
+        }
+
+        InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) replacement;
+        registerNode(loopScope, invokableData.orderId, invoke, true, false);
+        InvokeData invokeData = new InvokeData(invoke, invokableData.contextType, invokableData.orderId, -1, intrinsifiedMethodHandle, invokableData.stateAfterOrderId,
+                invokableData.nextOrderId, invokableData.exceptionOrderId, invokableData.exceptionStateOrderId, invokableData.exceptionNextOrderId);
+
+        CallTargetNode callTarget;
+        if (invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNode t) {
+            // This special CallTargetNode lowers itself back to the original target (e.g. linkTo*)
+            // if the invocation hasn't been inlined, which we don't want for Native Image.
+            callTarget = new MethodCallTargetNode(t.invokeKind(), t.targetMethod(), t.arguments().toArray(ValueNode.EMPTY_ARRAY), t.returnStamp(), t.getTypeProfile());
+        } else {
+            callTarget = (CallTargetNode) invoke.callTarget().copyWithInputs(false);
+        }
+        // handleInvoke() expects that CallTargetNode is not eagerly added to the graph
+        invoke.callTarget().replaceAtUsagesAndDelete(null);
+        invokeData.callTarget = callTarget;
+
+        return handleInvokeWithCallTarget((PEMethodScope) s, loopScope, invokeData);
     }
 
     @Override

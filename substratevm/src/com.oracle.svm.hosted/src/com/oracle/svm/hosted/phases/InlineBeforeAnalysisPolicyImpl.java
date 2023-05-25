@@ -106,8 +106,9 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
-    protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
-        return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope((InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) outer, inliningUtils);
+    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
+        return inliningUtils.createAccumulativeInlineScope((InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) outer,
+                        metaAccess, method, intrinsifiedMethodHandle);
     }
 
     @Override

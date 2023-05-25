@@ -51,8 +51,8 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * This file contains most of the code necessary for supporting VarHandle in native images. The
- * actual intrinsification of VarHandle accessors is in hosted-only code in the
- * IntrinsifyMethodHandlesInvocationPlugin.
+ * actual intrinsification of VarHandle accessors happens in hosted-only code during inlining before
+ * analysis.
  *
  * The VarHandle implementation in the JDK uses some invokedynamic and method handles, but also a
  * lot of explicit Java code (a lot of it automatically generated): The main entry point from the
@@ -60,12 +60,13 @@ import jdk.internal.misc.Unsafe;
  * prototypes for the various access modes. However, we do not need to do anything special for the
  * VarHandle class: when we parse bytecode, all the bootstrapping has already happened on the Java
  * HotSpot VM, and the bytecode parser already sees calls to guard methods defined in
- * VarHandleGuards. Method of that class are the intrinsification root for the
- * IntrinsifyMethodHandlesInvocationPlugin. The intrinsification removes all the method handle
- * invocation logic and reduces the logic to a single call to the actual access logic. This logic is
- * in various automatically generated accessor classes named
+ * VarHandleGuards. Methods of that class are method handle intrinsification roots for inlining
+ * before analysis. The intrinsification removes all the method handle invocation logic and reduces
+ * the logic to a single call to the actual access logic. This logic is in various automatically
+ * generated accessor classes named
  * "VarHandle{Booleans|Bytes|Chars|Doubles|Floats|Ints|Longs|Shorts|Objects}.{Array|FieldInstanceReadOnly|FieldInstanceReadWrite|FieldStaticReadOnly|FieldStaticReadWrite}".
- * The intrinsification must not inline these methods, because they contain complicated logic.
+ * The intrinsification might be able to inline these methods and even transform unsafe accesses by
+ * offset to field accesses, but we cannot rely on it always being able to do in every case.
  *
  * The accessor classes for field access (both instance and static field access) store the offset of
  * the field that is used for Unsafe memory access. We need to 1) properly register these fields as

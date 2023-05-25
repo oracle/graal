@@ -57,6 +57,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -65,11 +66,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private final AnalysisUniverse universe;
     private final UniverseMetaAccess metaAccess;
     private final ClassInitializationSupport classInitializationSupport;
+    private final AnalysisMethodHandleAccessProvider methodHandleAccess;
 
     public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
+        this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
     }
 
     @Override
@@ -114,6 +117,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
         return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        return methodHandleAccess;
     }
 
     @Override

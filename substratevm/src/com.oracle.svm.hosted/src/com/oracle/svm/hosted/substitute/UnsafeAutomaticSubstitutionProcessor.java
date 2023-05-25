@@ -184,7 +184,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             /*
              * Various factory methods in VarHandle query the array base/index or field offsets.
              * There is no need to analyze these calls because VarHandle accesses are intrinsified
-             * to simple array and field access nodes in IntrinsifyMethodHandlesInvocationPlugin.
+             * to simple array and field access nodes during inlining before analysis.
              */
             for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
                 neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));

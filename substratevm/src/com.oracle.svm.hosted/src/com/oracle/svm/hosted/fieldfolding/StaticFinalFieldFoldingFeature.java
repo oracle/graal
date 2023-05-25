@@ -53,7 +53,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -64,8 +63,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * folded by the regular constant folding mechanism. But if a class is initialized at run time, the
  * class initializer of that class is analyzed like any other method, i.e., the static analysis sees
  * a static final field as written and does not perform constant folding. Without constant folding
- * during parsing already, other graph builder plugins like
- * {@link IntrinsifyMethodHandlesInvocationPlugin} do not work on such fields.
+ * during parsing already, other simplifications and intrinsifications do not work on such fields,
+ * such as those involving method handles.
  *
  * This feature performs constant folding for a limited but important class of static final fields:
  * the class initializer contains a single field store and the stored value is a constant. That

@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -77,6 +78,14 @@ public abstract class InlineBeforeAnalysisPolicy {
          * decision on the current list of usages. The list of usages is often but not always empty.
          */
         public abstract boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node);
+
+        /**
+         * The given {@link MethodHandleWithExceptionNode} could not be intrinsified. If this method
+         * returns {@code true}, the node is instead replaced with a call into the method handle
+         * interpreter and inlining continues. If this method returns {@code false}, inlining is
+         * aborted.
+         */
+        protected abstract boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node);
     }
 
     protected final NodePlugin[] nodePlugins;
@@ -97,7 +106,7 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract AbstractPolicyScope createRootScope();
 
-    protected abstract AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer);
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle);
 
     public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
@@ -137,7 +146,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
     };

@@ -30,13 +30,12 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -55,6 +55,8 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -93,25 +95,28 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * @param methodHandleAccess objects for accessing the implementation internals of a
      *            {@link MethodHandle}
      * @param intrinsicMethod denotes the intrinsifiable {@link MethodHandle} method being processed
-     * @param bci the BCI of the original {@link MethodHandle} call
      * @param returnStamp return stamp of the original {@link MethodHandle} call
      * @param arguments arguments to the original {@link MethodHandle} call
      * @return a more direct invocation derived from the {@link MethodHandle} call or null
      */
-    public static InvokeNode tryResolveTargetInvoke(GraphAdder adder, MethodHandleAccessProvider methodHandleAccess, IntrinsicMethod intrinsicMethod,
-                    ResolvedJavaMethod original, int bci,
-                    StampPair returnStamp, ValueNode... arguments) {
+    public static <T extends Invoke> T tryResolveTargetInvoke(GraphAdder adder, InvokeFactory<T> factory, MethodHandleAccessProvider methodHandleAccess,
+                    IntrinsicMethod intrinsicMethod, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode... arguments) {
         switch (intrinsicMethod) {
             case INVOKE_BASIC:
-                return getInvokeBasicTarget(adder, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
+                return getInvokeBasicTarget(adder, factory, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             case LINK_TO_STATIC:
             case LINK_TO_SPECIAL:
             case LINK_TO_VIRTUAL:
             case LINK_TO_INTERFACE:
-                return getLinkToTarget(adder, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
+                return getLinkToTarget(adder, factory, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(intrinsicMethod); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    @FunctionalInterface
+    public interface InvokeFactory<T extends Invoke> {
+        T create(CallTargetNode callTarget, int bci, Stamp stamp);
     }
 
     /**
@@ -128,7 +133,6 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
          * Call {@link StructuredGraph#addOrUnique(org.graalvm.compiler.graph.Node)} on {@code node}
          * and link any {@link FixedWithNextNode}s into the current control flow.
          *
-         * @param node
          * @return the newly added node
          */
         public abstract <T extends ValueNode> T add(T node);
@@ -146,25 +150,29 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
         }
     }
 
+    static GraphAdder getGraphAdderBeforeNode(FixedNode before) {
+        StructuredGraph graph = before.graph();
+        return new GraphAdder(graph) {
+            @Override
+            public <T extends ValueNode> T add(T node) {
+                T added = graph.addOrUnique(node);
+                if (added instanceof FixedWithNextNode) {
+                    graph.addBeforeFixed(before, (FixedWithNextNode) added);
+                }
+                return added;
+            }
+        };
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
         MethodHandleAccessProvider methodHandleAccess = tool.getConstantReflection().getMethodHandleAccess();
         ValueNode[] argumentsArray = arguments.toArray(new ValueNode[arguments.size()]);
 
-        final FixedNode before = this;
-        GraphAdder adder = new GraphAdder(graph()) {
-            @Override
-            public <T extends ValueNode> T add(T node) {
-                T added = graph().addOrUnique(node);
-                if (added instanceof FixedWithNextNode) {
-                    graph().addBeforeFixed(before, (FixedWithNextNode) added);
-                }
-                return added;
-            }
-        };
-        InvokeNode invoke = tryResolveTargetInvoke(adder, methodHandleAccess, intrinsicMethod, targetMethod, bci, returnStamp, argumentsArray);
+        InvokeNode invoke = tryResolveTargetInvoke(getGraphAdderBeforeNode(this), InvokeNode::new, methodHandleAccess, intrinsicMethod, targetMethod, bci, returnStamp, argumentsArray);
         if (invoke != null) {
             assert invoke.graph() == null;
+            invoke.setNodeSourcePosition(getNodeSourcePosition());
             invoke = graph().addOrUniqueWithInputs(invoke);
             invoke.setStateAfter(stateAfter());
             FixedNode currentNext = next();
@@ -196,18 +204,14 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * Used for the MethodHandle.invokeBasic method (the {@link IntrinsicMethod#INVOKE_BASIC }
      * method) to get the target {@link InvokeNode} if the method handle receiver is constant.
      *
-     * @param adder
-     *
      * @return invoke node for the {@link java.lang.invoke.MethodHandle} target
      */
-    private static InvokeNode getInvokeBasicTarget(GraphAdder adder, IntrinsicMethod intrinsicMethod, MethodHandleAccessProvider methodHandleAccess,
-                    ResolvedJavaMethod original,
-                    int bci,
-                    StampPair returnStamp, ValueNode[] arguments) {
+    private static <T extends Invoke> T getInvokeBasicTarget(GraphAdder adder, InvokeFactory<T> factory, IntrinsicMethod intrinsicMethod,
+                    MethodHandleAccessProvider methodHandleAccess, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode[] arguments) {
         ValueNode methodHandleNode = getReceiver(arguments);
         if (methodHandleNode.isConstant()) {
-            return getTargetInvokeNode(adder, intrinsicMethod, methodHandleAccess, bci, returnStamp, arguments, methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true),
-                            original);
+            return getTargetInvokeNode(adder, factory, intrinsicMethod, methodHandleAccess, bci, returnStamp, arguments,
+                            methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true), original);
         }
         return null;
     }
@@ -218,17 +222,14 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * {@link IntrinsicMethod#LINK_TO_INTERFACE} methods) to get the target {@link InvokeNode} if
      * the member name argument is constant.
      *
-     * @param adder
-     *
      * @return invoke node for the member name target
      */
-    private static InvokeNode getLinkToTarget(GraphAdder adder, IntrinsicMethod intrinsicMethod, MethodHandleAccessProvider methodHandleAccess,
-                    ResolvedJavaMethod original,
-                    int bci,
-                    StampPair returnStamp, ValueNode[] arguments) {
+    private static <T extends Invoke> T getLinkToTarget(GraphAdder adder, InvokeFactory<T> factory, IntrinsicMethod intrinsicMethod,
+                    MethodHandleAccessProvider methodHandleAccess, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode[] arguments) {
         ValueNode memberNameNode = getMemberName(arguments);
         if (memberNameNode.isConstant()) {
-            return getTargetInvokeNode(adder, intrinsicMethod, methodHandleAccess, bci, returnStamp, arguments, methodHandleAccess.resolveLinkToTarget(memberNameNode.asJavaConstant()), original);
+            return getTargetInvokeNode(adder, factory, intrinsicMethod, methodHandleAccess, bci, returnStamp, arguments,
+                            methodHandleAccess.resolveLinkToTarget(memberNameNode.asJavaConstant()), original);
         }
         return null;
     }
@@ -237,14 +238,11 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * Helper function to get the {@link InvokeNode} for the targetMethod of a
      * java.lang.invoke.MemberName.
      *
-     * @param adder
      * @param target the target, already loaded from the member name node
-     *
      * @return invoke node for the member name target
      */
-    private static InvokeNode getTargetInvokeNode(GraphAdder adder, IntrinsicMethod intrinsicMethod, MethodHandleAccessProvider methodHandleAccess, int bci, StampPair returnStamp,
-                    ValueNode[] originalArguments, ResolvedJavaMethod target,
-                    ResolvedJavaMethod original) {
+    private static <T extends Invoke> T getTargetInvokeNode(GraphAdder adder, InvokeFactory<T> factory, IntrinsicMethod intrinsicMethod,
+                    MethodHandleAccessProvider methodHandleAccess, int bci, StampPair returnStamp, ValueNode[] originalArguments, ResolvedJavaMethod target, ResolvedJavaMethod original) {
         if (target == null || !isConsistentInfo(methodHandleAccess, original, target)) {
             return null;
         }
@@ -297,7 +295,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                 JavaType parameterType = signature.getParameterType(index, target.getDeclaringClass());
                 maybeCastArgument(adder, arguments, receiverSkip + index, parameterType);
             }
-            InvokeNode invoke = createTargetInvokeNode(assumptions, intrinsicMethod, realTarget, original, bci, returnStamp, arguments);
+            T invoke = createTargetInvokeNode(factory, assumptions, intrinsicMethod, realTarget, original, bci, returnStamp, arguments);
             assert invoke != null : "graph has been modified so this must result an invoke";
             return invoke;
         }
@@ -308,7 +306,6 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      * Inserts a node to cast the argument at index to the given type if the given type is more
      * concrete than the argument type.
      *
-     * @param adder
      * @param index of the argument to be cast
      * @param type the type the argument should be cast to
      */
@@ -356,8 +353,8 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
      *
      * @return invoke node for the member name target
      */
-    private static InvokeNode createTargetInvokeNode(Assumptions assumptions, IntrinsicMethod intrinsicMethod, ResolvedJavaMethod target, ResolvedJavaMethod original, int bci, StampPair returnStamp,
-                    ValueNode[] arguments) {
+    private static <T extends Invoke> T createTargetInvokeNode(InvokeFactory<T> factory, Assumptions assumptions, IntrinsicMethod intrinsicMethod,
+                    ResolvedJavaMethod target, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode[] arguments) {
         InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType targetReturnType = target.getSignature().getReturnType(null);
 
@@ -386,11 +383,11 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
         // we need to use the stamp of the invoker. Note: always using the
         // invoker's stamp would be wrong because it's a less concrete type
         // (usually java.lang.Object).
+        Stamp stamp = targetReturnStamp.getTrustedStamp();
         if (returnStamp.getTrustedStamp().getStackKind() == JavaKind.Void) {
-            return new InvokeNode(callTarget, bci, StampFactory.forVoid());
-        } else {
-            return new InvokeNode(callTarget, bci);
+            stamp = StampFactory.forVoid();
         }
+        return factory.create(callTarget, bci, stamp);
     }
 
     /**

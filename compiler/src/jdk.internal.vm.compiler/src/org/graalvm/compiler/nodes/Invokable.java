@@ -28,6 +28,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A marker interface for nodes that represent calls to other methods.
@@ -41,6 +42,20 @@ public interface Invokable extends DeoptBciSupplier {
      * @return the method from which the call is executed.
      */
     ResolvedJavaMethod getContextMethod();
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType type} from which this invoke is executed. This is
+     * the declaring type of the caller method.
+     *
+     * @return the type from which this invoke is executed.
+     */
+    default ResolvedJavaType getContextType() {
+        ResolvedJavaMethod contextMethod = getContextMethod();
+        if (contextMethod == null) {
+            return null;
+        }
+        return contextMethod.getDeclaringClass();
+    }
 
     /**
      * Returns the receiver cast to {@link FixedNode}, or null if this invokable is a placeholder.
