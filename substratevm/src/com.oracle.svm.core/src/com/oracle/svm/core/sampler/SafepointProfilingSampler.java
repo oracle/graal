@@ -30,7 +30,6 @@ import org.graalvm.collections.LockFreePrefixTree;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -94,7 +93,6 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
 
     @NeverInline("Starts a stack walk in the caller frame")
     private static void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
-        Pointer sp = KnownIntrinsics.readStackPointer();
-        JavaStackWalker.walkCurrentThread(sp, visitor, data);
+        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readStackPointer(), visitor, data);
     }
 }
