@@ -389,7 +389,12 @@ public final class JNIInvocationInterface {
                 long javaVmId = IsolateUtil.getIsolateID();
                 javaVmIdPointer.write(WordFactory.pointer(javaVmId));
             }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> JNIJavaVMList.removeJavaVM(javaVm));
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
+                @Override
+                public void execute(boolean isFirstIsolate) {
+                    JNIJavaVMList.removeJavaVM(javaVm);
+                }
+            });
             vmBuf.write(javaVm);
             penv.write(JNIThreadLocalEnvironment.getAddress());
             return JNIErrors.JNI_OK();
