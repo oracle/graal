@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -63,7 +62,6 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
         assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
     }
 
-    @Ignore("GR-46117")
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
