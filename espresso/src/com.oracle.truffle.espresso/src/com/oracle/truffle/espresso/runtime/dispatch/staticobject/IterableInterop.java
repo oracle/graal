@@ -75,7 +75,7 @@ public class IterableInterop extends EspressoInterop {
         abstract static class HasIteratorNode extends InteropMessage.HasIterator {
             @Specialization
             public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
-                return true;
+                return IterableInterop.hasIterator(receiver);
             }
         }
 
@@ -84,7 +84,7 @@ public class IterableInterop extends EspressoInterop {
             public static Object getIterator(StaticObject receiver,
                             @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
                             @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-                return lookupAndInvoke.execute(receiver, iteratorMethod);
+                return IterableInterop.getIterator(receiver, iteratorMethod, lookupAndInvoke);
             }
         }
     }

@@ -123,6 +123,7 @@ public class MapEntryInterop extends EspressoInterop {
             super(MapEntryInterop.class, EspressoInterop.Nodes.getInstance());
         }
 
+        @Override
         public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "hasArrayElements", MapEntryInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
             InteropMessageFactory.register(cls, "getArraySize", MapEntryInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
@@ -134,69 +135,45 @@ public class MapEntryInterop extends EspressoInterop {
 
         abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                return true;
+            boolean hasArrayElements(StaticObject receiver) {
+                return MapEntryInterop.hasArrayElements(receiver);
             }
         }
 
         abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
             @Specialization
-            long doStaticObject(StaticObject receiver) {
-                return 2;
+            long getArraySize(StaticObject receiver) {
+                return MapEntryInterop.getArraySize(receiver);
             }
         }
 
         abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
             @Specialization
-            boolean doStaticObject(StaticObject receiver, long index) {
-                return index == 1;
+            boolean isArrayElementModifiable(StaticObject receiver, long index) {
+                return MapEntryInterop.isArrayElementModifiable(receiver, index);
             }
         }
 
         abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
             @Specialization
-            boolean doStaticObject(StaticObject receiver, long index) {
-                return index == 0 || index == 1;
+            boolean isArrayElementReadable(StaticObject receiver, long index) {
+                return MapEntryInterop.isArrayElementReadable(receiver, index);
             }
         }
 
         abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
             @Specialization
-            void doStaticObject(StaticObject receiver, long index, Object value,
+            void writeArrayElement(StaticObject receiver, long index, Object value,
                             @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
-                if (index != 1) {
-                    throw InvalidArrayIndexException.create(index);
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                Method m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_setValue);
-                try {
-                    invoke.execute(m, receiver, new Object[]{value});
-                } catch (ArityException | UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                MapEntryInterop.writeArrayElement(receiver, index, value, invoke);
             }
         }
 
         abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
             @Specialization
-            Object doStaticObject(StaticObject receiver, long index,
+            Object readArrayElement(StaticObject receiver, long index,
                             @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
-                Meta meta = receiver.getKlass().getMeta();
-                Method m;
-                if (index == 0) {
-                    m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_getKey);
-                } else if (index == 1) {
-                    m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_getValue);
-                } else {
-                    throw InvalidArrayIndexException.create(index);
-                }
-                try {
-                    return invoke.execute(m, receiver, EMPTY_ARRAY);
-                } catch (ArityException | UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                return MapEntryInterop.readArrayElement(receiver, index, invoke);
             }
         }
     }

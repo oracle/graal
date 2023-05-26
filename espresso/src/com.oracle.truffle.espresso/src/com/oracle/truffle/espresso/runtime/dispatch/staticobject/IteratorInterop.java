@@ -91,7 +91,7 @@ public class IteratorInterop extends EspressoInterop {
         abstract static class IsIteratorNode extends InteropMessage.IsIterator {
             @Specialization
             static boolean isIterator(StaticObject receiver) {
-                return true;
+                return IteratorInterop.isIterator(receiver);
             }
         }
 
@@ -100,7 +100,7 @@ public class IteratorInterop extends EspressoInterop {
             static boolean hasIteratorNextElement(StaticObject receiver,
                             @Bind("getMeta().java_util_Iterator_hasNext") Method hasNext,
                             @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-                return (boolean) lookupAndInvoke.execute(receiver, hasNext);
+                return IteratorInterop.hasIteratorNextElement(receiver, hasNext, lookupAndInvoke);
             }
         }
 
@@ -109,14 +109,7 @@ public class IteratorInterop extends EspressoInterop {
             static Object getIteratorNextElement(StaticObject receiver,
                             @Bind("getMeta().java_util_Iterator_next") Method next,
                             @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) throws StopIterationException {
-                try {
-                    return lookupAndInvoke.execute(receiver, next);
-                } catch (EspressoException e) {
-                    if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_util_NoSuchElementException)) {
-                        throw StopIterationException.create(e);
-                    }
-                    throw e;
-                }
+                return IteratorInterop.getIteratorNextElement(receiver, next, lookupAndInvoke);
             }
         }
     }

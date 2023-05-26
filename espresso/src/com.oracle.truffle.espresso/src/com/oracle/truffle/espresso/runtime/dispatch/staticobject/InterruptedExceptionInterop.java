@@ -63,7 +63,7 @@ public class InterruptedExceptionInterop extends ThrowableInterop {
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {
             @Specialization
             public ExceptionType doStaticObject(StaticObject receiver) {
-                return ExceptionType.INTERRUPT;
+                return InterruptedExceptionInterop.getExceptionType(receiver);
             }
         }
     }

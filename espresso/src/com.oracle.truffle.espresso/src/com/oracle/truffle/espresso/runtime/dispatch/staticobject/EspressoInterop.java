@@ -656,38 +656,48 @@ public class EspressoInterop extends BaseInterop {
                     @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
-        if (candidates != null) {
-            if (candidates.length == 1) {
-                // common case with no overloads
-                Method m = candidates[0];
-                assert !m.isStatic() && m.isPublic();
-                assert member.startsWith(m.getNameAsString());
-                if (!m.isVarargs()) {
-                    assert m.getParameterCount() == arguments.length;
-                    return invoke.execute(m, receiver, arguments);
-                } else {
-                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
-                    if (matched != null) {
-                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+        try {
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    // common case with no overloads
+                    Method m = candidates[0];
+                    assert !m.isStatic() && m.isPublic();
+                    assert member.startsWith(m.getNameAsString());
+                    if (!m.isVarargs()) {
+                        assert m.getParameterCount() == arguments.length;
+                        return invoke.execute(m, receiver, arguments);
+                    } else {
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            if (matched != null) {
+                                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+                            }
                         }
                     }
-                }
-            } else {
-                // multiple overloaded methods found
-                // find method with type matches
-                CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
-                if (typeMatched != null) {
-                    // single match found!
-                    return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
                 } else {
-                    // unable to select exactly one best candidate for the input args!
-                    throw UnknownIdentifierException.create(member);
+                    // multiple overloaded methods found
+                    // find method with type matches
+                    CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
+                    if (typeMatched != null) {
+                        // single match found!
+                        return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
+                    } else {
+                        // unable to select exactly one best candidate for the input args!
+                        throw UnknownIdentifierException.create(member);
+                    }
                 }
             }
+            throw UnknownIdentifierException.create(member);
+        } catch (EspressoException e) {
+            Meta meta = e.getGuestException().getKlass().getMeta();
+            if (meta.polyglot != null && e.getGuestException().getKlass() == meta.polyglot.ForeignException) {
+                // rethrow the original foreign exception when leaving espresso interop
+                EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
+                throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(language);
+            }
+            throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     // endregion ### Members
@@ -950,291 +960,105 @@ public class EspressoInterop extends BaseInterop {
         abstract static class IsBooleanNode extends InteropMessage.IsBoolean {
             @Specialization
             public static boolean isBoolean(StaticObject receiver) {
-                receiver.checkNotForeign();
-                assert !isNull(receiver) : "Null espresso object should be dispatched to BaseInterop";
-                return receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Boolean;
+                return EspressoInterop.isBoolean(receiver);
             }
         }
 
         abstract static class AsBooleanNode extends InteropMessage.AsBoolean {
             @Specialization
             static boolean asBoolean(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!isBoolean(receiver)) {
-                    throw UnsupportedMessageException.create();
-                }
-                return (boolean) receiver.getKlass().getMeta().java_lang_Boolean_value.get(receiver);
+                return EspressoInterop.asBoolean(receiver);
             }
         }
 
         abstract static class IsNumberNode extends InteropMessage.IsNumber {
             @Specialization
             static boolean isNumber(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                return receiver.getKlass() == meta.java_lang_Byte || receiver.getKlass() == meta.java_lang_Short || receiver.getKlass() == meta.java_lang_Integer ||
-                                receiver.getKlass() == meta.java_lang_Long || receiver.getKlass() == meta.java_lang_Float ||
-                                receiver.getKlass() == meta.java_lang_Double;
+                return EspressoInterop.isNumber(receiver);
             }
         }
 
         abstract static class FitsInByteNode extends InteropMessage.FitsInByte {
             @Specialization
             static boolean fitsInByte(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                if (isAtMostByte(klass)) {
-                    return true;
-                }
-
-                Meta meta = klass.getMeta();
-                if (klass == meta.java_lang_Short) {
-                    short content = meta.java_lang_Short_value.getShort(receiver);
-                    return (byte) content == content;
-                }
-                if (klass == meta.java_lang_Integer) {
-                    int content = meta.java_lang_Integer_value.getInt(receiver);
-                    return (byte) content == content;
-                }
-                if (klass == meta.java_lang_Long) {
-                    long content = meta.java_lang_Long_value.getLong(receiver);
-                    return (byte) content == content;
-                }
-                if (klass == meta.java_lang_Float) {
-                    float content = meta.java_lang_Float_value.getFloat(receiver);
-                    return (byte) content == content && !isNegativeZero(content);
-                }
-                if (klass == meta.java_lang_Double) {
-                    double content = meta.java_lang_Double_value.getDouble(receiver);
-                    return (byte) content == content && !isNegativeZero(content);
-                }
-                return false;
+                return EspressoInterop.fitsInByte(receiver);
             }
         }
 
         abstract static class FitsInShortNode extends InteropMessage.FitsInShort {
             @Specialization
             static boolean fitsInShort(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                if (isAtMostShort(klass)) {
-                    return true;
-                }
-
-                Meta meta = klass.getMeta();
-                if (klass == meta.java_lang_Integer) {
-                    int content = meta.java_lang_Integer_value.getInt(receiver);
-                    return (short) content == content;
-                }
-                if (klass == meta.java_lang_Long) {
-                    long content = meta.java_lang_Long_value.getLong(receiver);
-                    return (short) content == content;
-                }
-                if (klass == meta.java_lang_Float) {
-                    float content = meta.java_lang_Float_value.getFloat(receiver);
-                    return (short) content == content && !isNegativeZero(content);
-                }
-                if (klass == meta.java_lang_Double) {
-                    double content = meta.java_lang_Double_value.getDouble(receiver);
-                    return (short) content == content && !isNegativeZero(content);
-                }
-                return false;
+                return EspressoInterop.fitsInShort(receiver);
             }
         }
 
         abstract static class FitsInIntNode extends InteropMessage.FitsInInt {
             @Specialization
             static boolean fitsInInt(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                if (isAtMostInt(klass)) {
-                    return true;
-                }
-
-                Meta meta = klass.getMeta();
-                if (klass == meta.java_lang_Long) {
-                    long content = meta.java_lang_Long_value.getLong(receiver);
-                    return (int) content == content;
-                }
-                if (klass == meta.java_lang_Float) {
-                    float content = meta.java_lang_Float_value.getFloat(receiver);
-                    return !isNegativeZero(content) && (int) content == content;
-                }
-                if (klass == meta.java_lang_Double) {
-                    double content = meta.java_lang_Double_value.getDouble(receiver);
-                    return (int) content == content && !isNegativeZero(content);
-                }
-                return false;
+                return EspressoInterop.fitsInInt(receiver);
             }
         }
 
         abstract static class FitsInLongNode extends InteropMessage.FitsInLong {
             @Specialization
             static boolean fitsInLong(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                if (isAtMostLong(klass)) {
-                    return true;
-                }
-
-                Meta meta = klass.getMeta();
-                if (klass == meta.java_lang_Float) {
-                    float content = meta.java_lang_Float_value.getFloat(receiver);
-                    return !isNegativeZero(content) && (long) content == content;
-                }
-                if (klass == meta.java_lang_Double) {
-                    double content = meta.java_lang_Double_value.getDouble(receiver);
-                    return !isNegativeZero(content) && (long) content == content;
-                }
-                return false;
+                return EspressoInterop.fitsInLong(receiver);
             }
         }
 
         abstract static class FitsInFloatNode extends InteropMessage.FitsInFloat {
             @Specialization
             static boolean fitsInFloat(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                if (isAtMostFloat(klass)) {
-                    return true;
-                }
-
-                Meta meta = klass.getMeta();
-                /*
-                 * We might lose precision when we convert an int or a long to a float, however, we
-                 * still perform the conversion. This is consistent with Truffle interop, see
-                 * GR-22718 for more details.
-                 */
-                if (klass == meta.java_lang_Integer) {
-                    int content = meta.java_lang_Integer_value.getInt(receiver);
-                    float floatContent = content;
-                    return (int) floatContent == content;
-                }
-                if (klass == meta.java_lang_Long) {
-                    long content = meta.java_lang_Long_value.getLong(receiver);
-                    float floatContent = content;
-                    return (long) floatContent == content;
-                }
-                if (klass == meta.java_lang_Double) {
-                    double content = meta.java_lang_Double_value.getDouble(receiver);
-                    return !Double.isFinite(content) || (float) content == content;
-                }
-                return false;
+                return EspressoInterop.fitsInFloat(receiver);
             }
         }
 
         abstract static class FitsInDoubleNode extends InteropMessage.FitsInDouble {
             @Specialization
             static boolean fitsInDouble(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Klass klass = receiver.getKlass();
-                Meta meta = klass.getMeta();
-                if (isAtMostInt(klass) || klass == meta.java_lang_Double) {
-                    return true;
-                }
-                if (klass == meta.java_lang_Long) {
-                    long content = meta.java_lang_Long_value.getLong(receiver);
-                    double doubleContent = content;
-                    return (long) doubleContent == content;
-                }
-                if (klass == meta.java_lang_Float) {
-                    float content = meta.java_lang_Float_value.getFloat(receiver);
-                    return !Float.isFinite(content) || (double) content == content;
-                }
-                return false;
+                return EspressoInterop.fitsInDouble(receiver);
             }
         }
 
         abstract static class AsByteNode extends InteropMessage.AsByte {
             @Specialization
             static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInByte(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).byteValue();
+                return EspressoInterop.asByte(receiver);
             }
         }
 
         abstract static class AsShortNode extends InteropMessage.AsShort {
             @Specialization
             static short asShort(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInShort(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).shortValue();
+                return EspressoInterop.asShort(receiver);
             }
         }
 
         abstract static class AsIntNode extends InteropMessage.AsInt {
             @Specialization
             static int asInt(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInInt(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).intValue();
+                return EspressoInterop.asInt(receiver);
             }
         }
 
         abstract static class AsLongNode extends InteropMessage.AsLong {
             @Specialization
             static long asLong(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInLong(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).longValue();
+                return EspressoInterop.asLong(receiver);
             }
         }
 
         abstract static class AsFloatNode extends InteropMessage.AsFloat {
             @Specialization
             static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInFloat(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).floatValue();
+                return EspressoInterop.asFloat(receiver);
             }
         }
 
         abstract static class AsDoubleNode extends InteropMessage.AsDouble {
             @Specialization
             static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!fitsInDouble(receiver)) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                }
-                return readNumberValue(receiver).doubleValue();
+                return EspressoInterop.asDouble(receiver);
             }
         }
 
@@ -1243,22 +1067,14 @@ public class EspressoInterop extends BaseInterop {
             static long getArraySize(StaticObject receiver,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!receiver.isArray()) {
-                    error.enter();
-                    throw UnsupportedMessageException.create();
-                }
-                return receiver.length(EspressoLanguage.get(receiverLib));
+                return EspressoInterop.getArraySize(receiver, receiverLib, error);
             }
         }
 
         abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
             static boolean hasArrayElements(StaticObject receiver) {
-                if (receiver.isForeignObject()) {
-                    return false;
-                }
-                return receiver.isArray();
+                return EspressoInterop.hasArrayElements(receiver);
             }
         }
 
@@ -1623,8 +1439,7 @@ public class EspressoInterop extends BaseInterop {
             @Specialization
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
-                receiver.checkNotForeign();
-                return receiver.isArray() && 0 <= index && index < receiver.length(EspressoLanguage.get(receiverLib));
+                return EspressoInterop.isArrayElementReadable(receiver, index, receiverLib);
             }
         }
 
@@ -1632,15 +1447,14 @@ public class EspressoInterop extends BaseInterop {
             @Specialization
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
-                receiver.checkNotForeign();
-                return receiver.isArray() && 0 <= index && index < receiver.length(EspressoLanguage.get(receiverLib));
+                return EspressoInterop.isArrayElementReadable(receiver, index, receiverLib);
             }
         }
 
         abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
             @Specialization
             static boolean isArrayElementInsertable(StaticObject receiver, long index) {
-                return false;
+                return EspressoInterop.isArrayElementInsertable(receiver, index);
             }
         }
 
@@ -1649,46 +1463,14 @@ public class EspressoInterop extends BaseInterop {
             static Object readMember(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookupField,
                             @Cached LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
-                receiver.checkNotForeign();
-                if (notNull(receiver)) {
-                    Field f = lookupField.execute(getInteropKlass(receiver), member);
-                    if (f != null) {
-                        return InteropUtils.unwrap(EspressoLanguage.get(lookupField), f.get(receiver), receiver.getKlass().getMeta());
-                    }
-                    try {
-                        Method[] candidates = lookupMethod.execute(getInteropKlass(receiver), member, -1);
-                        if (candidates != null) {
-                            if (candidates.length == 1) {
-                                return EspressoFunction.createInstanceInvocable(candidates[0], receiver);
-                            }
-                        }
-                    } catch (ArityException e) {
-                        /* Ignore */
-                    }
-                    // Class<T>.static == Klass<T>
-                    if (CLASS_TO_STATIC.equals(member)) {
-                        if (receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class) {
-                            return receiver.getMirrorKlass();
-                        }
-                    }
-                    // Class<T>.class == Class<T>
-                    if (STATIC_TO_CLASS.equals(member)) {
-                        if (receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class) {
-                            return receiver;
-                        }
-                    }
-                }
-                throw UnknownIdentifierException.create(member);
+                return EspressoInterop.readMember(receiver, member, lookupField, lookupMethod);
             }
         }
 
         abstract static class HasMembersNode extends InteropMessage.HasMembers {
             @Specialization
             static boolean hasMembers(StaticObject receiver) {
-                if (receiver.isForeignObject()) {
-                    return false;
-                }
-                return notNull(receiver);
+                return EspressoInterop.hasMembers(receiver);
             }
         }
 
@@ -1697,16 +1479,7 @@ public class EspressoInterop extends BaseInterop {
             static boolean isMemberReadable(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookupField,
                             @Cached LookupVirtualMethodNode lookupMethod) {
-                receiver.checkNotForeign();
-                Field f = lookupField.execute(getInteropKlass(receiver), member);
-                if (f != null) {
-                    return true;
-                }
-                if (lookupMethod.isInvocable(getInteropKlass(receiver), member)) {
-                    return true;
-                }
-                return notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class //
-                                && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
+                return EspressoInterop.isMemberReadable(receiver, member, lookupField, lookupMethod);
             }
         }
 
@@ -1714,12 +1487,7 @@ public class EspressoInterop extends BaseInterop {
             @Specialization
             static boolean isMemberModifiable(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookup) {
-                receiver.checkNotForeign();
-                Field f = lookup.execute(getInteropKlass(receiver), member);
-                if (f != null) {
-                    return !f.isFinalFlagSet();
-                }
-                return false;
+                return EspressoInterop.isMemberModifiable(receiver, member, lookup);
             }
         }
 
@@ -1729,26 +1497,14 @@ public class EspressoInterop extends BaseInterop {
                             @Cached LookupInstanceFieldNode lookup,
                             @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                             @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
-                receiver.checkNotForeign();
-                Field f = lookup.execute(getInteropKlass(receiver), member);
-                if (f != null) {
-                    if (f.isFinalFlagSet()) {
-                        error.enter();
-                        throw UnsupportedMessageException.create();
-                    }
-                    Object espressoValue = toEspressoNode.execute(value, f.resolveTypeKlass());
-                    f.set(receiver, espressoValue);
-                    return;
-                }
-                error.enter();
-                throw UnknownIdentifierException.create(member);
+                EspressoInterop.writeMember(receiver, member, value, lookup, toEspressoNode, error);
             }
         }
 
         abstract static class IsMemberInsertableNode extends InteropMessage.IsMemberInsertable {
             @Specialization
             static boolean isMemberInsertable(StaticObject receiver, String member) {
-                return false;
+                return EspressoInterop.isMemberInsertable(receiver, member);
             }
         }
 
@@ -1757,39 +1513,7 @@ public class EspressoInterop extends BaseInterop {
             @TruffleBoundary
             static Object getMembers(StaticObject receiver,
                             @SuppressWarnings("unused") boolean includeInternal) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return EmptyKeysArray.INSTANCE;
-                }
-                ArrayList<String> members = new ArrayList<>();
-                if (receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class) {
-                    // SVM does not like ArrayList.addAll(). Do manual copy.
-                    for (String s : CLASS_KEYS) {
-                        members.add(s);
-                    }
-                }
-                ObjectKlass k = getInteropKlass(receiver);
-
-                for (Field f : k.getFieldTable()) {
-                    if (f.isPublic() && !f.isRemoved()) {
-                        members.add(f.getNameAsString());
-                    }
-                }
-
-                for (Method.MethodVersion m : k.getVTable()) {
-                    if (LookupVirtualMethodNode.isCandidate(m.getMethod())) {
-                        // Note: If there are overloading, the same key may appear twice.
-                        // TODO: Cache the keys array in the Klass.
-                        members.add(m.getMethod().getInteropString());
-                    }
-                }
-                // SVM does not like ArrayList.toArray(). Do manual copy.
-                String[] array = new String[members.size()];
-                int pos = 0;
-                for (String str : members) {
-                    array[pos++] = str;
-                }
-                return new KeysArray<>(array);
+                return EspressoInterop.getMembers(receiver, includeInternal);
             }
         }
 
@@ -1798,12 +1522,7 @@ public class EspressoInterop extends BaseInterop {
             static boolean isMemberInvocable(StaticObject receiver,
                             String member,
                             @Cached LookupVirtualMethodNode lookupMethod) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                ObjectKlass k = getInteropKlass(receiver);
-                return lookupMethod.isInvocable(k, member);
+                return EspressoInterop.isMemberInvocable(receiver, member, lookupMethod);
             }
         }
 
@@ -1817,65 +1536,14 @@ public class EspressoInterop extends BaseInterop {
                             @Cached InvokeEspressoNode invoke,
                             @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                             throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-                Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
-                try {
-                    if (candidates != null) {
-                        if (candidates.length == 1) {
-                            // common case with no overloads
-                            Method m = candidates[0];
-                            assert !m.isStatic() && m.isPublic();
-                            assert member.startsWith(m.getNameAsString());
-                            if (!m.isVarargs()) {
-                                assert m.getParameterCount() == arguments.length;
-                                return invoke.execute(m, receiver, arguments);
-                            } else {
-                                CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
-                                if (matched != null) {
-                                    matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
-                                    if (matched != null) {
-                                        return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
-                                    }
-                                }
-                            }
-                        } else {
-                            // multiple overloaded methods found
-                            // find method with type matches
-                            CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
-                            if (typeMatched != null) {
-                                // single match found!
-                                return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
-                            } else {
-                                // unable to select exactly one best candidate for the input args!
-                                throw UnknownIdentifierException.create(member);
-                            }
-                        }
-                    }
-                } catch (EspressoException e) {
-                    Meta meta = e.getGuestException().getKlass().getMeta();
-                    if (meta.polyglot != null && e.getGuestException().getKlass() == meta.polyglot.ForeignException) {
-                        // rethrow the original foreign exception when leaving espresso interop
-                        EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
-                        throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(language);
-                    }
-                    throw e;
-                }
-                throw UnknownIdentifierException.create(member);
+                return EspressoInterop.invokeMember(receiver, member, arguments, lookupMethod, selectorNode, invoke, toEspressoNode);
             }
         }
 
         abstract static class IsDateNode extends InteropMessage.IsDate {
             @Specialization
             static boolean isDate(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                return instanceOf(receiver, meta.java_time_LocalDate) ||
-                                instanceOf(receiver, meta.java_time_LocalDateTime) ||
-                                instanceOf(receiver, meta.java_time_Instant) ||
-                                instanceOf(receiver, meta.java_time_ZonedDateTime) ||
-                                instanceOf(receiver, meta.java_util_Date);
+                return EspressoInterop.isDate(receiver);
             }
         }
 
@@ -1884,179 +1552,53 @@ public class EspressoInterop extends BaseInterop {
             @Specialization
             static LocalDate asDate(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isDate(receiver)) {
-                    Meta meta = receiver.getKlass().getMeta();
-                    if (instanceOf(receiver, meta.java_time_LocalDate)) {
-                        int year = (int) meta.java_time_LocalDate_year.get(receiver);
-                        short month = (short) meta.java_time_LocalDate_month.get(receiver);
-                        short day = (short) meta.java_time_LocalDate_day.get(receiver);
-                        return LocalDate.of(year, month, day);
-                    } else if (instanceOf(receiver, meta.java_time_LocalDateTime)) {
-                        StaticObject localDate = (StaticObject) meta.java_time_LocalDateTime_toLocalDate.invokeDirect(receiver);
-                        assert instanceOf(localDate, meta.java_time_LocalDate);
-                        return asDate(localDate, error);
-                    } else if (instanceOf(receiver, meta.java_time_Instant)) {
-                        StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
-                        assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
-                        StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(receiver, zoneIdUTC);
-                        assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
-                        StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirect(zonedDateTime);
-                        assert instanceOf(localDate, meta.java_time_LocalDate);
-                        return asDate(localDate, error);
-                    } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                        StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirect(receiver);
-                        assert instanceOf(localDate, meta.java_time_LocalDate);
-                        return asDate(localDate, error);
-                    } else if (instanceOf(receiver, meta.java_util_Date)) {
-                        // return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
-                        int index = meta.java_util_Date_toInstant.getVTableIndex();
-                        Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                        StaticObject instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
-                        return asDate(instant, error);
-                    }
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return EspressoInterop.asDate(receiver, error);
             }
         }
 
         abstract static class IsTimeNode extends InteropMessage.IsTime {
             @Specialization
             static boolean isTime(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                return instanceOf(receiver, meta.java_time_LocalTime) ||
-                                instanceOf(receiver, meta.java_time_Instant) ||
-                                instanceOf(receiver, meta.java_time_ZonedDateTime) ||
-                                instanceOf(receiver, meta.java_util_Date);
+                return EspressoInterop.isTime(receiver);
             }
         }
 
         abstract static class AsTimeNode extends InteropMessage.AsTime {
             @Specialization
-            @TruffleBoundary
             static LocalTime asTime(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isTime(receiver)) {
-                    Meta meta = receiver.getKlass().getMeta();
-                    if (instanceOf(receiver, meta.java_time_LocalTime)) {
-                        byte hour = (byte) meta.java_time_LocalTime_hour.get(receiver);
-                        byte minute = (byte) meta.java_time_LocalTime_minute.get(receiver);
-                        byte second = (byte) meta.java_time_LocalTime_second.get(receiver);
-                        int nano = (int) meta.java_time_LocalTime_nano.get(receiver);
-                        return LocalTime.of(hour, minute, second, nano);
-                    } else if (instanceOf(receiver, meta.java_time_LocalDateTime)) {
-                        StaticObject localTime = (StaticObject) meta.java_time_LocalDateTime_toLocalTime.invokeDirect(receiver);
-                        return asTime(localTime, error);
-                    } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                        StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirect(receiver);
-                        return asTime(localTime, error);
-                    } else if (instanceOf(receiver, meta.java_time_Instant)) {
-                        // return ((Instant) obj).atZone(UTC).toLocalTime();
-                        StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
-                        assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
-                        StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(receiver, zoneIdUTC);
-                        assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
-                        StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirect(zonedDateTime);
-                        assert instanceOf(localTime, meta.java_time_LocalTime);
-                        return asTime(localTime, error);
-                    } else if (instanceOf(receiver, meta.java_util_Date)) {
-                        // return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
-                        int index = meta.java_util_Date_toInstant.getVTableIndex();
-                        Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                        StaticObject instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
-                        return asTime(instant, error);
-                    }
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return EspressoInterop.asTime(receiver, error);
             }
         }
 
         abstract static class IsTimeZoneNode extends InteropMessage.IsTimeZone {
             @Specialization
             static boolean isTimeZone(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                return instanceOf(receiver, meta.java_time_ZoneId) ||
-                                instanceOf(receiver, meta.java_time_Instant) ||
-                                instanceOf(receiver, meta.java_time_ZonedDateTime) ||
-                                instanceOf(receiver, meta.java_util_Date);
+                return EspressoInterop.isTimeZone(receiver);
             }
         }
 
         abstract static class AsTimeZoneNode extends InteropMessage.AsTimeZone {
-            @TruffleBoundary
             @Specialization
             static ZoneId asTimeZone(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isTimeZone(receiver)) {
-                    Meta meta = receiver.getKlass().getMeta();
-                    if (instanceOf(receiver, meta.java_time_ZoneId)) {
-                        int index = meta.java_time_ZoneId_getId.getVTableIndex();
-                        StaticObject zoneIdEspresso = (StaticObject) receiver.getKlass().vtableLookup(index).invokeDirect(receiver);
-                        String zoneId = Meta.toHostStringStatic(zoneIdEspresso);
-                        return ZoneId.of(zoneId, ZoneId.SHORT_IDS);
-                    } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                        StaticObject zoneId = (StaticObject) meta.java_time_ZonedDateTime_getZone.invokeDirect(receiver);
-                        return asTimeZone(zoneId, error);
-                    } else if (instanceOf(receiver, meta.java_time_Instant) ||
-                                    instanceOf(receiver, meta.java_util_Date)) {
-                        return ZoneId.of("UTC");
-                    }
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return EspressoInterop.asTimeZone(receiver, error);
             }
         }
 
         abstract static class AsInstantNode extends InteropMessage.AsInstant {
-            @TruffleBoundary
             @Specialization
             static Instant asInstant(StaticObject receiver,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLibrary,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (receiverLibrary.isInstant(receiver)) {
-                    StaticObject instant;
-                    Meta meta = receiver.getKlass().getMeta();
-                    if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                        instant = (StaticObject) meta.java_time_ZonedDateTime_toInstant.invokeDirect(receiver);
-                    } else if (instanceOf(receiver, meta.java_util_Date)) {
-                        int index = meta.java_util_Date_toInstant.getVTableIndex();
-                        Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                        instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
-                    } else {
-                        instant = receiver;
-                    }
-                    assert instanceOf(instant, meta.java_time_Instant);
-                    long seconds = (long) meta.java_time_Instant_seconds.get(instant);
-                    int nanos = (int) meta.java_time_Instant_nanos.get(instant);
-                    return Instant.ofEpochSecond(seconds, nanos);
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return EspressoInterop.asInstant(receiver, receiverLibrary, error);
             }
         }
 
         abstract static class IsDurationNode extends InteropMessage.IsDuration {
             @Specialization
             static boolean isDuration(StaticObject receiver) {
-                receiver.checkNotForeign();
-                if (isNull(receiver)) {
-                    return false;
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                return instanceOf(receiver, meta.java_time_Duration);
+                return EspressoInterop.isDuration(receiver);
             }
         }
 
@@ -2064,18 +1606,7 @@ public class EspressoInterop extends BaseInterop {
             @Specialization
             static Duration asDuration(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isDuration(receiver)) {
-                    Meta meta = receiver.getKlass().getMeta();
-                    // Avoid expensive calls to Duration.{getSeconds/getNano} by extracting the
-                    // private
-                    // fields directly.
-                    long seconds = (long) meta.java_time_Duration_seconds.get(receiver);
-                    int nanos = (int) meta.java_time_Duration_nanos.get(receiver);
-                    return Duration.ofSeconds(seconds, nanos);
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return EspressoInterop.asDuration(receiver, error);
             }
         }
     }

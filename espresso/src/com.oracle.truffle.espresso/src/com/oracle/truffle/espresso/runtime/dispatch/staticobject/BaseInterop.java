@@ -257,109 +257,80 @@ public class BaseInterop {
 
         abstract static class IsNullNode extends InteropMessage.IsNull {
             @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                return StaticObject.isNull(receiver);
+            boolean isNull(StaticObject receiver) {
+                return BaseInterop.isNull(receiver);
             }
         }
 
         abstract static class IsStringNode extends InteropMessage.IsString {
             @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                return StaticObject.notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_String;
+            boolean isString(StaticObject receiver) {
+                return BaseInterop.isString(receiver);
             }
         }
 
         abstract static class AsStringNode extends InteropMessage.AsString {
             @Specialization
-            String doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (!isString(receiver)) {
-                    throw UnsupportedMessageException.create();
-                }
-                return Meta.toHostStringStatic(receiver);
+            String asString(StaticObject receiver) throws UnsupportedMessageException {
+                return BaseInterop.asString(receiver);
             }
         }
 
         abstract static class IsMetaObjectNode extends InteropMessage.IsMetaObject {
             @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                receiver.checkNotForeign();
-                return !isNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class;
+            boolean isMetaObject(StaticObject receiver) {
+                return BaseInterop.isMetaObject(receiver);
             }
         }
 
         abstract static class GetMetaQualifiedNameNode extends InteropMessage.GetMetaQualifiedName {
             @Specialization
-            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isMetaObject(receiver)) {
-                    return receiver.getMirrorKlass().getTypeName();
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+            Object getMetaQualifiedName(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                return BaseInterop.getMetaQualifiedName(receiver, error);
             }
         }
 
         abstract static class GetMetaSimpleNameNode extends InteropMessage.GetMetaSimpleName {
             @Specialization
-            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isMetaObject(receiver)) {
-                    return receiver.getKlass().getMeta().java_lang_Class_getSimpleName.invokeDirect(receiver);
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+            Object getMetaSimpleName(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                return BaseInterop.getMetaSimpleName(receiver, error);
             }
         }
 
         abstract static class IsMetaInstanceNode extends InteropMessage.IsMetaInstance {
             @Specialization
-            boolean doStaticObject(StaticObject receiver, Object instance,
+            boolean isMetaInstance(StaticObject receiver, Object instance,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (isMetaObject(receiver)) {
-                    return instance instanceof StaticObject && instanceOf((StaticObject) instance, receiver.getMirrorKlass());
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                return BaseInterop.isMetaInstance(receiver, instance, error);
             }
         }
 
         abstract static class HasMetaObjectNode extends InteropMessage.HasMetaObject {
             @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                if (receiver.isForeignObject()) {
-                    return false;
-                }
-                return !isNull(receiver);
+            boolean hasMetaObject(StaticObject receiver) {
+                return BaseInterop.hasMetaObject(receiver);
             }
         }
 
         abstract static class GetMetaObjectNode extends InteropMessage.GetMetaObject {
             @Specialization
-            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                if (hasMetaObject(receiver)) {
-                    return receiver.getKlass().mirror();
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+            Object getMetaObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                return BaseInterop.getMetaObject(receiver, error);
             }
         }
 
         abstract static class HasMetaParentsNode extends InteropMessage.HasMetaParents {
             @Specialization
-            public static boolean hasMetaParents(StaticObject object) {
-                return BaseInterop.hasMetaParents(object);
+            public static boolean hasMetaParents(StaticObject receiver) {
+                return BaseInterop.hasMetaParents(receiver);
             }
-
         }
 
         abstract static class GetMetaParentsNode extends InteropMessage.GetMetaParents {
             @Specialization
-            public static Object getMetaParents(StaticObject object,
+            public static Object getMetaParents(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.getMetaParents(object, error);
+                return BaseInterop.getMetaParents(receiver, error);
             }
         }
 
@@ -379,24 +350,22 @@ public class BaseInterop {
 
         abstract static class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
             @Specialization
-            static int doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                // Working with espresso objects here, guaranteed to have identity.
-                return VM.JVM_IHashCode(receiver, null /*- path where language is needed is never reached through here. */);
+            static int identityHashCode(StaticObject receiver) throws UnsupportedMessageException {
+                return BaseInterop.identityHashCode(receiver);
             }
         }
 
-        static abstract class HasLanguageNode extends InteropMessage.HasLanguage {
+        abstract static class HasLanguageNode extends InteropMessage.HasLanguage {
             @Specialization
-            static boolean doStaticObject(StaticObject receiver) {
-                return true;
+            static boolean hasLanguage(StaticObject receiver) {
+                return BaseInterop.hasLanguage(receiver);
             }
         }
 
         abstract static class GetLanguageNode extends InteropMessage.GetLanguage {
             @Specialization
-            static Class<? extends TruffleLanguage<?>> doStaticObject(StaticObject receiver) {
-                return EspressoLanguage.class;
+            static Class<? extends TruffleLanguage<?>> getLanguage(StaticObject receiver) {
+                return BaseInterop.getLanguage(receiver);
             }
         }
 

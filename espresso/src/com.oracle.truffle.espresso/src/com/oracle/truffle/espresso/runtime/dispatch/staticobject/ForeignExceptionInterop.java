@@ -122,67 +122,57 @@ public class ForeignExceptionInterop extends ThrowableInterop {
 
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {
             @Specialization
-            static ExceptionType doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
-                receiver.checkNotForeign();
-                Object rawForeignException = getRawForeignObject(receiver);
-                return InteropLibrary.getUncached().getExceptionType(rawForeignException);
+            static ExceptionType getExceptionType(StaticObject receiver) throws UnsupportedMessageException {
+                return ForeignExceptionInterop.getExceptionType(receiver);
             }
         }
 
         abstract static class HasExceptionCauseNode extends InteropMessage.HasExceptionCause {
             @Specialization
             public static boolean hasExceptionCause(StaticObject object) {
-                object.checkNotForeign();
-                Object rawForeignException = getRawForeignObject(object);
-                return InteropLibrary.getUncached().hasExceptionCause(rawForeignException);
+                return ForeignExceptionInterop.hasExceptionCause(object);
             }
         }
 
         abstract static class GetExceptionCauseNode extends InteropMessage.GetExceptionCause {
             @Specialization
             public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
-                object.checkNotForeign();
-                return InteropLibrary.getUncached().getExceptionCause(getRawForeignObject(object));
+                return ForeignExceptionInterop.getExceptionCause(object);
             }
         }
 
         abstract static class HasExceptionMessageNode extends InteropMessage.HasExceptionMessage {
             @Specialization
             public static boolean hasExceptionMessage(StaticObject object) {
-                object.checkNotForeign();
-                return InteropLibrary.getUncached().hasExceptionMessage(getRawForeignObject(object));
+                return ForeignExceptionInterop.hasExceptionMessage(object);
             }
         }
 
         abstract static class GetExceptionMessageNode extends InteropMessage.GetExceptionMessage {
             @Specialization
             public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
-                object.checkNotForeign();
-                return InteropLibrary.getUncached().getExceptionMessage(getRawForeignObject(object));
+                return ForeignExceptionInterop.getExceptionMessage(object);
             }
         }
 
         abstract static class HasExceptionStackTraceNode extends InteropMessage.HasExceptionStackTrace {
             @Specialization
             public static boolean hasExceptionStackTrace(StaticObject object) {
-                object.checkNotForeign();
-                return InteropLibrary.getUncached().hasExceptionStackTrace(getRawForeignObject(object));
+                return ForeignExceptionInterop.hasExceptionStackTrace(object);
             }
         }
 
         abstract static class GetExceptionStackTraceNode extends InteropMessage.GetExceptionStackTrace {
             @Specialization
             public static Object getExceptionStackTrace(StaticObject object) throws UnsupportedMessageException {
-                object.checkNotForeign();
-                return InteropLibrary.getUncached().getExceptionStackTrace(getRawForeignObject(object));
+                return ForeignExceptionInterop.getExceptionStackTrace(object);
             }
         }
 
         abstract static class ThrowExceptionNode extends InteropMessage.ThrowException {
             @Specialization
             public static RuntimeException throwException(StaticObject object) {
-                object.checkNotForeign();
-                throw (RuntimeException) getRawForeignObject(object);
+                return ForeignExceptionInterop.throwException(object);
             }
         }
     }

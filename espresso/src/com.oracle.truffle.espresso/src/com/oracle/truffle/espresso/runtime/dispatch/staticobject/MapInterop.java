@@ -213,97 +213,65 @@ public class MapInterop extends EspressoInterop {
 
         abstract static class HasHashEntriesNode extends InteropMessage.HasHashEntries {
             @Specialization
-            public boolean doStaticObject(StaticObject receiver) {
-                assert InterpreterToVM.instanceOf(receiver, receiver.getKlass().getMeta().java_util_Map);
-                return true;
+            public boolean hasHashEntries(StaticObject receiver) {
+                return MapInterop.hasHashEntries(receiver);
             }
         }
 
         abstract static class IsHashEntryReadableNode extends InteropMessage.IsHashEntryReadable {
             @Specialization
-            public boolean doStaticObject(StaticObject receiver, Object key,
+            public boolean isHashEntryReadable(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke) {
-                return containsKey(receiver, key, invoke);
+                return MapInterop.isHashEntryReadable(receiver, key, invoke);
             }
         }
 
         abstract static class IsHashEntryModifiableNode extends InteropMessage.IsHashEntryModifiable {
             @Specialization
-            public boolean doStaticObject(StaticObject receiver, Object key,
+            public boolean isHashEntryModifiable(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke) {
-                return containsKey(receiver, key, invoke);
+                return MapInterop.isHashEntryReadable(receiver, key, invoke);
             }
         }
 
         abstract static class IsHashEntryRemovableNode extends InteropMessage.IsHashEntryRemovable {
             @Specialization
-            public boolean doStaticObject(StaticObject receiver, Object key,
+            public boolean isHashEntryRemovable(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke) {
-                return containsKey(receiver, key, invoke);
+                return MapInterop.isHashEntryReadable(receiver, key, invoke);
             }
         }
 
         abstract static class IsHashEntryInsertableNode extends InteropMessage.IsHashEntryInsertable {
             @Specialization
-            public boolean doStaticObject(StaticObject receiver, Object key,
+            public boolean isHashEntryInsertable(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke) {
-                return !containsKey(receiver, key, invoke);
+                return MapInterop.isHashEntryInsertable(receiver, key, invoke);
             }
         }
 
         abstract static class GetHashSizeNode extends InteropMessage.GetHashSize {
             @Specialization
-            public long doStaticObject(StaticObject receiver,
+            public long getHashSize(StaticObject receiver,
                             @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
-                if (!hasHashEntries(receiver)) {
-                    throw UnsupportedMessageException.create();
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                Method size = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_size.getITableIndex());
-                try {
-                    return (int) invoke.execute(size, receiver, EMPTY_ARRAY);
-                } catch (UnsupportedTypeException | ArityException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                return MapInterop.getHashSize(receiver, invoke);
             }
         }
 
         abstract static class ReadHashValueNode extends InteropMessage.ReadHashValue {
             @Specialization
-            public Object doStaticObject(StaticObject receiver, Object key,
+            public Object readHashValue(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke,
                             @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-                if (!isHashEntryReadable(receiver, key, contains)) {
-                    throw UnsupportedMessageException.create();
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                Method get = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_get.getITableIndex());
-                try {
-                    return invoke.execute(get, receiver, new Object[]{key});
-                } catch (UnsupportedTypeException e) {
-                    throw UnknownKeyException.create(key);
-                } catch (ArityException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                return MapInterop.readHashValue(receiver, key, invoke, contains);
             }
         }
 
         abstract static class WriteHashEntryNode extends InteropMessage.WriteHashEntry {
             @Specialization
-            public void doStaticObject(StaticObject receiver, Object key, Object value,
+            public void writeHashEntry(StaticObject receiver, Object key, Object value,
                             @Cached InvokeEspressoNode invoke) throws UnknownKeyException {
-                Meta meta = receiver.getKlass().getMeta();
-                Method put = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_put.getITableIndex());
-                try {
-                    invoke.execute(put, receiver, new Object[]{key, value});
-                } catch (UnsupportedTypeException e) {
-                    throw UnknownKeyException.create(key);
-                } catch (ArityException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                MapInterop.writeHashEntry(receiver, key, value, invoke);
             }
         }
 
@@ -312,19 +280,7 @@ public class MapInterop extends EspressoInterop {
             public void doStaticObject(StaticObject receiver, Object key,
                             @Cached InvokeEspressoNode invoke,
                             @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-                if (!isHashEntryReadable(receiver, key, contains)) {
-                    throw UnsupportedMessageException.create();
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                Method remove = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_remove.getITableIndex());
-                try {
-                    invoke.execute(remove, receiver, new Object[]{key});
-                } catch (UnsupportedTypeException e) {
-                    throw UnknownKeyException.create(key);
-                } catch (ArityException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                MapInterop.removeHashEntry(receiver, key, invoke, contains);
             }
         }
 
@@ -333,21 +289,7 @@ public class MapInterop extends EspressoInterop {
             public Object doStaticObject(StaticObject receiver,
                             @CachedLibrary(limit = "1") InteropLibrary setLibrary,
                             @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
-                if (!hasHashEntries(receiver)) {
-                    throw UnsupportedMessageException.create();
-                }
-                Meta meta = receiver.getKlass().getMeta();
-                Method entrySet = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_entrySet.getITableIndex());
-                Object set = null;
-                try {
-                    set = invoke.execute(entrySet, receiver, EMPTY_ARRAY);
-                } catch (ArityException | UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(e);
-                }
-                assert set != null;
-                assert setLibrary.hasIterator(set);
-                return setLibrary.getIterator(set);
+                return MapInterop.getHashEntriesIterator(receiver, setLibrary, invoke);
             }
         }
     }

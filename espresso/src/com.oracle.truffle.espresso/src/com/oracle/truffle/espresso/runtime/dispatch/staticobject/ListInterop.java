@@ -247,7 +247,7 @@ public final class ListInterop extends IterableInterop {
         abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
-                return true;
+                return ListInterop.hasArrayElements(receiver);
             }
         }
 
@@ -256,7 +256,7 @@ public final class ListInterop extends IterableInterop {
             static long getArraySize(StaticObject receiver,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                             @Cached LookupAndInvokeKnownMethodNode size) {
-                return (int) size.execute(receiver, listSizeMethod);
+                return ListInterop.getArraySize(receiver, listSizeMethod, size);
             }
         }
 
@@ -267,11 +267,7 @@ public final class ListInterop extends IterableInterop {
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                             @Cached LookupAndInvokeKnownMethodNode size,
                             @Cached BranchProfile error) throws InvalidArrayIndexException {
-                if (!boundsCheck(receiver, index, listSizeMethod, size)) {
-                    error.enter();
-                    throw InvalidArrayIndexException.create(index);
-                }
-                return listGet.listGet(receiver, index, error);
+                return ListInterop.readArrayElement(receiver, index, listGet, listSizeMethod, size, error);
             }
         }
 
@@ -283,19 +279,7 @@ public final class ListInterop extends IterableInterop {
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                             @Cached LookupAndInvokeKnownMethodNode size,
                             @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
-                int listSize = (int) size.execute(receiver, listSizeMethod);
-                if (!boundsCheck(index, listSize)) {
-                    // append new element if allowed
-                    if (index == listSize) {
-                        listAdd.listAdd(receiver, value, error);
-                        return;
-                    } else {
-                        error.enter();
-                        throw InvalidArrayIndexException.create(index);
-                    }
-                }
-                // replace existing element
-                listSet.listSet(receiver, index, value, error);
+                ListInterop.writeArrayElement(receiver, index, value, listSet, listAdd, listSizeMethod, size, error);
             }
         }
 
@@ -304,7 +288,7 @@ public final class ListInterop extends IterableInterop {
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                             @Cached LookupAndInvokeKnownMethodNode size) {
-                return boundsCheck(receiver, index, listSizeMethod, size);
+                return ListInterop.isArrayElementReadable(receiver, index, listSizeMethod, size);
             }
         }
 
@@ -313,17 +297,14 @@ public final class ListInterop extends IterableInterop {
             static boolean isArrayElementModifiable(StaticObject receiver, long index,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
                             @Cached LookupAndInvokeKnownMethodNode size) {
-                return boundsCheck(receiver, index, listSizeMethod, size);
+                return ListInterop.isArrayElementModifiable(receiver, index, listSizeMethod, size);
             }
         }
 
         abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
             @Specialization
             static boolean isArrayElementInsertable(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") long index) {
-                // we can't easily determine is the guest list is modifiable or not,
-                // so we return true here and let writeArrayElement fail in case the
-                // associated guest method throws
-                return true;
+                return ListInterop.isArrayElementInsertable(receiver, index);
             }
         }
     }
