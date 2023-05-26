@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
-import com.oracle.truffle.regex.tregex.parser.JSRegexValidator;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.parser.RegexValidator;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import org.graalvm.collections.EconomicSet;
 
-import java.util.function.BiPredicate;
+public class ClassSetContentsAccumulator {
 
-public final class ECMAScriptFlavor extends RegexFlavor {
+    private final CodePointSetAccumulator codePointSet;
+    private final EconomicSet<String> strings;
+    private boolean mayContainStrings;
 
-    public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
-
-    private ECMAScriptFlavor() {
-        super(0);
+    public ClassSetContentsAccumulator() {
+        this.codePointSet = new CodePointSetAccumulator();
+        this.strings = EconomicSet.create();
+        this.mayContainStrings = false;
     }
 
-    @Override
-    public RegexValidator createValidator(RegexSource source) {
-        return new JSRegexValidator(source);
+    public void addAll(ClassSetContents classSet) {
+        codePointSet.addSet(classSet.getCodePointSet());
+        strings.addAll(classSet.getStrings());
+        mayContainStrings |= classSet.mayContainStrings();
     }
 
-    @Override
-    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new JSRegexParser(language, source, compilationBuffer);
+    public void retainAll(ClassSetContents classSet) {
+        codePointSet.intersectWith(classSet.getCodePointSet());
+        strings.retainAll(classSet.getStrings());
+        mayContainStrings = mayContainStrings && classSet.mayContainStrings();
     }
 
-    @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getFlags().isEitherUnicode()) {
-            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
-        } else {
-            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();
-        }
+    public void removeAll(ClassSetContents classSet, Encoding encoding) {
+        codePointSet.subtract(classSet.getCodePointSet(), encoding);
+        strings.removeAll(classSet.getStrings());
+    }
+
+    public CodePointSet getCodePointSet() {
+        return codePointSet.toCodePointSet();
+    }
+
+    public EconomicSet<String> getStrings() {
+        return strings;
+    }
+
+    public boolean isCodePointSetOnly() {
+        return strings.isEmpty();
+    }
+
+    public boolean mayContainStrings() {
+        return mayContainStrings;
+    }
+
+    public void clear() {
+        codePointSet.clear();
+        strings.clear();
     }
 }

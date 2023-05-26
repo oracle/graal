@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------
-; Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 ; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;
 ; The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,8 @@
 ;; any Clojure REPL and then call the `-main` function.
 
 ;; This script assumes that the current working directory contains a folder "dat"
-;; with the files NonUnicodeFoldTable.txt and UnicodeFoldTable.txt.
+;; with the files NonUnicodeFoldTable.txt, UnicodeFoldTable.txt,
+;; PythonFoldTable.txt and CaseFolding.txt.
 
 (ns generate-case-fold-table
   (:require [clojure.set :as set]
@@ -55,6 +56,10 @@
   [xs]
   (map vector xs (rest xs)))
 
+(defn parse-hex
+  [hex-string]
+  (Long/parseLong hex-string 16))
+
 (defn parse-relation-file
   "Parses a binary relation from the file at `path` and returns it as a sorted
   set."
@@ -63,9 +68,19 @@
         (apply concat
           (for [line (str/split-lines (slurp path))]
             (let [codepoints-str (str/split line #";")
-                  parse-hex      #(Long/parseLong % 16)
                   codepoints     (map parse-hex codepoints-str)]
               (pairwise codepoints))))))
+
+(defn parse-case-folding-file
+  "Parses Unicode's CaseFolding.txt from the file at `path` and returns it as a
+  sorted set."
+  [path]
+  (into (sorted-set)
+        (for [line (str/split-lines (slurp path))
+              :when (not (or (str/blank? line) (str/starts-with? line "#")))
+              :let [[code status mapping] (str/split line #"\s*;\s*")]
+              :when (#{"C" "S"} status)]
+          [(parse-hex code) (parse-hex mapping)])))
 
 (defn maps-to
   "Given a binary relation `rel`, represented as a sorted set, finds the set of
@@ -200,13 +215,13 @@
 (defn extract-runs
   "This is a helper function for `extract-delta-runs` and
   `extract-alternating-runs`."
-  [rel find-run encode-run]
+  [rel find-run encode-run allow-singletons]
   (loop [todo-rel rel
          from     [0 0]
          entries  []]
     (if-let [next-pair (first (subseq todo-rel > from))]
       (let [run (find-run rel next-pair)]
-        (if (> (count run) 1)
+        (if (or allow-singletons (> (count run) 1))
           (recur (set/difference todo-rel run)
                  next-pair
                  (conj entries (encode-run run)))
@@ -220,7 +235,7 @@
   case-equivalent, character by character, to other ranges of characters, e.g.
   the ASCII ranges [a-z] and [A-Z]. These are then encoded via the entries
   deltaPositive and deltaNegative (:kind :delta)."
-  [rel]
+  [allow-singletons rel]
   (letfn [(find-delta-run [rel start-pair]
             (let [next-pair [(inc (first start-pair)) (inc (second start-pair))]]
               (cons start-pair (when (rel next-pair)
@@ -230,7 +245,7 @@
                              :hi    (first (last run))
                              :delta (- (second (first run)) (first (first run)))
                              :kind  :delta})]
-    (extract-runs rel find-delta-run encode-delta-run)))
+    (extract-runs rel find-delta-run encode-delta-run allow-singletons)))
 
 (defn extract-alternating-runs
   "This is the third step in encoding the equivalence relation `rel` into a list
@@ -249,18 +264,25 @@
                                    :hi      (first (last run))
                                    :aligned (even? (first (first run)))
                                    :kind    :alternating})]
-    (extract-runs rel find-alternating-run encode-alternating-run)))
+    (extract-runs rel find-alternating-run encode-alternating-run false)))
 
-(defn generate-entries
+(defn generate-entries-for-eq-relation
   "Given an equivalence relation, calculates its encoding in terms of case fold
   table entries."
   [rel]
   (let [{rel :todo-rel, large-class-entries :entries} (extract-large-classes rel)
-        {rel :todo-rel, delta-entries :entries}       (extract-delta-runs rel)
+        {rel :todo-rel, delta-entries :entries}       (extract-delta-runs false rel)
         {rel :todo-rel, alternating-entries :entries} (extract-alternating-runs rel)
         remaining-classes                             (collect-eq-classes rel)
         remaining-class-entries                       (encode-classes remaining-classes)]
     (sort-by (fn [e] [(:lo e) (:hi e)]) (concat large-class-entries delta-entries alternating-entries remaining-class-entries))))
+
+(defn generate-entries-for-function
+  "Given a functional relation, calculates its encoding in terms of case fold
+  table entries."
+  [rel]
+  (let [{rel :todo-rel, delta-entries :entries} (extract-delta-runs true rel)]
+    (sort-by (fn [e] [(:lo e) (:hi e)]) delta-entries)))
 
 (defn identify-classes
   "Replaces the references to equivalence classes (:class field) in
@@ -317,7 +339,7 @@
   "Renders a case fold table with name `table-name`. This is the main product of
   this script."
   [entries table-name]
-  (let [header               (str "    private static final CaseFoldTableImpl " table-name " = new CaseFoldTableImpl(new int[]{\n")
+  (let [header               (str "    public static final CaseFoldTableImpl " table-name " = new CaseFoldTableImpl(new int[]{\n")
         item-prefix          "                    "
         item-sep             ",\n"
         footer               "\n    });\n"
@@ -357,12 +379,14 @@
   (let [non-unicode-relation    (load-relation "dat/NonUnicodeFoldTable.txt")
         unicode-relation        (load-relation "dat/UnicodeFoldTable.txt")
         python-unicode-relation (load-relation "dat/PythonFoldTable.txt")
+        simple-case-folding     (parse-case-folding-file "dat/CaseFolding.txt")
         num-classes             (atom 0)
         class-ids               (atom {})
-        non-unicode-entries     (identify-classes (generate-entries non-unicode-relation) num-classes class-ids)
-        unicode-entries         (identify-classes (generate-entries unicode-relation) num-classes class-ids)
-        python-ascii-entries    (identify-classes (generate-entries python-ascii-relation) num-classes class-ids)
-        python-unicode-entries  (identify-classes (generate-entries python-unicode-relation) num-classes class-ids)
+        non-unicode-entries     (identify-classes (generate-entries-for-eq-relation non-unicode-relation) num-classes class-ids)
+        unicode-entries         (identify-classes (generate-entries-for-eq-relation unicode-relation) num-classes class-ids)
+        python-ascii-entries    (identify-classes (generate-entries-for-eq-relation python-ascii-relation) num-classes class-ids)
+        python-unicode-entries  (identify-classes (generate-entries-for-eq-relation python-unicode-relation) num-classes class-ids)
+        case-folding-entries    (generate-entries-for-function simple-case-folding)
         classes                 (map second (sort (map swap @class-ids)))]
     (str (show-classes classes)
          "\n"
@@ -372,7 +396,9 @@
          "\n"
          (show-entries python-ascii-entries "PYTHON_ASCII_TABLE_ENTRIES")
          "\n"
-         (show-entries python-unicode-entries "PYTHON_UNICODE_TABLE_ENTRIES"))))
+         (show-entries python-unicode-entries "PYTHON_UNICODE_TABLE_ENTRIES")
+         "\n"
+         (show-entries case-folding-entries "SIMPLE_CASE_FOLDING_ENTRIES"))))
 
 (defn -main
   "This gets evaluated when we run the script."

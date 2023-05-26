@@ -52,9 +52,11 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.EconomicSet;
 
 public abstract class RegexLexer {
 
@@ -76,11 +78,13 @@ public abstract class RegexLexer {
     private int charClassCurAtomStartIndex = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
+    protected final CompilationBuffer compilationBuffer;
 
-    public RegexLexer(RegexSource source) {
+    public RegexLexer(RegexSource source, CompilationBuffer compilationBuffer) {
         this.source = source;
         this.pattern = source.getPattern();
         this.encoding = source.getEncoding();
+        this.compilationBuffer = compilationBuffer;
     }
 
     /**
@@ -131,9 +135,29 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledUnicodePropertyEscapes();
 
     /**
-     * Case folds a given character class.
+     * Returns {@code true} if class set expressions (e.g. {@code [[\w\q{abc|xyz}]--[a-cx-z]]}) are
+     * supported.
      */
-    protected abstract void caseFold(CodePointSetAccumulator charClass);
+    protected abstract boolean featureEnabledClassSetExpressions();
+
+    /**
+     * Updates a character set by expanding it to the set of characters that case fold to the same
+     * characters as the characters currently in the set. This is done by case folding the set and
+     * then "unfolding" it by finding all inverse case fold mappings.
+     */
+    protected abstract void caseFoldUnfold(CodePointSetAccumulator charClass);
+
+    /**
+     * Case folds an atom in a class set expression. This maps the elements of the expression into
+     * their case folded variant.
+     */
+    protected abstract ClassSetContents caseFoldClassSetAtom(ClassSetContents classSetContents);
+
+    /**
+     * Returns the complement of a class set element. In ECMAScript, this behavior can vary with the
+     * flags.
+     */
+    protected abstract CodePointSet complementClassSet(CodePointSet codePointSet);
 
     /**
      * Returns the code point set represented by the dot operator.
@@ -185,6 +209,12 @@ public abstract class RegexLexer {
     protected abstract void handleCCRangeWithPredefCharClass(int startPos);
 
     /**
+     * Handle complement of class set expressions containing strings, e.g. {@code [^\q{abc}]} or
+     * {@code \P{RGI_Emoji}}.
+     */
+    protected abstract RegexSyntaxException handleComplementOfStringSet();
+
+    /**
      * Handle empty group name in group references.
      */
     protected abstract RegexSyntaxException handleEmptyGroupName();
@@ -206,15 +236,32 @@ public abstract class RegexLexer {
      */
     protected abstract void handleInvalidBackReference(String reference);
 
+    protected abstract RegexSyntaxException handleInvalidCharInCharClass();
+
     /**
      * Handle groups starting with {@code (?} and invalid next char.
      */
     protected abstract RegexSyntaxException handleInvalidGroupBeginQ();
 
     /**
+     * Handle class set expressions with mixed set operators in the same nested set.
+     */
+    protected abstract RegexSyntaxException handleMixedClassSetOperators(ClassSetOperator leftOperator, ClassSetOperator rightOperator);
+
+    /**
+     * Handle missing operands in class set expressions, e.g. {@code [\s&&]} or {@code [\w--]}.
+     */
+    protected abstract RegexSyntaxException handleMissingClassSetOperand(ClassSetOperator operator);
+
+    /**
      * Handle octal values larger than 255.
      */
     protected abstract void handleOctalOutOfRange();
+
+    /**
+     * Handle character ranges as operands in class set expressions with operators other than union.
+     */
+    protected abstract RegexSyntaxException handleRangeAsClassSetOperand(ClassSetOperator operator);
 
     /**
      * Handle unfinished escape (e.g. {@code \}).
@@ -232,6 +279,11 @@ public abstract class RegexLexer {
     protected abstract RegexSyntaxException handleUnfinishedGroupQ();
 
     /**
+     * Handle unfinished range in class set expression {@code [a-]}.
+     */
+    protected abstract RegexSyntaxException handleUnfinishedRangeInClassSet();
+
+    /**
      * Handle unmatched {@code }}.
      */
     protected abstract void handleUnmatchedRightBrace();
@@ -245,6 +297,11 @@ public abstract class RegexLexer {
      * Handle unmatched {@code ]}.
      */
     protected abstract void handleUnmatchedRightBracket();
+
+    /**
+     * Checks whether {@code codepoint} can appear as an unescaped literal class set character.
+     */
+    protected abstract void checkClassSetCharacter(int codePoint) throws RegexSyntaxException;
 
     /**
      * Parse the next codepoint in a group name and return it.
@@ -400,11 +457,11 @@ public abstract class RegexLexer {
         return true;
     }
 
-    private boolean consumingLookahead(char terminator) {
+    private boolean consumingLookahead(char character) {
         if (atEnd()) {
             return false;
         }
-        if (curChar() == terminator) {
+        if (curChar() == character) {
             advance();
             return true;
         }
@@ -593,7 +650,7 @@ public abstract class RegexLexer {
     private Token charClass(boolean invert) {
         boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
         if (featureEnabledIgnoreCase()) {
-            caseFold(curCharClass);
+            caseFoldUnfold(curCharClass);
         }
         CodePointSet cps = curCharClass.toCodePointSet();
         return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
@@ -676,7 +733,13 @@ public abstract class RegexLexer {
                 if (isPredefCharClass(c)) {
                     return Token.createCharClass(getPredefinedCharClass(c));
                 } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
-                    return charClass(parseUnicodeCharacterProperty(c == 'P'));
+                    ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
+                    if (featureEnabledClassSetExpressions()) {
+                        return Token.createClassSetExpression(unicodePropertyContents);
+                    } else {
+                        assert unicodePropertyContents.isCodePointSetOnly();
+                        return charClass(unicodePropertyContents.getCodePointSet());
+                    }
                 } else {
                     return charClass(parseEscapeChar(c, false));
                 }
@@ -856,6 +919,9 @@ public abstract class RegexLexer {
     }
 
     private Token parseCharClass() throws RegexSyntaxException {
+        if (featureEnabledClassSetExpressions()) {
+            return Token.createClassSetExpression(parseClassSetExpression());
+        }
         final boolean invert = consumingLookahead("^");
         curCharClass.clear();
         int startPos = position;
@@ -869,13 +935,15 @@ public abstract class RegexLexer {
         throw handleUnmatchedLeftBracket();
     }
 
-    private CodePointSet parseCharClassAtomPredefCharClass(char c) throws RegexSyntaxException {
+    private ClassSetContents parseCharClassAtomPredefCharClass(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {
                 handleUnfinishedEscape();
             }
             if (isEscapeCharClass(curChar())) {
-                return parseEscapeCharClass(consumeChar());
+                ClassSetContents contents = parseEscapeCharClass(consumeChar());
+                assert featureEnabledClassSetExpressions() || contents.isCodePointSetOnly();
+                return contents;
             }
         }
         return null;
@@ -887,14 +955,19 @@ public abstract class RegexLexer {
             assert !isEscapeCharClass(curChar());
             return parseEscapeChar(consumeChar(), true);
         } else {
-            return toCodePoint(c);
+            int codePoint = toCodePoint(c);
+            if (featureEnabledClassSetExpressions()) {
+                checkClassSetCharacter(codePoint);
+            }
+            return codePoint;
         }
     }
 
     private void parseCharClassRange(char c) throws RegexSyntaxException {
         int startPos = position - 1;
         charClassCurAtomStartIndex = position - 1;
-        CodePointSet firstAtomCC = parseCharClassAtomPredefCharClass(c);
+        ClassSetContents firstAtomCSC = parseCharClassAtomPredefCharClass(c);
+        CodePointSet firstAtomCC = firstAtomCSC == null ? null : firstAtomCSC.getCodePointSet();
         int firstAtomCP = firstAtomCC == null ? parseCharClassAtomCodePoint(c) : -1;
         if (consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
@@ -903,7 +976,8 @@ public abstract class RegexLexer {
             } else {
                 char nextC = consumeChar();
                 charClassCurAtomStartIndex = position - 1;
-                CodePointSet secondAtomCC = parseCharClassAtomPredefCharClass(nextC);
+                ClassSetContents secondAtomCSC = parseCharClassAtomPredefCharClass(nextC);
+                CodePointSet secondAtomCC = secondAtomCSC == null ? null : secondAtomCSC.getCodePointSet();
                 int secondAtomCP = secondAtomCC == null ? parseCharClassAtomCodePoint(nextC) : -1;
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
                 if (firstAtomCC != null || secondAtomCC != null) {
@@ -932,9 +1006,9 @@ public abstract class RegexLexer {
         }
     }
 
-    private CodePointSet parseEscapeCharClass(char c) throws RegexSyntaxException {
+    private ClassSetContents parseEscapeCharClass(char c) throws RegexSyntaxException {
         if (isPredefCharClass(c)) {
-            return getPredefinedCharClass(c);
+            return ClassSetContents.createCharacterClass(getPredefinedCharClass(c));
         } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
@@ -942,7 +1016,178 @@ public abstract class RegexLexer {
         }
     }
 
-    private CodePointSet parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
+    public enum ClassSetOperator {
+        Union("implicit union"),
+        Intersection("&&"),
+        Difference("--");
+
+        private final String repr;
+
+        ClassSetOperator(String repr) {
+            this.repr = repr;
+        }
+
+        @Override
+        public String toString() {
+            return repr;
+        }
+    }
+
+    private ClassSetContents parseClassSetExpression() throws RegexSyntaxException {
+        final boolean invert = consumingLookahead("^");
+        ClassSetContentsAccumulator curClassSet = new ClassSetContentsAccumulator();
+        ClassSetOperator operator = null;
+        boolean firstOperandIsRange = false;
+        int startPos = position;
+        while (!atEnd()) {
+            if (curChar() == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != startPos)) {
+                advance();
+                if (invert && curClassSet.mayContainStrings()) {
+                    throw handleComplementOfStringSet();
+                }
+                if (invert) {
+                    assert !curClassSet.mayContainStrings() && curClassSet.isCodePointSetOnly();
+                    return ClassSetContents.createCharacterClass(complementClassSet(curClassSet.getCodePointSet()));
+                } else {
+                    EconomicSet<String> stringsCopy = EconomicSet.create(curClassSet.getStrings().size());
+                    stringsCopy.addAll(curClassSet.getStrings());
+                    return ClassSetContents.createClass(curClassSet.getCodePointSet(), stringsCopy, curClassSet.mayContainStrings());
+                }
+            }
+
+            ClassSetOperator newOperator = parseClassSetOperator();
+            if (position == startPos) {
+                if (newOperator != ClassSetOperator.Union) {
+                    throw handleMissingClassSetOperand(newOperator);
+                }
+            } else {
+                if (operator == null) {
+                    // first operator
+                    operator = newOperator;
+                    if (firstOperandIsRange && operator != ClassSetOperator.Union) {
+                        throw handleRangeAsClassSetOperand(operator);
+                    }
+                } else if (operator != newOperator) {
+                    throw handleMixedClassSetOperators(operator, newOperator);
+                }
+            }
+
+            if (atEnd()) {
+                break;
+            }
+            if (curChar() == ']') {
+                throw handleMissingClassSetOperand(newOperator);
+            }
+
+            ClassSetContents operand = parseClassSetOperandOrRange();
+            if (operand.isRange() && operator != null && operator != ClassSetOperator.Union) {
+                throw handleRangeAsClassSetOperand(operator);
+            }
+            if (operator == null) {
+                // first operand
+                curClassSet.addAll(operand);
+                firstOperandIsRange = operand.isRange();
+            } else {
+                switch (operator) {
+                    case Union -> curClassSet.addAll(operand);
+                    case Intersection -> curClassSet.retainAll(operand);
+                    case Difference -> curClassSet.removeAll(operand, encoding);
+                }
+            }
+        }
+        throw handleUnmatchedLeftBracket();
+    }
+
+    private ClassSetOperator parseClassSetOperator() {
+        if (consumingLookahead("&&")) {
+            if (lookahead("&")) {
+                throw handleInvalidCharInCharClass();
+            }
+            return ClassSetOperator.Intersection;
+        } else if (consumingLookahead("--")) {
+            return ClassSetOperator.Difference;
+        } else {
+            return ClassSetOperator.Union;
+        }
+    }
+
+    private ClassSetContents parseClassSetOperandOrRange() {
+        int startPos = position;
+        charClassCurAtomStartIndex = position;
+        char c = consumeChar();
+        ClassSetContents contents = parseClassSetStrings(c);
+        if (contents != null) {
+            return caseFoldClassSetAtom(contents);
+        }
+        contents = parseCharClassAtomPredefCharClass(c);
+        if (contents != null) {
+            return contents;
+        }
+        if (c == '[') {
+            return parseClassSetExpression();
+        } else {
+            int firstCodePoint = parseCharClassAtomCodePoint(c);
+            if (lookahead("-") && !lookahead("--")) {
+                advance();
+                if (atEnd()) {
+                    throw handleUnmatchedLeftBracket();
+                }
+                if (curChar() == ']') {
+                    throw handleUnfinishedRangeInClassSet();
+                }
+                int secondCodePoint = parseCharClassAtomCodePoint(consumeChar());
+                if (secondCodePoint < firstCodePoint) {
+                    throw handleCCRangeOutOfOrder(startPos);
+                }
+                return caseFoldClassSetAtom(ClassSetContents.createRange(firstCodePoint, secondCodePoint));
+            } else {
+                return caseFoldClassSetAtom(ClassSetContents.createCharacter(firstCodePoint));
+            }
+        }
+    }
+
+    private ClassSetContents parseClassSetStrings(char c) {
+        if (c == '\\' && consumingLookahead("q{")) {
+            EconomicSet<String> strings = EconomicSet.create();
+            CodePointSetAccumulator singleCodePoints = new CodePointSetAccumulator();
+            do {
+                String string = parseClassSetString();
+                if (string.codePointCount(0, string.length()) == 1) {
+                    singleCodePoints.addCodePoint(string.codePointAt(0));
+                } else {
+                    strings.add(string);
+                }
+                if (atEnd()) {
+                    throw syntaxError(JsErrorMessages.UNTERMINATED_STRING_SET);
+                }
+            } while (consumingLookahead('|'));
+            if (atEnd()) {
+                throw syntaxError(JsErrorMessages.UNTERMINATED_STRING_SET);
+            }
+            assert curChar() == '}';
+            advance();
+            return ClassSetContents.createStrings(singleCodePoints.toCodePointSet(), strings);
+        } else {
+            return null;
+        }
+    }
+
+    private String parseClassSetString() {
+        StringBuilder sb = new StringBuilder();
+        while (!atEnd() && curChar() != '|' && curChar() != '}') {
+            if (consumingLookahead('\\')) {
+                if (atEnd()) {
+                    handleUnfinishedEscape();
+                }
+                sb.appendCodePoint(parseEscapeChar(consumeChar(), true));
+            } else {
+                sb.append(consumeChar());
+            }
+        }
+        return sb.toString();
+    }
+
+    private ClassSetContents parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
         if (!consumingLookahead("{")) {
             throw syntaxError(JsErrorMessages.INVALID_UNICODE_PROPERTY);
         }
@@ -954,8 +1199,23 @@ public abstract class RegexLexer {
             throw syntaxError(JsErrorMessages.ENDS_WITH_UNFINISHED_UNICODE_PROPERTY);
         }
         try {
-            CodePointSet propertySet = encoding.getFullSet().createIntersection(UnicodeProperties.getProperty(pattern.substring(namePos, position - 1)), curCharClass.getTmp());
-            return invert ? propertySet.createInverse(encoding) : propertySet;
+            String propertyName = pattern.substring(namePos, position - 1);
+            if (featureEnabledClassSetExpressions()) {
+                ClassSetContents property = UnicodeProperties.getPropertyOfStrings(propertyName);
+                if (invert) {
+                    if (property.mayContainStrings()) {
+                        throw handleComplementOfStringSet();
+                    }
+                    assert property.isCodePointSetOnly();
+                    property = caseFoldClassSetAtom(property);
+                    return ClassSetContents.createCharacterClass(complementClassSet(property.getCodePointSet()));
+                } else {
+                    return caseFoldClassSetAtom(property);
+                }
+            } else {
+                CodePointSet propertySet = UnicodeProperties.getProperty(propertyName);
+                return ClassSetContents.createCharacterClass(invert ? propertySet.createInverse(encoding) : propertySet);
+            }
         } catch (IllegalArgumentException e) {
             throw syntaxError(e.getMessage());
         }

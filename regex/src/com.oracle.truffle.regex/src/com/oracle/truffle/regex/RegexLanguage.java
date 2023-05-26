@@ -169,8 +169,9 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         }
         String pattern = srcStr.substring(firstSlash + 1, lastSlash);
         String flags = srcStr.substring(lastSlash + 1);
-        // ECMAScript-specific: the 'u' flag changes the encoding
-        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
+        // ECMAScript-specific: the 'u' and 'v' flags change the encoding
+        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW &&
+                        (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0)) {
             optBuilder.encoding(Encodings.UTF_16);
         }
         return new RegexSource(pattern, flags, optBuilder.build(), source);
