@@ -116,7 +116,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public static final int FIRST_TIER_INDEX = 1;
     public static final int LAST_TIER_INDEX = 2;
 
-    static final int NUMBER_OF_CACHED_OPTINS = 128;
+    static final int NUMBER_OF_CACHED_OPTIONS = 128;
     static final TruffleCompilerOptionsOptionDescriptors OPTION_DESCRIPTORS = new TruffleCompilerOptionsOptionDescriptors();
 
     protected TruffleCompilerConfiguration config;
@@ -129,7 +129,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
-    @SuppressWarnings("serial") private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTINS));
+    @SuppressWarnings("serial") private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
