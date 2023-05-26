@@ -27,10 +27,12 @@ package org.graalvm.compiler.truffle.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -54,7 +56,11 @@ public class LanguageContextFreedTest {
     private static final int COMPILATION_THRESHOLD = 10;
 
     @Test
-    public void testLanguageContexFreedNoSharing() {
+    public void testLanguageContextFreedNoSharing() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(LanguageContextFreedTest.class, LanguageContextFreedTest::testLanguageContextFreedNoSharingImpl).run();
+    }
+
+    private static void testLanguageContextFreedNoSharingImpl() {
         doTest(() -> {
             return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).//
             option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
@@ -65,7 +71,11 @@ public class LanguageContextFreedTest {
     }
 
     @Test
-    public void testLanguageContexFreedSharedEngine() {
+    public void testLanguageContextFreedSharedEngine() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(LanguageContextFreedTest.class, LanguageContextFreedTest::testLanguageContextFreedSharedEngineImpl).run();
+    }
+
+    private static void testLanguageContextFreedSharedEngineImpl() {
         doTest(() -> {
             Engine engine = Engine.newBuilder().allowExperimentalOptions(true).//
             option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
