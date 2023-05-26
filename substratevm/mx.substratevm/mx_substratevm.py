@@ -790,7 +790,7 @@ def _helloworld(native_image, javac_command, path, build_only, args):
         if actual_output != expected_output:
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
-def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
+def _debuginfotest(native_image, path, build_only, with_isolates_only, omit_build, args):
     mx.log("path=%s"%path)
     sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
     mx.log("sourcepath=%s"%sourcepath)
@@ -808,22 +808,23 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         args.append("-D" + key + "=" + value)
 
 
-    native_image_args = ["--native-image-info",
-                         '-H:+VerifyNamingConventions',
-                         '-cp', classpath('com.oracle.svm.test'),
-                         '-Dgraal.LogFile=graal.log',
-                         '-g',
-                         '-H:+SourceLevelDebug',
-                         '-H:DebugInfoSourceSearchPath=' + sourcepath,
-                         # We do not want to step into class initializer, so initialize everything at build time.
-                         '--initialize-at-build-time=hello',
-                         'hello.Hello'] + args
+    native_image_args = [
+        '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.c=ALL-UNNAMED',
+        '-H:CLibraryPath=' + sourcepath,
+        '--native-image-info',
+        '-H:+VerifyNamingConventions',
+        '-cp', classpath('com.oracle.svm.test'),
+        '-Dgraal.LogFile=graal.log',
+        '-g',
+        '-H:+SourceLevelDebug',
+        '-H:DebugInfoSourceSearchPath=' + sourcepath,
+    ] + args
 
-    def build_debug_test(variant_name, extra_args):
+    def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
         mkpath(per_build_path)
         build_args = native_image_args + extra_args + [
-            '-o', join(per_build_path, 'hello_image')
+            '-o', join(per_build_path, image_name)
         ]
         mx.log('native_image {}'.format(build_args))
         return native_image(build_args)
@@ -832,20 +833,43 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     if '--libc=musl' in args:
         os.environ.update({'debuginfotest_musl' : 'yes'})
 
+    gdb_utils_py = join(suite.dir, 'mx.substratevm', 'gdb_utils.py')
     testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
+    testcstruct_py = join(suite.dir, 'mx.substratevm', 'testcstruct.py')
+    testhello_args = [
+        # We do not want to step into class initializer, so initialize everything at build time.
+        '--initialize-at-build-time=hello',
+        'hello.Hello'
+    ]
+    cstruct_args = [
+        'com.oracle.svm.test.debug.CStructTests'
+    ]
+    if not with_isolates_only:
+        if omit_build:
+            per_build_path =  join(path, 'isolates_off')
+            hello_binary = join(per_build_path, 'hello_image')
+            cstruct_binary = join(per_build_path, 'cstruct_image')
+        else:
+            hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + ['-H:-SpawnIsolates'])
+            cstruct_binary = build_debug_test('isolates_off', 'cstruct_image', cstruct_args + ['-H:-SpawnIsolates'])
+        if mx.get_os() == 'linux' and not build_only:
+            os.environ.update({'debuginfotest_isolates' : 'no'})
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testcstruct_py, cstruct_binary])
 
-    hello_binary = build_debug_test('isolates_on', ['-H:+SpawnIsolates'])
+    if omit_build:
+        per_build_path =  join(path, 'isolates_on')
+        hello_binary = join(per_build_path, 'hello_image')
+        cstruct_binary = join(per_build_path, 'cstruct_image')
+    else:
+        hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + ['-H:+SpawnIsolates'])
+        cstruct_binary = build_debug_test('isolates_on', 'cstruct_image', cstruct_args + ['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
-
-    if not with_isolates_only:
-        hello_binary = build_debug_test('isolates_off', ['-H:-SpawnIsolates'])
-        if mx.get_os() == 'linux' and not build_only:
-            os.environ.update({'debuginfotest_isolates' : 'no'})
-            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testcstruct_py, cstruct_binary])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -1246,19 +1270,23 @@ def debuginfotest(args, config=None):
     builds a debuginfo Hello native image and tests it with gdb.
     """
     parser = ArgumentParser(prog='mx debuginfotest')
-    all_args = ['--output-path', '--build-only', '--with-isolates-only']
+    all_args = ['--output-path', '--build-only', '--with-isolates-only', '--omit-build']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
     parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
     parser.add_argument(all_args[2], action='store_true', help='Only build and test the native image with isolates')
+    parser.add_argument(all_args[3], action='store_true', help='Omit building the native miage')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
+    omit_build = parsed.omit_build
+    if build_only  and omit_build:
+        mx.abort("Specify only one of --build-only and --omit-build")
     with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-            _debuginfotest(native_image, output_path, build_only, with_isolates_only, a), unmask(parsed.image_args),
+            _debuginfotest(native_image, output_path, build_only, with_isolates_only, omit_build, a), unmask(parsed.image_args),
         config=config
     )
 
