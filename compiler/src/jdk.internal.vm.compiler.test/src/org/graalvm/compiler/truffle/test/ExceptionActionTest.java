@@ -35,7 +35,8 @@ import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.test.SubprocessUtil;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils.Subprocess;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -188,7 +189,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     private void executeInSubProcess(BiConsumer<String, String> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions)
                     throws IOException, InterruptedException {
         Path log = SubprocessTestUtils.isSubprocess() ? null : File.createTempFile("compiler", ".log").toPath();
-        SubprocessUtil.Subprocess subprocess = null;
+        Subprocess subprocess = null;
         boolean success = false;
         try {
             String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
