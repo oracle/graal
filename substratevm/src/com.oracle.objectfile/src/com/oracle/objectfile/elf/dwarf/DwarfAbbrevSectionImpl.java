@@ -1341,8 +1341,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeTag(DwarfDebugInfo.DW_TAG_array_type, buffer, pos);
         boolean hasChildren = (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2);
         pos = writeFlag((hasChildren ? DwarfDebugInfo.DW_CHILDREN_yes : DwarfDebugInfo.DW_CHILDREN_no), buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+        }
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         /*

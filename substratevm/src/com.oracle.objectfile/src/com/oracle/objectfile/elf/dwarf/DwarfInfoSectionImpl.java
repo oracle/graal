@@ -1317,9 +1317,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type1;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int size = (elementType.isPrimitive() ? elementType.getSize() : 8);
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
-        pos = writeAttrData1((byte) size, buffer, pos);
+        // Java arrays don't have a fixed byte_size
         String elementTypeName = elementType.getTypeName();
         /* use the indirect type for the element type so pointers get translated */
         int elementTypeIdx = getIndirectTypeIndex(elementType);
@@ -1334,8 +1332,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, arraySize);
-        pos = writeAttrData1((byte) arraySize, buffer, pos);
+        // Foreign arrays have a fixed byte_size
+        int size = arraySize * valueSize;
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
+        pos = writeAttrData4(size, buffer, pos);
         String elementTypeName = elementType.getTypeName();
         /* use the indirect layout type for the element */
         int elementTypeIdx = getIndirectLayoutIndex(elementType);
