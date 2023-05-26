@@ -21,6 +21,9 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+# pylint: skip-file
+#
+# python utility code for use by the gdb scripts that test native debug info
 
 import gdb
 import re
