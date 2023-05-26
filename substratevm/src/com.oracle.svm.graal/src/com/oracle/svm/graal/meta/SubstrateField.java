@@ -165,6 +165,11 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
+    public boolean isUnknownValue() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "SubstrateField<" + format("%h.%n") + " location: " + location + ">";
     }

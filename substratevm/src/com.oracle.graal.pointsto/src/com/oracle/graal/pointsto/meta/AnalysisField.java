@@ -121,6 +121,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     protected final AnalysisType declaringClass;
     protected final AnalysisType fieldType;
 
+    /**
+     * Marks a field whose value is computed during image building, in general derived from other
+     * values, and it cannot be constant-folded or otherwise optimized.
+     */
+    protected final boolean isUnknownValue;
+
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
@@ -146,6 +152,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
+
+        isUnknownValue = universe.hostVM().isUnknownValueField(this);
     }
 
     @Override
@@ -416,6 +424,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public void onReachable() {
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
+    }
+
+    public boolean isUnknownValue() {
+        return isUnknownValue;
     }
 
     public void setCanBeNull(boolean canBeNull) {

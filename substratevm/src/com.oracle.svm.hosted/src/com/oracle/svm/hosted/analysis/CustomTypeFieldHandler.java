@@ -41,7 +41,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -72,21 +71,12 @@ public abstract class CustomTypeFieldHandler {
             }
         } else {
             UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-            UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
             if (unknownObjectField != null) {
                 assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
                 assert field.getJavaKind() == JavaKind.Object;
 
                 field.setCanBeNull(unknownObjectField.canBeNull());
                 injectFieldTypes(field, extractAnnotationTypes(field, unknownObjectField));
-
-            } else if (unknownPrimitiveField != null) {
-                assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
-                /*
-                 * Register a primitive field as containing unknown values(s), i.e., is usually
-                 * written only in hosted code.
-                 */
-                field.registerAsWritten("@UnknownPrimitiveField annotated field");
             }
         }
         processedFields.add(field);

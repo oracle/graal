@@ -472,12 +472,9 @@ public class SVMHost extends HostVM {
         return resolvedJavaType.getAnnotation(UnknownClass.class) != null;
     }
 
-    public static boolean isUnknownObjectField(ResolvedJavaField resolvedJavaField) {
-        return resolvedJavaField.getAnnotation(UnknownObjectField.class) != null;
-    }
-
-    public static boolean isUnknownPrimitiveField(AnalysisField field) {
-        return field.getAnnotation(UnknownPrimitiveField.class) != null;
+    @Override
+    public boolean isUnknownValueField(AnalysisField field) {
+        return field.getAnnotation(UnknownPrimitiveField.class) != null || field.getAnnotation(UnknownObjectField.class) != null;
     }
 
     public ClassInitializationSupport getClassInitializationSupport() {
