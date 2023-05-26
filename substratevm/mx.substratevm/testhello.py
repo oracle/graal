@@ -34,132 +34,33 @@
 #
 # Run test
 #
-# gdb -x testhello.py /path/to/hello
+# gdb -x gdb_utils.py -x testhello.py /path/to/hello
 #
 # exit status 0 means all is well 1 means test failed
 #
 # n.b. assumes the sourcefile cache is in local dir sources
+#
+# Note that the helper routines defined in gdb_utils.py are loaded
+# using gdb -x rather than being imported. That avoids having to update
+# PYTHON_PATH which gdb needs to use to locate any imported code.
 
 import re
 import sys
 import os
 
-# A helper class which checks that a sequence of lines of output
-# from a gdb command matches a sequence of per-line regular
-# expressions
-
-class Checker:
-    # Create a checker to check gdb command output text.
-    # name - string to help identify the check if we have a failure.
-    # regexps - a list of regular expressions which must match.
-    # successive lines of checked
-    def __init__(self, name, regexps):
-        self.name = name
-        if not isinstance(regexps, list):
-            regexps = [regexps]
-        self.rexps = [re.compile(r) for r in regexps if r is not None]
-
-    # Check that successive lines of a gdb command's output text
-    # match the corresponding regexp patterns provided when this
-    # Checker was created.
-    # text - the full output of a gdb comand run by calling
-    # gdb.execute and passing to_string = True.
-    # Exits with status 1 if there are less lines in the text
-    # than regexp patterns or if any line fails to match the
-    # corresponding pattern otherwise prints the text and returns
-    # the set of matches.
-    def check(self, text, skip_fails=True):
-        lines = text.splitlines()
-        rexps = self.rexps
-        num_lines = len(lines)
-        num_rexps = len(rexps)
-        line_idx = 0
-        matches = []
-        for i in range(0, (num_rexps)):
-            rexp = rexps[i]
-            match = None
-            while line_idx < num_lines and match is None:
-                line = lines[line_idx]
-                match = rexp.match(line)
-                if  match is None:
-                    if not skip_fails:
-                        print('Checker %s: match %d failed at line %d %s\n'%(self.name, i, line_idx, line))
-                        print(self)
-                        print(text)
-                        sys.exit(1)
-                else:
-                    matches.append(match)
-                line_idx += 1
-        if len(matches) < num_rexps:
-            print('Checker %s: insufficient matching lines %d for regular expressions %d'%(self.name, len(matches), num_rexps))
-            print(self)
-            print(text)
-            sys.exit(1)
-        print(text)
-        return matches
-
-    # Format a Checker as a string
-    def __str__(self):
-        rexps = self.rexps
-        result = 'Checker %s '%(self.name)
-        result += '{\n'
-        for rexp in rexps:
-            result += '  %s\n'%(rexp)
-        result += '}\n'
-        return result
-
-def execute(command):
-    print('(gdb) %s'%(command))
-    try:
-        return gdb.execute(command, to_string=True)
-    except gdb.error as e:
-        print(e)
-        sys.exit(1)
-
 # Configure this gdb session
 
-# ensure file listings show only the current line
-execute("set listsize 1")
-
-# Start of actual test code
-#
+configure_gdb()
 
 def test():
 
-    # define some useful patterns
-    address_pattern = '0x[0-9a-f]+'
-    hex_digits_pattern = '[0-9a-f]+'
-    spaces_pattern = '[ \t]+'
-    maybe_spaces_pattern = '[ \t]*'
-    digits_pattern = '[0-9]+'
-    line_number_prefix_pattern = digits_pattern + ':' + spaces_pattern
-    package_pattern = '[a-z/]+'
-    package_file_pattern = '[a-zA-Z0-9_/]+\\.java'
-    varname_pattern = '[a-zA-Z0-9_]+'
-    wildcard_pattern = '.*'
-    no_arg_values_pattern = "\(\)"
-    arg_values_pattern = "\(([a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)(, [a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)*\)"
-    no_param_types_pattern = "\(\)"
-    param_types_pattern = "\(([a-zA-Z0-9[.*$_\]]+)(, [a-zA-Z0-9[.*$_\]]+)*\)"
-    # obtain the gdb version
-    # n.b. we can only test printing in gdb 10.1 upwards
-    exec_string=execute("show version")
-    checker = Checker('show version',
-                      r"GNU gdb %s (%s)\.(%s)%s"%(wildcard_pattern, digits_pattern, digits_pattern, wildcard_pattern))
-    matches = checker.check(exec_string, skip_fails=False)
+    match = match_gdb_version()
     # n.b. can only get back here with one match
-    match = matches[0]
     major = int(match.group(1))
     minor = int(match.group(2))
-    # printing object data requires a patched gdb
-    # once the patch is in we can check for a suitable
-    # range of major.minor versions
-    # for now we use an env setting
     print("Found gdb version %s.%s"%(major, minor))
-    # printing does not always work on gdb 10.x or earlier
-    can_print_data = major > 10
-    if os.environ.get('GDB_CAN_PRINT', '') == 'True':
-        can_print_data = True
+    # check if we can print object data
+    can_print_data = check_print_data(major, minor)
 
     musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
 
