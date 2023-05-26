@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal;
+package com.oracle.svm.graal.substitutions;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.graal.GraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -177,7 +178,7 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return GraalSupport.get().debugHandlersFactories;
+            return GraalSupport.get().getDebugHandlersFactories();
         }
     }
 
@@ -318,7 +319,7 @@ final class Target_org_graalvm_compiler_phases_BasePhase {
 
     @Substitute
     static BasePhase.BasePhaseStatistics getBasePhaseStatistics(Class<?> clazz) {
-        BasePhase.BasePhaseStatistics result = GraalSupport.get().basePhaseStatistics.get(clazz);
+        BasePhase.BasePhaseStatistics result = GraalSupport.get().getBasePhaseStatistics().get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
@@ -331,7 +332,7 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
 
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
-        LIRPhase.LIRPhaseStatistics result = GraalSupport.get().lirPhaseStatistics.get(clazz);
+        LIRPhase.LIRPhaseStatistics result = GraalSupport.get().getLirPhaseStatistics().get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
