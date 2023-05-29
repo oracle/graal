@@ -98,12 +98,15 @@ final class PolyglotLoggers {
         return EngineImpl.getOuterContext(PolyglotFastThreadLocals.getContext(null));
     }
 
-    static boolean hasSameStream(LogHandler h1, LogHandler h2) {
+    static boolean haveSameTarget(LogHandler h1, LogHandler h2) {
         if (h1 == h2) {
             return true;
         }
         if (h1 instanceof StreamLogHandler && h2 instanceof StreamLogHandler) {
             return ((StreamLogHandler) h1).stream == ((StreamLogHandler) h2).stream;
+        }
+        if (h1 instanceof JavaLogHandler && h2 instanceof JavaLogHandler) {
+            return ((JavaLogHandler) h1).handler == ((JavaLogHandler) h2).handler;
         }
         return false;
     }
@@ -281,6 +284,7 @@ final class PolyglotLoggers {
     private static final class JavaLogHandler extends LogHandler {
 
         private final Handler handler;
+        private volatile boolean closed;
 
         JavaLogHandler(AbstractPolyglotImpl polyglot, Handler handler) {
             super(polyglot);
@@ -289,6 +293,9 @@ final class PolyglotLoggers {
 
         @Override
         public void publish(LogRecord logRecord) {
+            if (closed) {
+                return;
+            }
             try {
                 handler.publish(logRecord);
             } catch (Throwable t) {
@@ -298,11 +305,15 @@ final class PolyglotLoggers {
 
         @Override
         public void flush() {
+            if (closed) {
+                return;
+            }
             handler.flush();
         }
 
         @Override
         public void close() {
+            this.closed = true;
             handler.close();
         }
     }
@@ -328,6 +339,7 @@ final class PolyglotLoggers {
 
         private ErrorManager errorManager;
         private boolean notificationPrinted;
+        private boolean closed;
 
         StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish,
                         boolean isDefault, SandboxPolicy disabledForActiveSandboxPolicy) {
@@ -344,6 +356,9 @@ final class PolyglotLoggers {
 
         @Override
         public synchronized void publish(LogRecord logRecord) {
+            if (closed) {
+                return;
+            }
             try {
                 if (disabledForActiveSandboxPolicy != null) {
                     assert isDefault : "Only default handler can be disabled";
@@ -380,6 +395,9 @@ final class PolyglotLoggers {
 
         @Override
         public synchronized void flush() {
+            if (closed) {
+                return;
+            }
             try {
                 writer.flush();
             } catch (Exception ex) {
@@ -389,6 +407,7 @@ final class PolyglotLoggers {
 
         @Override
         public synchronized void close() {
+            closed = true;
             try {
                 writer.flush();
                 if (closeStream) {

@@ -1931,6 +1931,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     // If the patching fails we have to perform a silent engine close without
                     // notifying the new polyglotHostService.
                     polyglotHostService = new DefaultPolyglotHostService(impl);
+                    /*
+                     * The engine close must not close the log handler, the same log handler
+                     * instance is used for newly created engine.
+                     */
+                    logHandler = null;
                     ensureClosed(true, false);
                     synchronized (engine.lock) {
                         context = new PolyglotContextImpl(engine, config);
