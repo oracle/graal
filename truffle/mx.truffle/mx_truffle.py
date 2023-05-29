@@ -57,7 +57,7 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info
+from mx_javamodules import as_java_module, get_java_module_info, get_module_name
 from mx_sigtest import sigtest
 from mx_unittest import unittest
 
@@ -319,12 +319,44 @@ def _collect_class_path_entries_by_resource(requiredResources, entries_collector
             return False
     _collect_class_path_entries(has_resource, entries_collector, properties_collector)
 
+
+def _collect_class_path_entries_by_module_descriptor(required_services, entries_collector, properties_collector):
+    """
+    Collects class path for JAR distributions providing any service from requiredServices.
+
+    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include
+            distribution class path entries.
+    :param entries_collector: the list to add the class paths entries into.
+    :param properties_collector: the list to add the distribution Java properties into.
+    """
+    required_set = set(required_services)
+
+    def provides_service(dist):
+        if dist.isJARDistribution() and exists(dist.path):
+            module_name = get_module_name(dist)
+            if module_name:
+                jmd = as_java_module(dist, mx.get_jdk())
+                return len(required_set.intersection(jmd.provides.keys())) != 0
+        return False
+    _collect_class_path_entries(provides_service, entries_collector, properties_collector)
+
 def _collect_class_path_entries_by_name(distributionName, entries_collector, properties_collector):
     cp_filter = lambda dist: dist.isJARDistribution() and  dist.name == distributionName and exists(dist.path)
     _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
 
 def _collect_languages(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource(["META-INF/truffle/language", "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider"], entries_collector, properties_collector)
+    _collect_class_path_entries_by_module_descriptor([
+        "com.oracle.truffle.api.provider.TruffleLanguageProvider"],
+        entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource([
+        # GR-46292 Remove the deprecated TruffleLanguage.Provider
+        "META-INF/truffle/language",
+        # GR-46292 Remove the deprecated TruffleLanguage.Provider
+        "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider",
+        # Not all languages are already modularized. For non-modularized languages we require
+        # a registration of the TruffleLanguageProvider in the META-INF/services
+        "META-INF/services/com.oracle.truffle.api.provider.TruffleLanguageProvider"],
+        entries_collector, properties_collector)
 
 def _collect_tck_providers(entries_collector, properties_collector):
     _collect_class_path_entries_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector, properties_collector)
