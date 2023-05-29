@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.compiler.api.replacements.Fold;
 
 import org.graalvm.nativeimage.StackValue;
@@ -59,10 +58,10 @@ class JfrGCHeapSummaryEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCHeapSummary);
 
             JfrNativeEventWriter.putLong(data, start); // @Label("Start Time") @Timestamp("TICKS")
-                                                       // long startTime;
+                                                      // long startTime;
 
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue()); // @Label("GC Identifier") int
-                                                                    // gcId;
+                                                                   // gcId;
             JfrNativeEventWriter.putLong(data, gcWhen.ordinal()); // @Label("When") String when;
 
             // VirtualSpace
@@ -73,9 +72,9 @@ class JfrGCHeapSummaryEvent {
             JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
 
             JfrNativeEventWriter.putLong(data, heapUsed); // @Unsigned @DataAmount("BYTES")
-                                                          // @Label("Heap Used") @Description("Bytes
-                                                          // allocated by objects in the heap") long
-                                                          // heapUsed;
+                                                         // @Label("Heap Used") @Description("Bytes
+                                                         // allocated by objects in the heap") long
+                                                         // heapUsed;
 
             JfrNativeEventWriter.endSmallEvent(data);
         }
