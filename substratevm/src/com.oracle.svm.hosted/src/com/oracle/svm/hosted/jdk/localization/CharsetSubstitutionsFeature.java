@@ -24,13 +24,9 @@
  */
 package com.oracle.svm.hosted.jdk.localization;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 @AutomaticallyRegisteredFeature
 class CharsetSubstitutionsFeature implements InternalFeature {

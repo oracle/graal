@@ -63,7 +63,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResources(Module module, String resourcePath) {
+        public void addResource(Module module, String resourcePath) {
+            VMError.shouldNotReachHere("Unused function.");
         }
 
         @Override

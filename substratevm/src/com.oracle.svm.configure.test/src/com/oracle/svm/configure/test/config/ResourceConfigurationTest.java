@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
@@ -94,7 +95,8 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addResources(Module module, String resourcePath) {
+                public void addResource(Module module, String resourcePath) {
+                    VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override

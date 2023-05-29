@@ -33,8 +33,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -47,6 +50,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -157,10 +161,25 @@ public final class ResourcesFeature implements InternalFeature {
             });
         }
 
+        private String urlToJarPath(URL url) {
+            return String.valueOf(url).split("jar:file:")[1].split("!")[0];
+        }
+
+        private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
+            if (fromJar) {
+                try (JarFile jf = new JarFile(urlToJarPath(url))) {
+                    return jf.getEntry(resourcePath).isDirectory();
+                }
+            } else {
+                return Files.isDirectory(Path.of(url.toURI()));
+            }
+        }
+
         @Override
-        public void addResources(Module module, String resourcePath) {
+        public void addResource(Module module, String resourcePath) {
             InputStream is;
-            boolean fromJar;
+            boolean fromJar = false;
+            boolean isDirectory = false;
 
             if (module.isNamed()) {
                 try {
@@ -171,32 +190,41 @@ public final class ResourcesFeature implements InternalFeature {
                         }
                         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ResourcesFeature.class, module, resourcePackage);
                     }
-                    is = module.getResourceAsStream(resourcePath);
-                    if (is == null) {
-                        return;
-                    }
 
-                    fromJar = false;
+                    is = module.getResourceAsStream(resourcePath);
                 } catch (IOException e) {
-                    // we ignore if user provided resource that doesn't exist
+                    // we should ignore if user failed to provide resource
                     return;
                 }
             } else {
                 URL url = imageClassLoader.getClassLoader().getResource(resourcePath);
-                if (url != null) {
-                    fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    try {
-                        is = url.openStream();
-                    } catch (IOException e) {
-                        // we ignore if user provided resource that doesn't exist
-                        return;
-                    }
-                } else {
+                if (url == null) {
+                    // we should ignore if user failed to provide resource
                     return;
+                }
+
+                fromJar = url.getProtocol().equalsIgnoreCase("jar");
+                try {
+                    isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                } catch (IOException e) {
+                    // we should ignore if user failed to provide resource
+                    return;
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+
+                try {
+                    is = url.openStream();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
 
-            Resources.registerResource(module, resourcePath, is, fromJar);
+            if (is == null) {
+                return;
+            }
+
+            Resources.registerResource(module, resourcePath, isDirectory, is, fromJar);
         }
 
         @Override
