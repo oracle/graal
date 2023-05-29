@@ -312,7 +312,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         initializeHomeFinder();
         needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
                         Collections.emptyList());
-
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
                         Collections.emptyList());
@@ -449,6 +448,10 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
         }
+
+        if (needsAllEncodings) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
     }
 
     void setGraalGraphObjectReplacer(GraalGraphObjectReplacer graalGraphObjectReplacer) {
@@ -482,9 +485,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         config.registerSubtypeReachabilityHandler(TruffleBaseFeature::registerTruffleLibrariesAsInHeap,
                         LibraryExport.class);
 
-        if (needsAllEncodings) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
-        }
         Class<?> frameClass = config.findClassByName("com.oracle.truffle.api.impl.FrameWithoutBoxing");
         config.registerFieldValueTransformer(config.findField(frameClass, "ASSERTIONS_ENABLED"), new AssertionStatusFieldTransformer(frameClass));
     }
