@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.List;
 
 import org.graalvm.profdiff.Profdiff;
 import org.junit.After;
@@ -70,23 +71,10 @@ public class MainTest {
 
     @Test
     public void testHelp() {
-        String[] args = {"help"};
-        Profdiff.main(args);
-
-        args = new String[]{"help", "report"};
-        Profdiff.main(args);
-
-        args = new String[]{"help", "jit-vs-jit"};
-        Profdiff.main(args);
-
-        args = new String[]{"help", "jit-vs-aot"};
-        Profdiff.main(args);
-
-        args = new String[]{"help", "aot-vs-aot"};
-        Profdiff.main(args);
-
-        args = new String[]{"help", "unknown"};
-        Profdiff.main(args);
+        Profdiff.main(new String[]{"help"});
+        for (String command : List.of("report", "jit-vs-jit", "jit-vs-aot", "aot-vs-aot", "aot-vs-aot-ext-prof", "unknown")) {
+            Profdiff.main(new String[]{"help", command});
+        }
     }
 
     @Test
