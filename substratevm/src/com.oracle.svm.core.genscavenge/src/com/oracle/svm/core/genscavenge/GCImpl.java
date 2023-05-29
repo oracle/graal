@@ -77,6 +77,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -208,9 +209,9 @@ public final class GCImpl implements GC {
 
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
-        JfrGCHeapSummaryEvent.emitJfrGCHeapSummaryEventBeforeGC(getCollectionEpoch(), JfrTicks.elapsedTicks(), getPolicy().getCurrentHeapCapacity().rawValue(), getChunkBytes().rawValue());
+        JfrGCHeapSummaryEvent.emit(getCollectionEpoch(), JfrTicks.elapsedTicks(), getPolicy().getCurrentHeapCapacity().rawValue(), getChunkBytes().rawValue(), JfrGCWhen.BEFORE_GC);
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
-        JfrGCHeapSummaryEvent.emitJfrGCHeapSummaryEventAfterGC(getCollectionEpoch(), JfrTicks.elapsedTicks(), getPolicy().getCurrentHeapCapacity().rawValue(), getChunkBytes().rawValue());
+        JfrGCHeapSummaryEvent.emit(getCollectionEpoch(), JfrTicks.elapsedTicks(), getPolicy().getCurrentHeapCapacity().rawValue(), getChunkBytes().rawValue(), JfrGCWhen.AFTER_GC);
         printGCAfter(cause.getName());
 
         finishCollection();

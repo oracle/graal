@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,27 +24,17 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+public enum JfrGCWhen {
+    BEFORE_GC("Before GC"),
+    AFTER_GC("After GC");
 
-import com.oracle.svm.core.Uninterruptible;
+    private final String gcWhen;
 
-public class JfrGCWhen {
-    private final int id;
-    private final String when;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected JfrGCWhen(int id, String when) {
-        this.id = id;
-        this.when = when;
+    JfrGCWhen(String gcWhen) {
+        this.gcWhen = gcWhen;
     }
 
-    public String getWhen() {
-        return when;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getId() {
-        return id;
+    public String getGcWhen() {
+        return this.gcWhen;
     }
 }
