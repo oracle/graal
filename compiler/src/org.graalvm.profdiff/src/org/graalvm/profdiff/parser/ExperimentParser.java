@@ -72,15 +72,9 @@ public class ExperimentParser {
      */
     private static class ProftoolLog {
         /**
-         * The name of Native Image as a VM executing an experiment.
+         * The compilation kind of the parsed experiment (JIT/AOT).
          */
-        public static final String NATIVE_IMAGE = "native-image";
-
-        /**
-         * The name of the VM that executed the experiment (e.g., {@link #NATIVE_IMAGE}).
-         * {@code null} if unknown.
-         */
-        String vm;
+        Experiment.CompilationKind compilationKind;
 
         /**
          * The execution ID of the experiment. {@code null} if unknown.
@@ -96,13 +90,6 @@ public class ExperimentParser {
          * A list of sampled methods.
          */
         List<ProftoolMethod> methods = new ArrayList<>();
-
-        /**
-         * Infers the actual compilation kind of the parsed proftool log.
-         */
-        public Experiment.CompilationKind compilationKind() {
-            return NATIVE_IMAGE.equals(vm) ? Experiment.CompilationKind.AOT : Experiment.CompilationKind.JIT;
-        }
     }
 
     /**
@@ -147,19 +134,20 @@ public class ExperimentParser {
         Experiment experiment;
         Optional<FileView> proftoolLogFile = experimentFiles.getProftoolOutput();
         if (proftoolLogFile.isPresent()) {
-            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get());
-            if (experimentFiles.getCompilationKind() != null && proftoolLog.compilationKind() != experimentFiles.getCompilationKind()) {
-                throw new ExperimentParserError(experimentFiles.getExperimentId(), "profile",
-                                "mismatched experiment kind: expected " + experimentFiles.getCompilationKind() + ", got" + proftoolLog.compilationKind());
+            FileView logFileView = proftoolLogFile.get();
+            ProftoolLog proftoolLog = parseProftoolLog(logFileView);
+            if (experimentFiles.getCompilationKind() != null && proftoolLog.compilationKind != experimentFiles.getCompilationKind()) {
+                throw new ExperimentParserError(experimentFiles.getExperimentId(), logFileView.getSymbolicPath(),
+                                "mismatched experiment kind: expected " + experimentFiles.getCompilationKind() + ", got" + proftoolLog.compilationKind);
             }
-            switch (proftoolLog.compilationKind()) {
+            switch (proftoolLog.compilationKind) {
                 case JIT -> linkJITProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
                 case AOT -> linkAOTProfilesToCompilationUnits(partialCompilationUnits, proftoolLog);
             }
             experiment = new Experiment(
                             proftoolLog.executionId,
                             experimentFiles.getExperimentId(),
-                            proftoolLog.compilationKind(),
+                            proftoolLog.compilationKind,
                             proftoolLog.totalPeriod,
                             proftoolLog.methods);
         } else {
@@ -263,7 +251,14 @@ public class ExperimentParser {
         ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), fileView);
         ProftoolLog proftoolLog = new ProftoolLog();
         ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-        proftoolLog.vm = map.property("vm").asNullableString();
+        String compilationKind = map.property("compilationKind").asNullableString();
+        if ("AOT".equals(compilationKind)) {
+            proftoolLog.compilationKind = Experiment.CompilationKind.AOT;
+        } else if (compilationKind == null || "JIT".equals(compilationKind)) {
+            proftoolLog.compilationKind = Experiment.CompilationKind.JIT;
+        } else {
+            throw new ExperimentParserError(experimentFiles.getExperimentId(), fileView.getSymbolicPath(), "unexpected compilation kind: " + compilationKind);
+        }
         proftoolLog.executionId = map.property("executionId").asNullableString();
         proftoolLog.totalPeriod = map.property("totalPeriod").asLong();
         for (ExperimentJSONParser.JSONLiteral codeObject : map.property("code").asList()) {
