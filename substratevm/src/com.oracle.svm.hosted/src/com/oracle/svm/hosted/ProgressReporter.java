@@ -77,6 +77,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -230,7 +231,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd() {
+    public void printInitializeEnd(List<Feature> features) {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
@@ -256,47 +257,16 @@ public class ProgressReporter {
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
 
+        printFeatures(features);
+
         l().printLineSeparator();
         printResourceInfo();
     }
 
-    private void printResourceInfo() {
-        Runtime runtime = Runtime.getRuntime();
-        long maxMemory = runtime.maxMemory();
-        recordJsonMetric(ResourceUsageKey.GC_MAX_HEAP, maxMemory);
-        long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
-        recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
-
-        String memoryFeedback;
-        if (ByteFormattingUtil.bytesToGiB(maxMemory) < 2.0) {
-            memoryFeedback = "low";
-        } else {
-            memoryFeedback = "%.1f%%".formatted(Utils.toPercentage(maxMemory, totalMemorySize));
-        }
-
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
-        recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
-        int availableProcessors = runtime.availableProcessors();
-        recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
-
-        String threadFeedback;
-        if (maxNumberOfThreads == 1) {
-            threadFeedback = "slow";
-        } else if (maxNumberOfThreads == availableProcessors) {
-            threadFeedback = "max";
-        } else {
-            threadFeedback = "%.1f%%".formatted(Utils.toPercentage(maxNumberOfThreads, availableProcessors));
-        }
-
-        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(": %.2fGB of %.2fGB memory (%s), %s of %s threads (%s)",
-                        ByteFormattingUtil.bytesToGiB(maxMemory), ByteFormattingUtil.bytesToGiB(totalMemorySize), memoryFeedback,
-                        maxNumberOfThreads, availableProcessors, threadFeedback).println();
-    }
-
-    public void printFeatures(List<Feature> features) {
+    private void printFeatures(List<Feature> features) {
         int numFeatures = features.size();
         if (numFeatures > 0) {
-            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").println();
+            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").a(":").println();
             features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
             for (Feature feature : features) {
                 printFeature(l(), feature);
@@ -318,6 +288,40 @@ public class ProgressReporter {
             printer.a(": ").a(description);
         }
         printer.println();
+    }
+
+    private void printResourceInfo() {
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+        recordJsonMetric(ResourceUsageKey.GC_MAX_HEAP, maxMemory);
+        long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
+        recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
+
+        List<String> inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
+        List<String> maxRAMPrecentageValues = inputArguments.stream().filter(arg -> arg.startsWith("-XX:MaxRAMPercentage")).toList();
+        String maxHeapSuffix = "determined at start";
+        if (maxRAMPrecentageValues.size() > 1) { // The driver sets this option once
+            maxHeapSuffix = "set via '%s'".formatted(maxRAMPrecentageValues.get(maxRAMPrecentageValues.size() - 1));
+        }
+        String xmxValueOrNull = inputArguments.stream().filter(arg -> arg.startsWith("-Xmx")).reduce((first, second) -> second).orElse(null);
+        if (xmxValueOrNull != null) { // -Xmx takes precedence over -XX:MaxRAMPercentage
+            maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
+        }
+
+        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
+        int availableProcessors = runtime.availableProcessors();
+        recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
+        String maxNumberOfThreadsSuffix = "determined at start";
+        if (NativeImageOptions.NumberOfThreads.hasBeenSet()) {
+            maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(NativeImageOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
+        }
+
+        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
+                        ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
+        l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
+                        maxNumberOfThreads, Utils.toPercentage(maxNumberOfThreads, availableProcessors), availableProcessors, maxNumberOfThreadsSuffix).println();
     }
 
     public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {

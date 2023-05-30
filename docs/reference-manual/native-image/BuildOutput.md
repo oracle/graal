@@ -25,7 +25,9 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
- Build resources: 13.25GB of 31.00GB memory (42.7%), 16 of 16 threads (max)
+ Build resources:
+ - 13.24GB of memory (42.7% of 31.00GB system memory, determined at start)
+ - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
 [2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
     3,163 reachable types   (72.5% of    4,364 total)
     3,801 reachable fields  (50.3% of    7,553 total)
