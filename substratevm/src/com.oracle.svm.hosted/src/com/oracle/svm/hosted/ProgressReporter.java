@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.security.CodeSource;
@@ -256,6 +255,38 @@ public class ProgressReporter {
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+
+        l().printLineSeparator();
+        printResourceInfo();
+    }
+
+    private void printResourceInfo() {
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+        long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
+
+        String memoryFeedback;
+        if (ByteFormattingUtil.bytesToGiB(maxMemory) < 2.0) {
+            memoryFeedback = "low";
+        } else {
+            memoryFeedback = "%.1f%%".formatted(Utils.toPercentage(maxMemory, totalMemorySize));
+        }
+
+        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        int availableProcessors = runtime.availableProcessors();
+
+        String threadFeedback;
+        if (maxNumberOfThreads == 1) {
+            threadFeedback = "slow";
+        } else if (maxNumberOfThreads == availableProcessors) {
+            threadFeedback = "max";
+        } else {
+            threadFeedback = "%.1f%%".formatted(Utils.toPercentage(maxNumberOfThreads, availableProcessors));
+        }
+
+        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(": %.2fGB of %.2fGB memory (%s), %s of %s threads (%s)",
+                        ByteFormattingUtil.bytesToGiB(maxMemory), ByteFormattingUtil.bytesToGiB(totalMemorySize), memoryFeedback,
+                        maxNumberOfThreads, availableProcessors, threadFeedback).println();
     }
 
     public void printFeatures(List<Feature> features) {
@@ -746,8 +777,7 @@ public class ProgressReporter {
             p.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", ByteFormattingUtil.bytesToGiB(peakRSS));
         }
         recordJsonMetric(ResourceUsageKey.PEAK_RSS, (peakRSS >= 0 ? peakRSS : UNAVAILABLE_METRIC));
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
+        long processCPUTime = getOperatingSystemMXBean().getProcessCpuTime();
         double cpuLoad = UNAVAILABLE_METRIC;
         if (processCPUTime > 0) {
             cpuLoad = Utils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds;
@@ -787,6 +817,10 @@ public class ProgressReporter {
 
     private static Timer getTimer(TimerCollection.Registry type) {
         return TimerCollection.singleton().get(type);
+    }
+
+    private static com.sun.management.OperatingSystemMXBean getOperatingSystemMXBean() {
+        return (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
     private static class Utils {

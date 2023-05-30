@@ -992,12 +992,6 @@ public class NativeImage {
         completeOptionArgs();
         addTargetArguments();
 
-        /* Set parallelism of common pool. */
-        String maxNumberOfThreads = getMaxNumberOfThreads();
-        if (maxNumberOfThreads != null) {
-            imageBuilderArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + maxNumberOfThreads);
-        }
-
         String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
                         .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
@@ -1022,6 +1016,12 @@ public class NativeImage {
             addImageClasspath(Paths.get("."));
         }
         imageClasspath.addAll(customImageClasspath);
+
+        /* Set parallelism of common pool. */
+        String maxNumberOfThreads = getMaxNumberOfThreads();
+        if (maxNumberOfThreads != null) {
+            imageBuilderJavaArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + maxNumberOfThreads);
+        }
 
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
         // The following two are for backwards compatibility reasons. They should be removed.
