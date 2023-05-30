@@ -10,6 +10,7 @@
     "image_details",
     "resource_usage"
   ],
+  "additionalProperties": false,
   "properties": {
     "general_info": {
       "type": "object",
@@ -24,6 +25,7 @@
         "c_compiler",
         "garbage_collector"
       ],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -49,6 +51,7 @@
           "type": "object",
           "default": {},
           "required": ["optimization_level", "march"],
+          "additionalProperties": false,
           "properties": {
             "optimization_level": {
               "type": "string",
@@ -95,6 +98,7 @@
         "fields",
         "methods"
       ],
+      "additionalProperties": false,
       "properties": {
         "types": {
           "type": "object",
@@ -106,6 +110,7 @@
             "reflection",
             "jni"
           ],
+          "additionalProperties": false,
           "properties": {
             "total": {
               "type": "integer",
@@ -139,6 +144,7 @@
             "reflection",
             "jni"
           ],
+          "additionalProperties": false,
           "properties": {
             "total": {
               "type": "integer",
@@ -172,6 +178,7 @@
             "reflection",
             "jni"
           ],
+          "additionalProperties": false,
           "properties": {
             "total": {
               "type": "integer",
@@ -205,6 +212,7 @@
             "reflection",
             "jni"
           ],
+          "additionalProperties": false,
           "properties": {
             "total": {
               "type": "integer",
@@ -239,6 +247,7 @@
         "code_area",
         "image_heap"
       ],
+      "additionalProperties": false,
       "properties": {
         "total_bytes": {
           "type": "integer",
@@ -253,6 +262,7 @@
             "bytes",
             "compilation_units"
           ],
+          "additionalProperties": false,
           "properties": {
             "bytes": {
               "type": "integer",
@@ -275,6 +285,7 @@
             "objects",
             "resources"
           ],
+          "additionalProperties": false,
           "properties": {
             "bytes": {
               "type": "integer",
@@ -288,6 +299,7 @@
               "required": [
                 "count"
               ],
+              "additionalProperties": false,
               "properties": {
                 "count": {
                   "type": "integer",
@@ -304,6 +316,7 @@
                 "count",
                 "bytes"
               ],
+              "additionalProperties": false,
               "properties": {
                 "count": {
                   "type": "integer",
@@ -326,6 +339,7 @@
           "required": [
             "bytes"
           ],
+          "additionalProperties": false,
           "properties": {
             "bytes": {
               "type": "integer",
@@ -342,6 +356,7 @@
             "count",
             "graph_encoding_bytes"
           ],
+          "additionalProperties": false,
           "properties": {
             "count": {
               "type": "integer",
@@ -367,6 +382,7 @@
         "memory",
         "total_secs"
       ],
+      "additionalProperties": false,
       "properties": {
         "cpu": {
           "type": "object",
@@ -377,6 +393,7 @@
             "parallelism",
             "total_cores"
           ],
+          "additionalProperties": false,
           "properties": {
             "load": {
               "type": "number",
@@ -404,6 +421,7 @@
             "max_heap",
             "total_secs"
           ],
+          "additionalProperties": false,
           "properties": {
             "count": {
               "type": "integer",
@@ -430,6 +448,7 @@
             "system_total",
             "peak_rss_bytes"
           ],
+          "additionalProperties": false,
           "properties": {
             "system_total": {
               "type": "integer",

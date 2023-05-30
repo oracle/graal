@@ -2,6 +2,7 @@
   "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json",
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "default": {},
+  "additionalProperties": false,
   "properties": {
     "build_info": {
       "default": [],
