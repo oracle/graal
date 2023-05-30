@@ -345,35 +345,36 @@ public class ProgressReporter {
     }
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
-        String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
+        String actualFormat = "%,9d ";
+        String totalFormat = " (%4.1f%% of %,8d total)";
         long reachableTypes = universe.getTypes().stream().filter(t -> t.isReachable()).count();
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REACHABLE, reachableTypes);
-        l().a(actualVsTotalFormat, reachableTypes, Utils.toPercentage(reachableTypes, totalTypes), totalTypes)
-                        .a(" types ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
+                        .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
         long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
-        l().a(actualVsTotalFormat, reachableFields, Utils.toPercentage(reachableFields, totalFields), totalFields)
-                        .a(" fields ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
+                        .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
         long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
-        l().a(actualVsTotalFormat, reachableMethods, Utils.toPercentage(reachableMethods, totalMethods), totalMethods)
-                        .a(" methods ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableMethods).doclink("reachable methods", "#glossary-reachability")
+                        .a(totalFormat, Utils.toPercentage(reachableMethods, totalMethods), totalMethods).println();
         if (numRuntimeCompiledMethods >= 0) {
             recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
-            l().a(actualVsTotalFormat, numRuntimeCompiledMethods, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods)
-                            .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
+            l().a(actualFormat, numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
+                            .a(totalFormat, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods).println();
         }
-        String typesFieldsMethodFormat = "%,8d types, %,5d fields, and %,5d methods ";
+        String typesFieldsMethodFormat = "%,9d types, %,5d fields, and %,5d methods ";
         int reflectClassesCount = ClassForNameSupport.count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectFieldsCount = rs.getReflectionFieldsCount();
@@ -395,7 +396,7 @@ public class ProgressReporter {
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
-            l().a("%,8d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
+            l().a("%,9d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
         }
     }
 

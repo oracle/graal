@@ -27,12 +27,12 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 --------------------------------------------------------------------------------
  Build resources: 13.25GB of 31.00GB memory (42.7%), 16 of 16 threads (max)
 [2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
-   3,175 (72.62%) of  4,372 types reachable
-   3,842 (50.58%) of  7,596 fields reachable
-  15,260 (45.61%) of 33,458 methods reachable
-     962 types,    83 fields, and   492 methods registered for reflection
-      57 types,    55 fields, and    52 methods registered for JNI access
-       4 native libraries: dl, pthread, rt, z
+    3,163 reachable types   (72.5% of    4,364 total)
+    3,801 reachable fields  (50.3% of    7,553 total)
+   15,183 reachable methods (45.5% of   33,405 total)
+      957 types,    81 fields, and   480 methods registered for reflection
+       57 types,    55 fields, and    52 methods registered for JNI access
+        4 native libraries: dl, pthread, rt, z
 [3/8] Building universe...                                       (0.8s @ 0.99GB)
 [4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
 [5/8] Inlining methods...     [***]                              (0.3s @ 0.32GB)
