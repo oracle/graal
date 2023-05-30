@@ -1602,7 +1602,7 @@ public class NativeImage {
 
         List<String> completeCommandList = new ArrayList<>();
         completeCommandList.addAll(environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
-        if (useBundle() && bundleSupport.useContainer) {
+        if (!isDryRun() && useBundle() && bundleSupport.useContainer) {
             completeCommandList.addAll(bundleSupport.createContainerCommand(argFile, builderArgFile));
         }
         completeCommandList.add(javaExecutable);
