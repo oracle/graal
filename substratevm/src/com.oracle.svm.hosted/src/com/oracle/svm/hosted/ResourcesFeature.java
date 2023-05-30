@@ -428,18 +428,20 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        Method[] resourceMethods = {
-                        ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
-                        ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
-        };
-        Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
+        if (reason != ParsingReason.JITCompilation) {
+            Method[] resourceMethods = {
+                            ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
+                            ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
+            };
+            Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
-        for (Method method : resourceMethods) {
-            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName);
+            for (Method method : resourceMethods) {
+                registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
+            }
         }
     }
 
-    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName) {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName, ParsingReason reason) {
         List<Class<?>> parameterTypes = new ArrayList<>();
         assert !Modifier.isStatic(method.getModifiers());
         parameterTypes.add(InvocationPlugin.Receiver.class);
@@ -458,7 +460,7 @@ public final class ResourcesFeature implements InternalFeature {
                         Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
                         String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                        b.add(new ReachabilityRegistrationNode(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName)));
+                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
                         return true;
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {

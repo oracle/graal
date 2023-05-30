@@ -95,7 +95,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compile-time constants, e.g., for {@link Method}, {@link MethodHandle}, or {@code VarHandle}
  * instances. This avoids manual registration of these elements using a reflection configuration
  * file.
- * 
+ *
  * One important assumption made in this class is that the return types of all folded methods do not
  * have object identity, i.e., it is allowed to return a cached object instead of creating a new
  * object at every invocation. While the types {@link #ALLOWED_CONSTANT_CLASSES we allow} are not
@@ -152,7 +152,7 @@ public final class ReflectionPlugins {
 
         ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, classInitializationPlugin, aUniverse, reason, fallbackFeature);
         rp.registerMethodHandlesPlugins(plugins);
-        rp.registerClassPlugins(plugins);
+        rp.registerClassPlugins(plugins, reason);
     }
 
     /**
@@ -160,12 +160,12 @@ public final class ReflectionPlugins {
      * return only objects of classes that are "immutable enough", i.e., cannot change their
      * meaning. Otherwise, the object could be modified between the intrinsification at image build
      * time and the actual method invocation at run time.
-     * 
+     *
      * Note that many of the classes are not completely immutable because they have lazily
      * initialized caches, or the "accessible" flag of reflection objects. That is OK, because these
      * mutable fields do not affect the outcome of any of the methods that we register for constant
      * folding.
-     * 
+     *
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
@@ -259,24 +259,24 @@ public final class ReflectionPlugins {
         });
     }
 
-    private void registerClassPlugins(InvocationPlugins plugins) {
+    private void registerClassPlugins(InvocationPlugins plugins, ParsingReason reason) {
         registerFoldInvocationPlugins(plugins, Class.class,
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
-        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
-            registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
-            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
-            registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
-            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredConstructors", RuntimeReflection::registerAllDeclaredConstructors);
-            registerBulkInvocationPlugin(plugins, Class.class, "getFields", RuntimeReflection::registerAllFields);
-            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredFields", RuntimeReflection::registerAllDeclaredFields);
-            registerBulkInvocationPlugin(plugins, Class.class, "getMethods", RuntimeReflection::registerAllMethods);
-            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredMethods", RuntimeReflection::registerAllDeclaredMethods);
-            registerBulkInvocationPlugin(plugins, Class.class, "getNestMembers", RuntimeReflection::registerAllNestMembers);
-            registerBulkInvocationPlugin(plugins, Class.class, "getPermittedSubclasses", RuntimeReflection::registerAllPermittedSubclasses);
-            registerBulkInvocationPlugin(plugins, Class.class, "getRecordComponents", RuntimeReflection::registerAllRecordComponents);
-            registerBulkInvocationPlugin(plugins, Class.class, "getSigners", RuntimeReflection::registerAllSigners);
+        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason != ParsingReason.JITCompilation) {
+            registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredConstructors", RuntimeReflection::registerAllDeclaredConstructors, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getFields", RuntimeReflection::registerAllFields, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredFields", RuntimeReflection::registerAllDeclaredFields, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getMethods", RuntimeReflection::registerAllMethods, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredMethods", RuntimeReflection::registerAllDeclaredMethods, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getNestMembers", RuntimeReflection::registerAllNestMembers, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getPermittedSubclasses", RuntimeReflection::registerAllPermittedSubclasses, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getRecordComponents", RuntimeReflection::registerAllRecordComponents, reason);
+            registerBulkInvocationPlugin(plugins, Class.class, "getSigners", RuntimeReflection::registerAllSigners, reason);
         }
 
         Registration r = new Registration(plugins, Class.class);
@@ -497,7 +497,7 @@ public final class ReflectionPlugins {
         return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
     }
 
-    private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback) {
+    private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback, ParsingReason reason) {
         plugins.register(declaringClass, new RequiredInvocationPlugin(methodName, new Class<?>[]{Receiver.class}) {
             @Override
             public boolean isDecorator() {
@@ -507,13 +507,13 @@ public final class ReflectionPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 VMError.guarantee(!targetMethod.isStatic(), "Bulk reflection queries are not static");
-                return registerConstantBulkReflectionQuery(b, receiver, registrationCallback);
+                return registerConstantBulkReflectionQuery(b, receiver, registrationCallback, reason);
             }
         });
     }
 
     @SuppressWarnings("unchecked")
-    private <T> boolean registerConstantBulkReflectionQuery(GraphBuilderContext b, Receiver receiver, Consumer<T> registrationCallback) {
+    private <T> boolean registerConstantBulkReflectionQuery(GraphBuilderContext b, Receiver receiver, Consumer<T> registrationCallback, ParsingReason reason) {
         /*
          * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in the
          * process. It is an error for invocation plugins that do not replace the call to modify the
@@ -524,7 +524,7 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(new ReachabilityRegistrationNode(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback)));
+        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;
     }
 
