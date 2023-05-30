@@ -191,12 +191,13 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         assert lenValue.getPlatformKind().equals(AMD64Kind.DWORD) : lenValue;
         assert encryptedCounterValue.getPlatformKind().equals(AMD64Kind.QWORD) : encryptedCounterValue;
         assert usedPtrValue.getPlatformKind().equals(AMD64Kind.QWORD) : usedPtrValue;
+        assert resultValue.getPlatformKind().equals(AMD64Kind.DWORD) : resultValue;
 
         Register from = asRegister(inValue);
         Register to = asRegister(outValue);
         Register key = asRegister(keyValue);
         Register counter = asRegister(counterValue);
-        Register lenReg = asRegister(lenValue);
+        Register lenReg = asRegister(resultValue);
         Register savedEncCounterStart = asRegister(encryptedCounterValue);
         Register usedAddr = asRegister(usedPtrValue);
         Register used = r11;
@@ -248,7 +249,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 
         Label labelExit = new Label();
 
-        masm.movl(asRegister(resultValue), lenReg);
+        masm.movl(lenReg, asRegister(lenValue));
         masm.movl(used, new AMD64Address(usedAddr));
 
         // initialize counter with initial counter
@@ -427,7 +428,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         // counter is shuffled back.
         masm.vpshufb(xmmCurrCounter, xmmCurrCounter, xmmCounterShufMask, AVXSize.XMM);
         masm.movdqu(new AMD64Address(counter), xmmCurrCounter); // save counter back
-        masm.movl(lenReg, asRegister(resultValue));
+        masm.movl(asRegister(resultValue), asRegister(lenValue));
     }
 
     private static void incCounter(AMD64MacroAssembler masm, Register reg, Register xmmdst, int incDelta, Label nextBlock) {
