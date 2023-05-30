@@ -90,6 +90,7 @@ import com.oracle.svm.driver.metainf.MetaInfFileType;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -251,6 +252,8 @@ public class NativeImage {
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
+
+    final String oHNumberOfThreads = oH(NativeImageOptions.NumberOfThreads);
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
@@ -807,6 +810,7 @@ public class NativeImage {
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
+
         addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendorurl=" + graalvmVendorUrl);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendorversion=" + graalvmVendorVersion);
@@ -987,6 +991,12 @@ public class NativeImage {
 
         completeOptionArgs();
         addTargetArguments();
+
+        /* Set parallelism of common pool. */
+        String maxNumberOfThreads = getMaxNumberOfThreads();
+        if (maxNumberOfThreads != null) {
+            imageBuilderArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + maxNumberOfThreads);
+        }
 
         String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
@@ -1246,6 +1256,22 @@ public class NativeImage {
             }
         }
         return result;
+    }
+
+    private String getMaxNumberOfThreads() {
+        String numberOfThreadsValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHNumberOfThreads);
+        if (numberOfThreadsValue != null) {
+            try {
+                int maxNumberOfThreads = Integer.parseInt(numberOfThreadsValue);
+                if (maxNumberOfThreads < 0) {
+                    throw showError("The number of threads cannot be negative. Please set the --parallelism option to a positive value.");
+                }
+            } catch (NumberFormatException e) {
+                /* Validated already by CommonOptionParser. */
+                VMError.shouldNotReachHere(e);
+            }
+        }
+        return numberOfThreadsValue;
     }
 
     private boolean shouldAddCWDToCP() {
