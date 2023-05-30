@@ -2101,7 +2101,11 @@ public class NativeImage {
          * When DebugOptions.Log is used and no LogFile is set, progress cannot be reported as
          * logging works around NativeImageSystemIOWrappers to access stdio handles.
          */
-        return !getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty() && !logRedirectedToFile();
+        if (!getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty()) {
+            return logRedirectedToFile();
+        }
+
+        return true;
     }
 
     private static boolean logRedirectedToFile() {
