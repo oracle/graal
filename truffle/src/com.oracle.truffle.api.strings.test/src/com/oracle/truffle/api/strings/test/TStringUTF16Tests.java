@@ -132,4 +132,10 @@ public class TStringUTF16Tests extends TStringTestBase {
         byte[] actualUTF8Bytes = utf8.copyToByteArrayUncached(TruffleString.Encoding.UTF_8);
         Assert.assertArrayEquals(Arrays.toString(actualUTF8Bytes), expectedUTF8Bytes, actualUTF8Bytes);
     }
+
+    @Test
+    public void testToJavaString() {
+        TruffleString a = TruffleString.fromCharArrayUTF16Uncached(new char[]{'a', 'b', 'c'});
+        Assert.assertEquals("abc", a.toJavaStringUncached());
+    }
 }

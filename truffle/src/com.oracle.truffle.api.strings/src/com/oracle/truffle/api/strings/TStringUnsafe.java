@@ -66,6 +66,8 @@ final class TStringUnsafe {
     private static final long javaStringCoderFieldOffset;
     private static final long javaStringHashFieldOffset;
 
+    static final boolean COMPACT_STRINGS_ENABLED;
+
     static {
         if (JAVA_SPEC <= 8) {
             throw new RuntimeException("TruffleString requires Java version > 8");
@@ -73,9 +75,21 @@ final class TStringUnsafe {
         Field valueField = getStringDeclaredField("value");
         Field coderField = getStringDeclaredField("coder");
         Field hashField = getStringDeclaredField("hash");
+        Field compactStringsField = getStringDeclaredField("COMPACT_STRINGS");
         javaStringValueFieldOffset = getObjectFieldOffset(valueField);
         javaStringCoderFieldOffset = getObjectFieldOffset(coderField);
         javaStringHashFieldOffset = getObjectFieldOffset(hashField);
+        COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(getStaticFieldBase(compactStringsField), getStaticFieldOffset(compactStringsField));
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    private static Object getStaticFieldBase(Field field) {
+        return UNSAFE.staticFieldBase(field);
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    private static long getStaticFieldOffset(Field field) {
+        return UNSAFE.staticFieldOffset(field);
     }
 
     @SuppressWarnings("deprecation" /* JDK-8277863 */)
@@ -129,8 +143,8 @@ final class TStringUnsafe {
 
     @TruffleBoundary
     static String createJavaString(byte[] bytes, int stride) {
-        if (stride < 0 || stride > 1) {
-            throw new IllegalArgumentException("stride must be 0 or 1!");
+        if (stride < (COMPACT_STRINGS_ENABLED ? 0 : 1) || stride > 1) {
+            throw new IllegalArgumentException("illegal stride!");
         }
         String ret = allocateJavaString();
         UNSAFE.putInt(ret, javaStringHashFieldOffset, 0);
