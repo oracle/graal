@@ -29,12 +29,10 @@ import java.util.List;
 
 import org.graalvm.nativeimage.c.CContext;
 
-import com.oracle.svm.core.c.ProjectHeaderFile;
-
 public class CInterfaceDebugTestDirectives implements CContext.Directives {
 
     @Override
     public List<String> getHeaderFiles() {
-        return List.of(ProjectHeaderFile.resolve("com.oracle.svm.enterprise.debug.test", "systemjava_debugtest.h"));
+        return List.of("<systemjava_debugtest.h>");
     }
 }
