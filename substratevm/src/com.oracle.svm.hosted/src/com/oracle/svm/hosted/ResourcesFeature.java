@@ -428,16 +428,18 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason != ParsingReason.JITCompilation) {
-            Method[] resourceMethods = {
-                            ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
-                            ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
-            };
-            Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
+        if (reason == ParsingReason.JITCompilation) {
+            return;
+        }
 
-            for (Method method : resourceMethods) {
-                registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
-            }
+        Method[] resourceMethods = {
+                        ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
+                        ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
+        };
+        Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
+
+        for (Method method : resourceMethods) {
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
         }
     }
 
