@@ -77,14 +77,13 @@ public class BundleLauncher {
         List<String> classpath = new ArrayList<>();
         if (Files.isDirectory(classPathDir)) {
             try (Stream<Path> walk = Files.walk(classPathDir, 1)) {
-                walk.filter(path -> path.toString().endsWith(".jar") || (Files.isDirectory(path) && !path.equals(classPathDir)))
+                walk.filter(path -> path.toString().endsWith(".jar") || Files.isDirectory(path))
                         .map(Path::toString)
                         .forEach(classpath::add);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to iterate through directory " + classPathDir, e);
             }
 
-            classpath.add(classPathDir.toString());
             command.add("-cp");
             command.add(String.join(File.pathSeparator, classpath));
         }

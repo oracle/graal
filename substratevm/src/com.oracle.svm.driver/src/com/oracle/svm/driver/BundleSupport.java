@@ -1038,7 +1038,14 @@ final class BundleSupport {
                     bundleArgsIterator.remove();
                     bundleArgsIterator.next();
                     bundleArgsIterator.remove();
+                } else if (arg.equals("-jar")) {
+                    bundleArgsIterator.next();
+                } else if (arg.startsWith("-") || arg.equals(nativeImage.imageName)) {
+                    bundleArgsIterator.remove();
                 }
+            }
+            if (bundleArgs.isEmpty()) {
+                bundleArgs.add(nativeImage.mainClass);
             }
             /* Printing as list with defined sort-order ensures useful diffs are possible */
             JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
