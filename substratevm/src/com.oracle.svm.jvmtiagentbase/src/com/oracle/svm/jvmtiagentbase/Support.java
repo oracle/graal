@@ -449,9 +449,9 @@ public final class Support {
         guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
     }
 
-    public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {
+    public static void checkPhase(JvmtiError resultCode) {
         if (resultCode == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
-            throw new WrongPhaseException();
+            throw new WrongPhaseError();
         }
         check(resultCode);
     }
@@ -463,7 +463,7 @@ public final class Support {
     private Support() {
     }
 
-    public static class WrongPhaseException extends Exception {
+    public static class WrongPhaseError extends Error {
         private static final long serialVersionUID = 8503239518909756105L;
     }
 }

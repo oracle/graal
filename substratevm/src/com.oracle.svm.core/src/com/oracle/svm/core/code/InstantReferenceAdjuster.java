@@ -31,7 +31,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Immediately writes object references and fails if it cannot do so.
@@ -46,13 +47,13 @@ public class InstantReferenceAdjuster implements ReferenceAdjuster {
     @Override
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T> void setConstantTargetInArray(NonmovableObjectArray<T> array, int index, SubstrateObjectConstant constant) {
+    public <T> void setConstantTargetInArray(NonmovableObjectArray<T> array, int index, JavaConstant constant) {
         NonmovableArrays.setObject(array, index, (T) ((DirectSubstrateObjectConstant) constant).getObject());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setConstantTargetAt(PointerBase address, int length, SubstrateObjectConstant constant) {
+    public void setConstantTargetAt(PointerBase address, int length, JavaConstant constant) {
         ReferenceAdjuster.writeReference((Pointer) address, length, ((DirectSubstrateObjectConstant) constant).getObject());
     }
 

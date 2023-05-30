@@ -188,8 +188,15 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public boolean isValueAvailable() {
+        /*
+         * Note that we use isHostedUniverseBuild on purpose to define "available after analysis":
+         * many field value transformers require field offsets to be available, i.e., the hosted
+         * universe to be built. This ensures that such field value transformers do not have their
+         * value available when strengthening graphs after analysis, i.e., when applying analysis
+         * results back into the IR.
+         */
         return constantValue != null || isValueAvailableBeforeAnalysis() ||
-                        (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isAnalysisFinished()) ||
+                        (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isHostedUniverseBuilt()) ||
                         (isValueAvailableOnlyAfterCompilation && BuildPhaseProvider.isCompilationFinished());
     }
 
@@ -548,5 +555,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(original);
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return original.getConstantValue();
     }
 }

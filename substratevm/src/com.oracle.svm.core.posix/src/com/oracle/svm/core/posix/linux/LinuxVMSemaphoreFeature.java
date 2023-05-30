@@ -114,15 +114,13 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
 final class LinuxVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = LinuxVMSemaphore[].class)//
-    LinuxVMSemaphore[] semaphores;
+    @UnknownObjectField LinuxVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the semaphore lock structures. The offset into this array is stored in
      * {@link LinuxVMSemaphore#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] semaphoreStructs;
+    @UnknownObjectField byte[] semaphoreStructs;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")

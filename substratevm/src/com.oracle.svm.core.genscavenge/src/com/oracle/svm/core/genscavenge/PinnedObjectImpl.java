@@ -77,12 +77,14 @@ final class PinnedObjectImpl implements PinnedObject {
         } while (!pinHead.compareAndSet(sampleHead, newHead));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static PinnedObjectImpl getPinnedObjects() {
         assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
         return pinHead.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setPinnedObjects(PinnedObjectImpl list) {
         assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
@@ -108,6 +110,7 @@ final class PinnedObjectImpl implements PinnedObject {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getObject() {
         assert open : "Should not call getObject() on a closed PinnedObject.";
         return referent;
@@ -126,21 +129,24 @@ final class PinnedObjectImpl implements PinnedObject {
     @SuppressWarnings("unchecked")
     public <T extends PointerBase> T addressOfArrayElement(int index) {
         if (referent == null) {
-            throw new NullPointerException("null PinnedObject");
+            throw new NullPointerException("PinnedObject is missing a referent");
         }
         DynamicHub hub = ObjectHeader.readDynamicHubFromObject(referent);
         UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
         return (T) addressOfObject().add(offsetOfArrayElement);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isOpen() {
         return open;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PinnedObjectImpl getNext() {
         return next;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setNext(PinnedObjectImpl value) {
         // Avoid useless writes as those would dirty the card table unnecessarily.
         if (value != next) {

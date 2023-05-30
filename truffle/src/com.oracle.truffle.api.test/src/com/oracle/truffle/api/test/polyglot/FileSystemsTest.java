@@ -98,6 +98,7 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.graalvm.home.Version;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -157,6 +158,8 @@ public class FileSystemsTest {
     private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization filesystem execution time";
 
     private static final Map<String, Configuration> cfgs = new HashMap<>();
+
+    private static final Version OSX_10_13 = Version.create(10, 13);
 
     private final Configuration cfg;
 
@@ -2016,8 +2019,13 @@ public class FileSystemsTest {
         }
     }
 
+    static boolean isMacOSOlderThanHighSierra() {
+        return OSUtils.getCurrent() == OSUtils.OS.Darwin && OSX_10_13.compareTo(Version.parse(System.getProperty("os.version"))) > 0;
+    }
+
     @Test
     public void testSetAttribute() throws IOException {
+        Assume.assumeFalse("JDK-8308386", Runtime.version().feature() == 21 && isMacOSOlderThanHighSierra());
         Context ctx = cfg.getContext();
         String configuration = cfg.getName();
         String path = cfg.getPath().toString();

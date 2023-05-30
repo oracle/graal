@@ -69,7 +69,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -124,7 +123,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Emitting the metadata happens in two phases. In the first phase, the string and class encoders
  * are filled with the necessary values (in the {@code #add*Metadata} functions). In a second phase,
  * the values are encoded into their intended byte arrays (see
- * {@link ReflectionMetadataEncoder#encodeAllAndInstall(SnippetReflectionProvider)}).
+ * {@link ReflectionMetadataEncoder#encodeAllAndInstall()}).
  *
  * The metadata encoding format is detailed in {@link ReflectionMetadataDecoderImpl}.
  */
@@ -133,11 +132,12 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
-        public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
-            return new ReflectionMetadataEncoderImpl(encoders);
+        public ReflectionMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
+            return new ReflectionMetadataEncoderImpl(snippetReflection, encoders);
         }
     }
 
+    private final SnippetReflectionProvider snippetReflection;
     private final CodeInfoEncoder.Encoders encoders;
     private final ReflectionDataAccessors accessors;
     private final ReflectionDataBuilder dataBuilder;
@@ -155,7 +155,8 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private final Map<AccessibleObject, byte[]> typeAnnotationsEncodings = new HashMap<>();
     private final Map<Executable, byte[]> reflectParametersEncodings = new HashMap<>();
 
-    public ReflectionMetadataEncoderImpl(CodeInfoEncoder.Encoders encoders) {
+    public ReflectionMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
+        this.snippetReflection = snippetReflection;
         this.encoders = encoders;
         this.accessors = new ReflectionDataAccessors();
         this.dataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
@@ -255,7 +256,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
 
     @Override
     public void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] innerClasses) {
-        SnippetReflectionProvider snippetReflection = ((HostedMetaAccess) metaAccess).getUniverse().getSnippetReflection();
         Class<?> javaClass = type.getHub().getHostedJavaClass();
         Object enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
         RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
@@ -270,7 +270,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         /* Register string and class values in annotations */
         encoders.sourceClasses.addObject(javaClass);
         if (enclosingMethodInfo instanceof Throwable) {
-            registerError(snippetReflection, (Throwable) enclosingMethodInfo);
+            registerError((Throwable) enclosingMethodInfo);
         } else {
             registerEnclosingMethodInfo((Object[]) enclosingMethodInfo);
         }
@@ -292,7 +292,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, nestMemberTypes, signerConstants, flags, annotations, typeAnnotations));
     }
 
-    private void registerError(SnippetReflectionProvider snippetReflection, Throwable error) {
+    private void registerError(Throwable error) {
         encoders.objectConstants.addObject(snippetReflection.forObject(error));
     }
 
@@ -323,7 +323,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
 
     private Class<?>[] getPermittedSubclasses(MetaAccessProvider metaAccess, Class<?> clazz) {
-        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
+        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
             return null;
         }
         try {
@@ -335,7 +335,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private Class<?>[] getNestMembers(MetaAccessProvider metaAccess, Class<?> clazz) {
-        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
+        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
             return null;
         }
         return filterDeletedClasses(metaAccess, clazz.getNestMembers());
@@ -385,7 +385,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
 
     @Override
     public void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod hostedMethod, Executable reflectMethod, Object accessor) {
-        SnippetReflectionProvider snippetReflection = ((HostedMetaAccess) metaAccess).getUniverse().getSnippetReflection();
         boolean isMethod = !hostedMethod.isConstructor();
         HostedType declaringType = hostedMethod.getDeclaringClass();
         String name = isMethod ? hostedMethod.getName() : null;
@@ -433,9 +432,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static final Method isFieldTrustedFinal = ReflectionUtil.lookupMethod(true, Field.class, "isTrustedFinal");
 
     private static boolean isTrustedFinal(Field field) {
-        if (JavaVersionUtil.JAVA_SPEC < 17) {
-            return false;
-        }
         try {
             return (boolean) isFieldTrustedFinal.invoke(field);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -447,7 +443,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     public void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedObject, AccessibleObject object, boolean registered) {
         boolean isExecutable = object instanceof Executable;
         boolean isMethod = object instanceof Method;
-        SnippetReflectionProvider snippetReflection = ((HostedMetaAccess) metaAccess).getUniverse().getSnippetReflection();
 
         /* Register string and class values in annotations */
         AnnotatedElement analysisObject = hostedObject.getWrapped();
@@ -488,7 +483,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
                 includedClasses.add(type);
             }
         }
-        return includedClasses.toArray(new HostedType[0]);
+        return includedClasses.toArray(HostedType.EMPTY_ARRAY);
     }
 
     private AnnotationValue[] registerAnnotationValues(AnnotatedElement element) {
@@ -532,7 +527,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         for (String string : annotationValue.getStrings()) {
             encoders.sourceMethodNames.addObject(string);
         }
-        for (JavaConstant proxy : annotationValue.getExceptionProxies()) {
+        for (JavaConstant proxy : annotationValue.getExceptionProxies(snippetReflection)) {
             encoders.objectConstants.addObject(proxy);
         }
     }
@@ -692,16 +687,16 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
      * See {@link ReflectionMetadataDecoderImpl} for the encoding format description.
      */
     @Override
-    public void encodeAllAndInstall(SnippetReflectionProvider snippetReflection) {
+    public void encodeAllAndInstall() {
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(new HostedType[0]), this::encodeType, false);
+        int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(HostedType.EMPTY_ARRAY), this::encodeType, false);
         assert typesIndex == 0;
         for (HostedType declaringType : sortedTypes) {
             DynamicHub hub = declaringType.getHub();
             ClassMetadata classMetadata = classData.get(declaringType);
 
             int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
-                            ? encodeErrorIndex(snippetReflection, (Throwable) classMetadata.enclosingMethodInfo)
+                            ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
                             : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
             int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
             int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
@@ -741,7 +736,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         ImageSingletons.add(EncodedReflectionMetadataSupplier.class, this);
     }
 
-    private int encodeErrorIndex(SnippetReflectionProvider snippetReflection, Throwable error) {
+    private int encodeErrorIndex(Throwable error) {
         int index = encoders.objectConstants.getIndex(snippetReflection.forObject(error));
         int encodedIndex = FIRST_ERROR_INDEX - index;
         VMError.guarantee(ReflectionMetadataDecoderImpl.isErrorIndex(encodedIndex));

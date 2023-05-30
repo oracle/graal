@@ -671,7 +671,7 @@ public class SVMHost extends HostVM {
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {
-            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()));
+            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()).getConstantReflection());
             if (type != null) {
                 initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
             } else {

@@ -40,5 +40,5 @@
 # SOFTWARE.
 #
 
-curl -O https://www.antlr.org/download/antlr-4.9.2-complete.jar
-java -cp antlr-4.9.2-complete.jar org.antlr.v4.Tool -package com.oracle.truffle.sl.parser -no-listener language/src/main/java/com/oracle/truffle/sl/parser/SimpleLanguage.g4
+curl -O https://www.antlr.org/download/antlr-4.12.0-complete.jar
+java -cp antlr-4.12.0-complete.jar org.antlr.v4.Tool -package com.oracle.truffle.sl.parser -no-listener language/src/main/java/com/oracle/truffle/sl/parser/SimpleLanguage.g4

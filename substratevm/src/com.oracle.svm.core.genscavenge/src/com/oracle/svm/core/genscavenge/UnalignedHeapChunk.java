@@ -145,6 +145,7 @@ public final class UnalignedHeapChunk {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkObjectsInline(UnalignedHeader that, ObjectVisitor visitor) {
         return HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }

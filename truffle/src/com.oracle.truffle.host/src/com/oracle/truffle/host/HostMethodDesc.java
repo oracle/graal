@@ -129,7 +129,7 @@ abstract class HostMethodDesc {
                 return false;
             }
             for (Class<?> unscopedType : UNSCOPED_TYPES) {
-                if (c.isAssignableFrom(unscopedType)) {
+                if (unscopedType.isAssignableFrom(c)) {
                     return false;
                 }
             }

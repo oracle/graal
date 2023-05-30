@@ -36,8 +36,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -78,22 +76,6 @@ public class ContinuationsFeature implements InternalFeature {
             LoomVirtualThreads vt = new LoomVirtualThreads();
             ImageSingletons.add(VirtualThreads.class, vt);
             ImageSingletons.add(LoomVirtualThreads.class, vt); // for simpler check in LoomSupport
-        } else if (SubstrateOptions.SupportContinuations.getValue()) {
-            if (DeoptimizationSupport.enabled()) {
-                throw UserError.abort("Option %s is in use, but is not supported together with Truffle JIT compilation.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
-            } else if (SubstrateOptions.useLLVMBackend()) {
-                throw UserError.abort("Option %s is in use, but is not supported together with the LLVM backend.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
-            } else if (JavaVersionUtil.JAVA_SPEC == 17) {
-                ImageSingletons.add(VirtualThreads.class, new SubstrateVirtualThreads());
-            } else if (JavaVersionUtil.JAVA_SPEC >= firstLoomPreviewVersion && JavaVersionUtil.JAVA_SPEC <= lastLoomPreviewVersion) {
-                throw UserError.abort("Virtual threads on JDK %d are supported only with preview features enabled (--enable-preview). Using option %s is unnecessary.",
-                                JavaVersionUtil.JAVA_SPEC, SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
-            } else {
-                throw UserError.abort("Option %s is in use, but is not supported on JDK %d.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"), JavaVersionUtil.JAVA_SPEC);
-            }
         }
         finishedRegistration = true;
     }
@@ -129,6 +111,6 @@ public class ContinuationsFeature implements InternalFeature {
     }
 
     static void abortIfUnsupported() {
-        VMError.guarantee(Continuation.isSupported(), "Virtual thread internals are reachable but support is not available or active.");
+        VMError.guarantee(Continuation.isSupported(), "Virtual threads internals are reachable but support is not available or active.");
     }
 }

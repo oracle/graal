@@ -72,7 +72,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
@@ -194,8 +193,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaType resolve(ResolvedJavaType type) {
         if (type instanceof SubstitutionType) {
             return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof AnnotationSubstitutionType) {
-            return ((AnnotationSubstitutionType) type).getOriginal();
         } else if (type instanceof InjectedFieldsType) {
             return ((InjectedFieldsType) type).getOriginal();
         }
@@ -242,24 +239,22 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return Optional.ofNullable(fieldSubstitutions.get(field));
     }
 
-    public Optional<ResolvedJavaType> findSubstitution(ResolvedJavaType type) {
+    public Optional<ResolvedJavaType> findFullSubstitution(ResolvedJavaType type) {
         /*
          * When a type is substituted there is a mapping from the original type to the substitution
          * type (and another mapping from the annotated type to the substitution type).
          */
-        return Optional.ofNullable(findTypeSubstitution(type));
+        ResolvedJavaType subst = findTypeSubstitution(type);
+        return (subst instanceof SubstitutionType) ? Optional.of(subst) : Optional.empty();
     }
 
     public boolean isAliased(ResolvedJavaType type) {
         /*
-         * When a type is aliased there is a mapping from the alias type to the original type. There
-         * is no mapping from the original type to the annotated type since that would be wrong, the
-         * original type is not substituted by the annotated type.
-         *
-         * If the type is an array type then it's alias is constructed on demand, but there should
-         * be a mapping from the aliased component type to the original component type.
+         * When a type is aliased there is a mapping from the alias type to the original type. If
+         * the type is an array type then its alias is constructed on demand, but there should be a
+         * mapping from the aliased component type to the original component type.
          */
-        if (type instanceof SubstitutionType || type instanceof InjectedFieldsType) {
+        if (type instanceof SubstitutionType) {
             return false;
         }
         return typeSubstitutions.containsValue(type) || typeSubstitutions.containsValue(type.getElementalType());

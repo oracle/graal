@@ -68,6 +68,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -802,7 +803,7 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
 
-        public abstract void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame);
+        public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
         public abstract boolean isThreadAccessAllowed(Env env, Thread current, boolean singleThread);
 
@@ -1223,6 +1224,53 @@ public abstract class Accessor {
         }
     }
 
+    public abstract static class LanguageProviderSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.provider.LanguageProviderSupportImpl";
+
+        protected LanguageProviderSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract String getLanguageClassName(TruffleLanguageProvider provider);
+
+        public abstract Object create(TruffleLanguageProvider provider);
+
+        public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
+
+        public abstract <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type);
+
+    }
+
+    public abstract static class InstrumentProviderSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.instrumentation.provider.InstrumentProviderSupportImpl";
+
+        protected InstrumentProviderSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract String getInstrumentClassName(Object truffleInstrumentProvider);
+
+        public abstract Object create(Object truffleInstrumentProvider);
+
+        public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
+
+        public abstract <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type);
+    }
+
+    public abstract static class DynamicObjectSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.object.DynamicObjectSupportImpl";
+
+        protected DynamicObjectSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract <T> Iterable<T> lookupTruffleService(Class<T> type);
+
+    }
+
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
     }
@@ -1246,6 +1294,9 @@ public abstract class Accessor {
         private static final Accessor.EngineSupport ENGINE;
         private static final Accessor.HostSupport HOST;
         private static final Accessor.RuntimeSupport RUNTIME;
+        private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
+        private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
+        private static final DynamicObjectSupport DYNAMIC_OBJECT;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1261,6 +1312,9 @@ public abstract class Accessor {
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
             HOST = loadSupport(HostSupport.IMPL_CLASS_NAME);
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
+            LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
+            INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
+            DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1354,6 +1408,18 @@ public abstract class Accessor {
 
     public final IOSupport ioSupport() {
         return Constants.IO;
+    }
+
+    public final LanguageProviderSupport languageProviderSupport() {
+        return Constants.LANGUAGE_PROVIDER;
+    }
+
+    public final InstrumentProviderSupport instrumentProviderSupport() {
+        return Constants.INSTRUMENT_PROVIDER;
+    }
+
+    public final DynamicObjectSupport dynamicObjectSupport() {
+        return Constants.DYNAMIC_OBJECT;
     }
 
     /**

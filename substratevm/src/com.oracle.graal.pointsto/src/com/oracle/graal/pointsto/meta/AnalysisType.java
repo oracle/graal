@@ -1210,18 +1210,30 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredConstructors() {
-        return universe.lookup(wrapped.getDeclaredConstructors());
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredMethods() {
-        return universe.lookup(wrapped.getDeclaredMethods());
+    public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
     }
 
     @Override
     public AnalysisMethod findMethod(String name, Signature signature) {
-        for (AnalysisMethod method : getDeclaredMethods()) {
+        for (AnalysisMethod method : getDeclaredMethods(false)) {
             if (method.getName().equals(name) && method.getSignature().equals(signature)) {
                 return method;
             }

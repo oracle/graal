@@ -94,7 +94,7 @@ import com.oracle.svm.core.util.coder.Pack200Coder;
  */
 public class HeapDumpMetadata {
     private final ComputeHubDataVisitor computeHubDataVisitor;
-    @UnknownObjectField(types = {byte[].class}) private byte[] data;
+    @UnknownObjectField private byte[] data;
 
     private int fieldNameCount;
     private int classInfoCount;

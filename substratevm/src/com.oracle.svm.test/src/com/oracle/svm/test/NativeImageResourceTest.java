@@ -28,13 +28,20 @@ package com.oracle.svm.test;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -119,6 +126,38 @@ public class NativeImageResourceTest {
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
     }
 
+    /**
+     * <p>
+     * Access a resource using {@link URLClassLoader}.
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> Test inspired by issues: </br>
+     * <ol>
+     * <li><a href="https://github.com/oracle/graal/issues/1956">1956</a></li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void accessResourceUsingURLClassLoader() {
+        try {
+            Path file = Files.createTempFile("", "");
+            String fileName = file.getFileName().toString();
+            File path = new File(file.getParent().toUri());
+            URL url = path.toURI().toURL();
+            URL[] urls = {url};
+            try (URLClassLoader ucl = new URLClassLoader(urls)) {
+                Assert.assertNotNull(ucl.getResourceAsStream(fileName));
+                Assert.assertNotNull(ucl.getResource(fileName));
+                Assert.assertNotNull(ucl.findResource(fileName));
+                Assert.assertTrue(ucl.getResources(fileName).hasMoreElements());
+                Assert.assertTrue(ucl.findResources(fileName).hasMoreElements());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in URLClassLoader.(get|find)Resource(s): " + e.getMessage());
+        }
+    }
+
     @Test
     public void moduleResourceURLAccess() {
         URL url = Class.class.getResource("uniName.dat");
@@ -183,6 +222,66 @@ public class NativeImageResourceTest {
             Assert.assertNotNull("InputStream for resource java.base/java/lang/uniName.dat must not be null", in2);
         } catch (IOException e) {
             Assert.fail("IOException in module.getResourceAsStream(): " + e.getMessage());
+        }
+    }
+
+    /**
+     * <p>
+     * Check URLConnection content type.
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> Test inspired by issues: </br>
+     * <ol>
+     * <li><a href="https://github.com/oracle/graal/issues/6394">6394</a></li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void testResourceURLConnectionContentType() {
+        try {
+            URL url1 = resourceNameToURL(RESOURCE_FILE_2, true);
+            URLConnection conn1 = url1.openConnection();
+            Assert.assertNull(conn1.getHeaderField(null));
+            Assert.assertEquals("text/plain", conn1.getHeaderField("content-type"));
+            Assert.assertEquals("text/plain", conn1.getHeaderField("Content-Type"));
+            Assert.assertEquals("text/plain", conn1.getContentType());
+
+            URL url2 = resourceNameToURL(RESOURCE_FILE_3, true);
+            URLConnection conn2 = url2.openConnection();
+            Assert.assertNull(conn2.getHeaderField(null));
+            Assert.assertEquals("text/html", conn2.getHeaderField("content-type"));
+            Assert.assertEquals("text/html", conn2.getHeaderField("Content-Type"));
+            Assert.assertEquals("text/html", conn2.getContentType());
+
+            URL url3 = resourceNameToURL(RESOURCE_FILE_4, true);
+            URLConnection conn3 = url3.openConnection();
+            Assert.assertEquals("text/html", conn3.getContentType());
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openConnection(): " + e.getMessage());
+        }
+    }
+
+    /**
+     * <p>
+     * Check various URLConnection header fields.
+     * </p>
+     */
+    @Test
+    public void testResourceURLConnectionHeaderFields() {
+        try {
+            URL url = resourceNameToURL(RESOURCE_FILE_3, true);
+            URLConnection conn = url.openConnection();
+
+            Assert.assertNotEquals(0, conn.getLastModified());
+            Assert.assertEquals(24, conn.getContentLength());
+            Assert.assertEquals(24, conn.getContentLengthLong());
+
+            Assert.assertEquals("text/html", conn.getHeaderField(0));
+            Assert.assertEquals("content-type", conn.getHeaderFieldKey(0));
+            Assert.assertEquals(3, conn.getHeaderFields().size());
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openConnection(): " + e.getMessage());
         }
     }
 }

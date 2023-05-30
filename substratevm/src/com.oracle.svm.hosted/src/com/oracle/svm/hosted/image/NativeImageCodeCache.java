@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -67,6 +66,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -237,7 +237,7 @@ public abstract class NativeImageCodeCache {
             return;
         }
 
-        HostedType hostedType = imageHeap.getMetaAccess().lookupJavaType((JavaConstant) constant);
+        HostedType hostedType = imageHeap.hMetaAccess.lookupJavaType((JavaConstant) constant);
         if (!hostedType.isInstantiated()) {
             throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + hostedType.getName() + "." +
                             (reason != null ? " Method: " + reason : ""));
@@ -262,10 +262,10 @@ public abstract class NativeImageCodeCache {
             encodeMethod(codeInfoEncoder, pair);
         }
 
-        ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
+        HostedUniverse hUniverse = imageHeap.hUniverse;
+        HostedMetaAccess hMetaAccess = imageHeap.hMetaAccess;
+        ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(hUniverse.getSnippetReflection(), encoders);
         ReflectionHostedSupport reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
-        HostedUniverse hUniverse = imageHeap.getUniverse();
-        HostedMetaAccess hMetaAccess = imageHeap.getMetaAccess();
 
         Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
         Set<?> heapDynamicHubs = reflectionSupport.getHeapDynamicHubs();
@@ -415,17 +415,13 @@ public abstract class NativeImageCodeCache {
     protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        reflectionMetadataEncoder.encodeAllAndInstall(getSnippetReflection());
+        reflectionMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
         imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
         return imageCodeInfo;
-    }
-
-    protected SnippetReflectionProvider getSnippetReflection() {
-        return imageHeap.getUniverse().getSnippetReflection();
     }
 
     protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
@@ -440,7 +436,7 @@ public abstract class NativeImageCodeCache {
         deoptEntries.sort(Comparator.comparing(e -> e.getKey().format("%H.%n(%p)")));
 
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
-            HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
+            HostedMethod method = imageHeap.hUniverse.lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
 
             if (method.hasCalleeSavedRegisters()) {
                 System.out.println("DeoptEntry has callee saved registers: " + method.format("%H.%n(%p)"));
@@ -604,7 +600,7 @@ public abstract class NativeImageCodeCache {
             writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
         writer.println("--- vtables:");
-        for (HostedType type : imageHeap.getUniverse().getTypes()) {
+        for (HostedType type : imageHeap.hUniverse.getTypes()) {
             for (int i = 0; i < type.getVTable().length; i++) {
                 HostedMethod method = type.getVTable()[i];
                 if (method != null) {
@@ -710,7 +706,7 @@ public abstract class NativeImageCodeCache {
 
         void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes);
 
-        void encodeAllAndInstall(SnippetReflectionProvider snippetReflection);
+        void encodeAllAndInstall();
 
         Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
 
@@ -726,6 +722,6 @@ public abstract class NativeImageCodeCache {
     }
 
     public interface ReflectionMetadataEncoderFactory {
-        ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
+        ReflectionMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders);
     }
 }

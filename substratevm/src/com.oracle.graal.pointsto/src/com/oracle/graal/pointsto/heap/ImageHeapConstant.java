@@ -121,6 +121,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return hostedObject;
     }
 
+    public boolean isBackedByHostedObject() {
+        return hostedObject != null;
+    }
+
     @Override
     public JavaKind getJavaKind() {
         return JavaKind.Object;
@@ -185,10 +189,15 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return type.getName();
     }
 
+    /**
+     * Returns a new image heap instance, as if {@link Object#clone} was called on the original
+     * object. If the type is not cloneable, then null is returned.
+     */
+    public abstract ImageHeapConstant forObjectClone();
+
     @Override
     public boolean equals(Object o) {
-        if (o instanceof ImageHeapConstant) {
-            ImageHeapConstant other = (ImageHeapConstant) o;
+        if (o instanceof ImageHeapConstant other) {
             /*
              * Object identity doesn't take into account the compressed flag. This is done to match
              * the previous behavior where the raw object was extracted and used as a key when

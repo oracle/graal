@@ -13,6 +13,12 @@ Remote management using [Java Management Extensions (JMX)](https://www.oracle.co
 
 This guide covers the steps required to build, run, and interact with such a native executable using JMX.
 It also shows you how to register a custom managed bean (MBean), with the JMX server and the additional steps required for it to work with Native Image.
+## Currently Supported Features and Limitations
+Currently, JMX connection from a client to a remote MBean server is supported. The client, server, or both may be a native executable.
+For now, only MXBeans, and standard user-defined MBeans are supported. Dynamic and model MBeans are not currently supported because 
+their management interfaces are defined at runtime. Although remote management of MXBeans is supported, not all platform MXBean functionality 
+is implemented or is applicable in SubstrateVM. Additionally, in order to define and use standard MBeans, metadata configuration must be specified. 
+This is further explained later in this guide.    
 
 ## Step 1: Create a Demo Application
 
@@ -122,7 +128,9 @@ You can configure JMX to apply all the usual properties as shown in [this guide]
 
     ```shell
     $JAVA_HOME/bin/gu install visualvm
-    $JAVA_HOME/bin/visualvm
+    ```
+    ```shell
+    $JAVA_HOME/bin/jvisualvm 
     ```
 
 2. Make sure you have the **VisualVM-MBeans plugin** installed (go to Tools, then Plugins, under Available Plugins, select "VisualVM-MBeans", and click Install).

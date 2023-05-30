@@ -69,7 +69,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
     @Child LiteralRegexExecImplNode implNode;
 
     public LiteralRegexExecNode(RegexLanguage language, RegexAST ast, LiteralRegexExecImplNode implNode) {
-        super(language, ast.getSource(), ast.getFlags().isUnicode());
+        super(language, ast.getSource(), ast.getFlags().isEitherUnicode());
         this.implNode = insert(implNode);
     }
 

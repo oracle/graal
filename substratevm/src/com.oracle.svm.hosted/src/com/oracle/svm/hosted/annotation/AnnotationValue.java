@@ -48,7 +48,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
     final Map<String, AnnotationMemberValue> members;
 
     @SuppressWarnings("unchecked")
-    static AnnotationValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean exceptionOnMissingAnnotationClass, boolean skip) {
+    static AnnotationValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean exceptionOnMissingAnnotationClass, boolean skip) {
         boolean skipMembers = skip;
         Object typeOrException = AnnotationMetadata.extractType(buf, cp, container, skip);
         if (typeOrException instanceof TypeNotPresentExceptionProxy) {
@@ -63,7 +63,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
         Map<String, AnnotationMemberValue> memberValues = new LinkedHashMap<>();
         for (int i = 0; i < numMembers; i++) {
             String memberName = AnnotationMetadata.extractString(buf, cp, skipMembers);
-            AnnotationMemberValue memberValue = AnnotationMemberValue.extract(snippetReflection, buf, cp, container, skipMembers);
+            AnnotationMemberValue memberValue = AnnotationMemberValue.extract(buf, cp, container, skipMembers);
             if (!skipMembers) {
                 memberValues.put(memberName, memberValue);
             }
@@ -152,13 +152,13 @@ public final class AnnotationValue extends AnnotationMemberValue {
     }
 
     @Override
-    public List<JavaConstant> getExceptionProxies() {
+    public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
         if (isAnnotationFormatException()) {
             return List.of();
         }
         List<JavaConstant> exceptionProxies = new ArrayList<>();
         for (AnnotationMemberValue memberValue : members.values()) {
-            exceptionProxies.addAll(memberValue.getExceptionProxies());
+            exceptionProxies.addAll(memberValue.getExceptionProxies(snippetReflection));
         }
         return exceptionProxies;
     }

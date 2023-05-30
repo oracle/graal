@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class VMThreadLocalMTSupport {
     @UnknownPrimitiveField public int vmThreadSize = -1;
-    @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
+    @UnknownObjectField public byte[] vmThreadReferenceMapEncoding;
     @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,6 +67,7 @@ public class VMThreadLocalMTSupport {
         return (int) result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walk(IsolateThread isolateThread, ObjectReferenceVisitor referenceVisitor) {
         NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
         InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) isolateThread, threadRefMapEncoding, vmThreadReferenceMapIndex, referenceVisitor, null);

@@ -89,7 +89,7 @@ public final class RegexASTBuilder {
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
-    private final boolean explodeUTF16;
+    private final boolean canExplodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
     private Group curGroup;
@@ -99,11 +99,11 @@ public final class RegexASTBuilder {
     private final EconomicMap<Group, Integer> groupStartPositions;
 
     @TruffleBoundary
-    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean explodeUTF16, CompilationBuffer compilationBuffer) {
+    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean canExplodeUTF16, CompilationBuffer compilationBuffer) {
         this.globals = language.parserGlobals;
         this.options = source.getOptions();
         this.encoding = source.getEncoding();
-        this.explodeUTF16 = explodeUTF16;
+        this.canExplodeUTF16 = canExplodeUTF16;
         this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -179,7 +179,7 @@ public final class RegexASTBuilder {
      */
     public void pushRootGroup(boolean rootCapture) {
         RegexASTRootNode rootParent = ast.createRootNode();
-        ast.setRoot(pushGroup(null, rootCapture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup(), rootParent));
+        ast.setRoot(pushGroup(null, rootCapture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup(), rootParent, true));
         setGroupStartPosition(ast.getRoot(), 0);
         if (options.isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
@@ -195,7 +195,7 @@ public final class RegexASTBuilder {
      * @return the generated AST
      */
     public RegexAST popRootGroup() {
-        optimizeGroup();
+        optimizeGroup(curGroup);
         ast.getRoot().setEnclosedCaptureGroupsHigh(groupCount.getCount());
         return ast;
     }
@@ -208,7 +208,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushGroup(Token token) {
-        pushGroup(token, ast.createGroup(), null);
+        pushGroup(token, ast.createGroup(), null, true);
     }
 
     public void pushGroup() {
@@ -223,7 +223,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushCaptureGroup(Token token) {
-        pushGroup(token, ast.createCaptureGroup(groupCount.inc()), null);
+        pushGroup(token, ast.createCaptureGroup(groupCount.inc()), null, true);
     }
 
     public void pushCaptureGroup() {
@@ -242,7 +242,7 @@ public final class RegexASTBuilder {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
         ast.addSourceSection(lookAhead, token);
         addTerm(lookAhead);
-        pushGroup(token, ast.createGroup(), lookAhead);
+        pushGroup(token, ast.createGroup(), lookAhead, true);
     }
 
     public void pushLookAheadAssertion(boolean negate) {
@@ -261,7 +261,7 @@ public final class RegexASTBuilder {
         LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
         ast.addSourceSection(lookBehind, token);
         addTerm(lookBehind);
-        pushGroup(token, ast.createGroup(), lookBehind);
+        pushGroup(token, ast.createGroup(), lookBehind, true);
     }
 
     public void pushLookBehindAssertion(boolean negate) {
@@ -279,7 +279,7 @@ public final class RegexASTBuilder {
         AtomicGroup atomicGroup = ast.createAtomicGroup();
         ast.addSourceSection(atomicGroup, token);
         addTerm(atomicGroup);
-        pushGroup(token, ast.createGroup(), atomicGroup);
+        pushGroup(token, ast.createGroup(), atomicGroup, true);
     }
 
     public void pushAtomicGroup() {
@@ -295,14 +295,14 @@ public final class RegexASTBuilder {
      */
     public void pushConditionalBackReferenceGroup(Token.BackReference token) {
         assert token.kind == Token.Kind.conditionalBackreference;
-        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null);
+        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null, true);
     }
 
     public void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
         pushConditionalBackReferenceGroup(Token.createConditionalBackReference(referencedGroupNumber, namedReference));
     }
 
-    private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent) {
+    private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent, boolean openFirstSequence) {
         if (parent != null) {
             parent.setGroup(group);
         } else {
@@ -312,8 +312,17 @@ public final class RegexASTBuilder {
         setGroupStartPosition(group, token);
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        nextSequence();
+        if (openFirstSequence) {
+            nextSequence();
+        } else {
+            curSequence = null;
+            curTerm = null;
+        }
         return group;
+    }
+
+    private void pushGroup(boolean openNextSequence) {
+        pushGroup(null, ast.createGroup(), null, openNextSequence);
     }
 
     /**
@@ -330,7 +339,7 @@ public final class RegexASTBuilder {
             curGroup.removeLastSequence();
             ast.getNodeCount().dec();
         }
-        optimizeGroup();
+        optimizeGroup(curGroup);
         curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         ast.addSourceSection(curGroup, token);
         if (curGroup.getParent().isSubtreeRoot()) {
@@ -367,6 +376,10 @@ public final class RegexASTBuilder {
         curTerm = term;
     }
 
+    private boolean shouldExplodeUTF16() {
+        return canExplodeUTF16 && options.isUTF16ExplodeAstralSymbols();
+    }
+
     /**
      * Adds a new {@link CharacterClass} to the current {@link Sequence}.
      * 
@@ -377,8 +390,8 @@ public final class RegexASTBuilder {
      */
     public void addCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = pruneCharClass(token.getCodePointSet());
-        if (explodeUTF16) {
-            addTerm(translateUnicodeCharClass(codePointSet, token));
+        if (shouldExplodeUTF16()) {
+            addTerm(translateUnicodeCharClass(codePointSet, token, token.wasSingleChar()));
         } else {
             addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
         }
@@ -409,9 +422,9 @@ public final class RegexASTBuilder {
         return characterClass;
     }
 
-    private Term translateUnicodeCharClass(CodePointSet codePointSet, Token.CharacterClass token) {
-        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(codePointSet)) {
-            return createCharClass(codePointSet, token, token.wasSingleChar());
+    private Term translateUnicodeCharClass(CodePointSet codePointSet, Token token, boolean wasSingleChar) {
+        if (Constants.BMP_WITHOUT_SURROGATES.contains(codePointSet)) {
+            return createCharClass(codePointSet, token, wasSingleChar);
         }
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
@@ -510,6 +523,57 @@ public final class RegexASTBuilder {
         }
         assert !(group.size() == 1 && group.getFirstAlternative().getTerms().size() == 1);
         return group;
+    }
+
+    /**
+     * Adds a new {@link Group} representing a class set expression to the current {@link Sequence}.
+     *
+     * @param token aside from the source sections, the token most importantly contains the set of
+     *            code points and strings to be included in the class set
+     */
+    public void addClassSet(Token.ClassSet token, CaseFoldTable.CaseFoldingAlgorithm caseUnfoldAlgo) {
+        CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
+
+        ClassSetContents contents = token.getContents();
+        pushGroup(false);
+
+        String[] sortedStrings = new String[contents.getStrings().size()];
+        contents.getStrings().toArray(sortedStrings);
+        Arrays.sort(sortedStrings, Comparator.comparingInt(String::length).reversed());
+        for (String string : sortedStrings) {
+            if (string.isEmpty()) {
+                continue;
+            }
+            nextSequence();
+            string.codePoints().forEachOrdered(cp -> {
+                if (caseUnfoldAlgo != null) {
+                    buf.clear();
+                    buf.addCodePoint(cp);
+                    CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                    addCharClass(buf.toCodePointSet());
+                } else {
+                    addCharClass(CodePointSet.create(cp));
+                }
+            });
+        }
+
+        if (!contents.getCodePointSet().isEmpty()) {
+            nextSequence();
+            if (caseUnfoldAlgo != null) {
+                buf.clear();
+                buf.addSet(contents.getCodePointSet());
+                CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                addCharClass(buf.toCodePointSet());
+            } else {
+                addCharClass(contents.getCodePointSet());
+            }
+        }
+
+        if (contents.getStrings().contains("")) {
+            nextSequence();
+        }
+
+        popGroup();
     }
 
     public void addBackReference(Token.BackReference token) {
@@ -838,12 +902,12 @@ public final class RegexASTBuilder {
 
     /* optimizations */
 
-    private void optimizeGroup() {
-        if (curGroup.isConditionalBackReferenceGroup()) {
+    private void optimizeGroup(Group group) {
+        if (group.isConditionalBackReferenceGroup()) {
             return;
         }
-        sortAlternatives(curGroup);
-        mergeCommonPrefixes(curGroup);
+        sortAlternatives(group);
+        mergeCommonPrefixes(group);
     }
 
     /**
@@ -992,7 +1056,7 @@ public final class RegexASTBuilder {
                     innerGroup.setEnclosedCaptureGroupsHigh(enclosedCGHi);
                 }
                 if (!innerGroup.isEmpty() && !(innerGroup.size() == 1 && innerGroup.getFirstAlternative().isEmpty())) {
-                    mergeCommonPrefixes(innerGroup);
+                    optimizeGroup(innerGroup);
                     prefixSeq.add(innerGroup);
                 }
                 newAlternatives.add(prefixSeq);

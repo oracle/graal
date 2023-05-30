@@ -122,7 +122,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public static String createName(ExecutableTypeData type) {
-        return "execute" + (ElementUtils.isObject(type.getReturnType()) ? "" : ElementUtils.getTypeId(type.getReturnType()));
+        return "execute" + (ElementUtils.isObject(type.getReturnType()) ? "" : ElementUtils.getTypeSimpleId(type.getReturnType()));
     }
 
     public void addDelegatedFrom(ExecutableTypeData child) {

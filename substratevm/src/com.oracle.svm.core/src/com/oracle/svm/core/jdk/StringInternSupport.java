@@ -47,7 +47,7 @@ public final class StringInternSupport {
      * The field is set late during image generation, so the value is not available during static
      * analysis and compilation.
      */
-    @UnknownObjectField(types = {String[].class}) private String[] imageInternedStrings;
+    @UnknownObjectField private String[] imageInternedStrings;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public StringInternSupport() {

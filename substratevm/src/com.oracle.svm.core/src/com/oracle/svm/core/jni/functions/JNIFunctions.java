@@ -347,6 +347,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle FindClass(JNIEnvironment env, CCharPointer cname) {
         CharSequence name = Utf8.wrapUtf8CString(cname);
+        if (name == null) {
+            throw new NoClassDefFoundError("Class name is either null or invalid UTF-8 string");
+        }
+
         Class<?> clazz = JNIReflectionDictionary.singleton().getClassObjectByName(name);
         if (clazz == null) {
             throw new NoClassDefFoundError(name.toString());
@@ -369,7 +373,15 @@ public final class JNIFunctions {
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
             CharSequence name = Utf8.wrapUtf8CString(entry.name());
+            if (name == null) {
+                throw new NoSuchMethodError("Method name at index " + i + " is either null or invalid UTF-8 string");
+            }
+
             CharSequence signature = Utf8.wrapUtf8CString(entry.signature());
+            if (signature == null) {
+                throw new NoSuchMethodError("Method signature at index " + i + " is either null or invalid UTF-8 string");
+            }
+
             CFunctionPointer fnPtr = entry.fnPtr();
 
             String declaringClass = MetaUtil.toInternalName(clazz.getName());
@@ -1251,7 +1263,15 @@ public final class JNIFunctions {
             DynamicHub.fromClass(clazz).ensureInitialized();
 
             CharSequence name = Utf8.wrapUtf8CString(cname);
+            if (name == null) {
+                throw new NoSuchMethodError("Method name is either null or invalid UTF-8 string");
+            }
+
             CharSequence signature = Utf8.wrapUtf8CString(csig);
+            if (signature == null) {
+                throw new NoSuchMethodError("Method signature is either null or invalid UTF-8 string");
+            }
+
             return getMethodID(clazz, name, signature, isStatic);
         }
 
@@ -1277,6 +1297,10 @@ public final class JNIFunctions {
             DynamicHub.fromClass(clazz).ensureInitialized();
 
             CharSequence name = Utf8.wrapUtf8CString(cname);
+            if (name == null) {
+                throw new NoSuchFieldError("Field name is either null or invalid UTF-8 string");
+            }
+
             JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);

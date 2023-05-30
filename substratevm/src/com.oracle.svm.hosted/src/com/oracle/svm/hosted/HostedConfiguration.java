@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -69,6 +70,7 @@ import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.ObjectFileFactory;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -281,6 +283,15 @@ public class HostedConfiguration {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+            }
+        };
+    }
+
+    public ObjectFileFactory newObjectFileFactory() {
+        return new ObjectFileFactory() {
+            @Override
+            public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
+                return ObjectFile.getNativeObjectFile(pageSize);
             }
         };
     }

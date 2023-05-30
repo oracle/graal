@@ -86,16 +86,15 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
 
     private static final int FLAG_WRITES_CAPTURE_GROUPS = 1 << 0;
     private static final int FLAG_FORWARD = 1 << 1;
-    private static final int FLAG_UNICODE = 1 << 2;
-    private static final int FLAG_BACKREF_WITH_NULL_TARGET_FAILS = 1 << 3;
-    private static final int FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK = 1 << 4;
-    private static final int FLAG_TRANSITION_MATCHES_STEP_BY_STEP = 1 << 5;
-    private static final int FLAG_TRACK_LAST_GROUP = 1 << 6;
-    private static final int FLAG_RETURNS_FIRST_GROUP = 1 << 7;
-    private static final int FLAG_MUST_ADVANCE = 1 << 8;
-    private static final int FLAG_LONE_SURROGATES = 1 << 9;
-    private static final int FLAG_LOOPBACK_INITIAL_STATE = 1 << 10;
-    private static final int FLAG_USE_MERGE_EXPLODE = 1 << 11;
+    private static final int FLAG_BACKREF_WITH_NULL_TARGET_FAILS = 1 << 2;
+    private static final int FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK = 1 << 3;
+    private static final int FLAG_TRANSITION_MATCHES_STEP_BY_STEP = 1 << 4;
+    private static final int FLAG_TRACK_LAST_GROUP = 1 << 5;
+    private static final int FLAG_RETURNS_FIRST_GROUP = 1 << 6;
+    private static final int FLAG_MUST_ADVANCE = 1 << 7;
+    private static final int FLAG_LONE_SURROGATES = 1 << 8;
+    private static final int FLAG_LOOPBACK_INITIAL_STATE = 1 << 9;
+    private static final int FLAG_USE_MERGE_EXPLODE = 1 << 10;
 
     private final PureNFA nfa;
     private final int nQuantifiers;
@@ -188,7 +187,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         int flags = 0;
         flags = setFlag(flags, FLAG_WRITES_CAPTURE_GROUPS, subtree.hasCaptureGroups());
         flags = setFlag(flags, FLAG_FORWARD, !(subtree instanceof LookBehindAssertion));
-        flags = setFlag(flags, FLAG_UNICODE, ast.getFlags().isUnicode());
         flags = setFlag(flags, FLAG_BACKREF_WITH_NULL_TARGET_FAILS, ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail());
         flags = setFlag(flags, FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK, ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups());
         flags = setFlag(flags, FLAG_TRANSITION_MATCHES_STEP_BY_STEP, ast.getOptions().getFlavor().matchesTransitionsStepByStep());
@@ -244,10 +242,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
 
     public boolean isTrackLastGroup() {
         return isFlagSet(FLAG_TRACK_LAST_GROUP);
-    }
-
-    public boolean isUnicode() {
-        return isFlagSet(FLAG_UNICODE);
     }
 
     public boolean isMustAdvance() {

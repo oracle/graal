@@ -25,27 +25,21 @@ suite = {
       "packedResource": True
     },
 
-    "PETCLINIC_0.1.6": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
-      "digest": "sha512:d16f251e4b5727c8a0e2f653a7d1d2b41967414d960e6a490d8e9fa4715f752b7f7bfc73dd069a001053bc1a4f75583abb40577c79017fef4c8f5cc972c0ed25",
+    "PETCLINIC_3.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-petclinic-3.0.0.zip"],
+      "digest": "sha512:cacbedf0456a769ae5bd022480b1ceeb8f157684b79f682b70c27fd715a4523cd80e030f127c7a9cff8c6b256a83677d2285e6197b82ecd53f99a5231dfd76e9",
       "packedResource": True,
     },
 
-    "PETCLINIC_0.1.7": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.7.zip"],
-      "digest": "sha512:fe8f34a6cbb24099e3cc68051c857e82536c6d81498c604157e6312c04e675745d6f77dd292adde006307d5319b77917bbc9e5f301501ab1e9c072870be113a5",
+    "SHOPCART_0.3.7": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.7.zip"],
+      "digest": "sha512:ccc1fd65cabf98e08a2e6483f4391e8e0c86d4d6ed236ee35ef2a5c5c7eae2b87eed758a647d26589f16298f90d80f322ff30586eccf41899266fe55c971153c",
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.6": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.6.zip"],
-      "digest": "sha512:0ea6402e2325e8cfad2c6592c0fa36faf0c6719125f4edefc2c13740c4bfe500e8cc2726e56404c6ac6abcefb2dbf73e6d9a479d49af7e373ba665c92a4ecffc",
-      "packedResource": True,
-    },
-
-    "SPRING_HW_1.0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.1.zip"],
-      "digest": "sha512:a7c48a7e9bebfe25c926888aec6d66b9a74c622413be5d0d1ece053f4ba2f8a353086b0652362bdc7b31055ceffba1ada9cff2ab7c838f6e9ec1d48755eb1fd7",
+    "SPRING_HW_3.0.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-3.0.5.zip"],
+      "digest": "sha512:fc016eecfdbb8fe29a825470630fbfe7fe2742d5241894bf0a15cbb14170b8d6eff540714a9a4f66cf233422570c8918665d8564a7a8a3d73c003df71b370a52",
       "packedResource": True,
     },
 
@@ -55,9 +49,9 @@ suite = {
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.3": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.3.zip"],
-      "digest": "sha512:3cb778bef4eb39c25e12c949377057c60db7b628c4b21cb78538d772e42d9984b4f61d970e73ae8e6a2beadf01ae9734c2c0c5b34270fe1ddf24f17e346d9e51",
+    "MICRONAUT_HW_1.0.4": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.4.zip"],
+      "digest": "sha512:7efa10d79ac0812dc9bcd41e64a404cca83cd8de9cbad77539b4a9eb0e23a16144a9cafc2b39c9db39639010f3be97ed897394f41a7dae05ca9743b65adfd69a",
       "packedResource": True,
     },
 

@@ -51,7 +51,7 @@ class ClassInfo {
         this.nameAndSignatureToMethodInfoMap = new ConcurrentHashMap<>();
     }
 
-    public MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
+    public MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) {
         JNIMethodId jMethodId = WordFactory.pointer(rawJMethodIdValue);
 
         CCharPointerPointer methodNamePtr = StackValue.get(CCharPointerPointer.class);

@@ -526,7 +526,10 @@ public final class TruffleContext implements AutoCloseable {
      *            the context is cancelled. The interrupter is also used to
      *            {@link Interrupter#resetInterrupted() reset} the interrupted state when the
      *            context is reentered.
-     * @param interruptible the interruptible function to run while having left this context
+     * @param interruptible the interruptible function to run while having left this context. This
+     *            function is run at most once.
+     * @return return value of the interruptible, or <code>null</code> if the interruptibe throws an
+     *         {@link InterruptedException} without the context being cancelled or exited.
      * 
      * @since 23.1
      */

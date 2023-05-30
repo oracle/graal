@@ -51,9 +51,11 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -63,6 +65,7 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -110,6 +113,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -117,6 +121,7 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -175,9 +180,6 @@ public class SubstrateGraphBuilderPlugins {
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
-
-        @Option(help = "Check reachability before automatically registering proxies observed in the code.")//
-        public static final HostedOptionKey<Boolean> StrictProxyAutoRegistration = new HostedOptionKey<>(false);
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -322,9 +324,9 @@ public class SubstrateGraphBuilderPlugins {
                     // Pattern is a classname (possibly empty) with a trailing wildcard
                     final String className = p.substring(poffset, nameLen - 1);
                     if (!negate) {
-                        if (className.endsWith(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                        if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
                             try {
-                                String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
+                                String lambdaHolderName = className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
                             } catch (ClassNotFoundException e) {
                                 // no class, no registration
@@ -415,44 +417,52 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
         if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
-            proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
-                @Override
-                public boolean isDecorator() {
-                    return Options.StrictProxyAutoRegistration.getValue();
-                }
-
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
-                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                }
-            });
-
-            proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
-                @Override
-                public boolean isDecorator() {
-                    return Options.StrictProxyAutoRegistration.getValue();
-                }
-
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
-                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                }
-            });
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "getProxyClass", ClassLoader.class, Class[].class);
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
         }
+    }
+
+    private static void registerProxyPlugin(Registration proxyRegistration, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, String name,
+                    Class<?>... parameterTypes) {
+        proxyRegistration.register(new RequiredInvocationPlugin(name, parameterTypes) {
+            @Override
+            public boolean isDecorator() {
+                return true;
+            }
+
+            @Override
+            public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
+                Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, args[1]);
+                if (proxyRegistrationRunnable != null) {
+                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
+                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass.getModule().getName(), callerClass.getPackageName(),
+                                    callerClass.getName());
+                    if (callerInScope) {
+                        b.add(new ReachabilityRegistrationNode(proxyRegistrationRunnable));
+                        return true;
+                    }
+
+                    proxyRegistrationRunnable.run();
+                    return false;
+                }
+                return false;
+            }
+        });
     }
 
     /**
      * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
      * in the {@link DynamicProxyRegistry}.
      */
-    private static boolean interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
+    private static Runnable interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
         Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             var caller = b.getGraph().method();
             var method = b.getMethod();
             var bci = b.bci();
-            Runnable registerProxy = () -> {
+
+            return () -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 RuntimeProxyCreation.register(interfaces);
                 if (ImageSingletons.contains(FallbackFeature.class)) {
@@ -463,20 +473,12 @@ public class SubstrateGraphBuilderPlugins {
                                     " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
                 }
             };
-
-            if (Options.StrictProxyAutoRegistration.getValue()) {
-                b.add(new ReachabilityRegistrationNode(registerProxy));
-                return true;
-            }
-
-            registerProxy.run();
-            return false;
         }
         if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
             System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
                             " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
         }
-        return false;
+        return null;
     }
 
     /**
@@ -500,8 +502,8 @@ public class SubstrateGraphBuilderPlugins {
      * Therefore, if <code>exact</code> is set to true we return null.
      *
      * 2. The node is a NewArrayNode. Then we track the stores in the array as long as all are
-     * constants and there is no control flow split. If the content of the array cannot be determine
-     * a null value is returned.
+     * constants and there is no control flow split. If the content of the array cannot be
+     * determined a null value is returned.
      */
     static Class<?>[] extractClassArray(GraphBuilderContext b, AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode,
                     boolean exact) {
@@ -521,7 +523,7 @@ public class SubstrateGraphBuilderPlugins {
                 return null;
             }
             CommitAllocationNode commitAllocationNode = allocatedObjectNode.getCommit();
-            if (skipBeginNodes(commitAllocationNode.next()) != null) {
+            if (skipNonInterferingNodes(commitAllocationNode.next()) != null) {
                 /* Nodes after the array materialization could interfere with the array. */
                 return null;
             }
@@ -620,13 +622,14 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     /**
-     * The graph decoding used for inlining before static analysis creates unnecessary block begin
-     * nodes. We can just ignore them.
+     * The graph decoding used for inlining before static analysis creates unnecessary block
+     * {@link BeginNode}s. Similarly, {@link FullInfopointNode}s are inserted for debugging. We can
+     * just ignore them.
      */
-    private static FixedNode skipBeginNodes(FixedNode node) {
+    private static FixedNode skipNonInterferingNodes(FixedNode node) {
         FixedNode cur = node;
-        while (cur instanceof AbstractBeginNode) {
-            cur = ((AbstractBeginNode) cur).next();
+        while (cur instanceof AbstractBeginNode || cur instanceof FullInfopointNode) {
+            cur = ((FixedWithNextNode) cur).next();
         }
         return cur;
     }
@@ -825,8 +828,11 @@ public class SubstrateGraphBuilderPlugins {
                  * check.
                  */
                 ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
-                b.add(new EnsureClassInitializedNode(clazzNonNull));
+                EnsureClassInitializedNode ensureInitialized = b.append(new EnsureClassInitializedNode(clazzNonNull));
+                ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
                 DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
+                /* Capture the correct state after these operations. */
+                b.add(new StateSplitProxyNode(null));
                 return true;
             }
         });

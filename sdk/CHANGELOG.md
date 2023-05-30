@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 23.1.0
+* (GR-45896) JLine3 upgrade from 3.16 to 3.23. The JLine3 bundle that is used is customized and contains only `jline3-reader`, `jline3-terminal`, and `jline3-builtins` JLine3 components.
+
 ## Version 23.0.0
 * (GR-26758) Added the [TraceLimits](https://www.graalvm.org/reference-manual/embed-languages/sandbox-resource-limits#determining-sandbox-resource-limits) option to the Truffle Sandbox to measure a guest application's resource consumption and obtain realistic sandbox parameters.
 * (GR-25849) (GR-41634) Added a new way to configure the IO access using the new class `IOAccess`. The IO access configuration determines how a guest language can access the host IO. The `IOAccess` class provides a predefined configuration to [disable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#NONE) host IO access, or to [enable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#ALL) full host IO access. A custom configuration can be created using an IOAccess [builder](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#newBuilder--).

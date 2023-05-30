@@ -1236,12 +1236,11 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
     }
 
-    @SuppressWarnings("this-escape")
     @TruffleLanguage.Registration
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = getDefaultLanguageId(ValidExclusiveLanguage.class);
 
-        final ContextLocal<Env> contextLocal = createContextLocal((e) -> e);
+        final ContextLocal<Env> contextLocal = locals.createContextLocal((e) -> e);
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {

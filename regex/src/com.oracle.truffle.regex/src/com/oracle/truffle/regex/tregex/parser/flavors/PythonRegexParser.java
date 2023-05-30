@@ -76,7 +76,7 @@ public final class PythonRegexParser implements RegexParser {
 
     public PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.mode = PythonREMode.fromEncoding(source.getEncoding());
-        this.lexer = new PythonRegexLexer(source, mode);
+        this.lexer = new PythonRegexLexer(source, mode, compilationBuffer);
         this.astBuilder = new RegexASTBuilder(language, source, createECMAScriptFlags(source), false, compilationBuffer);
     }
 

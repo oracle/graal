@@ -174,7 +174,7 @@ public class CGlobalDataFeature implements InternalFeature {
                     EndNode elseEnd = b.add(new EndNode());
                     falseBegin.setNext(elseEnd);
 
-                    AbstractMergeNode merge = b.add(new MergeNode());
+                    AbstractMergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(thenEnd);
                     merge.addForwardEnd(elseEnd);
                     ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, new ValueNode[]{address, readValue});

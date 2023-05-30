@@ -115,12 +115,16 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
         }
     }
 
-    void shutdownAndWaitReferenceDrain() throws InterruptedException {
+    void shutdownAndWaitReferenceDrain() {
         if (hostToGuestReferenceDrainThread != null) {
             while (hostToGuestReferenceDrainThread.isAlive()) {
                 getContext().getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
                 hostToGuestReferenceDrainThread.interrupt();
-                hostToGuestReferenceDrainThread.join(10);
+                try {
+                    hostToGuestReferenceDrainThread.join(10);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
             }
         }
     }

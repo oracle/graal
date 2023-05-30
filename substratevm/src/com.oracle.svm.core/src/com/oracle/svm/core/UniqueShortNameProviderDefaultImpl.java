@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Default implementation for unique method and field short names which concatenates the
@@ -93,7 +94,7 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
     public static class UseDefault implements BooleanSupplier {
 
         public static boolean useDefaultProvider() {
-            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue());
+            return !OS.LINUX.isCurrent() || !SubstrateOptions.useDebugInfoGeneration();
         }
 
         @Override

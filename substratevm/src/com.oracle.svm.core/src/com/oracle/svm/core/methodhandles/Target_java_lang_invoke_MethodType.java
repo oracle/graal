@@ -76,7 +76,7 @@ final class Target_java_lang_invoke_Invokers {
     @Substitute
     static void checkExactType(MethodHandle mh, MethodType expected) {
         if (!expected.equals(mh.type())) {
-            throw new WrongMethodTypeException("expected " + expected + " but found " + mh.type());
+            throw new WrongMethodTypeException("Expected " + expected + " but found " + mh.type());
         }
     }
 

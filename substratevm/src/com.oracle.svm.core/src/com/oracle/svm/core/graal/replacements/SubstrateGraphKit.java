@@ -103,6 +103,7 @@ public class SubstrateGraphKit extends GraphKit {
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
+        frameState.disableStateVerification();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }

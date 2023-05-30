@@ -82,7 +82,7 @@ public class InsightInstrument extends TruffleInstrument {
 
     @SuppressWarnings("this-escape")
     public InsightInstrument() {
-        this.perContextData = createContextLocal((context) -> {
+        this.perContextData = locals.createContextLocal((context) -> {
             return new InsightPerContext(this);
         });
         this.keysUnchanged = Truffle.getRuntime().createAssumption();

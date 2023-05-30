@@ -160,6 +160,14 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetLinkage(global, linkage.code);
     }
 
+    public void setTarget(String target) {
+        LLVM.LLVMSetTarget(module, target);
+    }
+
+    public static void setSection(LLVMValueRef global, String section) {
+        LLVM.LLVMSetSection(global, section);
+    }
+
     public enum LinkageType {
         External(LLVM.LLVMExternalLinkage),
         LinkOnce(LLVM.LLVMLinkOnceAnyLinkage),
@@ -234,8 +242,12 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetFunctionCallConv(func, cc.value);
     }
 
+    public void setInstructionCallingConvention(LLVMValueRef instr, LLVMCallingConvention cc) {
+        LLVM.LLVMSetInstructionCallConv(instr, cc.value);
+    }
+
     public enum LLVMCallingConvention {
-        GraalCallingConvention(102);
+        GraalCallingConvention(487);
 
         private final int value;
 
@@ -592,12 +604,24 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildGlobalStringPtr(builder, name, DEFAULT_INSTR_NAME);
     }
 
+    public LLVMValueRef addGlobal(String name) {
+        return LLVM.LLVMAddGlobal(module, rawPointerType(), name);
+    }
+
+    public LLVMValueRef addAlias(LLVMValueRef global, String name) {
+        return LLVM.LLVMAddAlias(module, typeOf(global), global, name);
+    }
+
     public LLVMValueRef constantString(String string) {
         return LLVM.LLVMConstStringInContext(context, string, string.length(), FALSE);
     }
 
     public LLVMValueRef constantVector(LLVMValueRef... values) {
         return LLVM.LLVMConstVector(new PointerPointer<>(values), values.length);
+    }
+
+    public LLVMValueRef constantArray(LLVMTypeRef type, LLVMValueRef... values) {
+        return LLVM.LLVMConstArray(type, new PointerPointer<>(values), values.length);
     }
 
     /* Values */
@@ -700,6 +724,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetMetadata(instr, LLVM.LLVMGetMDKindIDInContext(context, kind, kind.length()), metadata);
     }
 
+    public void setAlignment(LLVMValueRef value, int alignment) {
+        LLVM.LLVMSetAlignment(value, alignment);
+    }
+
     public void setValueName(LLVMValueRef value, String name) {
         LLVM.LLVMSetValueName(value, name);
     }
@@ -748,7 +776,8 @@ public class LLVMIRBuilder implements AutoCloseable {
 
         public enum Type {
             Output("="),
-            Input("");
+            Input(""),
+            Clobber("~");
 
             private String repr;
 

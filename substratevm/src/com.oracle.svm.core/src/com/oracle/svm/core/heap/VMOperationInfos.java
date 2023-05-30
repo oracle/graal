@@ -48,7 +48,7 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 @AutomaticallyRegisteredImageSingleton
 public final class VMOperationInfos {
     @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> hostedMap = new HashMap<>();
-    @UnknownObjectField(types = String[].class) static String[] names = new String[0];
+    @UnknownObjectField static String[] names = new String[0];
 
     @Fold
     public static VMOperationInfos singleton() {

@@ -35,11 +35,11 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class StandaloneImageHeapScanner extends ImageHeapScanner {
     private ClassLoader classLoader;
@@ -65,7 +65,11 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         ValueSupplier<JavaConstant> ret = super.readHostedFieldValue(field, receiver);
         if (ret.get() == null && field.isStatic()) {
-            JavaConstant constant = UninitializedStaticFieldValueReader.readUninitializedStaticValue(field.wrapped, value -> universe.getSnippetReflection().forObject(value));
+            ResolvedJavaField wrappedField = field.getWrapped();
+            JavaConstant constant = wrappedField.getConstantValue();
+            if (constant == null) {
+                constant = JavaConstant.defaultForKind(wrappedField.getJavaKind());
+            }
             return ValueSupplier.eagerValue(constant);
         } else {
             return ret;

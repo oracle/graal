@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -44,6 +46,7 @@ import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -70,25 +73,45 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        if (x == y) {
+            return true;
+        } else if (x instanceof SubstrateObjectConstant && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
+        } else if (x instanceof ImageHeapConstant cx && cx.isBackedByHostedObject() && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cx.getHostedObject(), (SubstrateObjectConstant) y);
+        } else if (y instanceof ImageHeapConstant cy && cy.isBackedByHostedObject() && x instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cy.getHostedObject(), (SubstrateObjectConstant) x);
+        } else {
+            return x.equals(y);
+        }
+    }
+
+    @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return EmptyMemoryAcessProvider.SINGLETON;
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
-    }
+    private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         if (!source.getJavaKind().isObject()) {
             return null;
         }
-        if (source instanceof ImageHeapConstant heapConstant) {
-            return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(heapConstant.getHostedObject()));
+        if (source instanceof ImageHeapConstant imageHeapConstant) {
+            /*
+             * Unbox by reading the known single field "value", which is a primitive field of the
+             * correct unboxed type.
+             */
+            AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
+            if (BOXING_CLASSES.contains(type.getJavaClass())) {
+                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                assert fields.length == 1 && fields[0].getName().equals("value");
+                return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
+            }
+            /* Not a valid boxed primitive. */
+            return null;
         }
         return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
     }
@@ -287,10 +310,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
-        }
-        if (constant instanceof ImageHeapConstant) {
+        } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
             if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
+                /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
+                return asJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
             }
         }
         return null;

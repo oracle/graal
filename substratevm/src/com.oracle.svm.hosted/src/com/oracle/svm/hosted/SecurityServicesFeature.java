@@ -87,6 +87,7 @@ import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -798,8 +799,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * The verification cache is an IdentityWrapper -> Verification result ConcurrentHashMap.
          * The IdentityWrapper contains the actual provider in the 'obj' field.
          */
-        Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
-        Field providerField = ReflectionUtil.lookupField(identityWrapper, "obj");
+        String className;
+        String fieldName;
+        if (JavaVersionUtil.JAVA_SPEC <= 20) {
+            className = "javax.crypto.JceSecurity$IdentityWrapper";
+            fieldName = "obj";
+        } else {
+            // JDK-8168469
+            className = "java.lang.ref.Reference";
+            fieldName = "referent";
+        }
+        Class<?> identityWrapper = loader.findClassOrFail(className);
+        Field providerField = ReflectionUtil.lookupField(identityWrapper, fieldName);
 
         Predicate<Object> listRemovalPredicate = wrapper -> {
             try {

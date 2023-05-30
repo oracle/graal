@@ -52,7 +52,8 @@ import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
+import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -80,7 +81,8 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(StringUTF16CompressNode.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(EncodeArrayNode.STUBS, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(HasNegativesNode.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
-                        new StubDescriptor(VectorizedMismatchForeignCalls.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
+                        new StubDescriptor(VectorizedMismatchNode.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
+                        new StubDescriptor(VectorizedHashCodeNode.STUBS, RUNTIME_CHECKED_CPU_FEATURES_AMD64, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(AESNode.STUBS, AESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
                         new StubDescriptor(CounterModeAESNode.STUB, CounterModeAESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
                         new StubDescriptor(CipherBlockChainingAESNode.STUBS, CipherBlockChainingAESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),

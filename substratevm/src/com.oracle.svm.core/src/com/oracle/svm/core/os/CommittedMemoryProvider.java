@@ -89,6 +89,7 @@ public interface CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment);
 
     Pointer allocateUnalignedChunk(UnsignedWord nbytes);

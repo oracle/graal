@@ -29,10 +29,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -131,6 +132,7 @@ public final class YoungGeneration extends Generation {
         return survivorFromSpaces[index];
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private GreyObjectsWalker getSurvivorGreyObjectsWalker(int index) {
         return survivorGreyObjectsWalkers[index];
     }
@@ -163,6 +165,7 @@ public final class YoungGeneration extends Generation {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void prepareForPromotion() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorToSpaceAt(i).isEmpty() : "SurvivorToSpace should be empty.";
@@ -170,8 +173,8 @@ public final class YoungGeneration extends Generation {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean scanGreyObjects() {
-        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
         boolean needScan = false;
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {
@@ -183,10 +186,8 @@ public final class YoungGeneration extends Generation {
             return false;
         }
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            trace.string("[Scanning survivor-").signed(i).string("]").newline();
             getSurvivorGreyObjectsWalker(i).walkGreyObjects();
         }
-        trace.string("]").newline();
         return true;
     }
 
@@ -237,19 +238,21 @@ public final class YoungGeneration extends Generation {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("static-method")
     public boolean contains(Object object) {
         if (!HeapImpl.usesImageHeapCardMarking()) {
             return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
         }
         // Only objects in the young generation have no remembered set
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(object);
+        UnsignedWord header = ObjectHeader.readHeaderFromObject(object);
         boolean young = !ObjectHeaderImpl.hasRememberedSet(header);
         assert young == HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
         return young;
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -265,6 +268,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -280,6 +284,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
@@ -297,6 +302,7 @@ public final class YoungGeneration extends Generation {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean fitsInSurvivors(HeapChunk.Header<?> chunk, boolean isAligned) {
         if (isAligned) {
             return alignedChunkFitsInSurvivors();
@@ -304,17 +310,20 @@ public final class YoungGeneration extends Generation {
         return unalignedChunkFitsInSurvivors((UnalignedHeapChunk.UnalignedHeader) chunk);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean alignedChunkFitsInSurvivors() {
         UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(HeapParameters.getAlignedHeapChunkSize());
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean unalignedChunkFitsInSurvivors(UnalignedHeapChunk.UnalignedHeader chunk) {
         UnsignedWord size = UnalignedHeapChunk.getCommittedObjectMemory(chunk);
         UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(size);
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeapChunk.AlignedHeader requestAlignedSurvivorChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         if (!alignedChunkFitsInSurvivors()) {

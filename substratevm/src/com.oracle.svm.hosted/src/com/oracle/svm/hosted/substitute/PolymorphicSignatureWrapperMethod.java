@@ -80,7 +80,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     PolymorphicSignatureWrapperMethod(SubstitutionMethod substitutionBaseMethod, ResolvedJavaMethod originalMethod) {
         this.substitutionBaseMethod = substitutionBaseMethod;
         this.originalMethod = originalMethod;
-        this.constantPool = substitutionBaseMethod.getDeclaringClass().getDeclaredConstructors()[0].getConstantPool();
+        this.constantPool = substitutionBaseMethod.getDeclaringClass().getDeclaredConstructors(false)[0].getConstantPool();
     }
 
     @Override

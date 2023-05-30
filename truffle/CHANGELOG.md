@@ -2,20 +2,22 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## 23.1.0
+## Version 23.1.0
 
 * GR-45123 Added `GenerateInline#inlineByDefault` to force usage of inlined node variant even when the node has also a cached variant (`@GenerateCached(true)`).
 * GR-45036 Improved IGV IR dumping. Dump folders for Truffle now include the compilation tier to differentiate compilations better. Inlined IR graphs are now additionally dumped in separate folders if dump level is >= 2.
 * GR-45036 Improved IGV AST dumping. The Truffle AST is now dumped as part of the IR dump folder. The dumped AST tree now shows all inlined ASTS in a single tree. Individual functions can be grouped using the "Cluster nodes" function in IGV (top status bar). Root nodes now display their name e.g. `SLFunctionBody (root add)`. Every AST node now has a property `graalIRNode` that allows to find the corresponding Graal IR constant if there is one. 
 * GR-45284 Added Graal debug options `TruffleTrustedNonNullCast` and `TruffleTrustedTypeCast` that allow disabling trusted non-null and type casts in Truffle, respectively. Note that disabling trusted type casts effectively disables non-null casts, too.
-## Version 23.1.0
-
 * GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads.
 * GR-44211 Added `TruffleContext#leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)` to be able to interrupt the function run when the context is not entered. The exisiting API `TruffleContext#leaveAndEnter(Node, Supplier)` is deprecated.
 * GR-44211 Removed the deprecated method `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)`.
 * GR-44211 Added `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)`. It replaces the method `TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)` that is now deprecated.
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
+* GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
+* GR-46146 Added `TruffleLanguage#ContextLocalProvider` and `TruffleInstrument#ContextLocalProvider`, and deprecated `TruffleLanguage.createContextLocal`, `TruffleLanguage.createContextThreadLocal`, `TruffleInstrument.createContextLocal` and `TruffleInstrument.createContextThreadLocal`. Starting with JDK 21, the deprecated methods trigger the new this-escape warning. The replacement API avoids the warning.
+* GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md). Truffle languages or instruments installed as a GraalVM component in the GraalVM JDK are still loaded in an unnamed module. However, GraalVM components will be deprecated, so languages and instruments should be migrated to the module path.
+* GR-44217 (Breaking change) If your language or instrument was specified as Java module, any usages of `@ExportLibrary(useForAOT = true)` or `@GenerateLibrary(defaultExportLookupEnabled = true)` now need to be registered with `@Registration#aotLibraryExports` and `@Registration#defaultLibraryExports`. If your language did not use any of these features, no changes are necessary.
 
 
 

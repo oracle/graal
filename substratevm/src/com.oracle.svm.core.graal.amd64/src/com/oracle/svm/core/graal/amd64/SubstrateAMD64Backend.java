@@ -40,7 +40,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -729,16 +728,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
-
-        private Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory = node -> null;
+    public class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
-        }
-
-        public void setIndirectCallOffsetRecorderFactory(Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory) {
-            this.indirectCallOffsetRecorderFactory = indirectCallOffsetRecorderFactory;
         }
 
         @Override
@@ -830,6 +823,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
         }
 
+        public BiConsumer<CompilationResultBuilder, Integer> getOffsetRecorder(@SuppressWarnings("unused") IndirectCallTargetNode callTargetNode) {
+            return null;
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
             verifyCallTarget(callTarget);
@@ -863,7 +860,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), indirectCallOffsetRecorderFactory.apply(callTarget)));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget)));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {

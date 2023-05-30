@@ -178,7 +178,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                 }
 
                 if (!createdReturnNode) {
-                    ResolvedJavaMethod[] bailoutMethods = providers.getMetaAccess().lookupJavaType(bailoutCustomizer).getDeclaredMethods();
+                    ResolvedJavaMethod[] bailoutMethods = providers.getMetaAccess().lookupJavaType(bailoutCustomizer).getDeclaredMethods(false);
                     UserError.guarantee(bailoutMethods.length == 1 && bailoutMethods[0].isStatic(), "Prologue bailout customization class must declare exactly one static method: %s -> %s",
                                     targetMethod, bailoutCustomizer);
 
@@ -249,7 +249,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         final CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
         ResolvedJavaMethod builtinCallee = null;
-        for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods()) {
+        for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods(false)) {
             CEntryPointBuiltinImplementation annotation = candidate.getAnnotation(CEntryPointBuiltinImplementation.class);
             if (annotation != null && annotation.builtin().equals(builtin)) {
                 VMError.guarantee(builtinCallee == null, "More than one candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
@@ -369,7 +369,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
         if (prologueClass != CEntryPointOptions.AutomaticPrologue.class) {
             ResolvedJavaType prologue = providers.getMetaAccess().lookupJavaType(prologueClass);
-            ResolvedJavaMethod[] prologueMethods = prologue.getDeclaredMethods();
+            ResolvedJavaMethod[] prologueMethods = prologue.getDeclaredMethods(false);
             UserError.guarantee(prologueMethods.length == 1 && prologueMethods[0].isStatic(),
                             "Prologue class must declare exactly one static method: %s -> %s",
                             targetMethod,
@@ -393,7 +393,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
         ValueNode contextValue = args[contextIndex];
         prologueClass = CEntryPointSetup.EnterPrologue.class;
-        ResolvedJavaMethod[] prologueMethods = providers.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods();
+        ResolvedJavaMethod[] prologueMethods = providers.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods(false);
         assert prologueMethods.length == 1 && prologueMethods[0].isStatic() : "Prologue class must declare exactly one static method";
         return generatePrologueOrEpilogueInvoke(kit, prologueMethods[0], contextValue);
     }
@@ -510,7 +510,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
             ResolvedJavaType handler = providers.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
-            ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
+            ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods(false);
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
                             "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
             UserError.guarantee(Uninterruptible.Utils.isUninterruptible(handlerMethods[0]),
@@ -587,7 +587,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             return;
         }
         ResolvedJavaType epilogue = providers.getMetaAccess().lookupJavaType(epilogueClass);
-        ResolvedJavaMethod[] epilogueMethods = epilogue.getDeclaredMethods();
+        ResolvedJavaMethod[] epilogueMethods = epilogue.getDeclaredMethods(false);
         UserError.guarantee(epilogueMethods.length == 1 && epilogueMethods[0].isStatic() && epilogueMethods[0].getSignature().getParameterCount(false) == 0,
                         "Epilogue class must declare exactly one static method without parameters: %s -> %s", targetMethod, epilogue);
         UserError.guarantee(Uninterruptible.Utils.isUninterruptible(epilogueMethods[0]),

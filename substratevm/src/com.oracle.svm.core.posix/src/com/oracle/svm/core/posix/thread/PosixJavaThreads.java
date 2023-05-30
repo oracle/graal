@@ -27,7 +27,7 @@ package com.oracle.svm.core.posix.thread;
 import com.oracle.svm.core.posix.headers.Pthread;
 
 /**
- * GR-34749: for legacy code, remove as soon as no longer needed.
+ * GR-45786: for legacy code, remove as soon as no longer needed.
  *
  * Quarkus has an @Alias on the methods below in its DiagnosticPrinter (Target_PosixJavaThreads).
  * This was already removed in Quarkus master, so we can remove it once the microservice benchmarks

@@ -60,6 +60,7 @@ public class EndChunkNativePeriodicEvents extends Event {
         emitOSInformation(formatOSInformation());
         emitInitialEnvironmentVariables(getEnvironmentVariables());
         emitInitialSystemProperties(getSystemProperties());
+        emitThreadCPULoad();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -174,6 +175,10 @@ public class EndChunkNativePeriodicEvents extends Event {
         JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
         JfrNativeEventWriter.putString(data, osVersion);
         return JfrNativeEventWriter.endEvent(data, isLarge);
+    }
+
+    private static void emitThreadCPULoad() {
+        ThreadCPULoadEvent.emitEvents();
     }
 
     private static StringEntry[] getEnvironmentVariables() {

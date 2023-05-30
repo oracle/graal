@@ -168,7 +168,7 @@ public class LLVMObjectFileReader {
         String methodSymbolName = SYMBOL_PREFIX + ((HostedMethod) method).getUniqueShortName();
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
-                        .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
+                        .orElseThrow(() -> new GraalError("No method start infopoint: " + methodSymbolName)).pcOffset;
         int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation());
         compilation.setTotalFrameSize(totalFrameSize);
         stackMapDumper.startDumpingFunction(methodSymbolName, id, totalFrameSize);

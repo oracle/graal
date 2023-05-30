@@ -129,7 +129,7 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
     public Element getOrCreateRelocationElement(long addend) {
         ELFSymtab syms = (ELFSymtab) getOwner().elementForName(".symtab");
         if (syms == null) {
-            throw new IllegalStateException("cannot create a relocation section without corresponding symtab");
+            throw new IllegalStateException("Cannot create a relocation section without corresponding symtab");
         }
 
         if (ELFObjectFile.useExplicitAddend(addend)) {

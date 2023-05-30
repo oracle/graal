@@ -31,8 +31,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -75,11 +76,13 @@ public final class ImageHeapWalker {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, true);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks, boolean inlineObjectVisit) {
         if (firstObject == null || lastObject == null) {
             assert firstObject == null && lastObject == null;
@@ -113,10 +116,10 @@ public final class ImageHeapWalker {
             while (current.belowOrEqual(limit)) {
                 Object currentObject = current.toObject();
                 if (inlineObjectVisit) {
-                    if (!visitor.visitObjectInline(currentObject)) {
+                    if (!visitObjectInline(visitor, currentObject)) {
                         return false;
                     }
-                } else if (!visitor.visitObject(currentObject)) {
+                } else if (!visitObject(visitor, currentObject)) {
                     return false;
                 }
                 current = LayoutEncoding.getImageHeapObjectEnd(current.toObject());
@@ -129,6 +132,16 @@ public final class ImageHeapWalker {
             }
         } while (current.belowOrEqual(lastPointer));
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean visitObject(ObjectVisitor visitor, Object currentObject) {
+        return visitor.visitObject(currentObject);
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean visitObjectInline(ObjectVisitor visitor, Object currentObject) {
+        return visitor.visitObjectInline(currentObject);
     }
 }
 

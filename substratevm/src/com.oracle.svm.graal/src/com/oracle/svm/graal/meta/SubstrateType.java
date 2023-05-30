@@ -57,10 +57,10 @@ public class SubstrateType implements SharedType {
      * If it is not known if the type has an instance field (because the type metadata was created
      * at image runtime), it is null.
      */
-    @UnknownObjectField(types = SubstrateField[].class, canBeNull = true)//
+    @UnknownObjectField(canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField(types = {DynamicHub.class}) protected DynamicHub uniqueConcreteImplementation;
+    @UnknownObjectField protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;
@@ -157,7 +157,7 @@ public class SubstrateType implements SharedType {
 
     @Override
     public boolean isEnum() {
-        throw new InternalError("isEnum for " + hub.getName() + " unimplemented");
+        throw VMError.unimplemented("Enum support not implemented");
     }
 
     @Override
@@ -286,7 +286,7 @@ public class SubstrateType implements SharedType {
              * The type was created at run time from the Class, so we do not have field information.
              * If we need the fields for a type, the type has to be created during image generation.
              */
-            throw VMError.shouldNotReachHere("no instance fields for " + hub.getName() + " available");
+            throw VMError.shouldNotReachHere("No instance fields for " + hub.getName() + " available");
         }
 
         SubstrateType superclass = getSuperclass();
@@ -396,11 +396,21 @@ public class SubstrateType implements SharedType {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 

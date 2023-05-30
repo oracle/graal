@@ -440,8 +440,6 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void exitSlowPathCheck() {
         if (ActionOnExitSafepointSupport.isActionPending()) {
-            // LLVM Backend do not support `FarReturnNode`,
-            // we explicit specify Loom JDK here.
             if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.isSwitchStackPending()) {
                 ActionOnExitSafepointSupport.clearActions();
                 KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);

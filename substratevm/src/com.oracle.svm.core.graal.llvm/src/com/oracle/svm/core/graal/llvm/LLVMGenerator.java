@@ -37,6 +37,7 @@ import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -86,10 +88,13 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -110,6 +115,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMConstant;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingPtrToInt;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMStackSlot;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
@@ -148,6 +154,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -260,6 +267,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private void addMainFunction(ResolvedJavaMethod method) {
         builder.setMainFunction(functionName, getLLVMFunctionType(method, true));
+        builder.setTarget(LLVMTargetSpecific.get().getTargetTriple());
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
         builder.setFunctionAttribute(Attribute.NoRedZone);
@@ -551,7 +559,19 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             constants.put(constant, symbolName);
 
             Constant storedConstant = uncompressedObject ? ((CompressibleConstant) constant).compress() : constant;
-            DataSectionReference reference = compilationResult.getDataSection().insertData(dataBuilder.createDataItem(storedConstant));
+            DataSection.Data data;
+            if (constant instanceof ImageHeapArray || constant instanceof ImageHeapInstance) {
+                int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+                data = new DataSection.Data(referenceSize, referenceSize) {
+                    @Override
+                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
+                        SubstrateDataBuilder.ObjectData.emit(buffer, patches, getSize(), (VMConstant) constant);
+                    }
+                };
+            } else {
+                data = dataBuilder.createDataItem(storedConstant);
+            }
+            DataSectionReference reference = compilationResult.getDataSection().insertData(data);
             compilationResult.recordDataPatchWithNote(0, reference, symbolName);
         }
         return builder.getExternalObject(symbolName, isUncompressedObjectConstant(constant));
@@ -608,6 +628,23 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             return new LLVMVariable(getVal(input));
         }
         throw shouldNotReachHere("Unknown move input"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Variable emitMove(ValueKind<?> dst, Value src) {
+        LLVMValueRef source = getVal(src);
+        LLVMTypeRef sourceType = typeOf(source);
+        LLVMTypeRef destType = ((LLVMKind) dst.getPlatformKind()).get();
+
+        /* Floating word cast */
+        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isWordType(sourceType)) {
+            source = builder.buildIntToPtr(source, destType);
+        } else if (((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
+            source = builder.buildPtrToInt(source);
+        } else if (!((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
+            return new LLVMPendingPtrToInt(this, source);
+        }
+        return new LLVMVariable(source);
     }
 
     @Override
@@ -1089,6 +1126,16 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
     }
 
+    public void clobberRegister(String register) {
+        LLVMTypeRef inlineAsmType = builder.functionType(builder.voidType());
+        String asmSnippet = LLVMTargetSpecific.get().getNopInlineAssembly();
+        InlineAssemblyConstraint clobberConstraint = new InlineAssemblyConstraint(Type.Clobber, Location.namedRegister(register));
+
+        LLVMValueRef clobber = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, clobberConstraint);
+        LLVMValueRef call = builder.buildCall(clobber);
+        builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+    }
+
     /* Unimplemented */
 
     @Override
@@ -1317,7 +1364,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
 
             LLVMTypeRef typeA = typeOf(a);
-            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+
+            if (bitWidthA == 8 || bitWidthA == 16) {
+                bitWidthA = 32;
+            }
+
             assert bitWidthA == 32 || bitWidthA == 64;
 
             LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);

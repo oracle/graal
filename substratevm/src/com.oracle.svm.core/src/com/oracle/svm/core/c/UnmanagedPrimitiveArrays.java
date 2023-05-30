@@ -27,6 +27,7 @@ package com.oracle.svm.core.c;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -106,6 +107,27 @@ public final class UnmanagedPrimitiveArrays {
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
         JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding())));
+        return dest;
+    }
+
+    @Uninterruptible(reason = "Destination array must not move.")
+    public static <T> T compareOrCopyToHeap(UnmanagedPrimitiveArray<?> src, int srcPos, T dest, int destPos, int length) {
+        DynamicHub destHub = KnownIntrinsics.readHub(dest);
+        VMError.guarantee(LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding()), "Copying is only supported for primitive arrays");
+        VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && destPos + length <= ArrayLengthNode.arrayLength(dest));
+        Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
+        Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
+
+        UnsignedWord size = WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding()));
+
+        // First compare until a difference is found
+        UnsignedWord equalBytes = UnmanagedMemoryUtil.compare(srcAddressAtPos, destAddressAtPos, size);
+        if (equalBytes.belowThan(size)) {
+            // If the two arrays are not equal, copy over the remaining bytes
+            UnsignedWord alignBits = WordFactory.unsigned(0x7);
+            UnsignedWord offset = equalBytes.and(alignBits.not());
+            JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos.add(offset), destAddressAtPos.add(offset), size.subtract(offset));
+        }
         return dest;
     }
 
