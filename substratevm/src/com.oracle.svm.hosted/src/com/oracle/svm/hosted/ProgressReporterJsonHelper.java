@@ -26,8 +26,6 @@
 package com.oracle.svm.hosted;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,21 +41,6 @@ public class ProgressReporterJsonHelper {
     private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
-
-    ProgressReporterJsonHelper() {
-        recordSystemFixedValues();
-    }
-
-    private void recordSystemFixedValues() {
-        putResourceUsage(ResourceUsageKey.CPU_CORES_TOTAL, Runtime.getRuntime().availableProcessors());
-        putResourceUsage(ResourceUsageKey.MEMORY_TOTAL, getTotalSystemMemory());
-    }
-
-    @SuppressWarnings("deprecation")
-    private static long getTotalSystemMemory() {
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        return ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
-    }
 
     @SuppressWarnings("unchecked")
     public void putAnalysisResults(AnalysisResults key, long value) {
@@ -145,7 +128,9 @@ public class ProgressReporterJsonHelper {
         CPU_LOAD("cpu", "load"),
         CPU_CORES_TOTAL("cpu", "total_cores"),
         GC_COUNT("garbage_collection", "count"),
+        GC_MAX_HEAP("garbage_collection", "max_heap"),
         GC_SECS("garbage_collection", "total_secs"),
+        PARALLELISM("cpu", "parallelism"),
         PEAK_RSS("memory", "peak_rss_bytes"),
         MEMORY_TOTAL("memory", "system_total"),
         TOTAL_SECS(null, "total_secs");

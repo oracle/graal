@@ -432,7 +432,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     /*

@@ -263,7 +263,9 @@ public class ProgressReporter {
     private void printResourceInfo() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
+        recordJsonMetric(ResourceUsageKey.GC_MAX_HEAP, maxMemory);
         long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
+        recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
 
         String memoryFeedback;
         if (ByteFormattingUtil.bytesToGiB(maxMemory) < 2.0) {
@@ -273,7 +275,9 @@ public class ProgressReporter {
         }
 
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
         int availableProcessors = runtime.availableProcessors();
+        recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
 
         String threadFeedback;
         if (maxNumberOfThreads == 1) {
