@@ -846,7 +846,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, omit_buil
     ]
     if not with_isolates_only:
         if omit_build:
-            per_build_path =  join(path, 'isolates_off')
+            per_build_path = join(path, 'isolates_off')
             hello_binary = join(per_build_path, 'hello_image')
             cstruct_binary = join(per_build_path, 'cstruct_image')
         else:
@@ -858,7 +858,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, omit_buil
             mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testcstruct_py, cstruct_binary])
 
     if omit_build:
-        per_build_path =  join(path, 'isolates_on')
+        per_build_path = join(path, 'isolates_on')
         hello_binary = join(per_build_path, 'hello_image')
         cstruct_binary = join(per_build_path, 'cstruct_image')
     else:
