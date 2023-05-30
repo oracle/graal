@@ -44,10 +44,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeForeignFunctionsAccess {
+public final class RuntimeForeignAccess {
 
     /**
      * Registers the provided descriptor and options pair for foreign downcalls at runtime. Needed
@@ -75,9 +75,9 @@ public final class RuntimeForeignFunctionsAccess {
      * @since 23.1
      */
     public static void registerForDowncall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignFunctionsAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
     }
 
-    private RuntimeForeignFunctionsAccess() {
+    private RuntimeForeignAccess() {
     }
 }

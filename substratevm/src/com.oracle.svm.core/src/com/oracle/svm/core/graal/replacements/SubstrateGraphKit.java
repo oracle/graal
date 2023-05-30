@@ -204,7 +204,11 @@ public class SubstrateGraphKit extends GraphKit {
 
     public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
                     CallingConvention.Type convention, Set<CapturableState> statesToCapture, ValueNode captureBuffer) {
-        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
+        assert statesToCapture.isEmpty() == (captureBuffer == null);
+        /*
+         * State capture require the epilogue (and thus prologue) to be emitted
+         */
+        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus) || !statesToCapture.isEmpty();
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
         }

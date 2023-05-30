@@ -64,7 +64,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -348,8 +347,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length + firstActualArgument,
-                            "Parameters/assignments size mismatch.%nParameter types: %s%nPrefix arguments count: %d%nAssignment:  %s", Arrays.toString(parameterTypes), firstActualArgument,
-                            Arrays.toString(type.fixedParameterAssignment));
+                            "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
@@ -364,13 +362,15 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
                     Register reg = storage.register();
-                    VMError.guarantee(target.arch.canStoreValue(reg.getRegisterCategory(), paramValueKind.getPlatformKind()),
-                                    "Cannot assign value to register.%nAssignment index: %d (+ %d for parameter)%nParameters: %s%nAssignment: %s",
-                                    actualArgumentIndex, firstActualArgument, Arrays.toString(parameterTypes), Arrays.toString(type.fixedParameterAssignment));
+                    /*
+                     * Windows ABI requests that variadic floating point arguments passed in a (XMM)
+                     * register be passed in a CPU register as well.
+                     */
+                    VMError.guarantee(Platform.includedIn(Platform.WINDOWS.class) || target.arch.canStoreValue(reg.getRegisterCategory(),
+                                    paramValueKind.getPlatformKind()), "Cannot assign value to register.");
                     locations[i] = reg.asValue(paramValueKind);
                     VMError.guarantee(!usedRegisters.contains(reg),
-                                    "Register %s was already used.%nAssignment index: %d%nAssignment: %s",
-                                    reg, actualArgumentIndex, Arrays.toString(type.fixedParameterAssignment));
+                                    "Register was already used.");
                     usedRegisters.add(reg);
                 } else {
                     /*
@@ -380,9 +380,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                      * tremendously.
                      */
                     VMError.guarantee(currentStackOffset == baseStackOffset + storage.stackOffset(),
-                                    "Potential stack ``completeness'' violation.%nAssignment index: %d%nExpected offset: %d%nActual offset: %d%nAssignment: %s",
-                                    actualArgumentIndex, currentStackOffset, baseStackOffset + storage.stackOffset(),
-                                    Arrays.toString(type.fixedParameterAssignment));
+                                    "Potential stack ``completeness'' violation.");
                     locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
                     currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
                 }

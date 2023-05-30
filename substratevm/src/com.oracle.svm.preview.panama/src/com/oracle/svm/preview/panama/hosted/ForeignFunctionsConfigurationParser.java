@@ -33,7 +33,7 @@ import java.util.List;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
 
@@ -41,10 +41,11 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
     private static final String DOWNCALL_OPTION_FIRST_VARIADIC_ARG = "firstVariadicArg";
+    private static final String DOWNCALL_OPTION_TRIVIAL = "trivial";
 
-    private final RuntimeForeignFunctionsAccessSupport accessSupport;
+    private final RuntimeForeignAccessSupport accessSupport;
 
-    public ForeignFunctionsConfigurationParser(RuntimeForeignFunctionsAccessSupport access) {
+    public ForeignFunctionsConfigurationParser(RuntimeForeignAccessSupport access) {
         super(true);
         this.accessSupport = access;
     }
@@ -78,16 +79,21 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
         ArrayList<Linker.Option> res = new ArrayList<>();
         var map = asMap(options, "options must be a map");
-        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE));
+        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_TRIVIAL));
 
         if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
-            int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), DOWNCALL_OPTION_FIRST_VARIADIC_ARG);
+            int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), "");
             res.add(Linker.Option.firstVariadicArg(firstVariadic));
         }
         if (map.containsKey(DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
-            var ccs = asList(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_CAPTURE_CALL_STATE), DOWNCALL_OPTION_CAPTURE_CALL_STATE).stream()
+            var ccs = asList(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, ""), DOWNCALL_OPTION_CAPTURE_CALL_STATE).stream()
                             .map(cc -> asString(cc, DOWNCALL_OPTION_CAPTURE_CALL_STATE + " element")).toList();
             res.add(Linker.Option.captureCallState(ccs.toArray(new String[0])));
+        }
+        if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
+            if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {
+                res.add(Linker.Option.isTrivial());
+            }
         }
 
         return res;

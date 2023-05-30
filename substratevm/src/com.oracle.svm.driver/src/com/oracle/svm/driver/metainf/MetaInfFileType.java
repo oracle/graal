@@ -32,7 +32,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 public enum MetaInfFileType {
     Properties(null, NativeImageMetaInfWalker.nativeImagePropertiesFilename),
     JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName()),
-    ForeignFunctionsConfiguration(ConfigurationFiles.Options.ForeignFunctionsResources, ConfigurationFile.FOREIGN_FUNCTIONS.getFileName()),
+    ForeignConfiguration(ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName()),
     ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFile.REFLECTION.getFileName()),
     ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFile.RESOURCES.getFileName()),
     ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFile.DYNAMIC_PROXY.getFileName()),

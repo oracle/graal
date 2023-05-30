@@ -37,14 +37,13 @@ import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
@@ -120,9 +119,11 @@ final class Target_java_lang_invoke_MethodHandle {
         return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
     }
 
-    @Delete
-    @TargetElement(onlyWith = JDK20OrLater.class)
-    static native Object linkToNative(Object... args) throws Throwable;
+    @Substitute(polymorphicSignature = true)
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    static Object linkToNative(Object... args) throws Throwable {
+        return Util_java_lang_invoke_MethodHandle.linkToNative(args);
+    }
 }
 
 final class Util_java_lang_invoke_MethodHandle {
@@ -241,7 +242,7 @@ final class Util_java_lang_invoke_MethodHandle {
     }
 
     static Object linkToNative(@SuppressWarnings("unused") Object... ignoreArgs) throws Throwable {
-        throw unsupportedFeature("Foreign downcalls feature is not enabled.");
+        throw unsupportedFeature("Foreign downcalls feature is not enabled. Make sure you are using a JDK >= 21 and that preview features are enabled.");
     }
 }
 

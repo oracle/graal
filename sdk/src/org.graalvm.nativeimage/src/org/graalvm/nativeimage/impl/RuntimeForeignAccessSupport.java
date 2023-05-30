@@ -40,6 +40,6 @@
  */
 package org.graalvm.nativeimage.impl;
 
-public interface RuntimeForeignFunctionsAccessSupport {
+public interface RuntimeForeignAccessSupport {
     void registerForDowncall(ConfigurationCondition condition, Object desc, Object... options);
 }

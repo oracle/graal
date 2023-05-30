@@ -30,7 +30,7 @@ public enum ConfigurationFile {
     DYNAMIC_PROXY("proxy", true),
     RESOURCES("resource", true),
     JNI("jni", true),
-    FOREIGN_FUNCTIONS("foreign-functions", false),
+    FOREIGN("foreign", false),
     REFLECTION("reflect", true),
     SERIALIZATION("serialization", true),
     SERIALIZATION_DENY("serialization-deny", false),
