@@ -176,7 +176,7 @@ public class NativeImageOptions {
 
     public static CStandards getCStandard() {
         try {
-            return CStandards.valueOf(CStandard.getValue());
+            return CStandards.valueOf(CStandard.getValue().toUpperCase().trim().replace("\"", "").replace("'", ""));
         } catch (IllegalArgumentException e) {
             throw UserError.abort("C standard %s is not supported. Supported standards are: %s", CStandard.getValue(), Arrays.toString(CStandards.values()));
         }
