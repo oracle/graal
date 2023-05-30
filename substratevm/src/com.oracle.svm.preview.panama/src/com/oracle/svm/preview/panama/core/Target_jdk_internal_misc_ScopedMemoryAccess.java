@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.preview.panama.core;
 
-import com.oracle.svm.core.annotate.Delete;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -61,6 +62,8 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * <p>
      * See scopedMemoryAccess.cpp in HotSpot.
      */
-    @Delete("Arena.ofShared is not supported.")
-    native boolean closeScope0(MemorySessionImpl session);
+    @Substitute
+    boolean closeScope0(MemorySessionImpl session) {
+        throw unsupportedFeature("Arena.ofSharedis not supported.");
+    }
 }

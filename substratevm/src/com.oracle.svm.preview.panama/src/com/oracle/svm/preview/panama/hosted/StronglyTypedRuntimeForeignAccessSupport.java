@@ -28,12 +28,12 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 /**
- * Convenience interface until {@link RuntimeForeignFunctionsAccessSupport} can be strongly typed.
+ * Convenience interface until {@link RuntimeForeignAccessSupport} can be strongly typed.
  */
-public interface StronglyTypedRuntimeForeignFunctionsAccessSupport extends RuntimeForeignFunctionsAccessSupport {
+public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeignAccessSupport {
     @Override
     default void registerForDowncall(ConfigurationCondition condition, Object descO, Object... optionsO) {
         if (!(descO instanceof FunctionDescriptor)) {

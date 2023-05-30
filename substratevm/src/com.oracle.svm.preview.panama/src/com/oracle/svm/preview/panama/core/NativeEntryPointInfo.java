@@ -43,6 +43,7 @@ public final class NativeEntryPointInfo {
     private final AssignedLocation[] parameterAssignments;
     private final AssignedLocation[] returnBuffering;
     private final int capturedStateMask;
+    private final boolean needsTransition;
 
     /**
      * Method type is of the form (<>: argument; []: optional argument)
@@ -55,37 +56,28 @@ public final class NativeEntryPointInfo {
      *
      * where <actual arg i>s are the arguments which end up passed to the C native function
      */
-    public NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, int stateCaptureMask) {
+    public NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, int stateCaptureMask, boolean needsTransition) {
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
         this.capturedStateMask = stateCaptureMask;
-    }
-
-    public static void checkType(MethodType methodType, boolean needsReturnBuffer, int savedValueMask) {
-        if (methodType.parameterType(0) != long.class) {
-            throw new AssertionError("Address expected as first param: " + methodType);
-        }
-        int checkIdx = 1;
-        if ((needsReturnBuffer && methodType.parameterType(checkIdx++) != long.class) || (savedValueMask != 0 && methodType.parameterType(checkIdx) != long.class)) {
-            throw new AssertionError("Return buffer and/or preserved value address expected: " + methodType);
-        }
+        this.needsTransition = needsTransition;
     }
 
     public static NativeEntryPointInfo make(@SuppressWarnings("unused") ABIDescriptor ignoreAbi,
                     VMStorage[] argMoves, VMStorage[] returnMoves,
                     MethodType methodType,
                     boolean needsReturnBuffer,
-                    int capturedStateMask) {
+                    int capturedStateMask,
+                    boolean needsTransition) {
         if (returnMoves.length > 1 != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
 
-        checkType(methodType, needsReturnBuffer, capturedStateMask);
         var parametersAssignment = AbiUtils.getInstance().toMemoryAssignment(argMoves, false);
         var returnBuffering = needsReturnBuffer ? AbiUtils.getInstance().toMemoryAssignment(returnMoves, true) : null;
         capturedStateMask = capturedStateMask & AbiUtils.getInstance().supportedCaptureMask();
-        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask);
+        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask, needsTransition);
     }
 
     public int callAddressIndex() {
@@ -156,6 +148,10 @@ public final class NativeEntryPointInfo {
         return capturedStateMask;
     }
 
+    public boolean skipsTransition() {
+        return !needsTransition;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -165,13 +161,13 @@ public final class NativeEntryPointInfo {
             return false;
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturedStateMask == that.capturedStateMask && Objects.equals(methodType, that.methodType) && Arrays.equals(parameterAssignments, that.parameterAssignments) &&
-                        Arrays.equals(returnBuffering, that.returnBuffering);
+        return capturedStateMask == that.capturedStateMask && needsTransition == that.needsTransition && Objects.equals(methodType, that.methodType) &&
+                        Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(methodType, capturedStateMask);
+        int result = Objects.hash(methodType, capturedStateMask, needsTransition);
         result = 31 * result + Arrays.hashCode(parameterAssignments);
         result = 31 * result + Arrays.hashCode(returnBuffering);
         return result;

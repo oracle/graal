@@ -1077,7 +1077,7 @@ meth public !varargs static void initializeAtRunTime(java.lang.Class<?>[])
 meth public !varargs static void initializeAtRunTime(java.lang.String[])
 supr java.lang.Object
 
-CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignFunctionsAccess
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignAccess
 meth public !varargs static void registerForDowncall(java.lang.Object,java.lang.Object[])
 supr java.lang.Object
 

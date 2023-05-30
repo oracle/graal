@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -43,6 +44,8 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
@@ -50,6 +53,7 @@ import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.preview.panama.core.DowncallStubsHolder;
 import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
+import com.oracle.svm.preview.panama.core.Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -69,7 +73,10 @@ import jdk.vm.ci.meta.Signature;
  * state and store the result in the appropriate place</li>
  * </ul>
  * In particular, this latest point means that not safepoint can be placed between the requested
- * call and the subsequent calls/memory accesses done to capture the call state.
+ * call and the subsequent calls/memory accesses done to capture the call state. This is done by
+ * doing said capture in {@link com.oracle.svm.core.nodes.CFunctionEpilogueNode}, which follows the
+ * method invocation without interruption. See the associated lowering
+ * {@link CFunctionSnippets.CFunctionEpilogueLowering#lower(CFunctionEpilogueNode, LoweringTool)}.
  * <p>
  * Note that the stub *does not* perform argument preprocessing, e.g. if the first argument to the
  * native function is a memory segment which must be split across 3 int registers according to the
@@ -94,6 +101,10 @@ class DowncallStub extends NonBytecodeMethod {
         checkSignature(nep.linkMethodType());
     }
 
+    /**
+     * The arguments follow the structure described in
+     * {@link Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle#linkToNative(Object...)}.
+     */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
@@ -121,11 +132,13 @@ class DowncallStub extends NonBytecodeMethod {
                         /* Assignment might be null, in which case this is a no-op */
                         .withReturnSaving(nep.returnsAssignment());
 
+        CFunction.Transition transition = nep.skipsTransition() ? CFunction.Transition.NO_TRANSITION : CFunction.Transition.TO_NATIVE;
+
         ValueNode returnValue = kit.createCFunctionCallWithCapture(
                         callAddress,
                         arguments,
                         SimpleSignature.fromMethodType(nep.stubMethodType(), kit.getMetaAccess()),
-                        VMThreads.StatusSupport.getNewThreadStatus(CFunction.Transition.TO_NATIVE),
+                        VMThreads.StatusSupport.getNewThreadStatus(transition),
                         deoptimizationTarget,
                         cc,
                         capturedStates(nep),

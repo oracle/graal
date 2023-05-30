@@ -117,18 +117,22 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
-        /* Push a JavaFrameAnchor to the thread-local linked list. */
-        JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
-        JavaFrameAnchors.pushFrameAnchor(anchor);
+        if (newThreadStatus != StatusSupport.STATUS_ILLEGAL) {
+            /* Push a JavaFrameAnchor to the thread-local linked list. */
+            JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
+            JavaFrameAnchors.pushFrameAnchor(anchor);
 
-        /*
-         * The content of the new anchor is uninitialized at this point. It is filled as late as
-         * possible, immediately before the C call instruction, so that the pointer map for the last
-         * instruction pointer matches the pointer map of the C call. The thread state transition
-         * into Native state also happens immediately before the C call.
-         */
+            /*
+             * The content of the new anchor is uninitialized at this point. It is filled as late as
+             * possible, immediately before the C call instruction, so that the pointer map for the
+             * last instruction pointer matches the pointer map of the C call. The thread state
+             * transition into Native state also happens immediately before the C call.
+             */
 
-        return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
+            return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
+        } else {
+            return null;
+        }
     }
 
     @Uninterruptible(reason = "Interruptions might change call state.")
@@ -184,24 +188,26 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             callCaptureCallState(CAPTURE_CALL_STATE, statesToCapture, captureBuffer);
         }
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-                Safepoint.transitionNativeToJava(true);
-            } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-                Safepoint.transitionVMToJava(true);
+        if (oldThreadStatus != StatusSupport.STATUS_ILLEGAL) {
+            if (SubstrateOptions.MultiThreaded.getValue()) {
+                if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
+                    Safepoint.transitionNativeToJava(true);
+                } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
+                    Safepoint.transitionVMToJava(true);
+                } else {
+                    ReplacementsUtil.staticAssert(false, "Unexpected thread status");
+                }
             } else {
-                ReplacementsUtil.staticAssert(false, "Unexpected thread status");
+                JavaFrameAnchors.popFrameAnchor();
             }
-        } else {
-            JavaFrameAnchors.popFrameAnchor();
-        }
 
-        /*
-         * Ensure that no floating reads are scheduled before we are done with the transition. All
-         * memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
-         * KillMemoryNode since this is the last kill-all node of the snippet.
-         */
-        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+            /*
+             * Ensure that no floating reads are scheduled before we are done with the transition.
+             * All memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
+             * KillMemoryNode since this is the last kill-all node of the snippet.
+             */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+        }
     }
 
     CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -232,7 +238,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addBeforeFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int newThreadStatus = node.getNewThreadStatus();
-            assert StatusSupport.isValidStatus(newThreadStatus);
 
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("newThreadStatus", newThreadStatus);
@@ -252,7 +257,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int oldThreadStatus = node.getOldThreadStatus();
-            assert StatusSupport.isValidStatus(oldThreadStatus);
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
@@ -291,18 +295,21 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 }
                 InvokeNode invoke = (InvokeNode) cur;
 
-                /*
-                 * We are re-using the classInit field of the InvokeNode to store the
-                 * CFunctionPrologueNode. During lowering, we create a PrologueDataNode that holds
-                 * all the prologue-related data that the invoke needs in the backend.
-                 *
-                 * The classInit field is in every InvokeNode, and it is otherwise unused by
-                 * Substrate VM (it is used only by the Java HotSpot VM). If we ever need the
-                 * classInit field for other purposes, we need to create a new subclass of
-                 * InvokeNode, and replace the invoke here with an instance of that new subclass.
-                 */
-                VMError.guarantee(invoke.classInit() == null, "Re-using the classInit field to store the JavaFrameAnchor");
-                invoke.setClassInit(prologueNode);
+                if (prologueNode.getNewThreadStatus() != StatusSupport.STATUS_ILLEGAL) {
+                    /*
+                     * We are re-using the classInit field of the InvokeNode to store the
+                     * CFunctionPrologueNode. During lowering, we create a PrologueDataNode that
+                     * holds all the prologue-related data that the invoke needs in the backend.
+                     *
+                     * The classInit field is in every InvokeNode, and it is otherwise unused by
+                     * Substrate VM (it is used only by the Java HotSpot VM). If we ever need the
+                     * classInit field for other purposes, we need to create a new subclass of
+                     * InvokeNode, and replace the invoke here with an instance of that new
+                     * subclass.
+                     */
+                    VMError.guarantee(invoke.classInit() == null, "Re-using the classInit field to store the JavaFrameAnchor");
+                    invoke.setClassInit(prologueNode);
+                }
 
                 singleInvoke = cur;
             }

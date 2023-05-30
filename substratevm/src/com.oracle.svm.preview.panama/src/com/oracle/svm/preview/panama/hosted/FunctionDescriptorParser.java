@@ -43,13 +43,13 @@ import org.graalvm.nativeimage.Platforms;
  * <pre>
  * {@code
  *     Descriptor ::= '(' Layout* ')'  (Layout | Void)
- *     Layout ::= SimpleLayout  [ '%' Alignment ]
+ *     Layout ::=  [ Alignment '%' ] SimpleLayout
  *     SimpleLayout ::= ValueLayout | StructLayout | UnionLayout | SequenceLayout
  *     StructLayout ::= '{' Layout* '}' |
  *     UnionLayout ::=  '<' Layout* '>'
  *     SequenceLayout ::= '[' Size ':' Layout ']'
- *     ValueLayout ::= 'z8' | 'b8' | 's16' | 'i32' | 'j64' | 'f32' | 'd64' | 'a??'
- *                              | 'Z8' | 'B8' | 'S16' | 'I32' | 'J64' | 'F32' | 'D64' | 'A??'
+ *     ValueLayout ::= 'z1' | 'b1' | 's2' | 'i4' | 'j8' | 'f4' | 'd8' | 'a??'
+ *                              | 'Z1' | 'B1' | 'S2' | 'I4' | 'J8' | 'F4' | 'D8' | 'A??'
  *     PaddingLayout ::= 'x' Int
  *     Void ::= 'v'
  *     Size ::= Int
@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.Platforms;
  * 
  * The byte endianess of a value layout is defined the by capitalization of the first and only
  * letter (Capital means big-endian, lower means little-endian). The '??' in 'a??'/'A??' should be
- * replaced by the size (in bits) of a pointer on the platform under consideration.
+ * replaced by the size (in bytes) of a pointer on the platform under consideration.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class FunctionDescriptorParser {
@@ -93,7 +93,7 @@ public final class FunctionDescriptorParser {
         private void consumeChecked(char expected) {
             char v = consume();
             if (v != expected) {
-                handleError("Expected " + expected + " but got " + v + "in " + layout);
+                handleError("Expected " + expected + " but got " + v + " in " + layout);
             }
         }
 
@@ -111,7 +111,7 @@ public final class FunctionDescriptorParser {
             MemoryLayout[] arguments = parseSequence('(', ')', this::parseLayout).toArray(new MemoryLayout[0]);
             if (peek() == 'v') {
                 consume();
-                return FunctionDescriptor.ofVoid(arguments); // FunctionDescriptor.ofVoid(arguments);
+                return FunctionDescriptor.ofVoid(arguments);
             } else {
                 return FunctionDescriptor.of(parseLayout(), arguments);
             }
@@ -132,6 +132,12 @@ public final class FunctionDescriptorParser {
         }
 
         private MemoryLayout parseLayout() {
+            long alignment = -1;
+            if (Character.isDigit(peek())) {
+                alignment = parseInt();
+                consumeChecked('%');
+            }
+
             MemoryLayout layout = switch (Character.toUpperCase(peek())) {
                 case 'Z' -> parseValueLayout(ValueLayout.JAVA_BOOLEAN);
                 case 'B' -> parseValueLayout(ValueLayout.JAVA_BYTE);
@@ -149,15 +155,12 @@ public final class FunctionDescriptorParser {
                 default -> handleError("Unknown carrier: " + peek());
             };
 
-            // Modifiers
-            switch (peek()) {
-                // Name
-                case '(' -> handleError("Layout parser does not support naming layouts: " + layout);
-                // Alignment
-                case '%' -> {
-                    consume();
-                    layout = layout.withBitAlignment(parseInt());
-                }
+            if (alignment >= 0) {
+                layout = layout.withByteAlignment(alignment);
+            }
+
+            if (peek() == '(') {
+                handleError("Layout parser does not support named layouts: " + layout);
             }
 
             return layout;
@@ -193,7 +196,9 @@ public final class FunctionDescriptorParser {
             consume();
             MemoryLayout layout = baseLayout.withOrder(order);
             long size = parseInt();
-            assert layout.bitSize() == size;
+            guarantee(layout.byteSize() == size,
+                            "Value layout with carrier %s should have a byte size of %d (you specified %d)"
+                                            .formatted(baseLayout.carrier(), layout.byteSize(), size));
 
             return layout;
         }
@@ -216,6 +221,12 @@ public final class FunctionDescriptorParser {
     public static final class FunctionDescriptorParserException extends RuntimeException {
         public FunctionDescriptorParserException(final String msg) {
             super(msg);
+        }
+    }
+
+    private static void guarantee(boolean b, String msg) {
+        if (!b) {
+            handleError(msg);
         }
     }
 

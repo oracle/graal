@@ -25,7 +25,6 @@
 package com.oracle.svm.preview.panama.core;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-import static com.oracle.svm.preview.panama.core.NativeEntryPointInfo.checkType;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -33,6 +32,10 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 
 import jdk.internal.foreign.CABI;
@@ -43,6 +46,9 @@ import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PlatformKind;
 
 public abstract class AbiUtils {
 
@@ -76,13 +82,6 @@ public abstract class AbiUtils {
 
 class ABIs {
     private abstract static class X86_64 extends AbiUtils {
-        private static final int INTEGER_OFFSET = 0;
-        private static final int VECTOR_OFFSET = 16;
-        static {
-            assert AMD64.rax == AMD64.allRegisters.get(INTEGER_OFFSET);
-            assert AMD64.xmm0 == AMD64.allRegisters.get(VECTOR_OFFSET);
-        }
-
         protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
             return callingSequence.argumentBindings()
                             .filter(Binding.VMStore.class::isInstance)
@@ -103,39 +102,96 @@ class ABIs {
             return Arrays.stream(moves).map(Binding.Move::storage).toArray(VMStorage[]::new);
         }
 
-        protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, Linker.Option... options);
+        protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
+
+        private static boolean windowsAllowedMismatch(AMD64 target, Register.RegisterCategory rc, PlatformKind kind) {
+            return rc.equals(AMD64.CPU) && (kind.equals(target.getPlatformKind(JavaKind.Float)) || kind.equals(target.getPlatformKind(JavaKind.Double)));
+        }
+
+        private static boolean typeMatchRegister(AMD64 target, Class<?> type, Register register, boolean weak) {
+            Register.RegisterCategory rc = register.getRegisterCategory();
+            PlatformKind kind = target.getPlatformKind(JavaKind.fromJavaClass(type));
+            return target.canStoreValue(rc, kind) ||
+                            (weak && windowsAllowedMismatch(target, rc, kind));
+        }
+
+        private static void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
+                        Linker.Option... options) {
+            if (!SubstrateUtil.assertionsEnabled()) {
+                return;
+            }
+
+            int firstActualArgument = 0;
+            if (methodType.parameterType(firstActualArgument++) != long.class) {
+                throw new AssertionError("Address expected as first param: " + methodType);
+            }
+            if (returnAssignment != null && methodType.parameterType(firstActualArgument++) != long.class) {
+                throw new AssertionError("Return buffer address expected: " + methodType);
+            }
+            if (savedValueMask != 0 && methodType.parameterType(firstActualArgument++) != long.class) {
+                throw new AssertionError("Capture buffer address expected: " + methodType);
+            }
+
+            assert firstActualArgument + assignments.length == methodType.parameterCount() : assignments.length + " " + methodType.parameterCount();
+            AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
+            boolean weak = LinkerOptions.forDowncall(fd, options).isVariadicFunction();
+
+            for (int i = 0; i < assignments.length; ++i) {
+                var type = methodType.parameterType(firstActualArgument + i);
+                var assignment = assignments[i];
+                assert !assignment.assignsToRegister() ||
+                                typeMatchRegister(target, type, assignment.register(), weak) : "Cannot put %s in %s.\nDescriptor & options: %s %s\nAssignment: %s\nMethod type (placeholders: %d): %s"
+                                                .formatted(type, assignment.register(), fd, Arrays.toString(options), Arrays.toString(assignments), firstActualArgument, methodType);
+            }
+
+            assert returnAssignment == null || methodType.returnType().equals(void.class);
+        }
 
         @Override
         public NativeEntryPointInfo makeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
-            // From CallArranger.arrangeDowncall
+            // Linker.downcallHandle implemented in
+            // AbstractLinker.downcallHandle
+
+            // AbstractLinker.downcallHandle0
+            LinkerOptions optionSet = LinkerOptions.forDowncall(desc, options);
             MethodType type = desc.toMethodType();
 
+            /* OS SPECIFIC BEGINS */
+            // AbstractLinker.arrangeDowncall implemented in
+            // SysVx64Linker.arrangeDowncall or Windowsx64Linker.arrangeDowncall
+
+            // CallArranger.arrangeDowncall
+            var callingSequence = makeCallingSequence(type, desc, false, optionSet);
+            /* OS SPECIFIC ENDS */
+
             // From DowncallLinker.getBoundMethodHandle
-            var callingSequence = makeCallingSequence(type, desc, false, options);
             var argMoves = toStorageArray(argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new));
             var returnMoves = toStorageArray(retMoveBindings(callingSequence));
-            var methodType = callingSequence.calleeMethodType();
+            var boundaryType = callingSequence.calleeMethodType();
             var needsReturnBuffer = callingSequence.needsReturnBuffer();
 
             // From NativeEntrypoint.make
-            checkType(methodType, needsReturnBuffer, callingSequence.capturedStateMask());
             var parametersAssignment = toMemoryAssignment(argMoves, false);
             var returnBuffering = needsReturnBuffer ? toMemoryAssignment(returnMoves, true) : null;
-            return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, callingSequence.capturedStateMask());
+            methodTypeMatchAssignment(callingSequence.capturedStateMask(), boundaryType, parametersAssignment, returnBuffering, desc, options);
+            return new NativeEntryPointInfo(boundaryType, parametersAssignment, returnBuffering, callingSequence.capturedStateMask(), callingSequence.needsTransition());
         }
 
         @Override
         public AssignedLocation[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
             int size = 0;
             for (VMStorage move : argMoves) {
-                // Placeholders are ignored. They will be handled further down the line
                 if (move.type() != X86_64Architecture.StorageType.PLACEHOLDER) {
+                    // Placeholders are ignored; they will be handled further down the line
                     ++size;
+                } else {
+                    // Placeholders are expected to be prefix arguments
+                    assert size == 0;
                 }
+
                 if (move.type() == X86_64Architecture.StorageType.X87) {
                     throw unsupportedFeature("Unsupported register kind: X87");
-                }
-                if (move.type() == X86_64Architecture.StorageType.STACK && forReturn) {
+                } else if (move.type() == X86_64Architecture.StorageType.STACK && forReturn) {
                     throw unsupportedFeature("Unsupported register kind for return: STACK");
                 }
             }
@@ -145,8 +201,22 @@ class ABIs {
             for (VMStorage move : argMoves) {
                 if (move.type() != X86_64Architecture.StorageType.PLACEHOLDER) {
                     storages[i++] = switch (move.type()) {
-                        case X86_64Architecture.StorageType.INTEGER -> AssignedLocation.toRegister(AMD64.allRegisters.get(move.indexOrOffset() + INTEGER_OFFSET));
-                        case X86_64Architecture.StorageType.VECTOR -> AssignedLocation.toRegister(AMD64.allRegisters.get(move.indexOrOffset() + VECTOR_OFFSET));
+                        case X86_64Architecture.StorageType.INTEGER -> {
+                            Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
+                            assert reg.name.equals(move.debugName());
+                            assert reg.getRegisterCategory().equals(AMD64.CPU);
+                            yield AssignedLocation.toRegister(reg);
+                        }
+                        case X86_64Architecture.StorageType.VECTOR -> {
+                            /*
+                             * Only the first four xmm registers should ever be used; in particular,
+                             * this means we never need xmmRegistersAVX512
+                             */
+                            Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
+                            assert reg.name.equals(move.debugName());
+                            assert reg.getRegisterCategory().equals(AMD64.XMM);
+                            yield AssignedLocation.toRegister(reg);
+                        }
                         case X86_64Architecture.StorageType.STACK -> AssignedLocation.toStack(move.indexOrOffset());
                         default -> throw unsupportedFeature("Unhandled VMStorage: " + move);
                     };
@@ -159,9 +229,8 @@ class ABIs {
 
     public static final AbiUtils SysV = new X86_64() {
         @Override
-        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, Linker.Option... options) {
-            assert !forUpcall || options.length == 0;
-            return jdk.internal.foreign.abi.x64.sysv.CallArranger.getBindings(type, desc, forUpcall, LinkerOptions.forDowncall(desc, options)).callingSequence();
+        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
+            return jdk.internal.foreign.abi.x64.sysv.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
         }
 
         @Override
@@ -172,9 +241,8 @@ class ABIs {
 
     public static final AbiUtils Win64 = new X86_64() {
         @Override
-        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, Linker.Option... options) {
-            assert !forUpcall || options.length == 0;
-            return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, LinkerOptions.forDowncall(desc, options)).callingSequence();
+        protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
+            return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
         }
 
         @Override

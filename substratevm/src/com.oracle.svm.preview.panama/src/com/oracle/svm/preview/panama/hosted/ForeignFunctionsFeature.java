@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -62,7 +62,6 @@ import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
@@ -91,7 +90,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                     "jdk.internal.foreign.abi.x64.windows"});
 
     private boolean sealed = false;
-    private final RuntimeForeignFunctionsAccessSupportImpl accessSupport = new RuntimeForeignFunctionsAccessSupportImpl();
+    private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
     private final Set<NativeEntryPointInfo> stubsToRegister = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<NativeEntryPointInfo, ResolvedJavaMethod> stubsToCreate = new HashMap<>();
 
@@ -104,7 +103,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         UserError.guarantee(!sealed, "Registration of foreign functions was closed.");
     }
 
-    private class RuntimeForeignFunctionsAccessSupportImpl extends ConditionalConfigurationRegistry implements StronglyTypedRuntimeForeignFunctionsAccessSupport {
+    private class RuntimeForeignAccessSupportImpl extends ConditionalConfigurationRegistry implements StronglyTypedRuntimeForeignAccessSupport {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
@@ -124,9 +123,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess c) {
-        FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) c;
-        MetaAccessProvider metaAccess = config.getMetaAccess().getWrapped();
-
         assert (JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_PREVIEW && isPreviewEnabled()) ||
                         JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
 
@@ -134,8 +130,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         if (supportForeignFunctions) {
             ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
-            ImageSingletons.add(RuntimeForeignFunctionsAccessSupport.class, accessSupport);
-            config.registerSubstitutionProcessor(new ForeignFunctionsSubstitutionProcessor(metaAccess));
+            ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         } else {
             if (SubstrateOptions.useLLVMBackend()) {
                 throw UserError.abort("Foreign functions interface is in use, but is not supported together with the LLVM backend.");
@@ -159,7 +154,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
-                        ConfigurationFiles.Options.ForeignFunctionsConfigurationFiles, ConfigurationFiles.Options.ForeignFunctionsResources, ConfigurationFile.FOREIGN_FUNCTIONS.getFileName());
+                        ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
 
         /*
          * Specializing the lambda form would define a new class, which is not allowed in

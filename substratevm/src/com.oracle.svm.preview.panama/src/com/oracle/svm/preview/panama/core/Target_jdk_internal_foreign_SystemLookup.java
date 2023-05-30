@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.preview.panama.core;
 
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -45,8 +47,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 @Substitute
 @SuppressWarnings("unused")
 public final class Target_jdk_internal_foreign_SystemLookup {
-    @Delete("Default lookup is not supported.")
-    public static native Target_jdk_internal_foreign_SystemLookup getInstance();
+    @Substitute
+    public static Target_jdk_internal_foreign_SystemLookup getInstance() {
+        throw unsupportedFeature("Default lookup is not supported.");
+    }
 }
 
 @TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols")
