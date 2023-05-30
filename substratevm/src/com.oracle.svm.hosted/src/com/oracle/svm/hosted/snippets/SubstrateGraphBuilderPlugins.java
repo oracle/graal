@@ -216,7 +216,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSerializationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
-        if (reason != ParsingReason.JITCompilation) {
+        if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
             serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
                 @Override
