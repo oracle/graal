@@ -34,13 +34,12 @@ public class JfrGCWhenSerializer implements JfrSerializer {
 
     @Override
     public void write(JfrChunkWriter writer) {
-        JfrGCWhen[] gcWhens = JfrGCWhen.values();
-
+        JfrGCWhen[] values = JfrGCWhen.values();
         writer.writeCompressedLong(JfrType.GCWhen.getId());
-        writer.writeCompressedLong(gcWhens.length);
-        for (JfrGCWhen when : gcWhens) {
-            writer.writeCompressedLong(when.ordinal());
-            writer.writeString(when.getGcWhen());
+        writer.writeCompressedLong(values.length);
+        for (JfrGCWhen value : values) {
+            writer.writeCompressedLong(value.getId());
+            writer.writeString(value.getText());
         }
     }
 }

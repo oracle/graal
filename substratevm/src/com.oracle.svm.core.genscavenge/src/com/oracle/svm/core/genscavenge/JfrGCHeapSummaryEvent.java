@@ -24,66 +24,45 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.api.replacements.Fold;
-
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrTicks;
 
 class JfrGCHeapSummaryEvent {
-
-    public static void emit(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed, JfrGCWhen gcWhen) {
-        if (HasJfrSupport.get() && isEnabled()) {
-            emit0(gcEpoch, start, committedSize, heapUsed, gcWhen);
+    public static void emit(JfrGCWhen gcWhen) {
+        if (HasJfrSupport.get()) {
+            emit0(GCImpl.getGCImpl().getCollectionEpoch(), JfrTicks.elapsedTicks(), HeapImpl.getHeapImpl().getCommittedBytes(), HeapImpl.getHeapImpl().getUsedBytes(), gcWhen);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed, JfrGCWhen gcWhen) {
-
+    private static void emit0(UnsignedWord gcEpoch, long start, UnsignedWord committedSize, UnsignedWord heapUsed, JfrGCWhen gcWhen) {
         if (JfrEvent.GCHeapSummary.shouldEmit()) {
-
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCHeapSummary);
-
-            JfrNativeEventWriter.putLong(data, start); // @Label("Start Time") @Timestamp("TICKS")
-                                                      // long startTime;
-
-            JfrNativeEventWriter.putLong(data, gcEpoch.rawValue()); // @Label("GC Identifier") int
-                                                                   // gcId;
-            JfrNativeEventWriter.putLong(data, gcWhen.ordinal()); // @Label("When") String when;
+            JfrNativeEventWriter.putLong(data, start);
+            JfrNativeEventWriter.putLong(data, gcEpoch.rawValue());
+            JfrNativeEventWriter.putLong(data, gcWhen.getId());
 
             // VirtualSpace
             JfrNativeEventWriter.putLong(data, 0L); // start
-            JfrNativeEventWriter.putLong(data, 0L); // committedEnd : ulong
-            JfrNativeEventWriter.putLong(data, committedSize); // committedSize : ulong
-            JfrNativeEventWriter.putLong(data, 0L); // reservedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // committedEnd
+            JfrNativeEventWriter.putLong(data, committedSize.rawValue());
+            JfrNativeEventWriter.putLong(data, 0L); // reservedEnd
+            JfrNativeEventWriter.putLong(data, 0L); // reservedSize
 
-            JfrNativeEventWriter.putLong(data, heapUsed); // @Unsigned @DataAmount("BYTES")
-                                                         // @Label("Heap Used") @Description("Bytes
-                                                         // allocated by objects in the heap") long
-                                                         // heapUsed;
-
+            JfrNativeEventWriter.putLong(data, heapUsed.rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
-
     }
-
-    @Fold
-    static boolean isEnabled() {
-        return SubstrateOptions.UseSerialGC.getValue();
-    }
-
 }

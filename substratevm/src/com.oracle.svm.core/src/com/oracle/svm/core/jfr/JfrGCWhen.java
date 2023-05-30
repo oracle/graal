@@ -24,17 +24,25 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public enum JfrGCWhen {
     BEFORE_GC("Before GC"),
     AFTER_GC("After GC");
 
-    private final String gcWhen;
+    private final String text;
 
-    JfrGCWhen(String gcWhen) {
-        this.gcWhen = gcWhen;
+    JfrGCWhen(String text) {
+        this.text = text;
     }
 
-    public String getGcWhen() {
-        return this.gcWhen;
+    public String getText() {
+        return this.text;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getId() {
+        // First entry needs to have id 0.
+        return ordinal();
     }
 }

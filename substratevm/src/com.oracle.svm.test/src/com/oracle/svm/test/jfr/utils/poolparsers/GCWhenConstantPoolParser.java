@@ -43,7 +43,7 @@ public class GCWhenConstantPoolParser extends AbstractSerializerParser {
         Assert.assertTrue(count > 0);
         for (int i = 0; i < count; i++) {
             addFoundId(input.readInt()); // Id.
-            Assert.assertFalse("GC when is empty!", input.readUTF().isEmpty());
+            Assert.assertFalse("GCWhen text is empty!", input.readUTF().isEmpty());
         }
     }
 }
