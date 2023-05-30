@@ -84,21 +84,7 @@
           "default": "",
           "title": "The garbage collector used within the generated image"
         }
-      },
-      "examples": [
-        {
-          "name": "helloworld",
-          "graalvm_version": "GraalVM CE 17.0.7+4.1",
-          "graal_compiler": {
-            "march": "x86-64-v3",
-            "optimization_level": "0"
-          },
-          "java_version": "17.0.7+4",
-          "vendor_version": "GraalVM CE 17.0.7+4.1",
-          "c_compiler": "gcc (linux, x86_64, 9.3.0)",
-          "garbage_collector": "Serial GC"
-        }
-      ]
+      }
     },
     "analysis_results": {
       "type": "object",
@@ -242,29 +228,7 @@
             }
           }
         }
-      },
-      "examples": [
-        {
-          "classes": {
-            "total": 3850,
-            "reachable": 2839,
-            "reflection": 28,
-            "jni": 58
-          },
-          "fields": {
-            "total": 6665,
-            "reachable": 3400,
-            "reflection": 0,
-            "jni": 58
-          },
-          "methods": {
-            "total": 29038,
-            "reachable": 12916,
-            "reflection": 332,
-            "jni": 52
-          }
-        }
-      ]
+      }
     },
     "image_details": {
       "type": "object",
@@ -391,29 +355,7 @@
             }
           }
         }
-      },
-      "examples": [
-        {
-          "total_bytes": 13057934,
-          "code_area": {
-            "bytes": 4610048,
-            "compilation_units": 67007
-          },
-          "image_heap": {
-            "bytes": 7307264,
-            "objects": {
-              "count": 83319
-            },
-            "resources": {
-              "count": 134,
-              "bytes": 10200
-            }
-          },
-          "debug_info": {
-            "bytes": 1140622
-          }
-        }
-      ]
+      }
     },
     "resource_usage": {
       "type": "object",
@@ -506,165 +448,7 @@
           "default": 0.0,
           "title": "The total number of seconds image generation took"
         }
-      },
-      "examples": [
-        {
-          "cpu": {
-            "load": 8.38,
-            "total_cores": 10
-          },
-          "garbage_collection": {
-            "count": 17,
-            "total_secs": 0.9245
-          },
-          "memory": {
-            "system_total": 33254146048,
-            "peak_rss_bytes": 3506065408
-          },
-          "total_secs": 16.2
-        }
-      ]
-    }
-  },
-  "examples": [
-    {
-      "general_info": {
-        "name": "helloworld",
-        "graalvm_version": "GraalVM CE 17.0.7+4.1",
-        "graal_compiler": {
-          "march": "x86-64-v3",
-          "optimization_level": "0"
-        },
-        "java_version": "17.0.7+4",
-        "vendor_version": "GraalVM CE 17.0.7+4.1",
-        "c_compiler": "gcc (linux, x86_64, 9.3.0)",
-        "garbage_collector": "Serial GC"
-      },
-      "analysis_results": {
-        "classes": {
-          "total": 3850,
-          "reachable": 2839,
-          "reflection": 28,
-          "jni": 58
-        },
-        "fields": {
-          "total": 6665,
-          "reachable": 3400,
-          "reflection": 0,
-          "jni": 58
-        },
-        "methods": {
-          "total": 29038,
-          "reachable": 12916,
-          "reflection": 332,
-          "jni": 52
-        }
-      },
-      "image_details": {
-        "total_bytes": 13057934,
-        "code_area": {
-          "bytes": 4610048,
-          "compilation_units": 67007
-        },
-        "image_heap": {
-          "bytes": 7307264,
-          "objects": {
-            "count": 83319
-          },
-          "resources": {
-            "count": 134,
-            "bytes": 10200
-          }
-        },
-        "debug_info": {
-          "bytes": 1140622
-        }
-      },
-      "resource_usage": {
-        "cpu": {
-          "load": 8.38,
-          "total_cores": 10
-        },
-        "garbage_collection": {
-          "count": 17,
-          "total_secs": 0.9245
-        },
-        "memory": {
-          "system_total": 33254146048,
-          "peak_rss_bytes": 3506065408
-        },
-        "total_secs": 16.2
-      }
-    },
-    {
-      "general_info": {
-        "name": "helloworld",
-        "graalvm_version": "GraalVM CE 17.0.7+4.1",
-        "graal_compiler": {
-          "march": "x86-64-v3",
-          "optimization_level": "0"
-        },
-        "java_version": "17.0.7+4",
-        "vendor_version": "GraalVM CE 17.0.7+4.1",
-        "c_compiler": null,
-        "garbage_collector": "Serial GC"
-      },
-      "analysis_results": {
-        "classes": {
-          "total": 3850,
-          "reachable": 2839,
-          "reflection": 28,
-          "jni": -1
-        },
-        "fields": {
-          "total": 6665,
-          "reachable": 3400,
-          "reflection": 0,
-          "jni": -1
-        },
-        "methods": {
-          "total": 29038,
-          "reachable": 12916,
-          "reflection": 332,
-          "jni": -1
-        }
-      },
-      "image_details": {
-        "total_bytes": 13057934,
-        "code_area": {
-          "bytes": 4610048,
-          "compilation_units": 67007
-        },
-        "image_heap": {
-          "bytes": 7307264,
-          "objects": {
-            "count": 83319
-          },
-          "resources": {
-            "count": 134,
-            "bytes": 10200
-          }
-        },
-        "runtime_compiled_methods": {
-          "count": 12744,
-          "graph_encoding_bytes": 1440000
-        }
-      },
-      "resource_usage": {
-        "cpu": {
-          "load": -1,
-          "total_cores": 10
-        },
-        "garbage_collection": {
-          "count": 17,
-          "total_secs": 0.9245
-        },
-        "memory": {
-          "system_total": 33254146048,
-          "peak_rss_bytes": -1
-        },
-        "total_secs": 16.2
       }
     }
-  ]
+  }
 }
