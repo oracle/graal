@@ -400,10 +400,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        CEntryPointListenerSupport.singleton().beforeThreadAttach();
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        CEntryPointListenerSupport.singleton().beforeThreadAttach();
         if (MultiThreaded.getValue()) {
             if (!VMThreads.isInitialized()) {
                 error = CEntryPointErrors.UNINITIALIZED_ISOLATE;
@@ -420,7 +420,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             } else {
                 writeCurrentVMThread(thread);
                 if (ensuringJavaThread && !PlatformThreads.isCurrentAssigned()) {
-                    CEntryPointListenerSupport.singleton().errorThreadAttach(CEntryPointErrors.UNSPECIFIED);
                     throw VMError.shouldNotReachHere("thread was already attached but does not have a Thread object and we would assign one");
                 }
             }

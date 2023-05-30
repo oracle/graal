@@ -26,8 +26,17 @@ package com.oracle.svm.core.graal.snippets;
 
 import com.oracle.svm.core.Uninterruptible;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
 public interface CEntryPointListener {
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+
+    @Fold
+    static CEntryPointListener singleton() {
+        return ImageSingletons.lookup(CEntryPointListener.class);
+    }
+
+    @Uninterruptible(reason = "Heap base is not set up yet.")
     default void beforeThreadAttach() {
     }
 

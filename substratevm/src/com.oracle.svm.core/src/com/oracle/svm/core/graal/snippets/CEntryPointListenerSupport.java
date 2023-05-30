@@ -24,50 +24,36 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import java.util.Arrays;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 @AutomaticallyRegisteredImageSingleton
 public class CEntryPointListenerSupport {
-    private CEntryPointListener[] listeners;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public CEntryPointListenerSupport() {
-        listeners = new CEntryPointListener[0];
-    }
 
     @Fold
     public static CEntryPointListenerSupport singleton() {
         return ImageSingletons.lookup(CEntryPointListenerSupport.class);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void register(CEntryPointListener listener) {
-        assert listener != null;
-        int oldLength = listeners.length;
-        // We expect a very small number of listeners, so only increase the size by 1.
-        listeners = Arrays.copyOf(listeners, oldLength + 1);
-        listeners[oldLength] = listener;
+    @Fold
+    public static boolean isInstalled() {
+        return ImageSingletons.contains(CEntryPointListener.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void beforeThreadAttach() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].beforeThreadAttach();
+        if (isInstalled()) {
+            CEntryPointListener.singleton().beforeThreadAttach();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void afterThreadAttach() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].afterThreadAttach();
+        if (isInstalled()) {
+            CEntryPointListener.singleton().afterThreadAttach();
         }
     }
 
@@ -80,8 +66,8 @@ public class CEntryPointListenerSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void beforeThreadDetach() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].beforeThreadDetach();
+        if (isInstalled()) {
+            CEntryPointListener.singleton().beforeThreadDetach();
         }
     }
 }
