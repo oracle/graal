@@ -112,7 +112,7 @@ public class LocalizationSupport {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(appClassLoader.getUnnamedModule(), resourceName);
                 } else {
                     for (Module m : ModuleLayer.boot().modules()) {
-                        if (m.getClassLoader().getResource(resourceName) != null) {
+                        if (m.getClassLoader() != null && m.getClassLoader().getResource(resourceName) != null) {
                             ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
                         }
                     }
