@@ -428,7 +428,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (reason == ParsingReason.JITCompilation) {
+        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
             return;
         }
 
