@@ -322,19 +322,20 @@ public class Experiment {
 
             @Override
             public boolean hasNext() {
-                return methodIterator.hasNext() || (compilationUnitIterator != null && compilationUnitIterator.hasNext());
+                skipMethodsWithoutCompilationUnits();
+                return compilationUnitIterator != null && compilationUnitIterator.hasNext();
             }
 
             @Override
             public CompilationUnit next() {
-                while (compilationUnitIterator == null || !compilationUnitIterator.hasNext()) {
-                    Method nextMethod = methodIterator.next();
-                    if (nextMethod == null) {
-                        return null;
-                    }
-                    compilationUnitIterator = nextMethod.getCompilationUnits().iterator();
-                }
+                skipMethodsWithoutCompilationUnits();
                 return compilationUnitIterator.next();
+            }
+
+            private void skipMethodsWithoutCompilationUnits() {
+                while (methodIterator.hasNext() && (compilationUnitIterator == null || !compilationUnitIterator.hasNext())) {
+                    compilationUnitIterator = methodIterator.next().getCompilationUnits().iterator();
+                }
             }
         };
     }
