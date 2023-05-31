@@ -437,7 +437,7 @@ public class SubstrateGraphBuilderPlugins {
                     Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
                     boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass.getModule().getName(), callerClass.getPackageName(),
                                     callerClass.getName());
-                    if (callerInScope && reason != ParsingReason.JITCompilation) {
+                    if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
                         b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
                         return true;
                     }

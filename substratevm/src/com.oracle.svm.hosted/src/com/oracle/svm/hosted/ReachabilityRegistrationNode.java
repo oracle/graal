@@ -78,7 +78,7 @@ public final class ReachabilityRegistrationNode extends FixedWithNextNode implem
     }
 
     public static ReachabilityRegistrationNode create(Runnable registrationHandler, ParsingReason reason) {
-        VMError.guarantee(reason != ParsingReason.JITCompilation);
+        VMError.guarantee(reason.duringAnalysis() && reason != ParsingReason.JITCompilation);
         return new ReachabilityRegistrationNode(registrationHandler);
     }
 

@@ -264,7 +264,7 @@ public final class ReflectionPlugins {
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
-        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason != ParsingReason.JITCompilation) {
+        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
