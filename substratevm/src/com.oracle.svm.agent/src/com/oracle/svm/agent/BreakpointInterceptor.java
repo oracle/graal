@@ -26,7 +26,6 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.core.util.VMError.guaranteeConcat;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -1547,7 +1546,9 @@ final class BreakpointInterceptor {
             return null;
         }
         Breakpoint bp = new Breakpoint(br, clazz, method);
-        guaranteeConcat(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: ", bp);
+        if (map.put(method.rawValue(), bp) != null) {
+            throw VMError.shouldNotReachHere("Duplicate breakpoint: " + bp);
+        }
         return bp;
     }
 

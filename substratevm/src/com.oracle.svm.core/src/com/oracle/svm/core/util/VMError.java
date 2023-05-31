@@ -184,27 +184,6 @@ public final class VMError {
     }
 
     /**
-     * A {@link #guarantee} variant that concatenates {@linkplain Object#toString strings} to be
-     * safe to use at run time.
-     *
-     * @see #shouldNotReachHere(String, Object...)
-     */
-    public static void guaranteeConcat(boolean condition, Object arg1, Object arg2) {
-        if (!condition) {
-            throw shouldNotReachHere(arg1.toString() + arg2);
-        }
-    }
-
-    /**
-     * @see #guaranteeConcat(boolean, Object, Object, Object)
-     */
-    public static void guaranteeConcat(boolean condition, Object arg1, Object arg2, Object arg3) {
-        if (!condition) {
-            throw shouldNotReachHere(arg1.toString() + arg2 + arg3);
-        }
-    }
-
-    /**
      * A lower-level feature that is not yet supported (but might be implemented later, if
      * relevant).
      */
