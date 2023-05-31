@@ -67,8 +67,9 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
-        super(defaultLocale, locales, defaultCharset);
+    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool,
+                    ClassLoader appClassLoader) {
+        super(defaultLocale, locales, defaultCharset, appClassLoader);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
     }

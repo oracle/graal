@@ -264,7 +264,7 @@ public class LocalizationFeature implements InternalFeature {
             throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
         allLocales.add(defaultLocale);
-        support = selectLocalizationSupport();
+        support = selectLocalizationSupport(access.getApplicationClassLoader());
         ImageSingletons.add(LocalizationSupport.class, support);
 
         addCharsets();
@@ -322,14 +322,14 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private LocalizationSupport selectLocalizationSupport() {
+    private LocalizationSupport selectLocalizationSupport(ClassLoader appClassLoader) {
         if (optimizedMode) {
-            return new OptimizedLocalizationSupport(defaultLocale, allLocales, defaultCharset);
+            return new OptimizedLocalizationSupport(defaultLocale, allLocales, defaultCharset, appClassLoader);
         } else if (substituteLoadLookup) {
             List<String> requestedPatterns = Options.LocalizationCompressBundles.getValue().values();
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, defaultCharset, requestedPatterns, compressionPool);
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, defaultCharset, requestedPatterns, compressionPool, appClassLoader);
         }
-        return new LocalizationSupport(defaultLocale, allLocales, defaultCharset);
+        return new LocalizationSupport(defaultLocale, allLocales, defaultCharset, appClassLoader);
     }
 
     @Override

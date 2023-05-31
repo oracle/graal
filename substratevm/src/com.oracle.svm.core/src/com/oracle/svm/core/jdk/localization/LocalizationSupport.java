@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.IllformedLocaleException;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -69,11 +70,14 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
+    private final ClassLoader appClassLoader;
+
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, ClassLoader appClassLoader) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
         this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
+        this.appClassLoader = appClassLoader;
     }
 
     public boolean optimizedMode() {
@@ -101,14 +105,23 @@ public class LocalizationSupport {
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
-            String resultingPattern;
+            String resourceName;
             if (bundleNameWithModule.length < 2) {
-                resultingPattern = control.toBundleName(bundleName, locale).replace('.', '/');
+                resourceName = control.toBundleName(bundleName, locale).replace('.', '/');
+                if (appClassLoader.getResource(resourceName) != null) {
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(appClassLoader.getUnnamedModule(), resourceName);
+                } else {
+                    for (Module m : ModuleLayer.boot().modules()) {
+                        if (m.getClassLoader().getResource(resourceName) != null) {
+                            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
+                        }
+                    }
+                }
             } else {
-                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
-                resultingPattern = bundleNameWithModule[0] + ':' + patternWithLocale;
+                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+                Optional<Module> module = ModuleLayer.boot().findModule(bundleNameWithModule[0]);
+                module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName));
             }
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
         } else {
             registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
             RuntimeReflection.register(bundle.getClass());
