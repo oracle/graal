@@ -216,7 +216,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSerializationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
-        if (reason.duringAnalysis()) {
+        if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
             serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
                 @Override
@@ -228,7 +228,7 @@ public class SubstrateGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
                     if (nonNullJavaConstants(patternNode)) {
                         String pattern = snippetReflection.asObject(String.class, patternNode.asJavaConstant());
-                        b.add(new ReachabilityRegistrationNode(() -> parsePatternAndRegister(pattern)));
+                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(pattern), reason));
                         return true;
                     }
                     return false;
@@ -245,7 +245,7 @@ public class SubstrateGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
                     if (nonNullJavaConstants(receiver.get(), clazz)) {
-                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant()))));
+                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant())), reason));
                         return true;
                     }
                     return false;
@@ -262,8 +262,8 @@ public class SubstrateGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
                     if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
                         var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
-                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
-                                        constructorDeclaringClass)));
+                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
+                                        constructorDeclaringClass), reason));
                         return true;
                     }
                     return false;
@@ -417,13 +417,13 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
         if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
-            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "getProxyClass", ClassLoader.class, Class[].class);
-            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "getProxyClass", ClassLoader.class, Class[].class);
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
         }
     }
 
-    private static void registerProxyPlugin(Registration proxyRegistration, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, String name,
-                    Class<?>... parameterTypes) {
+    private static void registerProxyPlugin(Registration proxyRegistration, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ParsingReason reason,
+                    String name, Class<?>... parameterTypes) {
         proxyRegistration.register(new RequiredInvocationPlugin(name, parameterTypes) {
             @Override
             public boolean isDecorator() {
@@ -437,8 +437,8 @@ public class SubstrateGraphBuilderPlugins {
                     Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
                     boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass.getModule().getName(), callerClass.getPackageName(),
                                     callerClass.getName());
-                    if (callerInScope) {
-                        b.add(new ReachabilityRegistrationNode(proxyRegistrationRunnable));
+                    if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+                        b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
                         return true;
                     }
 
