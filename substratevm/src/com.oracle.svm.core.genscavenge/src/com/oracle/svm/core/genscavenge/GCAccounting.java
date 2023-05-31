@@ -198,15 +198,21 @@ public final class GCAccounting {
 
         UnsignedWord beforeChunkBytes = youngChunkBytesBefore.add(oldChunkBytesBefore);
         UnsignedWord afterChunkBytes = youngChunkBytesAfter.add(oldChunkBytesAfter);
-        assert beforeChunkBytes.aboveOrEqual(afterChunkBytes);
-        UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
-        totalCollectedChunkBytes = totalCollectedChunkBytes.add(collectedChunkBytes);
+
+        /*
+         * A GC may slightly increase the number of chunk bytes if it doesn't free any memory (the
+         * order of objects may change, which can affect the bytes consumed by fragmentation).
+         */
+        if (beforeChunkBytes.aboveOrEqual(afterChunkBytes)) {
+            UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
+            totalCollectedChunkBytes = totalCollectedChunkBytes.add(collectedChunkBytes);
+        }
 
         if (SerialGCOptions.PrintGCSummary.getValue()) {
-            UnsignedWord youngObjectBytesAfter = youngGen.computeObjectBytes();
-            UnsignedWord oldObjectBytesAfter = oldGen.computeObjectBytes();
+            UnsignedWord afterObjectBytesAfter = youngGen.computeObjectBytes().add(oldGen.computeObjectBytes());
             UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
-            UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
+            assert beforeObjectBytes.aboveOrEqual(afterObjectBytesAfter);
+            UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(afterObjectBytesAfter);
             totalCollectedObjectBytes = totalCollectedObjectBytes.add(collectedObjectBytes);
         }
     }
