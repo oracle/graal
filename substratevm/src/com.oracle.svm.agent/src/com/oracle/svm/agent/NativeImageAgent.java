@@ -406,7 +406,9 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private static void warn(String message) {
+        // Checkstyle: allow raw info or warning printing
         inform("Warning: " + message);
+        // Checkstyle: disallow raw info or warning printing
     }
 
     private static <T> T error(T result, String message) {

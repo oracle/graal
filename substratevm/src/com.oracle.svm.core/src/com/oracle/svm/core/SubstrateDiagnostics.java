@@ -888,7 +888,9 @@ public class SubstrateDiagnostics {
                 int expectedStackAlignment = ConfigurationValues.getTarget().stackAlignment;
                 if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
                     log.newline();
+                    // Checkstyle: allow raw info or warning printing
                     log.string("Warning: stack pointer is not aligned to ").signed(expectedStackAlignment).string(" bytes.").newline();
+                    // Checkstyle: disallow raw info or warning printing
                 }
 
                 startStackWalkInMostLikelyCaller(log, invocationCount, sp);

@@ -27,6 +27,7 @@ package com.oracle.svm.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+// Checkstyle: allow raw info or warning printing
 public class LogUtils {
     /**
      * Print an info message.

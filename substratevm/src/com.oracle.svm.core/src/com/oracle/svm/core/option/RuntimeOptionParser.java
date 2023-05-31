@@ -174,7 +174,9 @@ public final class RuntimeOptionParser {
         OptionDescriptor descriptor = option.getDescriptor();
         if (descriptor != null && descriptor.isDeprecated()) {
             Log log = Log.log();
+            // Checkstyle: allow raw info or warning printing
             log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
+            // Checkstyle: disallow raw info or warning printing
             String deprecationMessage = descriptor.getDeprecationMessage();
             if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
                 log.string(": ").string(deprecationMessage);

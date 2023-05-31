@@ -39,6 +39,21 @@
     </module>
 
     <module name="RegexpSinglelineJava">
+      <property name="id" value="infoAndWarningMessages"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Raw info or warning printing."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="(?i)&quot;(Info|Warning):"/>
+      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or #LogUtils#warning"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow raw info or warning printing"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow raw info or warning printing"/>
+      <property name="idFormat" value="infoAndWarningMessages"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Tolerate raw info or warning printing"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="newLinesFormatStrings"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Proper new lines in format strings"/>
       <property name="severity" value="error"/> 

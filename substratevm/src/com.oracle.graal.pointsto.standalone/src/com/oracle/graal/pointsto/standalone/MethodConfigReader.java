@@ -104,7 +104,9 @@ public class MethodConfigReader {
                         workWithMethod(method, bigbang, classLoader, actionForEachMethod);
                         validMethodsNum.incrementAndGet();
                     } catch (Throwable t) {
+                        // Checkstyle: allow raw info or warning printing
                         debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method " + method + " as analysis root method. Reason: " + t.getMessage());
+                        // Checkstyle: disallow raw info or warning printing
                     }
                 }
             });
