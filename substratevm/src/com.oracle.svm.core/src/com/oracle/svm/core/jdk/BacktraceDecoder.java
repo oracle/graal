@@ -63,11 +63,14 @@ public abstract class BacktraceDecoder {
                 if (BacktraceVisitor.isSourceReference(entry)) {
                     /* Entry is an encoded source reference. */
                     VMError.guarantee(backtraceIndex + BacktraceVisitor.MAX_ENTRIES_PER_FRAME <= trace.length, "Truncated backtrace array");
-                    backtraceIndex += visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
+                    visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
+                    /* Always a single frame. */
                     framesDecoded++;
+                    backtraceIndex += BacktraceVisitor.MAX_ENTRIES_PER_FRAME;
                 } else {
                     /* Entry is a raw code pointer. */
                     CodePointer ip = WordFactory.pointer(entry);
+                    /* Arbitrary number of Java frames for a single native frame (inlining). */
                     framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
                     backtraceIndex++;
                 }
@@ -79,7 +82,7 @@ public abstract class BacktraceDecoder {
         return framesDecoded - maxFramesProcessed;
     }
 
-    private int visitSourceReference(int maxFramesProcessed, int framesDecoded, long[] trace, int backtraceIndex) {
+    private void visitSourceReference(int maxFramesProcessed, int framesDecoded, long[] trace, int backtraceIndex) {
         int sourceLineNumber = BacktraceVisitor.readSourceLineNumber(trace, backtraceIndex);
         Class<?> sourceClass = BacktraceVisitor.readSourceClass(trace, backtraceIndex);
         String sourceMethodName = BacktraceVisitor.readSourceMethodName(trace, backtraceIndex);
@@ -87,7 +90,6 @@ public abstract class BacktraceDecoder {
         if (framesDecoded < maxFramesProcessed) {
             processSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
         }
-        return BacktraceVisitor.MAX_ENTRIES_PER_FRAME;
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
