@@ -50,6 +50,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.FrameTypeConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.GCCauseConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.GCNameConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
@@ -60,8 +61,6 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
-
 
 public class JfrFileParser {
     private final Path path;

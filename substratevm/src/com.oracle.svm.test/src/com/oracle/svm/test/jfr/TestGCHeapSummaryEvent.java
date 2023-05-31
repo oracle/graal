@@ -37,10 +37,9 @@ import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
 public class TestGCHeapSummaryEvent extends JfrRecordingTest {
-
     @Test
     public void test() throws Throwable {
-        String[] events = new String[] {JfrEvent.GCHeapSummary.getName() };
+        String[] events = new String[]{JfrEvent.GCHeapSummary.getName()};
         Recording recording = startRecording(events);
 
         System.gc();
