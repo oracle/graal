@@ -260,6 +260,67 @@ public class StackTraceUtils {
 /**
  * Visits the stack frames and collects a backtrace in an internal format to be stored in
  * {@link Target_java_lang_Throwable#backtrace}.
+ *
+ * The {@link Target_java_lang_Throwable#backtrace} is a {@code long} array that either stores a
+ * native instruction pointer (for AOT compiled methods) or an encoded Java source reference
+ * containing a source line number, a source class and a source method name (for JIT compiled
+ * methods). A native instruction pointer is always a single {@code long} element, while an encoded
+ * Java source reference takes {@linkplain #MAX_ENTRIES_PER_FRAME 2 elements} if references are
+ * {@link #useCompressedReferences() compressed}, or 3 otherwise. Native instruction pointers and
+ * source references can be mixed. The source line number of the source reference is
+ * {@linkplain #encodeLineNumber encoded} in a way that it can be distinguished from a native
+ * instruction pointer.
+ *
+ * <h2>Uncompressed References</h2>
+ * 
+ * <pre>
+ *                      backtrace content      |   Number of Java frames
+ *                    ---------------------------------------------------
+ * backtrace[pos + 0] | native inst. pointer   |   X Java frames
+ *                    --------------------------
+ * backtrace[pos + 1] | native inst. pointer   |   Y Java frames
+ *                    --------------------------
+ * backtrace[pos + 2] | encoded src line nr    |   1 Java frame
+ * backtrace[pos + 3] | source class ref       |
+ * backtrace[pos + 4] | source method name ref |
+ *                    --------------------------
+ * backtrace[pos + 5] | encoded src line nr    |   1 Java frame
+ * backtrace[pos + 6] | source class ref       |
+ * backtrace[pos + 7] | source method name ref |
+ *                    --------------------------
+ * backtrace[pos + 8] | native inst. pointer   |   Z Java frames
+ *                    --------------------------
+ *                    | ... remaining          |
+ *                    --------------------------
+ *                    | 0                      |   0 terminated if not all elements are used
+ * </pre>
+ *
+ * <h2>Compressed References</h2>
+ * 
+ * <pre>
+ *                      backtrace content                                   |   Number of Java frames
+ *                    --------------------------------------------------------------------------------
+ * backtrace[pos + 0] | native inst. pointer                                |   X Java frames
+ *                    -------------------------------------------------------
+ * backtrace[pos + 1] | native inst. pointer                                |   Y Java frames
+ *                    -------------------------------------------------------
+ * backtrace[pos + 2] | encoded src line nr                                 |   1 Java frame
+ * backtrace[pos + 3] | (source class ref) << 32 | (source method name ref) |
+ *                    -------------------------------------------------------
+ * backtrace[pos + 4] | encoded src line nr                                 |   1 Java frame
+ * backtrace[pos + 5] | (source class ref) << 32 | (source method name ref) |
+ *                    -------------------------------------------------------
+ * backtrace[pos + 5] | native inst. pointer                                |   Z Java frames
+ *                    -------------------------------------------------------
+ *                    | ... remaining                                       |
+ *                    -------------------------------------------------------
+ *                    | 0                                                   |   0 terminated if not all elements are used
+ * </pre>
+ *
+ * @see #writeSourceReference writes the source references into the backtrace array
+ * @see #visitAOTFrame writes a native instruction pointer into the backtrace array
+ * @see BacktraceDecoder decodes the backtrace array
+ *
  */
 final class BacktraceVisitor extends StackFrameVisitor {
 
@@ -360,7 +421,8 @@ final class BacktraceVisitor extends StackFrameVisitor {
         VMError.guarantee(Heap.getHeap().isInImageHeap(sourceMethodName), "Source method name string must be in the image heap");
 
         ensureSize(index + MAX_ENTRIES_PER_FRAME);
-        index += writeSourceReference(trace, index, sourceLineNumber, sourceClass, sourceMethodName);
+        writeSourceReference(trace, index, sourceLineNumber, sourceClass, sourceMethodName);
+        index += MAX_ENTRIES_PER_FRAME;
         numFrames++;
         return numFrames != limit;
     }
@@ -410,9 +472,12 @@ final class BacktraceVisitor extends StackFrameVisitor {
     /**
      * Writes source reference to a backtrace array.
      *
-     * @return the numbers of elements written
+     * @see #readSourceLineNumber
+     * @see #readSourceClass
+     * @see #readSourceMethodName
      */
-    static int writeSourceReference(long[] backtrace, int pos, int sourceLineNumber, Class<?> sourceClass, String sourceMethodName) {
+    static void writeSourceReference(long[] backtrace, int pos, int sourceLineNumber, Class<?> sourceClass, String sourceMethodName) {
+        // TODO document frame format
         long encodedLineNumber = encodeLineNumber(sourceLineNumber);
         if (!isSourceReference(encodedLineNumber)) {
             throw VMError.shouldNotReachHere("Encoded line number looks like a code pointer: " + encodedLineNumber);
@@ -421,12 +486,13 @@ final class BacktraceVisitor extends StackFrameVisitor {
         if (useCompressedReferences()) {
             long sourceClassOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceClass).rawValue());
             long sourceMethodNameOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceMethodName).rawValue());
-            backtrace[pos + 1] = (sourceClassOop << 32) | (0xfffffffL & sourceMethodNameOop);
+            VMError.guarantee((0xffffffff_00000000L & sourceClassOop) == 0L, "Compressed source class reference with high bits");
+            VMError.guarantee((0xffffffff_00000000L & sourceMethodNameOop) == 0L, "Compressed source methode name reference with high bits");
+            backtrace[pos + 1] = (sourceClassOop << 32) | sourceMethodNameOop;
         } else {
             backtrace[pos + 1] = assertNonZero(Word.objectToUntrackedPointer(sourceClass).rawValue());
             backtrace[pos + 2] = assertNonZero(Word.objectToUntrackedPointer(sourceMethodName).rawValue());
         }
-        return MAX_ENTRIES_PER_FRAME;
     }
 
     /**
@@ -436,6 +502,8 @@ final class BacktraceVisitor extends StackFrameVisitor {
      * @param backtrace the backtrace array
      * @param pos the start position of the source reference entry
      * @return the source line number
+     *
+     * @see #writeSourceReference
      */
     static int readSourceLineNumber(long[] backtrace, int pos) {
         return BacktraceVisitor.decodeLineNumber(backtrace[pos]);
