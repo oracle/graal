@@ -809,6 +809,8 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
+    # set property controlling inclusion of foreign struct header
+    args.append("-DbuildDebugInfoTestExample=true")
 
     native_image_args = [
         '--native-compiler-options=-I' + cincludepath,
