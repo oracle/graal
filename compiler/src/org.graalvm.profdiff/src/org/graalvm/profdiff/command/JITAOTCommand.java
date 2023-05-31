@@ -35,9 +35,9 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.core.Writer;
 
 /**
- * Compares a JIT-compiled experiment with an AOT experiment. All methods that are hot in JIT or
- * inlined in a hot JIT method are marked as hot in the AOT experiment. It is also possible to
- * provide an additional AOT profile.
+ * Compares a JIT-compiled experiment with an AOT experiment. It is possible to provide a profile of
+ * the AOT experiment. If no AOT profile is provided, all methods that are hot or inlined in a hot
+ * JIT method are marked hot in the AOT experiment.
  */
 public class JITAOTCommand implements Command {
     private final ArgumentParser argumentParser;
@@ -91,18 +91,19 @@ public class JITAOTCommand implements Command {
         Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
         if (aotProftoolArgument.isSet()) {
             writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot);
+        } else {
+            for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
+                if (!jitUnit.isHot()) {
+                    continue;
+                }
+                jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
+                    if (node.isPositive() && node.getName() != null) {
+                        aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                    }
+                });
+            }
         }
         aot.writeExperimentSummary(writer);
-        for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
-            if (!jitUnit.isHot()) {
-                continue;
-            }
-            jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
-                if (node.isPositive() && node.getName() != null) {
-                    aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
-                }
-            });
-        }
 
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit, aot));
