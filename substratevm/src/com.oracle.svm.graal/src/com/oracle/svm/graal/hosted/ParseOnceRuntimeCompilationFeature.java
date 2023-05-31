@@ -269,7 +269,14 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         protected boolean shouldVerifyFrameStates() {
-            return true;
+            /*
+             * (GR-46115) Ideally we should verify frame states in methods registered for runtime
+             * compilations, as well as any other methods that can deoptimize. Because runtime
+             * compiled methods can pull in almost arbitrary code, this means most frame states
+             * should be verified. We currently use illegal states as placeholders in many places,
+             * so this cannot be enabled at the moment.
+             */
+            return false;
         }
     }
 
