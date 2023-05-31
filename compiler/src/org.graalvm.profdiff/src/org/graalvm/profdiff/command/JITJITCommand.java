@@ -50,13 +50,13 @@ public class JITJITCommand implements Command {
     public JITJITCommand() {
         argumentParser = new ArgumentParser();
         optimizationLogArgument1 = argumentParser.addStringArgument(
-                        "optimization_log_1", "directory with optimization logs for each compilation unit in the first experiment");
+                        "optimization_log_1", "directory with optimization logs of the first JIT experiment");
         proftoolArgument1 = argumentParser.addStringArgument(
-                        "proftool_output_1", "proftool output of the first experiment in JSON");
+                        "proftool_output_1", "proftool output of the first JIT experiment in JSON");
         optimizationLogArgument2 = argumentParser.addStringArgument(
-                        "optimization_log_2", "directory with optimization logs for each compilation unit in the second experiment");
+                        "optimization_log_2", "directory with optimization logs of the second JIT experiment");
         proftoolArgument2 = argumentParser.addStringArgument(
-                        "proftool_output_2", "proftool output of the second experiment in JSON");
+                        "proftool_output_2", "proftool output of the second JIT experiment in JSON");
     }
 
     @Override

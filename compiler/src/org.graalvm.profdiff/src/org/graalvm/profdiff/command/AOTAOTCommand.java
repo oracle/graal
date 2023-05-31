@@ -51,11 +51,11 @@ public class AOTAOTCommand implements Command {
     public AOTAOTCommand() {
         argumentParser = new ArgumentParser();
         optimizationLogArgument1 = argumentParser.addStringArgument(
-                        "aot_optimization_log_1", "directory with optimization logs of the first AOT experiment");
+                        "optimization_log_1", "directory with optimization logs of the first AOT experiment");
         proftoolArgument1 = argumentParser.addStringArgument(
                         "proftool_output_1", "proftool output of the first AOT experiment in JSON");
         optimizationLogArgument2 = argumentParser.addStringArgument(
-                        "aot_optimization_log_2", "directory with optimization logs of the second AOT experiment");
+                        "optimization_log_2", "directory with optimization logs of the second AOT experiment");
         proftoolArgument2 = argumentParser.addStringArgument(
                         "proftool_output_2", "proftool output of the second AOT experiment in JSON");
     }

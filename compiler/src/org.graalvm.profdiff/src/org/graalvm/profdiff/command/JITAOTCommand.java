@@ -59,7 +59,7 @@ public class JITAOTCommand implements Command {
         aotOptimizationLogArgument = argumentParser.addStringArgument(
                         "aot_optimization_log", "directory with optimization logs of the AOT compilation");
         aotProftoolArgument = argumentParser.addStringArgument(
-                        "aot_proftool_output", "proftool output of the AOT experiment in JSON");
+                        "aot_proftool_output", null, "proftool output of the AOT experiment in JSON");
     }
 
     @Override
@@ -89,9 +89,7 @@ public class JITAOTCommand implements Command {
 
         writer.writeln();
         Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
-        if (aotProftoolArgument.isSet()) {
-            writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot);
-        } else {
+        if (aotProftoolArgument.getValue() == null) {
             for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
                 if (!jitUnit.isHot()) {
                     continue;
@@ -102,6 +100,8 @@ public class JITAOTCommand implements Command {
                     }
                 });
             }
+        } else {
+            writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot);
         }
         aot.writeExperimentSummary(writer);
 
