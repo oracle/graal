@@ -327,7 +327,7 @@ public class StackTraceUtils {
 final class BacktraceVisitor extends StackFrameVisitor {
 
     /**
-     * Index into {@link #trace}
+     * Index into {@link #trace}.
      */
     private int index = 0;
 
