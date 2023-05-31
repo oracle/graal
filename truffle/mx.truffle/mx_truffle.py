@@ -863,6 +863,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
+# This component is useful only if `SubstrateVM` is included. However, we do
+# not declare a dependency because:
+# - it should be possible to build a GraalVM that includes this macro and not
+#   `SubstrateVM`, which can be installed via `gu`
+# - we prefer to define this component here rather than in the `substratevm`
+#   suite
+# - The `SubstrateVM` component explicitly depends on this macro, to make sure
+#   that it is always present whenever `SubstrateVM` is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
