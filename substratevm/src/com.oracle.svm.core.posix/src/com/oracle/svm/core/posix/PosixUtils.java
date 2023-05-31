@@ -40,10 +40,11 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -254,8 +255,18 @@ public class PosixUtils {
      *
      * Use this or {@code sigaction} directly instead of calling {@code signal} or {@code sigset}:
      * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
+     *
+     * Note that this method should not be called from an initialization hook:
+     * {@code EnableSignalHandling} may not be set correctly at the time initialization hooks run.
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            return installSignalHandler0(signum, handler);
+        }
+    }
+
+    private static Signal.SignalDispatcher installSignalHandler0(int signum, Signal.SignalDispatcher handler) {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         Signal.sigaction old = StackValue.get(Signal.sigaction.class);
 
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
