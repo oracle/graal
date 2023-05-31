@@ -46,7 +46,7 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.EnableSignalAPI.getValue();
+        return VMInspectionOptions.hasHeapDumpSupport();
     }
 
     @Override
@@ -58,7 +58,7 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 final class DumpHeapStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             DumpHeapReport.install();
         }
     }

@@ -129,22 +129,16 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
-
-    private static void validateOnSignalOption(HostedOptionKey<Boolean> optionKey) {
-        if (optionKey.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
-            throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
-                            optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
-        }
-    }
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
 
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //
                         deprecated = true, deprecationMessage = "Please use --" + ENABLE_MONITORING_OPTION) //
         static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false) {
+            @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 EnableMonitoringFeatures.update(values, newValue ? "all" : "");
                 DumpRuntimeCompilationOnSignal.update(values, true);

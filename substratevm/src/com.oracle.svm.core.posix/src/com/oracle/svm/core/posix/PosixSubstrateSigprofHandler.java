@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -44,13 +43,11 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
@@ -60,7 +57,6 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.VMError;
 
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
@@ -85,21 +81,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     }
 
     private static void registerSigprofSignal(Signal.AdvancedSignalDispatcher dispatcher) {
-        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
-        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
-        Signal.sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
-        LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
-
-        /* Register sa_sigaction signal handler */
-        structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER() | Signal.SA_RESTART());
-        structSigAction.sa_sigaction(dispatcher);
-        /*
-         * Note this can race with other signals being installed. However, using Java
-         * synchronization is disallowed within a VMOperation. If race-free execution becomes
-         * necessary, then a VMMutex will be needed and additional code will need to be
-         * made @Uniterruptible so that a thread owning the VMMutex cannot block at a safepoint.
-         */
-        Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
+        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, dispatcher, Signal.SA_NODEFER() | Signal.SA_RESTART());
     }
 
     @Override

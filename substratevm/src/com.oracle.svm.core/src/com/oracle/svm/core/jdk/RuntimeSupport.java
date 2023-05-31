@@ -104,7 +104,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
 
     /**
      * Adds a hook which will execute during the shutdown process. Note it is possible for the
-     * {@link #shutdownHooks} to called without the {@link #startupHooks} executing first.
+     * {@link #shutdownHooks} to be called without the {@link #startupHooks} executing first.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addShutdownHook(Hook hook) {

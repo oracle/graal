@@ -652,6 +652,7 @@ public class SubstrateOptions {
     @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
                     deprecated = true, deprecationMessage = "Please use the -g option.")//
     public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
+        @Override
         public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
             GenerateDebugInfo.update(values, newValue);
         }
@@ -788,24 +789,8 @@ public class SubstrateOptions {
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
-    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
-    public static final HostedOptionKey<Boolean> EnableSignalAPI = new HostedOptionKey<>(null) {
-        @Override
-        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-            if (values.containsKey(this)) {
-                return (Boolean) values.get(this);
-            }
-            return !SharedLibrary.getValueOrDefault(values);
-        }
-
-        @Override
-        public Boolean getValue(OptionValues values) {
-            return getValueOrDefault(values.getMap());
-        }
-    };
-
     @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
-    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null) {
+    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
         @Override
         public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
             if (values.containsKey(this)) {
@@ -824,7 +809,7 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
     /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
-    public static final String getHeapDumpPath(String defaultFilename) {
+    public static String getHeapDumpPath(String defaultFilename) {
         String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
         if (heapDumpFilenameOrDirectory.isEmpty()) {
             return defaultFilename;
