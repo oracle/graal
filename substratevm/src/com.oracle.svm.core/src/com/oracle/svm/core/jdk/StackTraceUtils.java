@@ -49,7 +49,9 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -370,14 +372,14 @@ final class BacktraceVisitor extends StackFrameVisitor {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (deoptimizedFrame != null) {
+        if (DeoptimizationSupport.enabled() && deoptimizedFrame != null) {
             for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
                 FrameInfoQueryResult frameInfo = frame.getFrameInfo();
                 if (!visitFrameInfo(frameInfo)) {
                     return false;
                 }
             }
-        } else if (!isAOTCodePointer(ip)) {
+        } else if (RuntimeCompilation.isEnabled() && !isAOTCodePointer(ip)) {
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrameInfo(frameInfo)) {
@@ -385,6 +387,8 @@ final class BacktraceVisitor extends StackFrameVisitor {
                 }
             }
         } else {
+            VMError.guarantee(deoptimizedFrame == null, "deoptimizedFrame non-null");
+            VMError.guarantee(isAOTCodePointer(ip), "Trying to store native instruction pointer of a JIT method");
             visitAOTFrame(ip);
         }
         return numFrames != limit;
