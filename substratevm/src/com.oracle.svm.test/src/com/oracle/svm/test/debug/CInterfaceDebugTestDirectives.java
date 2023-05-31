@@ -32,6 +32,11 @@ import org.graalvm.nativeimage.c.CContext;
 public class CInterfaceDebugTestDirectives implements CContext.Directives {
 
     @Override
+    public boolean isInConfiguration() {
+        return "true".equals(System.getProperty("buildDebugInfoTestExample"));
+    }
+
+    @Override
     public List<String> getHeaderFiles() {
         return List.of("<systemjava_debugtest.h>");
     }
