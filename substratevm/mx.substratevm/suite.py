@@ -183,9 +183,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "compiler:GRAAL",
             ],
-            "requires" : [
-                "java.instrument",
-            ],
             "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
             },
@@ -607,7 +604,6 @@ suite = {
                 "com.oracle.graal.reachability"
             ],
             "requires" : [
-                "java.instrument",
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.unsupported",
