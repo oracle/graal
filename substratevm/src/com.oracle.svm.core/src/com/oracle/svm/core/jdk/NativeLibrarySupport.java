@@ -26,7 +26,9 @@ package com.oracle.svm.core.jdk;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -74,7 +76,7 @@ public final class NativeLibrarySupport {
 
     private LibraryInitializer libraryInitializer;
 
-    NativeLibrarySupport() {
+    public NativeLibrarySupport() {
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -91,6 +93,24 @@ public final class NativeLibrarySupport {
     @Platforms(HOSTED_ONLY.class)
     public boolean isPreregisteredBuiltinLibrary(String name) {
         return knownLibraries.stream().anyMatch(l -> l.isBuiltin() && l.getCanonicalIdentifier().equals(name));
+    }
+
+    /**
+     * Leaves name resolution to the underlying library loading mechanism (e.g. dlopen)
+     */
+    public void loadLibraryPlatformSpecific(String name) {
+        if (addLibrary(false, name, true)) {
+            return;
+        }
+        throw new UnsatisfiedLinkError("Can't load library: " + name);
+    }
+
+    public void loadLibraryPlatformSpecific(Path path) {
+        try {
+            loadLibraryPlatformSpecific(path.toRealPath().toString());
+        } catch (IOException e) {
+            throw new UnsatisfiedLinkError("Can't load library: " + path);
+        }
     }
 
     public void loadLibraryAbsolute(File file) {
@@ -133,7 +153,7 @@ public final class NativeLibrarySupport {
                 return;
             }
         }
-        throw new UnsatisfiedLinkError("No " + name + " in java.library.path");
+        throw new UnsatisfiedLinkError("No " + name + " in java.library.path (" + Arrays.toString(usrPaths) + ")");
     }
 
     /** Returns the directory containing the native image, or {@code null}. */
@@ -211,6 +231,21 @@ public final class NativeLibrarySupport {
                 knownLibraries.add(lib);
             }
             return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void unloadAllLibraries() {
+        lock.lock();
+        try {
+            for (NativeLibrary known : knownLibraries) {
+                if (known.isLoaded()) {
+                    if (!known.unload()) {
+                        throw new IllegalStateException("Could not unload library: " + known.getCanonicalIdentifier());
+                    }
+                }
+            }
         } finally {
             lock.unlock();
         }
