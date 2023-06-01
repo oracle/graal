@@ -177,6 +177,10 @@ public final class VMError {
         }
     }
 
+    /**
+     * @see #shouldNotReachHere(String, Object...)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
         if (!condition) {
             throw shouldNotReachHere(msg, arg1, arg2, arg3, arg4, arg5);
