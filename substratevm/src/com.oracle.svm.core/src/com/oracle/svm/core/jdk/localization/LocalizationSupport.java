@@ -107,7 +107,7 @@ public class LocalizationSupport {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
             if (bundleNameWithModule.length < 2) {
-                resourceName = control.toBundleName(bundleName, locale).replace('.', '/');
+                resourceName = control.toBundleName(bundleName, locale).replace('.', '/').concat(".properties");
                 if (appClassLoader.getResource(resourceName) != null) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(appClassLoader.getUnnamedModule(), resourceName);
                 } else {
@@ -118,7 +118,7 @@ public class LocalizationSupport {
                     }
                 }
             } else {
-                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
                 Optional<Module> module = ModuleLayer.boot().findModule(bundleNameWithModule[0]);
                 module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName));
             }
