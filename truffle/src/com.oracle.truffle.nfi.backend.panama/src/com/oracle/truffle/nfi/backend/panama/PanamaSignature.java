@@ -68,10 +68,10 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
@@ -80,23 +80,20 @@ final class PanamaSignature {
 
     @TruffleBoundary
     public static PanamaSignature create(PanamaNFIContext context, CachedSignatureInfo info, MethodType upcallType) {
-        return new PanamaSignature(info.functionDescriptor, upcallType, info, context.getScope());
+        return new PanamaSignature(info.functionDescriptor, upcallType, info);
     }
 
     private final @SuppressWarnings("preview") FunctionDescriptor functionDescriptor;
 
-    final @SuppressWarnings("preview") SegmentScope scope;
     final CachedSignatureInfo signatureInfo;
 
     private final MethodType upcallType;
 
-    PanamaSignature(@SuppressWarnings("preview") FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo,
-                    @SuppressWarnings("preview") SegmentScope scope) {
+    PanamaSignature(@SuppressWarnings("preview") FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo) {
         this.functionDescriptor = functionDescriptor;
         this.upcallType = upcallType;
 
         this.signatureInfo = signatureInfo;
-        this.scope = scope;
     }
 
     @ExportMessage
@@ -154,8 +151,8 @@ final class PanamaSignature {
     MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
-        SegmentScope scope = PanamaNFIContext.get(null).getScope();
-        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, scope);
+        Arena arena = PanamaNFIContext.get(null).getContextArena();
+        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, arena);
     }
 
     @ExportMessage

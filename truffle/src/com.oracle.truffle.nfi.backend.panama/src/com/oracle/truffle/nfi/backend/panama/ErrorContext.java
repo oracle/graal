@@ -84,7 +84,7 @@ public class ErrorContext {
         MemorySegment t = linker.defaultLookup().find("__errno_location").get();
         MethodHandle handle = linker.downcallHandle(desc);
         try {
-            return MemorySegment.ofAddress((long) handle.invokeExact(t), 4, ctx.getScope());
+            return MemorySegment.ofAddress((long) handle.invokeExact(t));
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }

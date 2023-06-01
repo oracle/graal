@@ -47,7 +47,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.SegmentScope;
 
 class PanamaNFIContext {
 
@@ -62,7 +61,7 @@ class PanamaNFIContext {
 
     @SuppressWarnings("preview")
     void initialize() {
-        arena = Arena.openShared();
+        arena = Arena.ofShared();
     }
 
     void patchEnv(Env env) {
@@ -76,8 +75,8 @@ class PanamaNFIContext {
     }
 
     @SuppressWarnings("preview")
-    SegmentScope getScope() {
-        return arena.scope();
+    Arena getContextArena() {
+        return arena;
     }
 
     @TruffleBoundary

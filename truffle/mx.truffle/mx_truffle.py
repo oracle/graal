@@ -236,7 +236,7 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
-    if jdk.javaCompliance >= '20':
+    if jdk.javaCompliance >= '21':
         with Task('Truffle NFI tests with Panama Backend', tasks) as t:
             if t:
                 testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output

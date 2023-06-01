@@ -753,12 +753,12 @@ suite = {
     "com.oracle.truffle.nfi.backend.panama" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "javaPreviewNeeded" : "20+",
+      "javaPreviewNeeded" : "21+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "20+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
@@ -1161,7 +1161,7 @@ suite = {
         }
       },
       "subDir" : "src",
-      "javaCompliance" : "20+",
+      "javaCompliance" : "21+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],
