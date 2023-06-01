@@ -1030,25 +1030,21 @@ final class BundleSupport {
 
         Path runArgsFile = stageDir.resolve("run.json");
         try (JsonWriter writer = new JsonWriter(runArgsFile)) {
-            List<String> isPathArg = List.of("-cp", "-p", "-classpath", "--module-path");
+            List<String> equalsRunArg = List.of("-jar", "-m", "--module");
+            List<String> runArgs = new ArrayList<>();
             ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
             while (bundleArgsIterator.hasNext()) {
                 String arg = bundleArgsIterator.next();
-                if (isPathArg.contains(arg)) {
-                    bundleArgsIterator.remove();
-                    bundleArgsIterator.next();
-                    bundleArgsIterator.remove();
-                } else if (arg.equals("-jar")) {
-                    bundleArgsIterator.next();
-                } else if (arg.startsWith("-") || arg.equals(nativeImage.imageName)) {
-                    bundleArgsIterator.remove();
+                if (equalsRunArg.contains(arg)) {
+                    runArgs.add(arg);
+                    runArgs.add(bundleArgsIterator.next());
                 }
             }
-            if (bundleArgs.isEmpty()) {
-                bundleArgs.add(nativeImage.mainClass);
+            if (runArgs.isEmpty()) {
+                runArgs.add(nativeImage.mainClass);
             }
             /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
+            JsonPrinter.printCollection(writer, runArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + runArgsFile, e);
         }
