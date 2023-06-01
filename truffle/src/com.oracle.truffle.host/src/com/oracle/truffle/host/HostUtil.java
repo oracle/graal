@@ -92,6 +92,13 @@ final class HostUtil {
 
     static Object convertToNumber(Object value, InteropLibrary interop) {
         try {
+            if (value instanceof HostMethodScope.ScopedObject) {
+                HostMethodScope.ScopedObject s = (HostMethodScope.ScopedObject) value;
+                Object delegate = s.delegate;
+                if (delegate instanceof Number) {
+                    return delegate;
+                }
+            }
             if (value instanceof Number) {
                 return value;
             } else if (interop.fitsInByte(value)) {
