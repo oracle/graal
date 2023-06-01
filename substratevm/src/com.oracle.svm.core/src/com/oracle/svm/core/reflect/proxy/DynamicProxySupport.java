@@ -168,10 +168,11 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (clazzOrError == null) {
-            throw VMError.unsupportedFeature("Proxy class defined by interfaces " + Arrays.toString(interfaces) + " not found. " +
-                            "Generating proxy classes at runtime is not supported. " +
+            throw VMError.unsupportedFeature("Proxy class defined by the following sequence of interfaces " + Arrays.toString(interfaces) + " not found. " +
                             "Proxy classes need to be defined at image build time by specifying the list of interfaces that they implement. " +
-                            "To define proxy classes use " + proxyConfigFilesOption + " and " + proxyConfigResourcesOption + " options.");
+                            "To define proxy classes use " + proxyConfigFilesOption + " and " + proxyConfigResourcesOption + " options. " +
+                            "Note: The order of interfaces used to create proxies matters. " +
+                            "Proxies with the same set of interfaces specified in a different order do not resolve to the same class and thus require individual configuration entries.");
         }
         if (clazzOrError instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError);
