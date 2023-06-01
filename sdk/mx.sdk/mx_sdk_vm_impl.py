@@ -1131,15 +1131,21 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
+        self._svm_ee_supported = self._svm_supported and has_component('svmee', stage1=True)
         self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows() or (mx.is_darwin() and has_component('svmee', stage1=True)))
         self._separate_debuginfo_ext = {
             'linux': '.debug',
             'windows': '.pdb',
         }.get(mx.get_os(), None)
-        self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
 
     def is_supported(self):
         return self._svm_supported
+
+    def is_ee_supported(self):
+        return self._svm_ee_supported
+
+    def is_pgo_supported(self):
+        return self.is_ee_supported()
 
     def native_image(self, build_args, output_file, allow_server=False, nonZeroIsFatal=True, out=None, err=None):
         assert self._svm_supported
@@ -1164,9 +1170,6 @@ class SvmSupport(object):
 
     def separate_debuginfo_ext(self):
         return self._separate_debuginfo_ext
-
-    def is_pgo_supported(self):
-        return self._pgo_supported
 
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
@@ -2645,12 +2648,14 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             """
             return any(_get_launcher_configs(comp) or _get_library_configs(comp) for comp in components)
 
+        svm_support = _get_svm_support()
         other_comp_names = []
-        self.involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
-        if _get_svm_support().is_supported() and require_svm(self.involved_components):
-            if 'svm' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
+        dependencies = component.standalone_dependencies_enterprise if svm_support.is_ee_supported() else component.standalone_dependencies
+        self.involved_components = [component] + [get_component(dep) for dep in dependencies]
+        if require_svm(self.involved_components):
+            if svm_support.is_supported():
                 other_comp_names.append('svm')
-            if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
+            if svm_support.is_ee_supported():
                 other_comp_names.append('svmee')
         for _component in self.involved_components:
             other_comp_names += _component.extra_installable_qualifiers
@@ -2666,7 +2671,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         # Compute paths from standalone component launchers to other homes
         home_paths = {}
-        for dependency_name, details in component.standalone_dependencies.items():
+        for dependency_name, details in dependencies.items():
             dependency_path = details[0]
             comp = get_component(dependency_name, fatalIfMissing=True)
             home_paths[comp.installable_id] = base_dir + dependency_path
@@ -2753,7 +2758,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
         layout.setdefault(base_dir + 'release', []).append('string:' + metadata)
 
-        for dependency_name, details in component.standalone_dependencies.items():
+        for dependency_name, details in dependencies.items():
             dependency_path = details[0]
             excluded_paths = details[1] if len(details) > 1 else []
             dependency = get_component(dependency_name, fatalIfMissing=True)
@@ -3120,15 +3125,17 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Create standalones
     for components in installables.values():
         main_component = _get_main_component(components)
+        svm_support = _get_svm_support()
         if main_component.standalone and isinstance(main_component, mx_sdk.GraalVmTruffleComponent):
             only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
-            only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
+            only_native_libraries = not main_component.library_configs or (svm_support.is_supported() and not _has_skipped_libraries(main_component))
             if only_native_launchers and only_native_libraries:
-                dependencies = main_component.standalone_dependencies.keys()
-                missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not _get_svm_support().is_supported())]
-                if missing_dependencies:
+                dependencies = main_component.standalone_dependencies_enterprise if svm_support.is_ee_supported() else main_component.standalone_dependencies
+                dependency_names = dependencies.keys()
+                missing_dependency_names = [dep for dep in dependency_names if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not svm_support.is_supported())]
+                if missing_dependency_names:
                     if mx.get_opts().verbose:
-                        mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
+                        mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependency_names))
                 else:
                     standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution)
                     register_distribution(standalone)
