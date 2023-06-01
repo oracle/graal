@@ -95,7 +95,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compile-time constants, e.g., for {@link Method}, {@link MethodHandle}, or {@code VarHandle}
  * instances. This avoids manual registration of these elements using a reflection configuration
  * file.
- * 
+ *
  * One important assumption made in this class is that the return types of all folded methods do not
  * have object identity, i.e., it is allowed to return a cached object instead of creating a new
  * object at every invocation. While the types {@link #ALLOWED_CONSTANT_CLASSES we allow} are not
@@ -157,12 +157,12 @@ public final class ReflectionPlugins {
      * return only objects of classes that are "immutable enough", i.e., cannot change their
      * meaning. Otherwise, the object could be modified between the intrinsification at image build
      * time and the actual method invocation at run time.
-     * 
+     *
      * Note that many of the classes are not completely immutable because they have lazily
      * initialized caches, or the "accessible" flag of reflection objects. That is OK, because these
      * mutable fields do not affect the outcome of any of the methods that we register for constant
      * folding.
-     * 
+     *
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
@@ -261,7 +261,7 @@ public final class ReflectionPlugins {
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
-        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
+        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
@@ -521,7 +521,7 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(new ReachabilityRegistrationNode(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback)));
+        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;
     }
 
