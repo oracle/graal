@@ -30,15 +30,20 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.UnknownObjectField;
 
-public final class BootModuleLayerSupport {
+import java.util.function.Function;
 
-    public static BootModuleLayerSupport instance() {
-        return ImageSingletons.lookup(BootModuleLayerSupport.class);
+public final class RuntimeModuleSupport {
+
+    public static RuntimeModuleSupport instance() {
+        return ImageSingletons.lookup(RuntimeModuleSupport.class);
     }
 
     @UnknownObjectField private ModuleLayer bootLayer;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private Function<Module, Module> hostedToRuntimeModuleMapper;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public void setBootLayer(ModuleLayer bootLayer) {
         this.bootLayer = bootLayer;
     }
@@ -46,4 +51,14 @@ public final class BootModuleLayerSupport {
     public ModuleLayer getBootLayer() {
         return bootLayer;
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public void setHostedToRuntimeModuleMapper(Function<Module, Module> hostedToRuntimeModuleMapper) {
+        this.hostedToRuntimeModuleMapper = hostedToRuntimeModuleMapper;
+    }
+
+    public Module getRuntimeModuleForHostedModule(Module hostedModule) {
+        return hostedToRuntimeModuleMapper.apply(hostedModule);
+    }
+
 }

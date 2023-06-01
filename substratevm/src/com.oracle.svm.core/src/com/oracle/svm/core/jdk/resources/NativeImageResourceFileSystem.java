@@ -651,7 +651,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Pair<String, String>, ResourceStorageEntry> entries = Resources.singleton().getResourceStorage().getEntries();
+        MapCursor<Pair<Module, String>, ResourceStorageEntry> entries = Resources.singleton().getResourceStorage().getEntries();
         while (entries.advance()) {
             byte[] name = getBytes(entries.getKey().getRight());
             IndexNode newIndexNode = new IndexNode(name, entries.getValue().isDirectory());

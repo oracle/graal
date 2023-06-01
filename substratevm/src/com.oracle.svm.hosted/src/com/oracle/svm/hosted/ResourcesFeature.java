@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -47,7 +46,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -136,8 +134,6 @@ public final class ResourcesFeature implements InternalFeature {
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
-
-    public final Set<Module> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -228,7 +224,6 @@ public final class ResourcesFeature implements InternalFeature {
         private final DebugContext debugContext;
         private final ResourcePattern[] includePatterns;
         private final ResourcePattern[] excludePatterns;
-        private final Set<Module> includedResourcesModules;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
@@ -239,12 +234,10 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<Module> includedResourcesModules,
-                        Runnable heartbeatCallback) {
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Runnable heartbeatCallback) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
-            this.includedResourcesModules = includedResourcesModules;
 
             this.heartbeatCallback = heartbeatCallback;
             this.reachedResourceEntries = new LongAdder();
@@ -307,20 +300,12 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
-            collectModule(module);
             registerResource(debugContext, module, resourceName, resourceStream, fromJar);
         }
 
         @Override
         public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
-            collectModule(module);
             registerDirectoryResource(debugContext, module, dir, content, fromJar);
-        }
-
-        private void collectModule(Module module) {
-            if (module != null && module.isNamed()) {
-                includedResourcesModules.add(module);
-            }
         }
     }
 
@@ -337,7 +322,7 @@ public final class ResourcesFeature implements InternalFeature {
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
         try {
             collector.prepareProgressReporter();
             ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
@@ -351,7 +336,7 @@ public final class ResourcesFeature implements InternalFeature {
         return patterns.stream()
                         .filter(s -> s.length() > 0)
                         .map(this::makeResourcePattern)
-                        .collect(Collectors.toList())
+                        .toList()
                         .toArray(new ResourcePattern[]{});
     }
 

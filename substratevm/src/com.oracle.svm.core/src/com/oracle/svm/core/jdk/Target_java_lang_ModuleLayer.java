@@ -34,6 +34,6 @@ final class Target_java_lang_ModuleLayer {
     @SuppressWarnings("unused")
     @Substitute
     public static ModuleLayer boot() {
-        return BootModuleLayerSupport.instance().getBootLayer();
+        return RuntimeModuleSupport.instance().getBootLayer();
     }
 }
