@@ -193,7 +193,7 @@ public class ExperimentParser {
      * @param partialCompilationUnits partial compilation units
      * @param proftoolLog the AOT profile
      */
-    private void linkAOTProfilesToCompilationUnits(List<PartialCompilationUnit> partialCompilationUnits, ProftoolLog proftoolLog) {
+    private static void linkAOTProfilesToCompilationUnits(List<PartialCompilationUnit> partialCompilationUnits, ProftoolLog proftoolLog) {
         EconomicMap<String, PartialCompilationUnit> units = EconomicMap.create();
         for (PartialCompilationUnit unit : partialCompilationUnits) {
             units.put(unit.methodName, unit);
