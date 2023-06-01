@@ -77,10 +77,6 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodesCollect
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class SharedInterop {
-    /*
-     * Force initialization of necessary classes. They must be initialized before trying to access a
-     * message implementation, as the registration happens in their static initializer.
-     */
     static {
         for (InteropNodes nodes : InteropNodesCollector.getInstances(InteropNodes.class)) {
             nodes.register();

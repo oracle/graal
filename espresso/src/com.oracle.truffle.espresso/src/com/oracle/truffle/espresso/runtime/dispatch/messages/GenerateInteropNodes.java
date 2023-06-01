@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,21 +21,17 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
+package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
-
-@GenerateInteropNodes
-@ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
-public class InterruptedExceptionInterop extends ThrowableInterop {
-    @ExportMessage
-    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
-        return ExceptionType.INTERRUPT;
-    }
+/**
+ * Annotate implementations of interop with this to generate boilerplate code to support shared
+ * interop.
+ * 
+ * One limitation is that only messages implemented as a single method, rather than a specializing
+ * class are supported.
+ * 
+ * @see com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop
+ * @see com.oracle.truffle.espresso.processor.InteropNodesProcessor
+ */
+public @interface GenerateInteropNodes {
 }

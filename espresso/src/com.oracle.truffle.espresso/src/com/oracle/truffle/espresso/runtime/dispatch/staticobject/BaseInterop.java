@@ -29,11 +29,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -42,16 +44,14 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
  * Espresso and foreign objects and null.
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 public class BaseInterop {
     @ExportMessage
@@ -184,10 +184,28 @@ public class BaseInterop {
     // endregion ### Meta-objects
 
     // region ### Identity/hashCode
+
+    @GenerateUncached
+    abstract static class IsIdenticalOrUndefinedImplNode extends Node {
+        public abstract TriState execute(StaticObject receiver, Object other);
+
+        @Specialization
+        public static TriState doStaticObject(StaticObject receiver, StaticObject other) {
+            receiver.checkNotForeign();
+            other.checkNotForeign();
+            return receiver == other ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
     @ExportMessage
     public static TriState isIdenticalOrUndefined(StaticObject receiver, Object other,
-                    @Cached Nodes.IsIdenticalOrUndefinedNode message) {
-        return message.execute(receiver, other);
+                    @Cached IsIdenticalOrUndefinedImplNode node) {
+        return node.execute(receiver, other);
     }
 
     @ExportMessage
@@ -214,197 +232,40 @@ public class BaseInterop {
 
     @ExportMessage
     @TruffleBoundary
-    public static Object toDisplayString(StaticObject object, boolean allowSideEffects,
-                    @Cached Nodes.ToDisplayStringNode node) {
-        return node.execute(object, allowSideEffects);
+    public static Object toDisplayString(StaticObject object, boolean allowSideEffects) {
+        if (object.isForeignObject()) {
+            if (object.getKlass() == null) {
+                return "Foreign receiver: null";
+            }
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
+            try {
+                EspressoLanguage language = object.getKlass().getContext().getLanguage();
+                return "Foreign receiver: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
+            }
+        }
+        if (StaticObject.isNull(object)) {
+            return "NULL";
+        }
+        Klass thisKlass = object.getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (allowSideEffects) {
+            // Call guest toString.
+            int toStringIndex = meta.java_lang_Object_toString.getVTableIndex();
+            Method toString = thisKlass.vtableLookup(toStringIndex);
+            return meta.toHostString((StaticObject) toString.invokeDirect(object));
+        }
+
+        // Handle some special instances without side effects.
+        if (thisKlass == meta.java_lang_Class) {
+            return "class " + thisKlass.getTypeAsString();
+        }
+        if (thisKlass == meta.java_lang_String) {
+            return meta.toHostString(object);
+        }
+        return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(object));
     }
 
     // endregion ### Language/DisplayString
-
-    @SuppressWarnings("unused")
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(BaseInterop.class, null);
-        }
-
-        @Override
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "isNull", BaseInteropFactory.NodesFactory.IsNullNodeGen::create);
-            InteropMessageFactory.register(cls, "isString", BaseInteropFactory.NodesFactory.IsStringNodeGen::create);
-            InteropMessageFactory.register(cls, "asString", BaseInteropFactory.NodesFactory.AsStringNodeGen::create);
-            InteropMessageFactory.register(cls, "isMetaObject", BaseInteropFactory.NodesFactory.IsMetaObjectNodeGen::create);
-            InteropMessageFactory.register(cls, "getMetaQualifiedName", BaseInteropFactory.NodesFactory.GetMetaQualifiedNameNodeGen::create);
-            InteropMessageFactory.register(cls, "getMetaSimpleName", BaseInteropFactory.NodesFactory.GetMetaSimpleNameNodeGen::create);
-            InteropMessageFactory.register(cls, "isMetaInstance", BaseInteropFactory.NodesFactory.IsMetaInstanceNodeGen::create);
-            InteropMessageFactory.register(cls, "hasMetaObject", BaseInteropFactory.NodesFactory.HasMetaObjectNodeGen::create);
-            InteropMessageFactory.register(cls, "getMetaObject", BaseInteropFactory.NodesFactory.GetMetaObjectNodeGen::create);
-            InteropMessageFactory.register(cls, "hasMetaParents", BaseInteropFactory.NodesFactory.HasMetaParentsNodeGen::create);
-            InteropMessageFactory.register(cls, "getMetaParents", BaseInteropFactory.NodesFactory.GetMetaParentsNodeGen::create);
-            InteropMessageFactory.register(cls, "isIdenticalOrUndefined", BaseInteropFactory.NodesFactory.IsIdenticalOrUndefinedNodeGen::create);
-            InteropMessageFactory.register(cls, "identityHashCode", BaseInteropFactory.NodesFactory.IdentityHashCodeNodeGen::create);
-            InteropMessageFactory.register(cls, "hasLanguage", BaseInteropFactory.NodesFactory.HasLanguageNodeGen::create);
-            InteropMessageFactory.register(cls, "getLanguage", BaseInteropFactory.NodesFactory.GetLanguageNodeGen::create);
-            InteropMessageFactory.register(cls, "toDisplayString", BaseInteropFactory.NodesFactory.ToDisplayStringNodeGen::create);
-        }
-
-        abstract static class IsNullNode extends InteropMessage.IsNull {
-            @Specialization
-            boolean isNull(StaticObject receiver) {
-                return BaseInterop.isNull(receiver);
-            }
-        }
-
-        abstract static class IsStringNode extends InteropMessage.IsString {
-            @Specialization
-            boolean isString(StaticObject receiver) {
-                return BaseInterop.isString(receiver);
-            }
-        }
-
-        abstract static class AsStringNode extends InteropMessage.AsString {
-            @Specialization
-            String asString(StaticObject receiver) throws UnsupportedMessageException {
-                return BaseInterop.asString(receiver);
-            }
-        }
-
-        abstract static class IsMetaObjectNode extends InteropMessage.IsMetaObject {
-            @Specialization
-            boolean isMetaObject(StaticObject receiver) {
-                return BaseInterop.isMetaObject(receiver);
-            }
-        }
-
-        abstract static class GetMetaQualifiedNameNode extends InteropMessage.GetMetaQualifiedName {
-            @Specialization
-            Object getMetaQualifiedName(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.getMetaQualifiedName(receiver, error);
-            }
-        }
-
-        abstract static class GetMetaSimpleNameNode extends InteropMessage.GetMetaSimpleName {
-            @Specialization
-            Object getMetaSimpleName(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.getMetaSimpleName(receiver, error);
-            }
-        }
-
-        abstract static class IsMetaInstanceNode extends InteropMessage.IsMetaInstance {
-            @Specialization
-            boolean isMetaInstance(StaticObject receiver, Object instance,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.isMetaInstance(receiver, instance, error);
-            }
-        }
-
-        abstract static class HasMetaObjectNode extends InteropMessage.HasMetaObject {
-            @Specialization
-            boolean hasMetaObject(StaticObject receiver) {
-                return BaseInterop.hasMetaObject(receiver);
-            }
-        }
-
-        abstract static class GetMetaObjectNode extends InteropMessage.GetMetaObject {
-            @Specialization
-            Object getMetaObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.getMetaObject(receiver, error);
-            }
-        }
-
-        abstract static class HasMetaParentsNode extends InteropMessage.HasMetaParents {
-            @Specialization
-            public static boolean hasMetaParents(StaticObject receiver) {
-                return BaseInterop.hasMetaParents(receiver);
-            }
-        }
-
-        abstract static class GetMetaParentsNode extends InteropMessage.GetMetaParents {
-            @Specialization
-            public static Object getMetaParents(StaticObject receiver,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return BaseInterop.getMetaParents(receiver, error);
-            }
-        }
-
-        abstract static class IsIdenticalOrUndefinedNode extends InteropMessage.IsIdenticalOrUndefined {
-            @Specialization
-            public static TriState doStaticObject(StaticObject receiver, StaticObject other) {
-                receiver.checkNotForeign();
-                other.checkNotForeign();
-                return receiver == other ? TriState.TRUE : TriState.FALSE;
-            }
-
-            @Fallback
-            static TriState doOther(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") Object other) {
-                return TriState.UNDEFINED;
-            }
-        }
-
-        abstract static class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
-            @Specialization
-            static int identityHashCode(StaticObject receiver) throws UnsupportedMessageException {
-                return BaseInterop.identityHashCode(receiver);
-            }
-        }
-
-        abstract static class HasLanguageNode extends InteropMessage.HasLanguage {
-            @Specialization
-            static boolean hasLanguage(StaticObject receiver) {
-                return BaseInterop.hasLanguage(receiver);
-            }
-        }
-
-        abstract static class GetLanguageNode extends InteropMessage.GetLanguage {
-            @Specialization
-            static Class<? extends TruffleLanguage<?>> getLanguage(StaticObject receiver) {
-                return BaseInterop.getLanguage(receiver);
-            }
-        }
-
-        abstract static class ToDisplayStringNode extends InteropMessage.ToDisplayString {
-            @Specialization
-            static Object doStaticObject(StaticObject receiver, boolean allowSideEffects) {
-                if (receiver.isForeignObject()) {
-                    if (receiver.getKlass() == null) {
-                        return "Foreign receiver: null";
-                    }
-                    InteropLibrary interopLibrary = InteropLibrary.getUncached();
-                    try {
-                        EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
-                        return "Foreign receiver: " + interopLibrary.asString(interopLibrary.toDisplayString(receiver.rawForeignObject(language), allowSideEffects));
-                    } catch (UnsupportedMessageException e) {
-                        throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
-                    }
-                }
-                if (StaticObject.isNull(receiver)) {
-                    return "NULL";
-                }
-                Klass thisKlass = receiver.getKlass();
-                Meta meta = thisKlass.getMeta();
-                if (allowSideEffects) {
-                    // Call guest toString.
-                    int toStringIndex = meta.java_lang_Object_toString.getVTableIndex();
-                    Method toString = thisKlass.vtableLookup(toStringIndex);
-                    return meta.toHostString((StaticObject) toString.invokeDirect(receiver));
-                }
-
-                // Handle some special instances without side effects.
-                if (thisKlass == meta.java_lang_Class) {
-                    return "class " + thisKlass.getTypeAsString();
-                }
-                if (thisKlass == meta.java_lang_String) {
-                    return meta.toHostString(receiver);
-                }
-                return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(receiver));
-            }
-        }
-    }
 }

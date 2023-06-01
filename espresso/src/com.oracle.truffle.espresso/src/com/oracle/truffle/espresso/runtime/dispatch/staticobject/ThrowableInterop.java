@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -33,11 +32,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class ThrowableInterop extends EspressoInterop {
@@ -118,79 +115,5 @@ public class ThrowableInterop extends EspressoInterop {
             throw UnsupportedMessageException.create();
         }
         return object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String).invokeDirect(object);
-    }
-
-    @SuppressWarnings("unused")
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(ThrowableInterop.class, EspressoInterop.Nodes.getInstance());
-        }
-
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
-            InteropMessageFactory.register(cls, "isException", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "throwException", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "hasExceptionCause", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionCause", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "hasExceptionMessage", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionMessage", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
-        }
-
-        abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {
-            @Specialization
-            public ExceptionType getExceptionType(StaticObject receiver) throws UnsupportedMessageException {
-                return ThrowableInterop.getExceptionType(receiver);
-            }
-        }
-
-        abstract static class IsExceptionNode extends InteropMessage.IsException {
-            @Specialization
-            public boolean isException(StaticObject receiver) {
-                return ThrowableInterop.isException(receiver);
-            }
-        }
-
-        abstract static class ThrowExceptionNode extends InteropMessage.ThrowException {
-            @Specialization
-            public static RuntimeException throwException(StaticObject object) {
-                return ThrowableInterop.throwException(object);
-            }
-        }
-
-        abstract static class HasExceptionCauseNode extends InteropMessage.HasExceptionCause {
-            @Specialization
-            public static boolean hasExceptionCause(StaticObject object) {
-                return ThrowableInterop.hasExceptionCause(object);
-            }
-        }
-
-        abstract static class GetExceptionCauseNode extends InteropMessage.GetExceptionCause {
-            @Specialization
-            public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
-                return ThrowableInterop.getExceptionCause(object);
-            }
-        }
-
-        abstract static class HasExceptionMessageNode extends InteropMessage.HasExceptionMessage {
-            @Specialization
-            public static boolean hasExceptionMessage(StaticObject object) {
-                return ThrowableInterop.hasExceptionMessage(object);
-            }
-        }
-
-        abstract static class GetExceptionMessageNode extends InteropMessage.GetExceptionMessage {
-            @Specialization
-            public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
-                return ThrowableInterop.getExceptionMessage(object);
-            }
-        }
     }
 }

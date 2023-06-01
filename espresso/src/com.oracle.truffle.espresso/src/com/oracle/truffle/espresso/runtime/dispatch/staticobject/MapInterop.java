@@ -27,7 +27,6 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownKeyException;
@@ -41,10 +40,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -54,6 +50,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * even if isHashEntryModifiable() returns true, trying to modify the guest map may result in a
  * guest exception (in the case of unmodifiable map, for example).
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class MapInterop extends EspressoInterop {
@@ -184,113 +181,4 @@ public class MapInterop extends EspressoInterop {
     }
 
     // endregion ### Hashes
-
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(MapInterop.class, EspressoInterop.Nodes.getInstance());
-        }
-
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "hasHashEntries", MapInteropFactory.NodesFactory.HasHashEntriesNodeGen::create);
-            InteropMessageFactory.register(cls, "isHashEntryReadable", MapInteropFactory.NodesFactory.IsHashEntryReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "isHashEntryModifiable", MapInteropFactory.NodesFactory.IsHashEntryModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "isHashEntryRemovable", MapInteropFactory.NodesFactory.IsHashEntryRemovableNodeGen::create);
-            InteropMessageFactory.register(cls, "isHashEntryInsertable", MapInteropFactory.NodesFactory.IsHashEntryInsertableNodeGen::create);
-            InteropMessageFactory.register(cls, "getHashSize", MapInteropFactory.NodesFactory.GetHashSizeNodeGen::create);
-            InteropMessageFactory.register(cls, "readHashValue", MapInteropFactory.NodesFactory.ReadHashValueNodeGen::create);
-            InteropMessageFactory.register(cls, "writeHashEntry", MapInteropFactory.NodesFactory.WriteHashEntryNodeGen::create);
-            InteropMessageFactory.register(cls, "removeHashEntry", MapInteropFactory.NodesFactory.RemoveHashEntryNodeGen::create);
-            InteropMessageFactory.register(cls, "getHashEntriesIterator", MapInteropFactory.NodesFactory.GetHashEntriesIteratorNodeGen::create);
-        }
-
-        abstract static class HasHashEntriesNode extends InteropMessage.HasHashEntries {
-            @Specialization
-            public boolean hasHashEntries(StaticObject receiver) {
-                return MapInterop.hasHashEntries(receiver);
-            }
-        }
-
-        abstract static class IsHashEntryReadableNode extends InteropMessage.IsHashEntryReadable {
-            @Specialization
-            public boolean isHashEntryReadable(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke) {
-                return MapInterop.isHashEntryReadable(receiver, key, invoke);
-            }
-        }
-
-        abstract static class IsHashEntryModifiableNode extends InteropMessage.IsHashEntryModifiable {
-            @Specialization
-            public boolean isHashEntryModifiable(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke) {
-                return MapInterop.isHashEntryReadable(receiver, key, invoke);
-            }
-        }
-
-        abstract static class IsHashEntryRemovableNode extends InteropMessage.IsHashEntryRemovable {
-            @Specialization
-            public boolean isHashEntryRemovable(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke) {
-                return MapInterop.isHashEntryReadable(receiver, key, invoke);
-            }
-        }
-
-        abstract static class IsHashEntryInsertableNode extends InteropMessage.IsHashEntryInsertable {
-            @Specialization
-            public boolean isHashEntryInsertable(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke) {
-                return MapInterop.isHashEntryInsertable(receiver, key, invoke);
-            }
-        }
-
-        abstract static class GetHashSizeNode extends InteropMessage.GetHashSize {
-            @Specialization
-            public long getHashSize(StaticObject receiver,
-                            @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
-                return MapInterop.getHashSize(receiver, invoke);
-            }
-        }
-
-        abstract static class ReadHashValueNode extends InteropMessage.ReadHashValue {
-            @Specialization
-            public Object readHashValue(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke,
-                            @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-                return MapInterop.readHashValue(receiver, key, invoke, contains);
-            }
-        }
-
-        abstract static class WriteHashEntryNode extends InteropMessage.WriteHashEntry {
-            @Specialization
-            public void writeHashEntry(StaticObject receiver, Object key, Object value,
-                            @Cached InvokeEspressoNode invoke) throws UnknownKeyException {
-                MapInterop.writeHashEntry(receiver, key, value, invoke);
-            }
-        }
-
-        abstract static class RemoveHashEntryNode extends InteropMessage.RemoveHashEntry {
-            @Specialization
-            public void doStaticObject(StaticObject receiver, Object key,
-                            @Cached InvokeEspressoNode invoke,
-                            @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-                MapInterop.removeHashEntry(receiver, key, invoke, contains);
-            }
-        }
-
-        abstract static class GetHashEntriesIteratorNode extends InteropMessage.GetHashEntriesIterator {
-            @Specialization
-            public Object doStaticObject(StaticObject receiver,
-                            @CachedLibrary(limit = "1") InteropLibrary setLibrary,
-                            @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
-                return MapInterop.getHashEntriesIterator(receiver, setLibrary, invoke);
-            }
-        }
-    }
 }

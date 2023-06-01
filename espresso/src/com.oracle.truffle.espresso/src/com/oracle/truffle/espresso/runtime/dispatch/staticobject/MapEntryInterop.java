@@ -27,7 +27,6 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -40,11 +39,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class MapEntryInterop extends EspressoInterop {
@@ -107,74 +104,5 @@ public class MapEntryInterop extends EspressoInterop {
     static Method doLookup(StaticObject receiver, ObjectKlass k, Method m) {
         assert k.isInterface() && m.getDeclaringKlass() == k;
         return getInteropKlass(receiver).itableLookup(k, m.getITableIndex());
-    }
-
-    @SuppressWarnings("unused")
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(MapEntryInterop.class, EspressoInterop.Nodes.getInstance());
-        }
-
-        @Override
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "hasArrayElements", MapEntryInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
-            InteropMessageFactory.register(cls, "getArraySize", MapEntryInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementModifiable", MapEntryInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementReadable", MapEntryInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "writeArrayElement", MapEntryInteropFactory.NodesFactory.WriteArrayElementNodeGen::create);
-            InteropMessageFactory.register(cls, "readArrayElement", MapEntryInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
-        }
-
-        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
-            @Specialization
-            boolean hasArrayElements(StaticObject receiver) {
-                return MapEntryInterop.hasArrayElements(receiver);
-            }
-        }
-
-        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
-            @Specialization
-            long getArraySize(StaticObject receiver) {
-                return MapEntryInterop.getArraySize(receiver);
-            }
-        }
-
-        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
-            @Specialization
-            boolean isArrayElementModifiable(StaticObject receiver, long index) {
-                return MapEntryInterop.isArrayElementModifiable(receiver, index);
-            }
-        }
-
-        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
-            @Specialization
-            boolean isArrayElementReadable(StaticObject receiver, long index) {
-                return MapEntryInterop.isArrayElementReadable(receiver, index);
-            }
-        }
-
-        abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
-            @Specialization
-            void writeArrayElement(StaticObject receiver, long index, Object value,
-                            @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
-                MapEntryInterop.writeArrayElement(receiver, index, value, invoke);
-            }
-        }
-
-        abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
-            @Specialization
-            Object readArrayElement(StaticObject receiver, long index,
-                            @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
-                return MapEntryInterop.readArrayElement(receiver, index, invoke);
-            }
-        }
     }
 }

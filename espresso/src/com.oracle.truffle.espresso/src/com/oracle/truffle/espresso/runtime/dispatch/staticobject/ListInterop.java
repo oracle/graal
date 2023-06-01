@@ -44,12 +44,10 @@ import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public final class ListInterop extends IterableInterop {
@@ -218,94 +216,6 @@ public final class ListInterop extends IterableInterop {
                         @Bind("getMeta().java_util_List_add") Method addMethod,
                         @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
             lookupAndInvoke.execute(receiver, addMethod, new Object[]{value});
-        }
-    }
-
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(ListInterop.class, IterableInterop.Nodes.getInstance());
-        }
-
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "hasArrayElements", ListInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
-            InteropMessageFactory.register(cls, "getArraySize", ListInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
-            InteropMessageFactory.register(cls, "readArrayElement", ListInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
-            InteropMessageFactory.register(cls, "writeArrayElement", ListInteropFactory.NodesFactory.WriteArrayElementNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementReadable", ListInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementModifiable", ListInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementInsertable", ListInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
-        }
-
-        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
-            @Specialization
-            boolean doStaticObject(StaticObject receiver) {
-                return ListInterop.hasArrayElements(receiver);
-            }
-        }
-
-        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
-            @Specialization
-            static long getArraySize(StaticObject receiver,
-                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
-                            @Cached LookupAndInvokeKnownMethodNode size) {
-                return ListInterop.getArraySize(receiver, listSizeMethod, size);
-            }
-        }
-
-        abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
-            @Specialization
-            static Object readArrayElement(StaticObject receiver, long index,
-                            @Cached ListGet listGet,
-                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
-                            @Cached LookupAndInvokeKnownMethodNode size,
-                            @Cached BranchProfile error) throws InvalidArrayIndexException {
-                return ListInterop.readArrayElement(receiver, index, listGet, listSizeMethod, size, error);
-            }
-        }
-
-        abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
-            @Specialization
-            static void writeArrayElement(StaticObject receiver, long index, Object value,
-                            @Cached ListSet listSet,
-                            @Cached ListAdd listAdd,
-                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
-                            @Cached LookupAndInvokeKnownMethodNode size,
-                            @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
-                ListInterop.writeArrayElement(receiver, index, value, listSet, listAdd, listSizeMethod, size, error);
-            }
-        }
-
-        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
-            @Specialization
-            static boolean isArrayElementReadable(StaticObject receiver, long index,
-                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
-                            @Cached LookupAndInvokeKnownMethodNode size) {
-                return ListInterop.isArrayElementReadable(receiver, index, listSizeMethod, size);
-            }
-        }
-
-        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
-            @Specialization
-            static boolean isArrayElementModifiable(StaticObject receiver, long index,
-                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
-                            @Cached LookupAndInvokeKnownMethodNode size) {
-                return ListInterop.isArrayElementModifiable(receiver, index, listSizeMethod, size);
-            }
-        }
-
-        abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
-            @Specialization
-            static boolean isArrayElementInsertable(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") long index) {
-                return ListInterop.isArrayElementInsertable(receiver, index);
-            }
         }
     }
 }

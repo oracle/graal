@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,57 +20,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.truffle.espresso.processor.builders;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
-public final class SignatureBuilder extends AbstractCodeBuilder {
-    private String name;
-    private final List<VariableBuilder> params = new LinkedList<>();
+public class VariableBuilder extends AbstractCodeBuilder {
 
-    public SignatureBuilder() {
+    private String name;
+    private String classDeclaration;
+    private List<AnnotationBuilder> annotations = new ArrayList<>();
+
+    public VariableBuilder() {
     }
 
-    public SignatureBuilder withName(String name) {
+    public VariableBuilder withName(String name) {
         this.name = name;
         return this;
     }
 
-    public SignatureBuilder addParam(String param) {
-        params.add(new VariableBuilder().withName(param));
+    public VariableBuilder withDeclaration(String type) {
+        classDeclaration = type;
         return this;
     }
 
-    public SignatureBuilder addParam(VariableBuilder variableBuilder) {
-        params.add(variableBuilder);
+    public VariableBuilder withAnnotation(AnnotationBuilder annotation) {
+        annotations.add(annotation);
         return this;
     }
 
     @Override
-    void buildImpl(IndentingStringBuilder sb) {
+    void buildImpl(IndentingStringBuilder isb) {
+        for (AnnotationBuilder builder : annotations) {
+            builder.buildImpl(isb);
+        }
+        if (classDeclaration != null) {
+            isb.appendSpace(classDeclaration);
+        }
         if (name != null) {
-            sb.append(name);
+            isb.append(name);
         }
-        sb.append(PAREN_OPEN);
-
-        boolean first = true;
-        for (VariableBuilder v : params) {
-            if (first) {
-                first = false;
-            } else {
-                sb.appendSpace(',');
-            }
-            v.buildImpl(sb);
-        }
-
-        sb.append(PAREN_CLOSE);
-    }
-
-    @Override
-    public String toString() {
-        IndentingStringBuilder isb = new IndentingStringBuilder(0);
-        buildImpl(isb);
-        return isb.toString();
     }
 }

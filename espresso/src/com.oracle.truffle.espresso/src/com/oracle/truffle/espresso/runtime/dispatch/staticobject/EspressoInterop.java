@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -83,15 +84,13 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
  * Espresso and foreign objects and null.
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
@@ -416,13 +415,13 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static Object readArrayElement(StaticObject receiver, long index,
-                    @Cached Nodes.ReadArrayElementNode readArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException {
+                    @Cached Nodes.ReadArrayElementImplNode readArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException {
         return readArrayElementNode.execute(receiver, index);
     }
 
     @ExportMessage
     static void writeArrayElement(StaticObject receiver, long index, Object value,
-                    @Cached Nodes.WriteArrayElementNode writeArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
+                    @Cached Nodes.WriteArrayElementImplNode writeArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
         writeArrayElementNode.execute(receiver, index, value);
     }
 
@@ -902,184 +901,13 @@ public class EspressoInterop extends BaseInterop {
 
     // endregion ### Date/time conversions
 
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
+    public static class Nodes {
 
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(EspressoInterop.class, BaseInterop.Nodes.getInstance());
-        }
-
-        @Override
-        protected void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "isBoolean", EspressoInteropFactory.NodesFactory.IsBooleanNodeGen::create);
-            InteropMessageFactory.register(cls, "asBoolean", EspressoInteropFactory.NodesFactory.AsBooleanNodeGen::create);
-            InteropMessageFactory.register(cls, "isNumber", EspressoInteropFactory.NodesFactory.IsNumberNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInByte", EspressoInteropFactory.NodesFactory.FitsInByteNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInShort", EspressoInteropFactory.NodesFactory.FitsInShortNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInInt", EspressoInteropFactory.NodesFactory.FitsInIntNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInLong", EspressoInteropFactory.NodesFactory.FitsInLongNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInFloat", EspressoInteropFactory.NodesFactory.FitsInFloatNodeGen::create);
-            InteropMessageFactory.register(cls, "fitsInDouble", EspressoInteropFactory.NodesFactory.FitsInDoubleNodeGen::create);
-            InteropMessageFactory.register(cls, "asByte", EspressoInteropFactory.NodesFactory.AsByteNodeGen::create);
-            InteropMessageFactory.register(cls, "asShort", EspressoInteropFactory.NodesFactory.AsShortNodeGen::create);
-            InteropMessageFactory.register(cls, "asInt", EspressoInteropFactory.NodesFactory.AsIntNodeGen::create);
-            InteropMessageFactory.register(cls, "asLong", EspressoInteropFactory.NodesFactory.AsLongNodeGen::create);
-            InteropMessageFactory.register(cls, "asFloat", EspressoInteropFactory.NodesFactory.AsFloatNodeGen::create);
-            InteropMessageFactory.register(cls, "asDouble", EspressoInteropFactory.NodesFactory.AsDoubleNodeGen::create);
-            InteropMessageFactory.register(cls, "getArraySize", EspressoInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
-            InteropMessageFactory.register(cls, "hasArrayElements", EspressoInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementReadable", EspressoInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementModifiable", EspressoInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementInsertable", EspressoInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
-            InteropMessageFactory.register(cls, "readMember", EspressoInteropFactory.NodesFactory.ReadMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "hasMembers", EspressoInteropFactory.NodesFactory.HasMembersNodeGen::create);
-            InteropMessageFactory.register(cls, "isMemberReadable", EspressoInteropFactory.NodesFactory.IsMemberReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "isMemberModifiable", EspressoInteropFactory.NodesFactory.IsMemberModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "writeMember", EspressoInteropFactory.NodesFactory.WriteMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "isMemberInsertable", EspressoInteropFactory.NodesFactory.IsMemberInsertableNodeGen::create);
-            InteropMessageFactory.register(cls, "getMembers", EspressoInteropFactory.NodesFactory.GetMembersNodeGen::create);
-            InteropMessageFactory.register(cls, "isMemberInvocable", EspressoInteropFactory.NodesFactory.IsMemberInvocableNodeGen::create);
-            InteropMessageFactory.register(cls, "invokeMember", EspressoInteropFactory.NodesFactory.InvokeMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "isDate", EspressoInteropFactory.NodesFactory.IsDateNodeGen::create);
-            InteropMessageFactory.register(cls, "asDate", EspressoInteropFactory.NodesFactory.AsDateNodeGen::create);
-            InteropMessageFactory.register(cls, "isTime", EspressoInteropFactory.NodesFactory.IsTimeNodeGen::create);
-            InteropMessageFactory.register(cls, "asTime", EspressoInteropFactory.NodesFactory.AsTimeNodeGen::create);
-            InteropMessageFactory.register(cls, "isTimeZone", EspressoInteropFactory.NodesFactory.IsTimeZoneNodeGen::create);
-            InteropMessageFactory.register(cls, "asTimeZone", EspressoInteropFactory.NodesFactory.AsTimeZoneNodeGen::create);
-            InteropMessageFactory.register(cls, "asInstant", EspressoInteropFactory.NodesFactory.AsInstantNodeGen::create);
-            InteropMessageFactory.register(cls, "isDuration", EspressoInteropFactory.NodesFactory.IsDurationNodeGen::create);
-            InteropMessageFactory.register(cls, "asDuration", EspressoInteropFactory.NodesFactory.AsDurationNodeGen::create);
-        }
-
-        abstract static class IsBooleanNode extends InteropMessage.IsBoolean {
-            @Specialization
-            public static boolean isBoolean(StaticObject receiver) {
-                return EspressoInterop.isBoolean(receiver);
-            }
-        }
-
-        abstract static class AsBooleanNode extends InteropMessage.AsBoolean {
-            @Specialization
-            static boolean asBoolean(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asBoolean(receiver);
-            }
-        }
-
-        abstract static class IsNumberNode extends InteropMessage.IsNumber {
-            @Specialization
-            static boolean isNumber(StaticObject receiver) {
-                return EspressoInterop.isNumber(receiver);
-            }
-        }
-
-        abstract static class FitsInByteNode extends InteropMessage.FitsInByte {
-            @Specialization
-            static boolean fitsInByte(StaticObject receiver) {
-                return EspressoInterop.fitsInByte(receiver);
-            }
-        }
-
-        abstract static class FitsInShortNode extends InteropMessage.FitsInShort {
-            @Specialization
-            static boolean fitsInShort(StaticObject receiver) {
-                return EspressoInterop.fitsInShort(receiver);
-            }
-        }
-
-        abstract static class FitsInIntNode extends InteropMessage.FitsInInt {
-            @Specialization
-            static boolean fitsInInt(StaticObject receiver) {
-                return EspressoInterop.fitsInInt(receiver);
-            }
-        }
-
-        abstract static class FitsInLongNode extends InteropMessage.FitsInLong {
-            @Specialization
-            static boolean fitsInLong(StaticObject receiver) {
-                return EspressoInterop.fitsInLong(receiver);
-            }
-        }
-
-        abstract static class FitsInFloatNode extends InteropMessage.FitsInFloat {
-            @Specialization
-            static boolean fitsInFloat(StaticObject receiver) {
-                return EspressoInterop.fitsInFloat(receiver);
-            }
-        }
-
-        abstract static class FitsInDoubleNode extends InteropMessage.FitsInDouble {
-            @Specialization
-            static boolean fitsInDouble(StaticObject receiver) {
-                return EspressoInterop.fitsInDouble(receiver);
-            }
-        }
-
-        abstract static class AsByteNode extends InteropMessage.AsByte {
-            @Specialization
-            static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asByte(receiver);
-            }
-        }
-
-        abstract static class AsShortNode extends InteropMessage.AsShort {
-            @Specialization
-            static short asShort(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asShort(receiver);
-            }
-        }
-
-        abstract static class AsIntNode extends InteropMessage.AsInt {
-            @Specialization
-            static int asInt(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asInt(receiver);
-            }
-        }
-
-        abstract static class AsLongNode extends InteropMessage.AsLong {
-            @Specialization
-            static long asLong(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asLong(receiver);
-            }
-        }
-
-        abstract static class AsFloatNode extends InteropMessage.AsFloat {
-            @Specialization
-            static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asFloat(receiver);
-            }
-        }
-
-        abstract static class AsDoubleNode extends InteropMessage.AsDouble {
-            @Specialization
-            static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
-                return EspressoInterop.asDouble(receiver);
-            }
-        }
-
-        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
-            @Specialization
-            static long getArraySize(StaticObject receiver,
-                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.getArraySize(receiver, receiverLib, error);
-            }
-        }
-
-        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
-            @Specialization
-            static boolean hasArrayElements(StaticObject receiver) {
-                return EspressoInterop.hasArrayElements(receiver);
-            }
-        }
-
+        @GenerateUncached
         @ImportStatic({EspressoInterop.class})
-        abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
+        abstract static class ReadArrayElementImplNode extends Node {
+            public abstract Object execute(StaticObject receiver, long index) throws InvalidArrayIndexException, UnsupportedMessageException;
+
             @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
             static boolean doBoolean(StaticObject receiver, long index,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib,
@@ -1187,16 +1015,13 @@ public class EspressoInterop extends BaseInterop {
                 }
                 return receiver.<StaticObject[]> unwrap(language)[(int) index];
             }
-
-            @SuppressWarnings("unused")
-            @Fallback
-            static Object doOther(Object receiver, long index) throws UnsupportedMessageException {
-                throw UnsupportedMessageException.create();
-            }
         }
 
+        @GenerateUncached
         @ImportStatic({EspressoInterop.class})
-        abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
+        abstract static class WriteArrayElementImplNode extends Node {
+            public abstract void execute(StaticObject receiver, long index, Object value) throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException;
+
             @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
             static void doBoolean(StaticObject receiver, long index, Object value,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib,
@@ -1427,188 +1252,6 @@ public class EspressoInterop extends BaseInterop {
                 }
                 receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
             }
-
-            @SuppressWarnings("unused")
-            @Fallback
-            static void doOther(Object receiver, long index, Object value) throws UnsupportedMessageException {
-                throw UnsupportedMessageException.create();
-            }
-        }
-
-        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
-            @Specialization
-            static boolean isArrayElementReadable(StaticObject receiver, long index,
-                            @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
-                return EspressoInterop.isArrayElementReadable(receiver, index, receiverLib);
-            }
-        }
-
-        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
-            @Specialization
-            static boolean isArrayElementReadable(StaticObject receiver, long index,
-                            @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
-                return EspressoInterop.isArrayElementReadable(receiver, index, receiverLib);
-            }
-        }
-
-        abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
-            @Specialization
-            static boolean isArrayElementInsertable(StaticObject receiver, long index) {
-                return EspressoInterop.isArrayElementInsertable(receiver, index);
-            }
-        }
-
-        abstract static class ReadMemberNode extends InteropMessage.ReadMember {
-            @Specialization
-            static Object readMember(StaticObject receiver, String member,
-                            @Cached LookupInstanceFieldNode lookupField,
-                            @Cached LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
-                return EspressoInterop.readMember(receiver, member, lookupField, lookupMethod);
-            }
-        }
-
-        abstract static class HasMembersNode extends InteropMessage.HasMembers {
-            @Specialization
-            static boolean hasMembers(StaticObject receiver) {
-                return EspressoInterop.hasMembers(receiver);
-            }
-        }
-
-        abstract static class IsMemberReadableNode extends InteropMessage.IsMemberReadable {
-            @Specialization
-            static boolean isMemberReadable(StaticObject receiver, String member,
-                            @Cached LookupInstanceFieldNode lookupField,
-                            @Cached LookupVirtualMethodNode lookupMethod) {
-                return EspressoInterop.isMemberReadable(receiver, member, lookupField, lookupMethod);
-            }
-        }
-
-        abstract static class IsMemberModifiableNode extends InteropMessage.IsMemberModifiable {
-            @Specialization
-            static boolean isMemberModifiable(StaticObject receiver, String member,
-                            @Cached LookupInstanceFieldNode lookup) {
-                return EspressoInterop.isMemberModifiable(receiver, member, lookup);
-            }
-        }
-
-        abstract static class WriteMemberNode extends InteropMessage.WriteMember {
-            @Specialization
-            static void writeMember(StaticObject receiver, String member, Object value,
-                            @Cached LookupInstanceFieldNode lookup,
-                            @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
-                            @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
-                EspressoInterop.writeMember(receiver, member, value, lookup, toEspressoNode, error);
-            }
-        }
-
-        abstract static class IsMemberInsertableNode extends InteropMessage.IsMemberInsertable {
-            @Specialization
-            static boolean isMemberInsertable(StaticObject receiver, String member) {
-                return EspressoInterop.isMemberInsertable(receiver, member);
-            }
-        }
-
-        abstract static class GetMembersNode extends InteropMessage.GetMembers {
-            @Specialization
-            @TruffleBoundary
-            static Object getMembers(StaticObject receiver,
-                            @SuppressWarnings("unused") boolean includeInternal) {
-                return EspressoInterop.getMembers(receiver, includeInternal);
-            }
-        }
-
-        abstract static class IsMemberInvocableNode extends InteropMessage.IsMemberInvocable {
-            @Specialization
-            static boolean isMemberInvocable(StaticObject receiver,
-                            String member,
-                            @Cached LookupVirtualMethodNode lookupMethod) {
-                return EspressoInterop.isMemberInvocable(receiver, member, lookupMethod);
-            }
-        }
-
-        abstract static class InvokeMemberNode extends InteropMessage.InvokeMember {
-            @Specialization
-            static Object invokeMember(StaticObject receiver,
-                            String member,
-                            Object[] arguments,
-                            @Cached LookupVirtualMethodNode lookupMethod,
-                            @Cached OverLoadedMethodSelectorNode selectorNode,
-                            @Cached InvokeEspressoNode invoke,
-                            @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
-                            throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-                return EspressoInterop.invokeMember(receiver, member, arguments, lookupMethod, selectorNode, invoke, toEspressoNode);
-            }
-        }
-
-        abstract static class IsDateNode extends InteropMessage.IsDate {
-            @Specialization
-            static boolean isDate(StaticObject receiver) {
-                return EspressoInterop.isDate(receiver);
-            }
-        }
-
-        abstract static class AsDateNode extends InteropMessage.AsDate {
-            @TruffleBoundary
-            @Specialization
-            static LocalDate asDate(StaticObject receiver,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.asDate(receiver, error);
-            }
-        }
-
-        abstract static class IsTimeNode extends InteropMessage.IsTime {
-            @Specialization
-            static boolean isTime(StaticObject receiver) {
-                return EspressoInterop.isTime(receiver);
-            }
-        }
-
-        abstract static class AsTimeNode extends InteropMessage.AsTime {
-            @Specialization
-            static LocalTime asTime(StaticObject receiver,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.asTime(receiver, error);
-            }
-        }
-
-        abstract static class IsTimeZoneNode extends InteropMessage.IsTimeZone {
-            @Specialization
-            static boolean isTimeZone(StaticObject receiver) {
-                return EspressoInterop.isTimeZone(receiver);
-            }
-        }
-
-        abstract static class AsTimeZoneNode extends InteropMessage.AsTimeZone {
-            @Specialization
-            static ZoneId asTimeZone(StaticObject receiver,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.asTimeZone(receiver, error);
-            }
-        }
-
-        abstract static class AsInstantNode extends InteropMessage.AsInstant {
-            @Specialization
-            static Instant asInstant(StaticObject receiver,
-                            @CachedLibrary(limit = "1") InteropLibrary receiverLibrary,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.asInstant(receiver, receiverLibrary, error);
-            }
-        }
-
-        abstract static class IsDurationNode extends InteropMessage.IsDuration {
-            @Specialization
-            static boolean isDuration(StaticObject receiver) {
-                return EspressoInterop.isDuration(receiver);
-            }
-        }
-
-        abstract static class AsDurationNode extends InteropMessage.AsDuration {
-            @Specialization
-            static Duration asDuration(StaticObject receiver,
-                            @Cached BranchProfile error) throws UnsupportedMessageException {
-                return EspressoInterop.asDuration(receiver, error);
-            }
         }
     }
-
 }

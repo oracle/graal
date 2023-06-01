@@ -25,18 +25,15 @@ package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class IterableInterop extends EspressoInterop {
@@ -52,41 +49,6 @@ public class IterableInterop extends EspressoInterop {
                     @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
                     @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
         return lookupAndInvoke.execute(receiver, iteratorMethod);
-    }
-
-    @Collect(value = InteropNodes.class, getter = "getInstance")
-    public static class Nodes extends InteropNodes {
-
-        private static final InteropNodes INSTANCE = new Nodes();
-
-        public static InteropNodes getInstance() {
-            return INSTANCE;
-        }
-
-        public Nodes() {
-            super(IterableInterop.class, EspressoInterop.Nodes.getInstance());
-        }
-
-        public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "hasIterator", IterableInteropFactory.NodesFactory.HasIteratorNodeGen::create);
-            InteropMessageFactory.register(cls, "getIterator", IterableInteropFactory.NodesFactory.GetIteratorNodeGen::create);
-        }
-
-        abstract static class HasIteratorNode extends InteropMessage.HasIterator {
-            @Specialization
-            public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
-                return IterableInterop.hasIterator(receiver);
-            }
-        }
-
-        abstract static class GetIteratorNode extends InteropMessage.GetIterator {
-            @Specialization
-            public static Object getIterator(StaticObject receiver,
-                            @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
-                            @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-                return IterableInterop.getIterator(receiver, iteratorMethod, lookupAndInvoke);
-            }
-        }
     }
 
     // endregion ### Iterable
