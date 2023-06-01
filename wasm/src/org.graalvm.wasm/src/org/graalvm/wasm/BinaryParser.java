@@ -211,6 +211,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
         if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
+            codeSectionOffset = 0;
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
