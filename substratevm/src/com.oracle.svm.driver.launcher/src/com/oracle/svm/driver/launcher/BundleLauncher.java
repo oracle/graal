@@ -41,13 +41,9 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
@@ -55,24 +51,28 @@ import java.util.stream.Stream;
 
 public class BundleLauncher {
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
+    static final String BUNDLE_FILE_EXTENSION = ".nib";
+    private static final String AUXILIARY_OUTPUT_DIR_NAME = "other";
+    private static final String OUTPUT_DIR_NAME = "output";
 
-    private static Path rootDir;
-    private static Path inputDir;
     private static Path stageDir;
     private static Path classPathDir;
     private static Path modulePathDir;
 
+    private static Path bundleFilePath;
+
 
     public static void main(String[] args) {
         List<String> command = new ArrayList<>();
+
+        bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        unpackBundle(bundleFilePath);
+
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
 
         List<String> programArgs = parseBundleLauncherOptions(args);
         command.addAll(programArgs);
-
-        String bundleFilePath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        unpackBundle(Path.of(bundleFilePath));
 
         List<String> classpath = new ArrayList<>();
         if (Files.isDirectory(classPathDir)) {
@@ -122,7 +122,7 @@ public class BundleLauncher {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
                 Map<String, String> launcherEnvironment = new HashMap<>();
                 new EnvironmentParser(launcherEnvironment).parseAndRegister(reader);
-                sanitizeJVMEnvironment(pb.environment(), launcherEnvironment);
+                pb.environment().putAll(launcherEnvironment);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
             }
@@ -162,14 +162,16 @@ public class BundleLauncher {
             String arg = argQueue.removeFirst();
 
             if (arg.startsWith("--with-native-image-agent")) {
-                StringBuilder agentArgument = new StringBuilder("-agentlib:native-image-agent=");
-                String[] parts = arg.split("=", 2);
-                if (parts.length == 1) {
-                    agentArgument.append("config-output-dir=native-image-config");
-                } else {
-                    agentArgument.append(parts[1]);
+                String bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
+                Path bundlePath = bundleFilePath.getParent();
+                Path externalAuxiliaryOutputDir = bundlePath.resolve(bundleName + "." + OUTPUT_DIR_NAME).resolve(AUXILIARY_OUTPUT_DIR_NAME);
+                try {
+                    Files.createDirectories(externalAuxiliaryOutputDir);
+                    System.out.println("Native image agent output written to " + externalAuxiliaryOutputDir);
+                    programArgs.add("-agentlib:native-image-agent=config-output-dir=" + externalAuxiliaryOutputDir);
+                } catch (IOException e) {
+                    System.out.println("Failed to create native image agent output dir");
                 }
-                programArgs.add(agentArgument.toString());
             } else if (arg.equals("--")) {
                 programArgs.addAll(argQueue);
                 argQueue.clear();
@@ -180,51 +182,6 @@ public class BundleLauncher {
 
         return programArgs;
     }
-
-    private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
-        requiredKeys.add("SRCHOME"); /* Remove once GR-44676 is fixed */
-        Function<String, String> keyMapper;
-        if (System.getProperty("os.name").contains("Windows")) {
-            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = String::toUpperCase;
-        } else {
-            keyMapper = Function.identity();
-        }
-        Map<String, String> restrictedEnvironment = new HashMap<>();
-        environment.forEach((key, val) -> {
-            if (requiredKeys.contains(keyMapper.apply(key))) {
-                restrictedEnvironment.put(key, val);
-            }
-        });
-        for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
-            Map.Entry<String, String> entry = iterator.next();
-            if (entry.getValue() != null) {
-                restrictedEnvironment.put(entry.getKey(), entry.getValue());
-            } else {
-                environment.forEach((key, val) -> {
-                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
-                        /*
-                         * Record key as it was given by -E<key-name> (by using `entry.getKey()`
-                         * instead of `key`) to allow creating bundles on Windows that will also
-                         * work on Linux. `System.getEnv(val)` is case-insensitive on Windows but
-                         * not on Linux.
-                         */
-                        restrictedEnvironment.put(entry.getKey(), val);
-                        /* Capture found value for storing vars in bundle */
-                        entry.setValue(val);
-                    }
-                });
-                if (entry.getValue() == null) {
-                    /* Remove undefined environment for storing vars in bundle */
-                    iterator.remove();
-                }
-            }
-        }
-        environment.clear();
-        environment.putAll(restrictedEnvironment);
-    }
-
 
     private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
 
@@ -290,6 +247,8 @@ public class BundleLauncher {
 
 
     private static void unpackBundle(Path bundleFilePath) {
+        Path rootDir;
+        Path inputDir;
         try {
             rootDir = createBundleRootDir();
             inputDir = rootDir.resolve("input");
