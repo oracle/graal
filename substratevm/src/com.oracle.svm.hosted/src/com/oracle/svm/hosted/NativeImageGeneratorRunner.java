@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -33,10 +34,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -130,6 +133,21 @@ public class NativeImageGeneratorRunner {
             List<String> remainingArguments = imageClassLoader.classLoaderSupport.getRemainingArguments();
             if (!remainingArguments.isEmpty()) {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
+            }
+            String nameOfModuleOthersRequire = SubstrateOptions.ListRequiringModules.getValue(imageClassLoader.classLoaderSupport.getParsedHostedOptions());
+            if (nameOfModuleOthersRequire != null) {
+                Set<Module> requiringModules = new HashSet<>();
+                for (Module module : ModuleLayer.boot().modules()) {
+                    for (ModuleDescriptor.Requires requires : module.getDescriptor().requires()) {
+                        if (requires.name().equals(nameOfModuleOthersRequire)) {
+                            requiringModules.add(module);
+                        }
+                    }
+                }
+                System.out.println(requiringModules.stream()
+                                .map(Module::getName)
+                                .collect(Collectors.joining(", ", "Modules requiring " + nameOfModuleOthersRequire + ": ", "")));
+                throw new InterruptImageBuilding("");
             }
             exitStatus = build(imageClassLoader);
         } catch (UserException e) {
@@ -574,8 +592,7 @@ public class NativeImageGeneratorRunner {
     }
 
     private static void reportUserException(Throwable e, OptionValues parsedHostedOptions, Consumer<String> report) {
-        if (e instanceof UserException) {
-            UserException ue = (UserException) e;
+        if (e instanceof UserException ue) {
             for (String message : ue.getMessages()) {
                 report.accept(message);
             }

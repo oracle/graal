@@ -676,6 +676,9 @@ public class SubstrateOptions {
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
+    @Option(help = "REMOVE ME")//
+    public static final HostedOptionKey<String> ListRequiringModules = new HostedOptionKey<>(null);
+
     public static Path getDebugInfoSourceCacheRoot() {
         try {
             return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
