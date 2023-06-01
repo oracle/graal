@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,20 +27,17 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-/**
- * Used to serialize all predefined frame types into the chunk.
- */
-public class JfrFrameTypeSerializer implements JfrSerializer {
+public class JfrGCWhenSerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrFrameTypeSerializer() {
+    public JfrGCWhenSerializer() {
     }
 
     @Override
     public void write(JfrChunkWriter writer) {
-        JfrFrameType[] values = JfrFrameType.values();
-        writer.writeCompressedLong(JfrType.FrameType.getId());
+        JfrGCWhen[] values = JfrGCWhen.values();
+        writer.writeCompressedLong(JfrType.GCWhen.getId());
         writer.writeCompressedLong(values.length);
-        for (JfrFrameType value : values) {
+        for (JfrGCWhen value : values) {
             writer.writeCompressedLong(value.getId());
             writer.writeString(value.getText());
         }

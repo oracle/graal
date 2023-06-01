@@ -173,6 +173,7 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
+        JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 

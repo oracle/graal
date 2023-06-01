@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.Uninterruptible;
 
-/**
- * Used to serialize all predefined frame types into the chunk.
- */
-public class JfrFrameTypeSerializer implements JfrSerializer {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrFrameTypeSerializer() {
+public enum JfrGCWhen {
+    BEFORE_GC("Before GC"),
+    AFTER_GC("After GC");
+
+    private final String text;
+
+    JfrGCWhen(String text) {
+        this.text = text;
     }
 
-    @Override
-    public void write(JfrChunkWriter writer) {
-        JfrFrameType[] values = JfrFrameType.values();
-        writer.writeCompressedLong(JfrType.FrameType.getId());
-        writer.writeCompressedLong(values.length);
-        for (JfrFrameType value : values) {
-            writer.writeCompressedLong(value.getId());
-            writer.writeString(value.getText());
-        }
+    public String getText() {
+        return this.text;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getId() {
+        // First entry needs to have id 0.
+        return ordinal();
     }
 }

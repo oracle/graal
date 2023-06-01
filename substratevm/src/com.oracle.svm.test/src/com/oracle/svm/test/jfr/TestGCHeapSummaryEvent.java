@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.test.jfr;
 
-/**
- * Used to serialize all predefined frame types into the chunk.
- */
-public class JfrFrameTypeSerializer implements JfrSerializer {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrFrameTypeSerializer() {
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestGCHeapSummaryEvent extends JfrRecordingTest {
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.GCHeapSummary.getName()};
+        Recording recording = startRecording(events);
+
+        System.gc();
+
+        stopRecording(recording, TestGCHeapSummaryEvent::validateEvents);
     }
 
-    @Override
-    public void write(JfrChunkWriter writer) {
-        JfrFrameType[] values = JfrFrameType.values();
-        writer.writeCompressedLong(JfrType.FrameType.getId());
-        writer.writeCompressedLong(values.length);
-        for (JfrFrameType value : values) {
-            writer.writeCompressedLong(value.getId());
-            writer.writeString(value.getText());
-        }
+    private static void validateEvents(List<RecordedEvent> events) {
+        assertTrue(events.size() > 0);
     }
 }
