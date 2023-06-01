@@ -276,18 +276,8 @@ public class CommonOptionParser {
                         selectedOptionTypes.add(OptionType.valueOf(enumString));
                     }
                 } catch (IllegalArgumentException e) {
-                    StringBuilder sb = new StringBuilder();
-                    boolean firstValue = true;
-                    for (OptionType ot : OptionType.values()) {
-                        if (firstValue) {
-                            firstValue = false;
-                        } else {
-                            sb.append(", ");
-                        }
-                        sb.append(ot.name());
-                    }
-                    String possibleValues = sb.toString();
-                    return OptionParseResult.error("Invalid value for option " + current + ". '" + enumString + "' is not one of: " + possibleValues);
+                    String possibleValues = StringUtil.joinSingleQuoted(OptionType.values());
+                    return OptionParseResult.error("Invalid value for option " + current + ". '" + enumString + "' is not one of " + possibleValues + ".");
                 }
             }
             return OptionParseResult.printFlags(selectedOptionTypes);

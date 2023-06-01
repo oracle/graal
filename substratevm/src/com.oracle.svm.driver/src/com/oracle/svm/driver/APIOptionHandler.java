@@ -319,9 +319,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (headArg.startsWith(groupNameAndSeparator)) {
                     GroupInfo groupInfo = entry.getValue();
                     String groupName = APIOption.Utils.optionName(groupInfo.group.name());
-                    String supportedValues = "'" + String.join("', '", groupInfo.supportedValues) + "'";
                     NativeImage.showError("In " + args.argumentOrigin + " '" + headArg.substring(groupNameAndSeparator.length()) + "' is not a valid value for the option " + groupName +
-                                    ". Supported values are " + supportedValues);
+                                    ". Supported values are " + StringUtil.joinSingleQuoted(groupInfo.supportedValues) + ".");
                 }
             }
         }

@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
@@ -63,7 +64,7 @@ public enum CPUTypeAArch64 implements CPUType {
     COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, ARMV8_A),
     NATIVE(NativeImageOptions.MICRO_ARCHITECTURE_NATIVE, getNativeOrEmpty());
 
-    private static final String AVAILABLE_FEATURE_MODIFIERS = String.join(", ", new String[]{"aes", "lse", "fp", "simd"});
+    private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted("aes", "lse", "fp", "simd");
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
@@ -132,7 +133,7 @@ public enum CPUTypeAArch64 implements CPUType {
             throw UserError.abort("Unsupported architecture '%s'. Please adjust '%s'. On AArch64, only %s are available.",
                             marchValue,
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, marchValue),
-                            List.of(values()).stream().map(v -> v.name).collect(Collectors.joining(", ")));
+                            StringUtil.joinSingleQuoted(values()));
         }
         List<CPUFeature> features = new ArrayList<>(value.getFeatures());
         processFeatureModifiers(features, archParts);

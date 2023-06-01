@@ -94,6 +94,7 @@ import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.StringUtil;
 
 public class NativeImage {
 
@@ -1102,8 +1103,7 @@ public class NativeImage {
             }
 
             if (!extraImageArgs.isEmpty()) {
-                String prefix = "Unknown argument" + (extraImageArgs.size() == 1 ? ": " : "s: ");
-                showError(extraImageArgs.stream().collect(Collectors.joining(", ", prefix, "")));
+                showError("Unknown argument(s): " + StringUtil.joinSingleQuoted(extraImageArgs));
             }
         }
 
@@ -1147,8 +1147,7 @@ public class NativeImage {
         }
 
         if (!leftoverArgs.isEmpty()) {
-            String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
-            showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
+            showError("Unrecognized option(s): " + StringUtil.joinSingleQuoted(leftoverArgs));
         }
 
         LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);

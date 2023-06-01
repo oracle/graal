@@ -46,6 +46,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.StringUtil;
 
 @AutomaticallyRegisteredFeature
 public class HostedHeapDumpFeature implements InternalFeature {
@@ -84,8 +85,8 @@ public class HostedHeapDumpFeature implements InternalFeature {
             if (validPhases.contains(value)) {
                 phases.add(value);
             } else {
-                throw UserError.abort("Invalid value %s given for %s. Valid values are: %s.", value,
-                                SubstrateOptionsParser.commandArgument(Options.DumpHeap, ""), String.join(", ", validPhases));
+                throw UserError.abort("Invalid value %s given for %s. Valid values are %s.",
+                                value, SubstrateOptionsParser.commandArgument(Options.DumpHeap, ""), StringUtil.joinSingleQuoted(validPhases));
             }
         }
         return !phases.isEmpty();
