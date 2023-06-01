@@ -32,16 +32,14 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
@@ -100,7 +98,8 @@ public class DashboardDumpFeature implements InternalFeature {
                     try {
                         GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).build(Channels.newChannel(os)).close();
                     } catch (IOException ex) {
-                        Logger.getLogger(DashboardDumpFeature.class.getName()).log(Level.SEVERE, null, ex);
+                        // TODO Replace with LogUtils.warning once GR-40798 is merged
+                        System.out.println("Warning: " + ex + " during Dashboard BGV dump header");
                     }
                 });
             }

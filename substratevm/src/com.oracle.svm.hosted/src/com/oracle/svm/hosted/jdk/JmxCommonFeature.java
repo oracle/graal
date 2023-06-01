@@ -26,8 +26,6 @@
 
 package com.oracle.svm.hosted.jdk;
 
-import java.lang.reflect.Method;
-import java.rmi.Remote;
 import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -148,11 +146,11 @@ public class JmxCommonFeature implements InternalFeature {
      * Proxy registration also registers the methods of these MXBeans for reflection. This is
      * important because they are accessed in many places in the JMX infrastructure. For example:
      * <ul>
-     * <li>{@link com.sun.jmx.remote.internal.rmi.ProxyRef#invoke(Remote, Method, Object[], long)}
+     * <li>{@code com.sun.jmx.remote.internal.rmi.ProxyRef#invoke(Remote, Method, Object[], long)}
      * </li>
      * <li>{@code com.sun.jmx.mbeanserver.MXBeanIntrospector}</li>
-     * <li>{@link com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory}</li>
-     * <li>{@link com.sun.jmx.mbeanserver.MXBeanProxy}</li>
+     * <li>{@code com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory}</li>
+     * <li>{@code com.sun.jmx.mbeanserver.MXBeanProxy}</li>
      * <li>{@code javax.management.MBeanServerInvocationHandler#isLocal(Object, Method)}</li>
      * </ul>
      * </p>

@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 import java.util.Optional;
-import java.util.logging.LogManager;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class LoggingFeature implements InternalFeature {
@@ -75,9 +75,12 @@ public class LoggingFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         LoggingFeature.class.getModule().addReads(requiredModule().get());
-
-        /* Ensure that the log manager is initialized and the initial configuration is read. */
-        LogManager.getLogManager();
+        try {
+            /* Ensure that the log manager is initialized and the initial configuration is read. */
+            ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere("Reflective LogManager initialization failed", e);
+        }
         loggersField = ((DuringSetupAccessImpl) access).findField("sun.util.logging.PlatformLogger", "loggers");
     }
 
@@ -87,9 +90,9 @@ public class LoggingFeature implements InternalFeature {
 
         access.rescanRoot(loggersField);
 
-        if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(java.util.logging.Logger.class).isPresent()) {
-            registerForReflection(java.util.logging.ConsoleHandler.class);
-            registerForReflection(java.util.logging.SimpleFormatter.class);
+        if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(a.findClassByName("java.util.logging.Logger")).isPresent()) {
+            registerForReflection(a.findClassByName("java.util.logging.ConsoleHandler"));
+            registerForReflection(a.findClassByName("java.util.logging.SimpleFormatter"));
 
             reflectionConfigured = true;
 

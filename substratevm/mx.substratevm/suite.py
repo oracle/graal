@@ -244,7 +244,6 @@ suite = {
             ],
             "requires" : [
                 "java.compiler",
-                "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.management.jfr",
@@ -290,9 +289,6 @@ suite = {
                 ],
                 "jdk.management.agent": [
                     "jdk.internal.agent",
-                ],
-                "jdk.httpserver@19+": [
-                    "sun.net.httpserver.simpleserver",
                 ],
                 "jdk.jfr": [
                     "jdk.jfr.events",
@@ -612,9 +608,6 @@ suite = {
             ],
             "requires" : [
                 "java.instrument",
-                "java.security.sasl",
-                "java.smartcardio",
-                "java.xml.crypto",
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.unsupported",
@@ -645,9 +638,6 @@ suite = {
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
                     "sun.management", # Needed for javadoc links (MappedMXBeanType)
                 ],
-                "java.rmi": [
-                    "sun.rmi.server",  # Needed for javadoc links (UnicastRef, UnicastRef2)
-                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
@@ -661,11 +651,6 @@ suite = {
                 "jdk.jfr": [
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
-                ],
-                "java.management.rmi": [
-                    "com.sun.jmx.remote.internal.rmi", # Needed for javadoc links (ProxyRef)
-                    "com.sun.jmx.remote.protocol.rmi", # Needed for javadoc links (ClientProvider, ServerProvider)
-                    "javax.management.remote.rmi", # Needed for javadoc links (RMIServer, RMIServerImpl_Stub, RMIConnection, RMIConnectionImpl_Stub)
                 ],
             },
             "javaCompliance" : "17+",
@@ -1357,11 +1342,6 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
-                    "java.xml.crypto",
-                    "java.security.sasl",
-                    "java.smartcardio",
-                    "java.net.http",
-                    "jdk.sctp",
                     "jdk.management.agent",
                     "jdk.management.jfr",
                 ],
@@ -1412,9 +1392,6 @@ suite = {
                     ],
                     "java.management": [
                         "sun.management",
-                    ],
-                    "java.xml.crypto": [
-                        "org.jcp.xml.dsig.internal.dom",
                     ],
                 },
             },
