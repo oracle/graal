@@ -184,7 +184,7 @@ public class FrameInfoQueryResult {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
-        encodedBci = 0;
+        encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
         numStack = 0;

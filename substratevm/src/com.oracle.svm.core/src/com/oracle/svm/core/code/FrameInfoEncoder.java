@@ -186,38 +186,13 @@ public class FrameInfoEncoder {
         }
     }
 
-    private static class CompressedFrameData {
-        final Class<?> sourceClass;
-        final String sourceMethodName;
-        final int sourceLineNumber;
-        final int methodId;
-        final boolean isSliceEnd;
-
-        CompressedFrameData(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int methodId, boolean isSliceEnd) {
-            this.sourceClass = sourceClass;
-            this.sourceMethodName = sourceMethodName;
-            this.sourceLineNumber = sourceLineNumber;
-            this.methodId = methodId;
-            this.isSliceEnd = isSliceEnd;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            CompressedFrameData that = (CompressedFrameData) o;
-            return sourceLineNumber == that.sourceLineNumber && methodId == that.methodId && isSliceEnd == that.isSliceEnd && sourceClass.equals(that.sourceClass) &&
-                            sourceMethodName.equals(that.sourceMethodName);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(sourceClass, sourceMethodName, sourceLineNumber, methodId, isSliceEnd);
-        }
+    record CompressedFrameData(
+                    Class<?> sourceClass,
+                    String sourceMethodName,
+                    int sourceLineNumber,
+                    long encodedBci,
+                    int methodId,
+                    boolean isSliceEnd) {
     }
 
     /**
@@ -422,6 +397,7 @@ public class FrameInfoEncoder {
             boolean encodeUniqueSuccessor = uniqueSuccessorIndex != NO_SUCCESSOR_INDEX_MARKER;
             encodingBuffer.putSV(encodeCompressedMethodIndex(methodIndex, encodeUniqueSuccessor));
             encodingBuffer.putSV(encodeCompressedSourceLineNumber(frame.sourceLineNumber, frame.isSliceEnd));
+            encodingBuffer.putUV(frame.encodedBci);
             encodingBuffer.putSV(frame.methodId);
             if (encodeUniqueSuccessor) {
                 encodingBuffer.putSV(uniqueSuccessorIndex);
@@ -443,13 +419,12 @@ public class FrameInfoEncoder {
             int curIdx = 0;
             List<CompressedFrameData> slice = frameSlices.get(data.frameSliceIndex);
             for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
-                cur.encodedBci = FrameInfoDecoder.NO_LOCAL_INFO_BCI;
                 assert cur == data.frame || !cur.isDeoptEntry : "Deoptimization entry information for caller frames is not persisted";
 
                 cur.sourceClassIndex = encoders.sourceClasses.getIndex(cur.sourceClass);
                 cur.sourceMethodNameIndex = encoders.sourceMethodNames.getIndex(cur.sourceMethodName);
                 boolean isSliceEnd = cur.caller == null;
-                CompressedFrameData frame = new CompressedFrameData(cur.sourceClass, cur.sourceMethodName, cur.sourceLineNumber, cur.methodId, isSliceEnd);
+                CompressedFrameData frame = new CompressedFrameData(cur.sourceClass, cur.sourceMethodName, cur.sourceLineNumber, cur.encodedBci, cur.methodId, isSliceEnd);
                 assert frame.equals(slice.get(curIdx));
                 curIdx++;
             }
@@ -503,10 +478,8 @@ public class FrameInfoEncoder {
             // save encoding metadata
             assert resultFrame.hasLocalValueInfo() == includeLocalValues;
             if (!includeLocalValues) {
-                final boolean isSliceEnd = resultFrame.caller == null;
-                final int sourceLineNumber = resultFrame.sourceLineNumber;
-                final int methodId = resultFrame.methodId;
-                CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, sourceLineNumber, methodId, isSliceEnd);
+                CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, resultFrame.sourceLineNumber, resultFrame.encodedBci,
+                                resultFrame.methodId, resultFrame.caller == null);
                 frameSlice.add(frame);
             }
 
@@ -913,11 +886,11 @@ public class FrameInfoEncoder {
         encodingBuffer.putSV(FrameInfoDecoder.UNCOMPRESSED_FRAME_SLICE_MARKER);
 
         for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
-            assert cur.encodedBci != FrameInfoDecoder.NO_CALLER_BCI : "used as the end marker during decoding";
+            assert cur.encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : "used as the end marker during decoding";
             assert cur.hasLocalValueInfo() : "Compressed frame info must be used when no local values are needed";
             assert cur == data.frame || !cur.isDeoptEntry : "Deoptimization entry information for caller frames is not persisted";
 
-            encodingBuffer.putSV(cur.encodedBci);
+            encodingBuffer.putUV(cur.encodedBci);
             encodingBuffer.putUV(cur.numLocks);
             encodingBuffer.putUV(cur.numLocals);
             encodingBuffer.putUV(cur.numStack);
@@ -954,7 +927,7 @@ public class FrameInfoEncoder {
             encodingBuffer.putSV(cur.sourceLineNumber);
             encodingBuffer.putUV(cur.methodId);
         }
-        encodingBuffer.putSV(FrameInfoDecoder.NO_CALLER_BCI);
+        encodingBuffer.putUV(FrameInfoDecoder.ENCODED_BCI_NO_CALLER);
     }
 
     private void encodeValues(ValueInfo[] valueInfos, UnsafeArrayTypeWriter encodingBuffer) {
@@ -999,7 +972,12 @@ public class FrameInfoEncoder {
      * Encodes the BCI and the duringCall- and rethrowException flags into a single value.
      */
     public static long encodeBci(int bci, boolean duringCall, boolean rethrowException) {
-        return (((long) bci) << FrameInfoDecoder.BCI_SHIFT) | (duringCall ? FrameInfoDecoder.DURING_CALL_MASK : 0) | (rethrowException ? FrameInfoDecoder.RETHROW_EXCEPTION_MASK : 0);
+        long result = (((long) bci + FrameInfoDecoder.ENCODED_BCI_ADDEND) << FrameInfoDecoder.ENCODED_BCI_SHIFT) |
+                        (duringCall ? FrameInfoDecoder.ENCODED_BCI_DURING_CALL_MASK : 0) |
+                        (rethrowException ? FrameInfoDecoder.ENCODED_BCI_RETHROW_EXCEPTION_MASK : 0);
+        VMError.guarantee(result >= 0, "encoded bci is stored as an unsigned value");
+        VMError.guarantee(result != FrameInfoDecoder.ENCODED_BCI_NO_CALLER, "Encoding must not return marker value");
+        return result;
     }
 
     /**
