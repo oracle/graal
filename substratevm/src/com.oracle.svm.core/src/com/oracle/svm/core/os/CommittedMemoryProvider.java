@@ -69,7 +69,7 @@ public interface CommittedMemoryProvider {
      * @return zero in case of success, non-zero in case of an error.
      */
     @Uninterruptible(reason = "Still being initialized.")
-    int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters);
+    int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters);
 
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface
