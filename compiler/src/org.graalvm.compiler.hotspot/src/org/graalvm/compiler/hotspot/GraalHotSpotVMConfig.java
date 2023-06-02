@@ -223,7 +223,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 
-    public final int prototypeMarkWordOffset = getFieldOffset("Klass::_prototype_header", Integer.class, markWord, -1, JDK < 18);
+    public final Integer prototypeMarkWordOffset = getFieldOffset("Klass::_prototype_header", Integer.class, markWord, null, JDK < 18);
     public final int superCheckOffsetOffset = getFieldOffset("Klass::_super_check_offset", Integer.class, "juint");
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
@@ -404,13 +404,28 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int frameInterpreterFrameSenderSpOffset = getConstant("frame::interpreter_frame_sender_sp_offset", Integer.class, 0, osArch.equals("amd64"));
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
 
-    public final int biasedLockMaskInPlace = getConstant(markWordField("biased_lock_mask_in_place"), Integer.class, -1, JDK < 18);
+    private final Integer biasedLockMaskInPlace = getConstant(markWordField("biased_lock_mask_in_place"), Integer.class, null, JDK < 18);
+    private final Integer lockMaskInPlace = getConstant(markWordField("lock_mask_in_place"), Integer.class, null, JDK == 20 && jvmciGE(JVMCI_23_0_b12));
+
+    public int getLockMaskInPlace() {
+        if (JDK >= 18) {
+            if (lockMaskInPlace != null) {
+                return lockMaskInPlace;
+            } else {
+                // This presumes markWord::unlocked_value is non-zero.
+                return 0;
+            }
+        } else {
+            return biasedLockMaskInPlace;
+        }
+    }
+
     public final int ageMaskInPlace = getConstant(markWordField("age_mask_in_place"), Integer.class);
-    public final int epochMaskInPlace = getConstant(markWordField("epoch_mask_in_place"), Integer.class, -1, JDK < 18);
+    public final Integer epochMaskInPlace = getConstant(markWordField("epoch_mask_in_place"), Integer.class, null, JDK < 18);
 
     public final int unlockedMask = getConstant(markWordField("unlocked_value"), Integer.class);
     public final int monitorMask = getConstant(markWordField("monitor_value"), Integer.class);
-    public final int biasedLockPattern = getConstant(markWordField("biased_lock_pattern"), Integer.class, -1, JDK < 18);
+    public final Integer biasedLockPattern = getConstant(markWordField("biased_lock_pattern"), Integer.class, null, JDK < 18);
 
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null);

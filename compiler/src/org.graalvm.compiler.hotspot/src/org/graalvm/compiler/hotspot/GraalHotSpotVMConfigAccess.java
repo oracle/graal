@@ -126,13 +126,15 @@ public class GraalHotSpotVMConfigAccess {
     protected static final Version JVMCI_23_0_b06 = new Version(23, 0, 6);
     protected static final Version JVMCI_23_0_b07 = new Version(23, 0, 7);
     protected static final Version JVMCI_23_0_b10 = new Version(23, 0, 10);
+    protected static final Version JVMCI_23_0_b12 = new Version(23, 0, 12);
 
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
-    static final int JDK = Runtime.version().feature();
+    public static final int JDK = Runtime.version().feature();
     static final int JDK_UPDATE = Runtime.version().update();
+    static final int JDK_BUILD = Runtime.version().build().orElse(0);
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;
