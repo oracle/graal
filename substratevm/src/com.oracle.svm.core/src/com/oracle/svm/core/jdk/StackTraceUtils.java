@@ -481,7 +481,6 @@ final class BacktraceVisitor extends StackFrameVisitor {
      * @see #readSourceMethodName
      */
     static void writeSourceReference(long[] backtrace, int pos, int sourceLineNumber, Class<?> sourceClass, String sourceMethodName) {
-        // TODO document frame format
         long encodedLineNumber = encodeLineNumber(sourceLineNumber);
         if (!isSourceReference(encodedLineNumber)) {
             throw VMError.shouldNotReachHere("Encoded line number looks like a code pointer: " + encodedLineNumber);
