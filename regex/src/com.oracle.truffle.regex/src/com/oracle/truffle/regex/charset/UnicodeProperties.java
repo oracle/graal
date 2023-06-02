@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
 
 public class UnicodeProperties {
 

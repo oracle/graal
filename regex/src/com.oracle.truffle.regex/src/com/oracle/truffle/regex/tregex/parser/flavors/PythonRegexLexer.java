@@ -59,10 +59,11 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
-import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public final class PythonRegexLexer extends RegexLexer {
 
@@ -313,6 +314,16 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledZLowerCaseAssertion() {
+        return false;
+    }
+
+    @Override
+    protected boolean featureEnabledWordBoundaries() {
+        return true;
+    }
+
+    @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
         return true;
     }
@@ -320,6 +331,16 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
         return true;
+    }
+
+    @Override
+    protected boolean featureEnabledNestedCharClasses() {
+        return false;
+    }
+
+    @Override
+    protected boolean featureEnabledPOSIXCharClasses() {
+        return false;
     }
 
     @Override
@@ -338,7 +359,22 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledIgnoreWhiteSpace() {
+        return false;
+    }
+
+    @Override
+    protected TBitSet getWhitespace() {
+        return DEFAULT_WHITESPACE;
+    }
+
+    @Override
     protected boolean featureEnabledOctalEscapes() {
+        return true;
+    }
+
+    @Override
+    protected boolean featureEnabledSpecialGroups() {
         return true;
     }
 
@@ -433,6 +469,11 @@ public final class PythonRegexLexer extends RegexLexer {
     protected void checkClassSetCharacter(int codePoint) throws RegexSyntaxException {
     }
 
+    @Override
+    protected long boundedQuantifierMaxValue() {
+        return Integer.MAX_VALUE;
+    }
+
     private RegexSyntaxException handleBadCharacterInGroupName(ParseGroupNameResult result) {
         return syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(result.groupName), result.groupName.length() + 1);
     }
@@ -449,13 +490,38 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected Token handleBoundedQuantifierOverflow(long min, long max) {
+        return null;
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
+        return null;
+    }
+
+    @Override
     protected RegexSyntaxException handleCCRangeOutOfOrder(int rangeStart) {
         return syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart);
     }
 
     @Override
-    protected void handleCCRangeWithPredefCharClass(int rangeStart) {
+    protected void handleCCRangeWithPredefCharClass(int rangeStart, ClassSetContents firstAtom, ClassSetContents secondAtom) {
         throw syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart);
+    }
+
+    @Override
+    protected CodePointSet getPOSIXCharClass(String name) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected void validatePOSIXCollationElement(String sequence) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected void validatePOSIXEquivalenceClass(String sequence) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override

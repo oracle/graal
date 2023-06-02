@@ -226,6 +226,10 @@ public final class Constants {
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
 
+    public static final CodePointSet NO_NEWLINE = CodePointSet.createNoDedup(
+                    0x0000, 0x0009,
+                    0x000b, 0x10ffff);
+
     public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(0x0000, 0x10ffff);
 
     // [A-Fa-f0-9]

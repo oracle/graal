@@ -419,8 +419,6 @@ print('''/*
 
 package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
-import com.oracle.truffle.regex.tregex.parser.ClassSetContentsAccumulator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 

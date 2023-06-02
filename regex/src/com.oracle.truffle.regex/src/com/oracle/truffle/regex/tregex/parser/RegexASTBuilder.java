@@ -44,6 +44,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import com.oracle.truffle.regex.charset.ClassSetContents;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -73,8 +77,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
 /**
  * This class is used to generate regex ASTs. The provided methods append nodes to the AST.
@@ -595,6 +597,7 @@ public final class RegexASTBuilder {
             backReference.setForwardReference();
         } else if (isNestedBackReference(backReference)) {
             backReference.setNestedBackReference();
+            ast.setGroupRecursivelyReferenced(backReference.getGroupNr());
         }
         if (ignoreCase) {
             backReference.setIgnoreCaseReference();
@@ -636,10 +639,11 @@ public final class RegexASTBuilder {
     public void addPositionAssertion(Token token) {
         PositionAssertion.Type type;
         switch (token.kind) {
-            case a:
+            case A:
             case caret:
                 type = PositionAssertion.Type.CARET;
                 break;
+            case Z:
             case z:
             case dollar:
                 type = PositionAssertion.Type.DOLLAR;
@@ -668,7 +672,7 @@ public final class RegexASTBuilder {
      */
     public void addQuantifier(Token.Quantifier quantifier) {
         assert curTerm == curSequence.getLastTerm();
-        if (quantifier.getMin() == -1) {
+        if (quantifier.isDead()) {
             replaceCurTermWithDeadNode();
             return;
         }

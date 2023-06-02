@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -80,12 +81,32 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledZLowerCaseAssertion() {
+        return false;
+    }
+
+    @Override
+    protected boolean featureEnabledWordBoundaries() {
+        return true;
+    }
+
+    @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
         return false;
     }
 
     @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
+        return false;
+    }
+
+    @Override
+    protected boolean featureEnabledNestedCharClasses() {
+        return false;
+    }
+
+    @Override
+    protected boolean featureEnabledPOSIXCharClasses() {
         return false;
     }
 
@@ -105,8 +126,23 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledIgnoreWhiteSpace() {
+        return false;
+    }
+
+    @Override
+    protected TBitSet getWhitespace() {
+        return DEFAULT_WHITESPACE;
+    }
+
+    @Override
     protected boolean featureEnabledOctalEscapes() {
         return !flags.isEitherUnicode();
+    }
+
+    @Override
+    protected boolean featureEnabledSpecialGroups() {
+        return true;
     }
 
     @Override
@@ -217,6 +253,11 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected long boundedQuantifierMaxValue() {
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
         return syntaxError(JsErrorMessages.QUANTIFIER_OUT_OF_ORDER);
     }
@@ -231,15 +272,40 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected Token handleBoundedQuantifierOverflow(long min, long max) {
+        return null;
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
+        return null;
+    }
+
+    @Override
     protected RegexSyntaxException handleCCRangeOutOfOrder(int startPos) {
         return syntaxError(JsErrorMessages.CHAR_CLASS_RANGE_OUT_OF_ORDER);
     }
 
     @Override
-    protected void handleCCRangeWithPredefCharClass(int startPos) {
+    protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS);
         }
+    }
+
+    @Override
+    protected CodePointSet getPOSIXCharClass(String name) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected void validatePOSIXCollationElement(String sequence) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected void validatePOSIXEquivalenceClass(String sequence) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
