@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -265,6 +266,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         private final NodeMap<TypeFlow<?>> nodeFlows;
 
         private final boolean allowConstantFolding;
+        private final EconomicSet<ValueNode> unreachableValues = EconomicSet.create();
 
         StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
@@ -653,21 +655,24 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (node.getStackKind() != JavaKind.Object) {
                 return null;
             }
-            if (node.usages().filter(n -> !(n instanceof FrameState)).isEmpty()) {
-                /*
-                 * No usages that can benefit from a stronger stamp, so no need to bloat the graph
-                 * with a PiNode.
-                 */
-                return null;
-            }
             if (methodFlow.isSaturated(pta, nodeFlow)) {
                 /* The type flow is saturated, its type state does not matter. */
                 return null;
             }
+            if (unreachableValues.contains(node)) {
+                // This node has already been made unreachable - no further action is needed
+                return null;
+            }
+            /*
+             * If there are no usages of the node, then adding a PiNode would only bloat the graph.
+             * However, we don't immediately return null since the stamp can still indicate this
+             * node is unreachable.
+             */
+            boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
 
-            if (allowConstantFolding && !nodeTypeState.canBeNull()) {
+            if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
                 if (constantValue instanceof ImageHeapConstant) {
                     /*
@@ -705,11 +710,15 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 if (nonNull) {
                     makeUnreachable(anchorPoint.next(), tool,
                                     () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                    unreachableValues.add(node);
                     return null;
                 } else {
-                    return StampFactory.alwaysNull();
+                    return hasUsages ? StampFactory.alwaysNull() : null;
                 }
 
+            } else if (!hasUsages) {
+                // no need to return strengthened stamp if it is unused
+                return null;
             } else if (typeStateTypes.size() == 1) {
                 AnalysisType exactType = typeStateTypes.get(0);
                 assert getSingleImplementorType(exactType) == null || exactType.equals(getSingleImplementorType(exactType)) : "exactType=" + exactType + ", singleImplementor=" +

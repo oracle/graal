@@ -440,13 +440,27 @@ public class MethodTypeFlowBuilder {
         return false;
     }
 
+    private void insertAllInstantiatedTypesReturn() {
+        AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
+
+        AnalysisType returnType = TypeFlow.filterUncheckedInterface((AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
+        AnalysisError.guarantee(returnType.getJavaKind().isObject(), "Unexpected return type: %s", returnType);
+
+        BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
+        var returnFlow = new FormalReturnTypeFlow(position, returnType);
+        flowsGraph.setReturnFlow(returnFlow);
+
+        assert returnType.equals(returnFlow.getDeclaredType());
+        returnType.getTypeFlow(bb, true).addUse(bb, returnFlow);
+    }
+
     /**
      * Placeholder flows are placed in the graph for any missing flows.
      */
     private void insertPlaceholderParamAndReturnFlows() {
         boolean isStatic = Modifier.isStatic(method.getModifiers());
         JavaType[] paramTypes = method.getSignature().toParameterTypes(isStatic ? null : method.getDeclaringClass());
-        BytecodePosition position = new BytecodePosition(null, method, 0);
+        BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
         for (int index = 0; index < paramTypes.length; index++) {
             if (flowsGraph.getParameter(index) == null) {
                 if (paramTypes[index].getJavaKind().isObject()) {
@@ -573,7 +587,12 @@ public class MethodTypeFlowBuilder {
 
         // assert method.getAnnotation(Fold.class) == null : method;
         if (handleNodeIntrinsic()) {
+            assert !method.getReturnsAllInstantiatedTypes() : method;
             return;
+        }
+
+        if (method.getReturnsAllInstantiatedTypes()) {
+            insertAllInstantiatedTypesReturn();
         }
 
         boolean insertPlaceholderFlows = bb.getHostVM().getMultiMethodAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMultiMethodKey());
@@ -921,10 +940,16 @@ public class MethodTypeFlowBuilder {
                 handleCondition(node, node.condition(), !node.isNegated());
 
             } else if (n instanceof ReturnNode) {
-                ReturnNode node = (ReturnNode) n;
-                TypeFlowBuilder<?> returnFlowBuilder = uniqueReturnFlowBuilder(node);
-                if (node.result() != null && node.result().getStackKind() == JavaKind.Object) {
-                    returnFlowBuilder.addUseDependency(state.lookup(node.result()));
+                /*
+                 * Return type flows within the graph do not need to be linked when all instantiated
+                 * types are returned.
+                 */
+                if (!method.getReturnsAllInstantiatedTypes()) {
+                    ReturnNode node = (ReturnNode) n;
+                    if (node.result() != null && node.result().getStackKind() == JavaKind.Object) {
+                        TypeFlowBuilder<?> returnFlowBuilder = uniqueReturnFlowBuilder(node);
+                        returnFlowBuilder.addUseDependency(state.lookup(node.result()));
+                    }
                 }
             } else if (n instanceof CommitAllocationNode) {
                 processCommitAllocation((CommitAllocationNode) n, state);

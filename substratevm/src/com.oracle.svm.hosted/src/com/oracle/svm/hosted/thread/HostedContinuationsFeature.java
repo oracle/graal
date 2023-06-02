@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.hosted.thread;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.List;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativeimage.hosted.Feature;
 
-/**
- * Every thus annotated method is never trivially inlined by the compiler. Specific inlining to
- * broaden the scope of the PartialEscapePhase is still possible.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-@Platforms(Platform.HOSTED_ONLY.class)
-public @interface NeverInlineTrivial {
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationsFeature;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
-    /**
-     * Documents the reason why the annotated code must not be inlined.
-     */
-    String value();
+@AutomaticallyRegisteredFeature
+public class HostedContinuationsFeature implements InternalFeature {
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(ContinuationsFeature.class);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (Continuation.isSupported()) {
+            // limit the analysis optimizations performed on continuation return location
+            ((FeatureImpl.BeforeAnalysisAccessImpl) access).registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(Continuation.class, "enter1", boolean.class));
+        }
+    }
 }
