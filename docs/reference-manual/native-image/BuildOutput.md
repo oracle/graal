@@ -249,6 +249,14 @@ Relevant guide: [Optimize a Native Executable with Profile-Guided Optimizations]
 
 For best peak performance, also consider using the [G1 garbage collector](#recommendation-g1gc).
 
+#### <a name="recommendation-qbm"></a>`QBM`: Use Quick Build Mode for Faster Builds
+
+Consider using the quick build mode (`-Ob`) to speed up your builds during development.
+More precisely, this mode reduces the number of optimizations performed by the Graal compiler and thus reduces the overall time of the [compilation stage](#stage-compiling).
+The quick build mode is not only useful for development, it can also cause the generated executable file to be smaller in size.
+Note, however, that the overall peak throughput of the executable may be lower due to the reduced number of optimizations.
+
+
 ## Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
