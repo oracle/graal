@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.flow;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -160,12 +161,36 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     /**
      * When the type flow constraints are relaxed the receiver object state can contain types that
      * are not part of the receiver's type hierarchy. We filter those out.
+     *
+     * With saturation enabled, types not part of the hierarchy may always reach the receiver
+     * because:
+     * <ul>
+     * <li>{@link FilterTypeFlow}s saturate to the type of the filter.</li>
+     * <li>Instanceof checks can create {@link FilterTypeFlow}s which are not assignable to the
+     * receiver type.</li>
+     * <li>A receiver type can be attached to different inputs (and FilterTypeFlows) based on the
+     * optimizations performed on the graph.</li>
+     * </ul>
+     *
+     * Therefore, under no circumstances can this filtering be removed.
      */
-    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState invokeState) {
+    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState receiverState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return TypeState.forIntersection(bb, invokeState, receiverType.getAssignableTypes(true));
+            return TypeState.forIntersection(bb, receiverState, receiverType.getAssignableTypes(true));
+        } else {
+            // when not filtering, all input types should be assignable
+            assert verifyAllAssignable(bb, receiverState);
         }
-        return invokeState;
+        return receiverState;
+    }
+
+    private boolean verifyAllAssignable(BigBang bb, TypeState receiverState) {
+        for (AnalysisType type : receiverState.types(bb)) {
+            if (!receiverType.isAssignableFrom(type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, AnalysisObject receiverObject) {
