@@ -28,10 +28,8 @@ import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESS
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -281,7 +279,6 @@ public class FrameInfoDecoder {
                 return result;
             }
 
-            assert encodeSourceReferences();
             cur.encodedBci = NO_LOCAL_INFO_BCI;
             cur.isDeoptEntry = isDeoptEntry;
 
@@ -396,60 +393,56 @@ public class FrameInfoDecoder {
             cur.encodedBci = encodedBci;
             cur.isDeoptEntry = isDeoptEntry;
 
-            boolean needLocalValues = encodedBci != NO_LOCAL_INFO_BCI;
+            assert encodedBci != NO_LOCAL_INFO_BCI : "Compressed frame info must be used when no local values are needed";
 
-            if (needLocalValues) {
-                cur.numLocks = readBuffer.getUVInt();
-                cur.numLocals = readBuffer.getUVInt();
-                cur.numStack = readBuffer.getUVInt();
+            cur.numLocks = readBuffer.getUVInt();
+            cur.numLocals = readBuffer.getUVInt();
+            cur.numStack = readBuffer.getUVInt();
 
-                /*
-                 * We either encode a reference to the target method (for runtime compilations) or
-                 * just the start offset of the target method (for native image methods, because we
-                 * do not want to include unnecessary method metadata in the native image.
-                 */
-                int deoptMethodIndex = readBuffer.getSVInt();
-                if (deoptMethodIndex < 0) {
-                    /* Negative number is a reference to the target method. */
-                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
-                    cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
-                } else {
-                    /* Positive number is a directly encoded method offset. */
-                    cur.deoptMethodOffset = deoptMethodIndex;
-                }
+            /*
+             * We either encode a reference to the target method (for runtime compilations) or just
+             * the start offset of the target method (for native image methods, because we do not
+             * want to include unnecessary method metadata in the native image.
+             */
+            int deoptMethodIndex = readBuffer.getSVInt();
+            if (deoptMethodIndex < 0) {
+                /* Negative number is a reference to the target method. */
+                cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
+                cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
+            } else {
+                /* Positive number is a directly encoded method offset. */
+                cur.deoptMethodOffset = deoptMethodIndex;
+            }
 
-                int curValueInfosLength = readBuffer.getUVInt();
-                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLength, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+            int curValueInfosLength = readBuffer.getUVInt();
+            cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLength, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
 
-                if (state.isFirstFrame) {
-                    /* This is the first frame, i.e., the top frame that will be returned. */
-                    int numVirtualObjects = readBuffer.getUVInt();
-                    virtualObjects = newValueInfoArrayArray(valueInfoAllocator, numVirtualObjects);
-                    for (int i = 0; i < numVirtualObjects; i++) {
-                        int numValues = readBuffer.getUVInt();
-                        ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
-                        if (virtualObjects != null) {
-                            virtualObjects[i] = decodedValues;
-                        }
+            if (state.isFirstFrame) {
+                /* This is the first frame, i.e., the top frame that will be returned. */
+                int numVirtualObjects = readBuffer.getUVInt();
+                virtualObjects = newValueInfoArrayArray(valueInfoAllocator, numVirtualObjects);
+                for (int i = 0; i < numVirtualObjects; i++) {
+                    int numValues = readBuffer.getUVInt();
+                    ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+                    if (virtualObjects != null) {
+                        virtualObjects[i] = decodedValues;
                     }
                 }
             }
             cur.virtualObjects = virtualObjects;
 
-            if (encodeSourceReferences()) {
-                int sourceClassIndex = readBuffer.getSVInt();
-                int sourceMethodNameIndex = readBuffer.getSVInt();
-                int sourceLineNumber = readBuffer.getSVInt();
-                int sourceMethodId = readBuffer.getUVInt();
+            int sourceClassIndex = readBuffer.getSVInt();
+            int sourceMethodNameIndex = readBuffer.getSVInt();
+            int sourceLineNumber = readBuffer.getSVInt();
+            int sourceMethodId = readBuffer.getUVInt();
 
-                cur.sourceClassIndex = sourceClassIndex;
-                cur.sourceMethodNameIndex = sourceMethodNameIndex;
+            cur.sourceClassIndex = sourceClassIndex;
+            cur.sourceMethodNameIndex = sourceMethodNameIndex;
 
-                cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
-                cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
-                cur.sourceLineNumber = sourceLineNumber;
-                cur.methodId = sourceMethodId;
-            }
+            cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
+            cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
+            cur.sourceLineNumber = sourceLineNumber;
+            cur.methodId = sourceMethodId;
 
             if (prev == null) {
                 // first frame read during this invocation
@@ -512,11 +505,6 @@ public class FrameInfoDecoder {
     @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
     private static ValueInfo newValueInfo(ValueInfoAllocator valueInfoAllocator) {
         return valueInfoAllocator.newValueInfo();
-    }
-
-    @Fold
-    protected static boolean encodeSourceReferences() {
-        return SubstrateOptions.StackTrace.getValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

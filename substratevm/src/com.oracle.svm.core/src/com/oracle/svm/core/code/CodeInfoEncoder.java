@@ -117,21 +117,13 @@ public class CodeInfoEncoder {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
             this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            if (FrameInfoDecoder.encodeSourceReferences()) {
-                this.names = FrequencyEncoder.createEqualityEncoder();
-            } else {
-                this.names = null;
-            }
+            this.names = FrequencyEncoder.createEqualityEncoder();
         }
 
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
             JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-            Class<?>[] sourceClassesArray = null;
-            String[] sourceMethodNamesArray = null;
-            if (FrameInfoDecoder.encodeSourceReferences()) {
-                sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-                sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-            }
+            Class<?>[] sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
+            String[] sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
             install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, adjuster);
         }
 
