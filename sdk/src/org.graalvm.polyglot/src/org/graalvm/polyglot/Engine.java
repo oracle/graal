@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.net.URI;
@@ -1057,6 +1058,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public Object getHostAccessImpl(HostAccess conf) {
             return conf.impl;
+        }
+
+        @Override
+        public MethodHandles.Lookup getMethodLookup(HostAccess hostAccess) {
+            return hostAccess.methodLookup;
         }
 
         @Override

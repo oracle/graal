@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.host;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -78,7 +80,7 @@ final class HostClassCache {
     final boolean allowsPublicAccess;
     final boolean allowsAccessInheritance;
     private final Map<Class<?>, Object> targetMappings;
-    private final Object unnamedModule;
+    private final Lookup methodLookup;
     private final WeakReference<HostClassCache> weakHostClassRef = new WeakReference<>(this);
 
     private final ClassValue<HostClassDesc> descs = new ClassValue<>() {
@@ -93,7 +95,7 @@ final class HostClassCache {
         }
     };
 
-    private HostClassCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+    private HostClassCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf) {
         this.polyglotHostAccess = polyglotAccess;
         this.hostAccess = conf;
         this.apiAccess = apiAccess;
@@ -107,11 +109,15 @@ final class HostClassCache {
         this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
         this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
         this.targetMappings = groupMappings(apiAccess, conf);
-        this.unnamedModule = HostContext.getUnnamedModule(classLoader);
+        this.methodLookup = apiAccess.getMethodLookup(hostAccess);
     }
 
-    Object getUnnamedModule() {
-        return unnamedModule;
+    Lookup getMethodLookup() {
+        return methodLookup != null ? methodLookup : MethodHandles.publicLookup();
+    }
+
+    boolean hasCustomNamedLookup() {
+        return methodLookup != null && methodLookup.lookupClass().getModule().isNamed();
     }
 
     boolean hasTargetMappings() {
@@ -182,20 +188,20 @@ final class HostClassCache {
         return localMappings;
     }
 
-    public static HostClassCache findOrInitialize(AbstractHostAccess hostLanguage, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+    public static HostClassCache findOrInitialize(AbstractHostAccess hostLanguage, APIAccess apiAccess, HostAccess conf) {
         HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
         if (cache == null) {
-            cache = initializeHostCache(hostLanguage, apiAccess, conf, classLoader);
+            cache = initializeHostCache(hostLanguage, apiAccess, conf);
         }
         return cache;
     }
 
-    private static HostClassCache initializeHostCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+    private static HostClassCache initializeHostCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf) {
         HostClassCache cache;
         synchronized (conf) {
             cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
             if (cache == null) {
-                cache = new HostClassCache(polyglotAccess, apiAccess, conf, classLoader);
+                cache = new HostClassCache(polyglotAccess, apiAccess, conf);
                 apiAccess.setHostAccessImpl(conf, cache);
             }
         }
