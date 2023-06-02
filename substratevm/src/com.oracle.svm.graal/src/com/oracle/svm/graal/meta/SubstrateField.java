@@ -166,8 +166,8 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public boolean isUnknownValue() {
-        return false;
+    public boolean isValueAvailable() {
+        return true;
     }
 
     @Override

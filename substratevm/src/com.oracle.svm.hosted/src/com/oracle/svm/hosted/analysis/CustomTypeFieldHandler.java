@@ -61,7 +61,7 @@ public abstract class CustomTypeFieldHandler {
             if (!computedField.isValueAvailableBeforeAnalysis() && field.getJavaKind().isObject()) {
                 injectFieldTypes(field, field.getType());
             }
-        } else if (field.isUnknownValue()) {
+        } else if (field.isComputedValue()) {
             assert !Modifier.isFinal(field.getModifiers()) : "Unknown value fields " + field.format("%H.%n") + " cannot be final";
             if (!field.getStorageKind().isPrimitive()) {
                 field.setCanBeNull(field.computedValueCanBeNull());

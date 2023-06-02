@@ -381,10 +381,6 @@ public abstract class HostVM {
         return false;
     }
 
-    public boolean isUnknownValueField(@SuppressWarnings("unused") AnalysisField field) {
-        return false;
-    }
-
     /**
      * Returns the function Strengthen Graphs should use to improve types based on analysis results.
      */

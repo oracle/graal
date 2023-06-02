@@ -42,6 +42,6 @@ public class SubstrateFieldLocationIdentity extends FieldLocationIdentity {
 
     @Override
     public boolean isImmutable() {
-        return super.isImmutable() || (getField() instanceof SharedField sField && !(sField.isWritten() || sField.isUnknownValue()));
+        return super.isImmutable() || (getField() instanceof SharedField sField && !sField.isWritten() && sField.isValueAvailable());
     }
 }

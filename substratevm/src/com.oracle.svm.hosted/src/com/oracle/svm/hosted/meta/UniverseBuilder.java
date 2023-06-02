@@ -1108,7 +1108,7 @@ public class UniverseBuilder {
                 ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
             }
 
-            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !(aField.isWritten() || aField.isUnknownValue())) {
+            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && aField.isValueAvailable()) {
                 hField.setUnmaterializedStaticConstant();
             }
         }
