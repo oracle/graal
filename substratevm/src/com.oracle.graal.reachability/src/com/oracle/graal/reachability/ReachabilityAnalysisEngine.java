@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
@@ -227,8 +228,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                 BytecodePosition position = new BytecodePosition(null, method, 0);
                 getUniverse().registerEmbeddedRoot(constant, position);
 
-                Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
-                AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
+                AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
                 registerTypeAsInHeap(type, reason);
             }
         }
