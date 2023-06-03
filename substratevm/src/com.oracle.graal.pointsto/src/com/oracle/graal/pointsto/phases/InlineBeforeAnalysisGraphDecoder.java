@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
@@ -57,7 +58,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
 
     public class InlineBeforeAnalysisMethodScope extends PEMethodScope {
 
-        private final S policyScope;
+        public final S policyScope;
 
         private boolean inliningAborted;
 
@@ -86,8 +87,8 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     protected final BigBang bb;
     protected final InlineBeforeAnalysisPolicy<S> policy;
 
-    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph, HostedProviders providers) {
-        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
+    public InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph, HostedProviders providers, LoopExplosionPlugin loopExplosionPlugin) {
+        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, loopExplosionPlugin,
                         providers.getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
                         null, policy.nodePlugins, null, null,
@@ -128,8 +129,9 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     }
 
     @Override
-    protected Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
+    protected final Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
         Node canonical = super.canonicalizeFixedNode(methodScope, loopScope, node);
+        canonical = doCanonicalizeFixedNode(cast(methodScope), loopScope, canonical);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
          * alive, but we know it was just decoded and therefore not checked yet).
@@ -141,6 +143,11 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             maybeAbortInlining(methodScope, loopScope, canonical);
         }
         return canonical;
+    }
+
+    @SuppressWarnings("unused")
+    protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
+        return node;
     }
 
     @Override
