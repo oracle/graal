@@ -118,6 +118,11 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     @Override
+    public boolean isUnknownValue() {
+        return wrapped.isUnknownValue();
+    }
+
+    @Override
     public String getName() {
         return wrapped.getName();
     }

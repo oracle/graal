@@ -428,7 +428,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten(), constantValue);
+            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || hField.isUnknownValue(), constantValue);
         }
     }
 

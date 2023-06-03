@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -375,6 +376,10 @@ public abstract class HostVM {
     }
 
     public boolean ignoreInstanceOfTypeDisallowed() {
+        return false;
+    }
+
+    public boolean isUnknownValueField(@SuppressWarnings("unused") AnalysisField field) {
         return false;
     }
 }

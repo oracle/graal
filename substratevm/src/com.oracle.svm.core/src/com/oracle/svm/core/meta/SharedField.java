@@ -56,5 +56,8 @@ public interface SharedField extends ResolvedJavaField {
 
     boolean isWritten();
 
+    /** Returns true for fields whose value is computed during image building. */
+    boolean isUnknownValue();
+
     JavaKind getStorageKind();
 }
