@@ -87,12 +87,12 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
      */
     @Override
     public Object getElement(int idx) {
-        return Array.get(array, idx);
+        return readElementValue(idx);
     }
 
     @Override
     public JavaConstant readElementValue(int idx) {
-        return JavaConstant.forBoxedPrimitive(getElement(idx));
+        return JavaConstant.forBoxedPrimitive(Array.get(array, idx));
     }
 
     @Override
