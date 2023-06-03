@@ -94,7 +94,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
 
-    private final SVMHost hostVM;
+    protected final SVMHost hostVM;
 
     private final int allowedNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
     private final int allowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
