@@ -126,6 +126,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * values, and it cannot be constant-folded or otherwise optimized.
      */
     protected final boolean isUnknownValue;
+    protected final FieldValueComputer fieldValueComputer;
 
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
@@ -154,6 +155,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         }
 
         isUnknownValue = universe.hostVM().isUnknownValueField(this);
+        fieldValueComputer = universe.hostVM().createFieldValueComputer(this);
     }
 
     @Override
@@ -428,6 +430,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public boolean isUnknownValue() {
         return isUnknownValue;
+    }
+
+    public Class<?>[] computedValueTypes() {
+        return fieldValueComputer.types();
+    }
+
+    public boolean computedValueCanBeNull() {
+        return fieldValueComputer.canBeNull();
     }
 
     public void setCanBeNull(boolean canBeNull) {

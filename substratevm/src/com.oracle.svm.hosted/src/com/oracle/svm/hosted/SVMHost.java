@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
+
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
@@ -32,6 +34,8 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -46,6 +50,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -83,6 +88,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -115,6 +121,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -955,5 +962,76 @@ public class SVMHost extends HostVM {
             }
         }
         return super.getStrengthenGraphsToTargetFunction(key);
+    }
+
+    @Override
+    public FieldValueComputer createFieldValueComputer(AnalysisField field) {
+        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
+        if (unknownObjectField != null) {
+            return createObjectFieldValueComputer(field, unknownObjectField);
+        }
+        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
+        if (unknownPrimitiveField != null) {
+            return createPrimitiveFieldValueComputer(field, unknownPrimitiveField);
+        }
+        return null;
+    }
+
+    private static FieldValueComputer createObjectFieldValueComputer(AnalysisField field, UnknownObjectField unknownValueField) {
+        return new FieldValueComputer() {
+            final BooleanSupplier availability = ReflectionUtil.newInstance(unknownValueField.availability());
+
+            @Override
+            public boolean isAvailable() {
+                return availability.getAsBoolean();
+            }
+
+            @Override
+            public Class<?>[] types() {
+                return extractAnnotationTypes(field, unknownValueField.types(), unknownValueField.fullyQualifiedTypes());
+            }
+
+            @Override
+            public boolean canBeNull() {
+                return unknownValueField.canBeNull();
+            }
+        };
+    }
+
+    private static FieldValueComputer createPrimitiveFieldValueComputer(AnalysisField field, UnknownPrimitiveField unknownValueField) {
+        return new FieldValueComputer() {
+            final BooleanSupplier availability = ReflectionUtil.newInstance(unknownValueField.availability());
+
+            @Override
+            public boolean isAvailable() {
+                return availability.getAsBoolean();
+            }
+
+            @Override
+            public Class<?>[] types() {
+                return new Class<?>[]{field.getType().getJavaClass()};
+            }
+        };
+    }
+
+    private static Class<?>[] extractAnnotationTypes(AnalysisField field, Class<?>[] types, String[] fullyQualifiedTypes) {
+        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(types));
+        for (String annotationTypeName : fullyQualifiedTypes) {
+            try {
+                Class<?> annotationType = Class.forName(annotationTypeName);
+                annotationTypes.add(annotationType);
+            } catch (ClassNotFoundException e) {
+                throw shouldNotReachHere("Specified computed value type not found " + annotationTypeName);
+            }
+        }
+
+        if (annotationTypes.isEmpty()) {
+            /* If no types are specified fallback to the field declared type. */
+            AnalysisType fieldType = field.getType();
+            VMError.guarantee(CustomTypeFieldHandler.isConcreteType(fieldType), "Illegal use of @UnknownObjectField annotation on field %s. " +
+                            "The field type must be concrete or the annotation must declare a concrete type.", field);
+            annotationTypes.add(fieldType.getJavaClass());
+        }
+        return annotationTypes.toArray(new Class<?>[0]);
     }
 }

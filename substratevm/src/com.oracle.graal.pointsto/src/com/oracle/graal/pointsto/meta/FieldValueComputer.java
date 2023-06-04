@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.util.function.BooleanSupplier;
+package com.oracle.graal.pointsto.meta;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
-
-/**
- * For fields with this annotation no static analysis is done.
- *
- * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
- * that any subtype of c is instantiated.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface UnknownObjectField {
+public interface FieldValueComputer {
 
-    /**
-     * Specify types that this field can take.
-     */
-    Class<?>[] types() default {};
+    Class<?>[] EMPTY_TYPES = new Class<?>[0];
 
-    /**
-     * Specify fully qualified names of types that this field can take.
-     */
-    String[] fullyQualifiedTypes() default {};
+    default boolean isAvailable() {
+        return true;
+    }
 
-    /**
-     * Specify if this field can be null. By default unknown value object fields cannot be null.
-     */
-    boolean canBeNull() default false;
+    default Class<?>[] types() {
+        return EMPTY_TYPES;
+    }
 
-    Class<? extends BooleanSupplier> availability() default AfterAnalysis.class;
+    default boolean canBeNull() {
+        return false;
+    }
 }

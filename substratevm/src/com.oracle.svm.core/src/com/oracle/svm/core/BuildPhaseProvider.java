@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -69,4 +71,12 @@ public final class BuildPhaseProvider {
     public static boolean isCompilationFinished() {
         return singleton().compilationFinished;
     }
+
+    public static class AfterAnalysis implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isAnalysisFinished();
+        }
+    }
+
 }
