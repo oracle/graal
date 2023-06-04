@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -62,7 +61,6 @@ public abstract class CustomTypeFieldHandler {
                 injectFieldTypes(field, field.getType());
             }
         } else if (field.isComputedValue()) {
-            assert !Modifier.isFinal(field.getModifiers()) : "Unknown value fields " + field.format("%H.%n") + " cannot be final";
             if (!field.getStorageKind().isPrimitive()) {
                 field.setCanBeNull(field.computedValueCanBeNull());
                 injectFieldTypes(field, transformTypes(field, field.computedValueTypes()));
