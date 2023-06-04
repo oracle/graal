@@ -371,12 +371,14 @@ class GraalVmComponent(object):
 
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
-                 include_in_polyglot=None, standalone_dir_name=None, standalone_dependencies=None, **kwargs):
+                 include_in_polyglot=None, standalone_dir_name=None, standalone_dependencies=None,
+                 standalone_dependencies_enterprise=None, **kwargs):
         """
         :param list[str] truffle_jars: JAR distributions that should be on the classpath for the language implementation.
         :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images (deprecated).
         :param str standalone_dir_name: name for the standalone archive and directory inside
-        :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the standalone in the form {component name: (relative path, excluded_paths)}.
+        :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the CE standalone in the form {component name: (relative path, excluded_paths)}.
+        :param dict[str, (str, list[str])] standalone_dependencies_enterprise: like `standalone_dependencies`, but for the EE standalone. Defaults to `standalone_dependencies` if not set.
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                       jar_distributions=truffle_jars, **kwargs)
@@ -384,7 +386,9 @@ class GraalVmTruffleComponent(GraalVmComponent):
             mx.warn('"include_in_polyglot" is deprecated. Please drop all uses.')
         self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         self.standalone_dependencies = standalone_dependencies or {}
+        self.standalone_dependencies_enterprise = standalone_dependencies_enterprise or self.standalone_dependencies
         assert isinstance(self.standalone_dependencies, dict)
+        assert isinstance(self.standalone_dependencies_enterprise, dict)
 
 
 class GraalVmLanguage(GraalVmTruffleComponent):
