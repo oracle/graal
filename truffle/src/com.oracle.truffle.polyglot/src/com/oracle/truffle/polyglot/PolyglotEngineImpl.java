@@ -693,16 +693,28 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         RUNTIME.onEnginePatch(this.runtimeData, engineOptions, logSupplier);
 
+        List<OptionDescriptor> deprecatedDescriptors = new ArrayList<>();
         for (PolyglotLanguage language : languagesOptions.keySet()) {
-            language.getOptionValues().putAll(this, languagesOptions.get(language), newAllowExperimentalOptions);
+            for (Map.Entry<String, String> languageOption : languagesOptions.get(language).entrySet()) {
+                OptionDescriptor descriptor = language.getOptionValues().put(this, languageOption.getKey(), languageOption.getValue(), newAllowExperimentalOptions);
+                if (descriptor.isDeprecated()) {
+                    deprecatedDescriptors.add(descriptor);
+                }
+            }
         }
 
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getEngineOptionValues().putAll(this, instrumentsOptions.get(instrument), newAllowExperimentalOptions);
+            for (Map.Entry<String, String> instrumentOption : instrumentsOptions.get(instrument).entrySet()) {
+                OptionDescriptor descriptor = instrument.getEngineOptionValues().put(this, instrumentOption.getKey(), instrumentOption.getValue(), newAllowExperimentalOptions);
+                if (descriptor.isDeprecated()) {
+                    deprecatedDescriptors.add(descriptor);
+                }
+            }
         }
         validateSandbox();
+        printDeprecatedOptionsWarning(deprecatedDescriptors);
     }
 
     static LogHandler createLogHandler(AbstractPolyglotImpl polyglot, LogConfig logConfig, DispatchOutputStream errDispatchOutputStream, SandboxPolicy sandboxPolicy) {

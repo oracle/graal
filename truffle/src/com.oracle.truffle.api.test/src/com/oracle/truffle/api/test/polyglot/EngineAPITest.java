@@ -359,7 +359,6 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedLanguageOptionContext() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         Context.Builder b = Context.newBuilder().option(DeprecatedOptionLanguage.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
@@ -376,7 +375,6 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedInstrumentOptionEngine() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         Engine.Builder b = Engine.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
@@ -417,7 +415,6 @@ public class EngineAPITest {
 
     @Test
     public void testDeprecatedInstrumentOptionContext() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
         Context.Builder b = Context.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
         List<LogRecord> log = addTestLogHandler(b);
         Context e = b.build();
