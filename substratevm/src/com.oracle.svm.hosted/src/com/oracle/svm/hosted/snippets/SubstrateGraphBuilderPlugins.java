@@ -155,6 +155,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -172,7 +173,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.ReflectionFactory;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -183,6 +183,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
+                    ImageClassLoader loader,
                     MetaAccessProvider metaAccess,
                     SnippetReflectionProvider snippetReflection,
                     InvocationPlugins plugins,
@@ -196,7 +197,7 @@ public class SubstrateGraphBuilderPlugins {
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
-        registerSerializationPlugins(snippetReflection, plugins, parsingReason);
+        registerSerializationPlugins(loader, snippetReflection, plugins, parsingReason);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, parsingReason);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, parsingReason);
@@ -215,7 +216,7 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerSerializationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
+    private static void registerSerializationPlugins(ImageClassLoader loader, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
         if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
             serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
@@ -235,40 +236,42 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            Registration customConstructor = new Registration(plugins, ReflectionFactory.class);
-            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
-                @Override
-                public boolean isDecorator() {
-                    return true;
-                }
-
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
-                    if (nonNullJavaConstants(receiver.get(), clazz)) {
-                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant())), reason));
+            if (ModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+                Registration customConstructor = new Registration(plugins, loader.findClassOrFail("sun.reflect.ReflectionFactory"));
+                customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
+                    @Override
+                    public boolean isDecorator() {
                         return true;
                     }
-                    return false;
-                }
-            });
 
-            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class, Constructor.class) {
-                @Override
-                public boolean isDecorator() {
-                    return true;
-                }
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
+                        if (nonNullJavaConstants(receiver.get(), clazz)) {
+                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant())), reason));
+                            return true;
+                        }
+                        return false;
+                    }
+                });
 
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
-                    if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
-                        var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
-                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
-                                        constructorDeclaringClass), reason));
+                customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class, Constructor.class) {
+                    @Override
+                    public boolean isDecorator() {
                         return true;
                     }
-                    return false;
-                }
-            });
+
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
+                        if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
+                            var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
+                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
+                                    constructorDeclaringClass), reason));
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+            }
         }
     }
 

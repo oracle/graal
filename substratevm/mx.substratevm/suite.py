@@ -244,7 +244,6 @@ suite = {
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.management.jfr",
-                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -527,9 +526,6 @@ suite = {
             "dependencies": [
                 "com.oracle.graal.pointsto",
             ],
-            "requires" : [
-                "jdk.unsupported" # sun.misc.Unsafe
-            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc"
@@ -606,7 +602,6 @@ suite = {
             "requires" : [
                 "jdk.jfr",
                 "jdk.management",
-                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -978,9 +973,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
             ],
-            "requires" : [
-                "jdk.unsupported",
-            ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
             "annotationProcessors": [
@@ -1259,9 +1251,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
-            ],
-            "requires" : [
-                "jdk.unsupported",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [

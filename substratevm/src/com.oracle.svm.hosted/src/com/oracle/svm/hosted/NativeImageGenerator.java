@@ -1377,6 +1377,7 @@ public class NativeImageGenerator {
 
         assert pluginsMetaAccess != null;
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
+                        loader,
                         pluginsMetaAccess,
                         hostedSnippetReflection,
                         plugins.getInvocationPlugins(),

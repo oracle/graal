@@ -80,14 +80,14 @@ final class Target_jdk_internal_misc_Signal {
     }
 
     /**
-     * Called by the VM to execute Java signal handlers. Except that in sun.misc.Signal, this method
-     * is private.
+     * Called by the VM to execute Java signal handlers. Except that in jdk.internal.misc.Signal,
+     * this method is private.
      */
     @Alias
     static native void dispatch(int number);
 }
 
-/** Support for Target_sun_misc_Signal. */
+/** Support for Target_jdk_internal_misc_Signal. */
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -105,7 +105,7 @@ final class Util_jdk_internal_misc_Signal {
         /* All-static class. */
     }
 
-    /** Constants for the longs from sun.misc.Signal. */
+    /** Constants for the longs from jdk.internal.misc.Signal. */
     private static final long sunMiscSignalDefaultHandler = 0;
     private static final long sunMiscSignalIgnoreHandler = 1;
     private static final long sunMiscSignalDispatchHandler = 2;
@@ -182,9 +182,9 @@ final class Util_jdk_internal_misc_Signal {
                             throw new IllegalArgumentException("C signal handling mechanism is in use.");
                         }
                         /* Report other failure. */
-                        Log.log().string("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.create() failed.")
+                        Log.log().string("Util_jdk_internal_misc_Signal.ensureInitialized: CSunMiscSignal.create() failed.")
                                         .string("  errno: ").signed(openErrno).string("  ").string(Errno.strerror(openErrno)).newline();
-                        throw VMError.shouldNotReachHere("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
+                        throw VMError.shouldNotReachHere("Util_jdk_internal_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
                     /* Initialize the table of signal states. */
@@ -240,7 +240,7 @@ final class Util_jdk_internal_misc_Signal {
                 return entry.getNumber();
             }
         }
-        /* {@link sun.misc.Signal#findSignal(String)} expects a -1 on failure. */
+        /* {@link jdk.internal.misc.Signal#findSignal(String)} expects a -1 on failure. */
         return -1;
     }
 
@@ -377,12 +377,12 @@ final class Util_jdk_internal_misc_Signal {
 
         protected static void await() {
             final int awaitResult = CSunMiscSignal.await();
-            PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.await(): CSunMiscSignal.await() failed.");
+            PosixUtils.checkStatusIs0(awaitResult, "Util_jdk_internal_misc_Signal.SignalState.await(): CSunMiscSignal.await() failed.");
         }
 
         protected static void wakeUp() {
             final int awaitResult = CSunMiscSignal.post();
-            PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.post(): CSunMiscSignal.post() failed.");
+            PosixUtils.checkStatusIs0(awaitResult, "Util_jdk_internal_misc_Signal.SignalState.post(): CSunMiscSignal.post() failed.");
         }
 
         /*
