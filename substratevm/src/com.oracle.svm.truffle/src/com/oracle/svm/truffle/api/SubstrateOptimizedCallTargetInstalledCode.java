@@ -41,8 +41,6 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -56,12 +54,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstrateInstalledCode}).
  */
 public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
-    protected final CallTargetWeakReference callTargetRef;
+    protected final WeakReference<SubstrateOptimizedCallTarget> callTargetRef;
     private String nameSuffix = "";
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
-        this.callTargetRef = new CallTargetWeakReference(callTarget);
+        this.callTargetRef = new WeakReference<>(callTarget);
     }
 
     @Override
@@ -85,7 +83,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public final void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
-        SubstrateOptimizedCallTarget callTarget = getCallTargetRef();
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
         if (callTarget != null) {
             callTarget.onInvalidate(null, null, true);
         }
@@ -100,7 +98,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         } else {
             assert !isValid() : "Cannot be valid but not alive";
         }
-        SubstrateOptimizedCallTarget callTarget = getCallTargetRef();
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
         if (callTarget != null) {
             callTarget.onInvalidate(source, reason, wasActive);
         }
@@ -119,12 +117,12 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public TruffleCompilable getCompilable() {
-        return getCallTargetRef();
+        return callTargetRef.get();
     }
 
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
-        SubstrateOptimizedCallTarget callTarget = getCallTargetRef();
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
         if (callTarget != null) {
             return callTarget.getSpeculationLog();
         } else {
@@ -139,7 +137,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public String getName() {
-        SubstrateOptimizedCallTarget callTarget = getCallTargetRef();
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
         String targetName;
         if (callTarget != null) {
             targetName = callTarget.getName();
@@ -160,7 +158,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         this.address = address;
         this.entryPoint = entryPoint;
 
-        SubstrateOptimizedCallTarget target = getCallTargetRef();
+        SubstrateOptimizedCallTarget target = callTargetRef.get();
         if (target != null) {
             target.onCodeInstalled(this);
         } else {
@@ -182,16 +180,10 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         this.entryPoint = 0;
         this.address = 0;
 
-        SubstrateOptimizedCallTarget target = getCallTargetRef();
+        SubstrateOptimizedCallTarget target = callTargetRef.get();
         if (target != null) {
             target.onCodeCleared(this);
         }
-    }
-
-    // TODO workaround for callTargetRef.get() should be removed.
-    @RestrictHeapAccess(access = Access.UNRESTRICTED, reason = "callTargetRef.get() does not actually allocate?")
-    private SubstrateOptimizedCallTarget getCallTargetRef() {
-        return callTargetRef.get();
     }
 
     @Override
@@ -271,13 +263,5 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public Object executeVarargs(Object... args) {
         throw VMError.shouldNotReachHere(NOT_CALLED_IN_SUBSTRATE_VM);
-    }
-
-    private static final class CallTargetWeakReference extends WeakReference<SubstrateOptimizedCallTarget> {
-
-        CallTargetWeakReference(SubstrateOptimizedCallTarget referent) {
-            super(referent);
-        }
-
     }
 }
