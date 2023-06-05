@@ -87,8 +87,8 @@
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="SuppressionCommentFilter">
-      <property name="offCommentFormat" value="Checkstyle: allow raw info or warning printing"/>
-      <property name="onCommentFormat" value="Checkstyle: disallow raw info or warning printing"/>
+      <property name="offCommentFormat" value="Checkstyle: Allow raw info or warning printing - begin"/>
+      <property name="onCommentFormat" value="Checkstyle: Allow raw info or warning printing - end"/>
       <property name="idFormat" value="infoAndWarnings"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Tolerate raw info or warning printing"/>
     </module>
