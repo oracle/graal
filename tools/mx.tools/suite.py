@@ -370,6 +370,9 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
             ],
+            "exclude" : [
+                "truffle:TruffleJSON",
+            ],
             "maven" : {
               "artifactId" : "chromeinspector",
             },
@@ -479,6 +482,9 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],
+            "exclude" : [
+                "truffle:TruffleJSON",
+            ],
             "maven" : {
               "artifactId" : "profiler",
             },
@@ -516,6 +522,9 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],
+            "exclude" : [
+                "truffle:TruffleJSON",
+            ],
             "maven" : {
               "artifactId" : "coverage",
             },
@@ -552,6 +561,9 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+            ],
+            "exclude" : [
+                "truffle:TruffleJSON",
             ],
             "maven" : {
               "artifactId" : "dap",
@@ -615,6 +627,9 @@ suite = {
             ],
             "distDependencies" : [
                 "LSP_API",
+            ],
+            "exclude" : [
+                "truffle:TruffleJSON",
             ],
             "maven" : {
               "artifactId" : "lsp",

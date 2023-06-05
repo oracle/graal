@@ -1713,6 +1713,15 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_JSON_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for Truffle JSON",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-json.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
