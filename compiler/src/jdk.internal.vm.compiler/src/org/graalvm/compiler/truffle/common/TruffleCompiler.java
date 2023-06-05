@@ -29,6 +29,9 @@ package org.graalvm.compiler.truffle.common;
  */
 public interface TruffleCompiler {
 
+    String FIRST_TIER_COMPILATION_SUFFIX = "#1";
+    String SECOND_TIER_COMPILATION_SUFFIX = "#2";
+
     /**
      * Initializes the compiler before the first compilation.
      *

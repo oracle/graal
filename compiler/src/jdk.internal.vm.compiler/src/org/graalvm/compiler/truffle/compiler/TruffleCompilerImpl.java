@@ -111,8 +111,6 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public abstract class TruffleCompilerImpl implements TruffleCompiler, CompilationWatchDog.EventHandler {
 
-    public static final String FIRST_TIER_COMPILATION_SUFFIX = "#1";
-    public static final String SECOND_TIER_COMPILATION_SUFFIX = "#2";
     public static final int FIRST_TIER_INDEX = 1;
     public static final int LAST_TIER_INDEX = 2;
 
