@@ -46,7 +46,7 @@ public @interface OptionGroup {
     /**
      * Prefix string to be used for option names. For example setting it to <code>"compiler."</code>
      * will make every specified option use that prefix. By default options directly use the field
-     * name and to do not use prefix.
+     * name and do not use a prefix.
      */
     String prefix() default "";
 
