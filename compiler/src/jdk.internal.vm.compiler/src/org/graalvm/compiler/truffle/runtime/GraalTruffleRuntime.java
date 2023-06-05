@@ -1251,7 +1251,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
         TruffleCompilerOptionDescriptor[] options;
 
+        /*
+         * Used to validate options by name. e.g. for validation requests.
+         */
         private static final Map<String, OptionKey<String>> KEYS = new ConcurrentHashMap<>();
+
+        /*
+         * Used to extract option values from OptionValues. Since we do not have a generated
+         * descriptor option on the runtime side we enumerate all options that were used globally.
+         */
         private static final Map<OptionKey<String>, String> NAMES = new ConcurrentHashMap<>();
 
         CompilerOptionsDescriptors() {
