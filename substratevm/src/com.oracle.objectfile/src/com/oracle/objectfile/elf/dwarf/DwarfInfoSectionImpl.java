@@ -331,18 +331,34 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         TypeEntry valueType = fieldEntry.getValueType();
         int valueTypeIdx;
         if (fieldEntry.isEmbedded()) {
-            assert valueType instanceof ClassEntry;
+            // the field type must be a foreign type
+            ForeignTypeEntry foreignValueType = (ForeignTypeEntry) valueType;
             /* use the indirect layout type for the field */
             /* handle special case when the field is an array */
             int fieldSize = fieldEntry.getSize();
-            int valueSize = valueType.getSize();
-            if (fieldEntry.getSize() != valueType.getSize()) {
+            int valueSize = foreignValueType.getSize();
+            if (fieldEntry.getSize() != foreignValueType.getSize()) {
                 assert (fieldSize % valueSize == 0) : "embedded field size is not a multiple of value type size!";
                 // declare a local array of the embedded type and use it as the value type
                 valueTypeIdx = pos;
-                pos = writeEmbeddedArrayDataType(context, (ClassEntry) valueType, valueSize, fieldSize / valueSize, buffer, pos);
+                pos = writeEmbeddedArrayDataType(context, foreignValueType, valueSize, fieldSize / valueSize, buffer, pos);
             } else {
-                valueTypeIdx = getIndirectLayoutIndex((ClassEntry) valueType);
+                if (foreignValueType.isPointer()) {
+                    // type the array using the referent of the pointer type
+                    //
+                    // n.b it is critical for correctness to use the index of the referent rather
+                    // than the layout type of the referring type even though the latter will
+                    // (eventually) be set to the same value. the type index of the referent is
+                    // guaranteed to be set on the first sizing pass before it is consumed here
+                    // on the second writing pass.
+                    // However, if this embedded struct field definition precedes the definition
+                    // of the referring type and the latter precedes the definition of the
+                    // referent type then the layout index of the referring type may still be unset
+                    // at this point.
+                    valueTypeIdx = getTypeIndex(foreignValueType.getPointerTo());
+                } else {
+                    valueTypeIdx = getIndirectLayoutIndex(foreignValueType);
+                }
             }
         } else {
             /* use the indirect type for the field so pointers get translated */
@@ -538,6 +554,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              */
             pos = writeAttrNull(buffer, pos);
         } else {
+            log(context, "  [0x%08x] setIndirectLayoutIndex %s 0x%x", pos, classEntry.getTypeName(), pos);
             setIndirectLayoutIndex(classEntry, layoutIndex);
         }
 
@@ -906,14 +923,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeForeignStructLayout(context, foreignTypeEntry, size, buffer, pos);
         } else {
             // this must be a pointer. if the target type is known use it to declare the pointer
-            // type
-            // otherwise default to 'void *'
+            // type, otherwise default to 'void *'
             layoutOffset = voidOffset;
             String referentName = "void";
             if (foreignTypeEntry.isPointer()) {
                 TypeEntry pointerTo = foreignTypeEntry.getPointerTo();
                 if (pointerTo != null) {
-                    // define this type as a typedef for a pointer to the referent
                     layoutOffset = getTypeIndex(foreignTypeEntry.getPointerTo());
                     referentName = foreignTypeEntry.getTypeName();
                 }
@@ -1326,7 +1341,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeEmbeddedArrayDataType(DebugContext context, ClassEntry elementType, int valueSize, int arraySize, byte[] buffer, int p) {
+    private int writeEmbeddedArrayDataType(DebugContext context, ForeignTypeEntry foreignValueType, int valueSize, int arraySize, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] embedded array element data type", pos);
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2;
@@ -1336,9 +1351,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = arraySize * valueSize;
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
         pos = writeAttrData4(size, buffer, pos);
-        String elementTypeName = elementType.getTypeName();
-        /* use the indirect layout type for the element */
-        int elementTypeIdx = getIndirectLayoutIndex(elementType);
+        String elementTypeName = foreignValueType.getTypeName();
+        int elementTypeIdx;
+        if (foreignValueType.isPointer()) {
+            // type the array using the referent of the pointer type
+            //
+            // n.b it is critical for correctness to use the index of the referent rather than
+            // the layout type of the referring type even though the latter will (eventually)
+            // be set to the same value. the type index of the referent is guaranteed to be set
+            // on the first sizing pass before it is consumed here on the second writing pass.
+            // However, if this embedded struct field definition precedes the definition of the
+            // referring type and the latter precedes the definition of the referent type then
+            // the layout index of the referring type may still be unset at this point.
+            elementTypeIdx = getTypeIndex(foreignValueType.getPointerTo());
+        } else {
+            // type the array using the layout type
+            elementTypeIdx = getIndirectLayoutIndex(foreignValueType);
+        }
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeIdx, elementTypeName);
         pos = writeInfoSectionOffset(elementTypeIdx, buffer, pos);
         // write subrange child DIE
