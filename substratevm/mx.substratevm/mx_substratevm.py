@@ -1203,12 +1203,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image',
-            main_module="org.graalvm.nativeimage.configure",
-            destination="bin/<exe:native-image-configure>",
-            jar_distributions=["substratevm:SVM_CONFIGURE"],
-            main_class="com.oracle.svm.configure.ConfigurationTool",
+            main_module='org.graalvm.nativeimage.configure',
+            destination='bin/<exe:native-image-configure>',
+            jar_distributions=['substratevm:SVM_CONFIGURE'],
+            main_class='com.oracle.svm.configure.ConfigurationTool',
             build_args=[
-                "-H:-ParseRuntimeOptions",
+                '-H:-ParseRuntimeOptions',
             ],
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
         )

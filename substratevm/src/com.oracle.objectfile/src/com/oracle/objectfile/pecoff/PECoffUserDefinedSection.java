@@ -185,6 +185,8 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
      * @param msg warning message that is printed.
      */
     private static void warn(String msg) {
-        System.err.println("Warning: " + msg);
+        // Checkstyle: Allow raw info or warning printing - begin
+        System.out.println("Warning: " + msg);
+        // Checkstyle: Allow raw info or warning printing - end
     }
 }

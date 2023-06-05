@@ -146,6 +146,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.jni.JNIFeature;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -316,7 +317,7 @@ public class LibGraalFeature implements InternalFeature {
                     Files.delete(configFilePath);
                     configFilePath = null;
                 } catch (IOException e) {
-                    System.out.printf("Warning: Cound not delete %s: %s%n", configFilePath, e);
+                    LogUtils.warning("Could not delete %s: %s", configFilePath, e);
                 }
             }
         }

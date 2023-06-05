@@ -43,6 +43,7 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class DynamicProxySupport implements DynamicProxyRegistry {
@@ -133,7 +134,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
                 return clazz;
             } catch (Throwable t) {
-                System.err.println("Warning: Could not create a proxy class from list of interfaces: " + Arrays.toString(interfaces) + ". Reason: " + t.getMessage());
+                LogUtils.warning("Could not create a proxy class from list of interfaces: %s. Reason: %s", Arrays.toString(interfaces), t.getMessage());
                 return t;
             }
         });

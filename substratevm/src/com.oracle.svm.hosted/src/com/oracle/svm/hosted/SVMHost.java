@@ -128,6 +128,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -755,8 +756,7 @@ public class SVMHost extends HostVM {
 
             String commandArgument = SubstrateOptionsParser.commandArgument(Options.PlatformInterfaceCompatibilityMode, "+");
             if (Options.PlatformInterfaceCompatibilityMode.getValue()) {
-                System.out.println("Warning: " + message + " The interface is filtered because the compatibility option " + commandArgument +
-                                " is used. This option will be removed in a future GraalVM version.");
+                LogUtils.warning("%s The interface is filtered because the compatibility option %s is used. This option will be removed in a future GraalVM version.", message, commandArgument);
                 return true;
             } else {
                 throw new UnsupportedFeatureException(

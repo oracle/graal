@@ -56,6 +56,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -125,7 +126,7 @@ public class FeatureHandler {
                             "Support for this annotation will be removed in a future version of GraalVM. " +
                             "Applications should register a feature using the option " + SubstrateOptionsParser.commandArgument(Options.Features, annotatedFeatureClass.getName());
             if (Options.AllowDeprecatedAutomaticFeature.getValue()) {
-                System.out.println("Warning: " + msg);
+                LogUtils.warning(msg);
             } else {
                 throw UserError.abort(msg);
             }

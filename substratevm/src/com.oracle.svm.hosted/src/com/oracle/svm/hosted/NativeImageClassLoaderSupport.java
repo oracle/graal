@@ -94,6 +94,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -515,7 +516,7 @@ public class NativeImageClassLoaderSupport {
                      * be tolerant if invalid --add-exports -add-opens or --add-reads options are
                      * used. GR-30433
                      */
-                    System.out.println("Warning: " + e.getMessage());
+                    LogUtils.warning(e.getMessage());
                     return Stream.empty();
                 }
             }
@@ -713,8 +714,7 @@ public class NativeImageClassLoaderSupport {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
-                System.err.println("Warning: Using directory " + excludeRoot + " on classpath is discouraged." +
-                                " Reading classes/resources from directories " + excludesStr + " will be suppressed.");
+                LogUtils.warning("Using directory %s on classpath is discouraged. Reading classes/resources from directories %s will be suppressed.", excludeRoot, excludesStr);
             }
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
@@ -780,7 +780,7 @@ public class NativeImageClassLoaderSupport {
                         }
                     });
                 } catch (Exception e) {
-                    System.out.println("Warning: Image builder cannot read service configuration file " + fileName);
+                    LogUtils.warning("Image builder cannot read service configuration file " + fileName);
                 }
                 if (!providerNames.isEmpty()) {
                     LinkedHashSet<String> providersForService = serviceProviders(serviceName);
@@ -879,7 +879,7 @@ public class NativeImageClassLoaderSupport {
                                             "As a workaround, %s allows turning this error into a warning. Note that this option is deprecated and will be removed in a future version.");
                             throw UserError.abort(errorMessage, SubstrateOptionsParser.commandArgument(SubstrateOptions.AllowDeprecatedBuilderClassesOnImageClasspath, "+"));
                         } else {
-                            System.out.println("Warning: " + message);
+                            LogUtils.warning(message);
                         }
                     }
                 }

@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * Parses JSON describing classes, methods and fields and delegates their registration to a
@@ -311,6 +312,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        System.err.println("Warning: " + message);
+        LogUtils.warning(message);
     }
 }
