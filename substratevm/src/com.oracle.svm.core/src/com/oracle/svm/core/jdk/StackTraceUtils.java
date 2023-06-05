@@ -278,19 +278,11 @@ public class StackTraceUtils {
  * <pre>
  *                      backtrace content      |   Number of Java frames
  *                    ---------------------------------------------------
- * backtrace[pos + 0] | native inst. pointer   |   X Java frames
+ * backtrace[pos + 0] | native inst. pointer   |   0..n Java frames
  *                    --------------------------
- * backtrace[pos + 1] | native inst. pointer   |   Y Java frames
- *                    --------------------------
- * backtrace[pos + 2] | encoded src line nr    |   1 Java frame
- * backtrace[pos + 3] | source class ref       |
- * backtrace[pos + 4] | source method name ref |
- *                    --------------------------
- * backtrace[pos + 5] | encoded src line nr    |   1 Java frame
- * backtrace[pos + 6] | source class ref       |
- * backtrace[pos + 7] | source method name ref |
- *                    --------------------------
- * backtrace[pos + 8] | native inst. pointer   |   Z Java frames
+ * backtrace[pos + 1] | encoded src line nr    |   1 Java frame
+ * backtrace[pos + 2] | source class ref       |
+ * backtrace[pos + 3] | source method name ref |
  *                    --------------------------
  *                    | ... remaining          |
  *                    --------------------------
@@ -302,17 +294,10 @@ public class StackTraceUtils {
  * <pre>
  *                      backtrace content                                   |   Number of Java frames
  *                    --------------------------------------------------------------------------------
- * backtrace[pos + 0] | native inst. pointer                                |   X Java frames
+ * backtrace[pos + 0] | native inst. pointer                                |   0..n Java frames
  *                    -------------------------------------------------------
- * backtrace[pos + 1] | native inst. pointer                                |   Y Java frames
- *                    -------------------------------------------------------
- * backtrace[pos + 2] | encoded src line nr                                 |   1 Java frame
- * backtrace[pos + 3] | (source class ref) << 32 | (source method name ref) |
- *                    -------------------------------------------------------
- * backtrace[pos + 4] | encoded src line nr                                 |   1 Java frame
- * backtrace[pos + 5] | (source class ref) << 32 | (source method name ref) |
- *                    -------------------------------------------------------
- * backtrace[pos + 5] | native inst. pointer                                |   Z Java frames
+ * backtrace[pos + 1] | encoded src line nr                                 |   1 Java frame
+ * backtrace[pos + 2] | (source class ref) << 32 | (source method name ref) |
  *                    -------------------------------------------------------
  *                    | ... remaining                                       |
  *                    -------------------------------------------------------
@@ -332,8 +317,9 @@ final class BacktraceVisitor extends StackFrameVisitor {
     private int index = 0;
 
     /**
-     * Number of frames stored (native or Java frames). Because Java frames take up more than one
-     * entry in {@link #trace} this number might be different to {@link #index}.
+     * Number of frames stored (native instruction pointers or encoded Java source reference).
+     * Because Java frames take up more than one entry in {@link #trace} this number might be
+     * different to {@link #index}.
      */
     private int numFrames = 0;
     private final int limit = computeNativeLimit();
@@ -444,7 +430,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
      * source reference, as written by {@link #writeSourceReference}.
      *
      * @implNote A source reference entry has their high bit set, i.e., it is a negative number in
-     *           the tows complement representation (see {@link #encodeLineNumber}).
+     *           the two's complement representation (see {@link #encodeLineNumber}).
      * @see #writeSourceReference
      * @see #encodeLineNumber
      */
