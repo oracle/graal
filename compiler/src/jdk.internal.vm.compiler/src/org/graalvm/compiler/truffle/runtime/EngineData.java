@@ -153,15 +153,17 @@ public final class EngineData {
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
     private Map<String, String> compilerOptions;
 
-    private Object polyglotEngine;
+    private volatile Object polyglotEngine;
 
     /*
      * Extension data for dynamically bound engine extensions.
      */
     private volatile Map<Class<?>, Object> engineLocals;
 
-    EngineData(OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        Objects.requireNonNull(polyglotEngine);
         Objects.requireNonNull(runtimeOptions);
+        this.polyglotEngine = polyglotEngine;
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
         this.loadOptions(runtimeOptions);
@@ -216,8 +218,7 @@ public final class EngineData {
     }
 
     void onEngineCreated(Object engine) {
-        assert this.polyglotEngine == null;
-        this.polyglotEngine = engine;
+        assert this.polyglotEngine == engine;
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
@@ -238,6 +239,10 @@ public final class EngineData {
     void onEngineClosed() {
         getRuntime().getListener().onEngineClosed(this);
         getRuntime().getEngineCacheSupport().onEngineClosed(this);
+        /*
+         * The PolyglotEngine must be reset only after listeners are closed. The PolyglotEngine
+         * reset disables logging.
+         */
         this.polyglotEngine = null;
     }
 
@@ -389,7 +394,7 @@ public final class EngineData {
     @SuppressWarnings({"static-method", "unchecked"})
     public Collection<OptimizedCallTarget> getCallTargets() {
         if (polyglotEngine == null) {
-            throw new IllegalStateException("No polyglot engine initialized.");
+            throw new IllegalStateException("The polyglot engine is closed.");
         }
         return (Collection<OptimizedCallTarget>) GraalRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
     }
@@ -441,7 +446,7 @@ public final class EngineData {
     }
 
     public TruffleLogger getLogger(String loggerId) {
-        return loggerFactory.apply(loggerId);
+        return polyglotEngine != null ? loggerFactory.apply(loggerId) : null;
     }
 
     @SuppressWarnings("static-method")

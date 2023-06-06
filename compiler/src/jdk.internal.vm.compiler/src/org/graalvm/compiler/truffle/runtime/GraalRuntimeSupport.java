@@ -289,8 +289,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object createRuntimeData(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
-        return new EngineData(engineOptions, loggerFactory);
+    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
+        return new EngineData(engine, engineOptions, loggerFactory);
     }
 
     @Override
