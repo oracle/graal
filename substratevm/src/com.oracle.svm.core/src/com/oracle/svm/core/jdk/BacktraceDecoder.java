@@ -63,11 +63,11 @@ public abstract class BacktraceDecoder {
                 long entry = trace[backtraceIndex];
                 if (DeoptimizationSupport.enabled() && BacktraceVisitor.isSourceReference(entry)) {
                     /* Entry is an encoded source reference. */
-                    VMError.guarantee(backtraceIndex + BacktraceVisitor.MAX_ENTRIES_PER_FRAME <= trace.length, "Truncated backtrace array");
+                    VMError.guarantee(backtraceIndex + BacktraceVisitor.ENTRIES_PER_SOURCE_REFERENCE <= trace.length, "Truncated backtrace array");
                     visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
                     /* Always a single frame. */
                     framesDecoded++;
-                    backtraceIndex += BacktraceVisitor.MAX_ENTRIES_PER_FRAME;
+                    backtraceIndex += BacktraceVisitor.ENTRIES_PER_SOURCE_REFERENCE;
                 } else {
                     VMError.guarantee(!BacktraceVisitor.isSourceReference(entry), "Unexpected source reference");
                     /* Entry is a raw code pointer. */
