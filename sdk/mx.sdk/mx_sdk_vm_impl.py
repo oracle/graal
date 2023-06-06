@@ -218,6 +218,14 @@ def registered_graalvm_components(stage1=False):
         ni_component = mx_sdk_vm.graalvm_component_by_name('ni', fatalIfMissing=False)
         niee_component = mx_sdk_vm.graalvm_component_by_name('niee', fatalIfMissing=False)
         if stage1:
+            if mx.suite('truffle', fatalIfMissing=False):
+                import mx_truffle
+                if has_component(mx_truffle.truffle_nfi_component.name, stage1=False):
+                    svmnfi_component = mx_sdk_vm.graalvm_component_by_name('svmnfi', fatalIfMissing=False)
+                    if svmnfi_component is not None:
+                        # SVM support for Truffle NFI must be added to the stage1 distribution if the Truffle NFI
+                        # component is part of the final distribution
+                        add_dependencies([svmnfi_component], excludes=False)
             # To build native launchers or libraries we need Native Image and its dependencies in stage1, even when
             # these components are not included in the final distribution
             if niee_component is not None:

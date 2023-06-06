@@ -863,24 +863,46 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
-    name='Truffle',
-    short_name='tfl',
+    name='Truffle API',
+    short_name='tfla',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    jar_distributions=[
-        'truffle:TRUFFLE_DSL_PROCESSOR',
-        'truffle:TRUFFLE_TCK',
-    ],
+    jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
-        'truffle:LOCATOR',
     ],
     stability="supported",
 ))
 
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle',
+    short_name='tfl',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Truffle API',
+        'GraalVM Launcher Common'
+    ],
+    jar_distributions=[],
+    jvmci_parent_jars=[
+        'truffle:LOCATOR',
+    ],
+    stability="supported",
+))
+
+# This component is useful only if `SubstrateVM` is included. However, we do
+# not declare a dependency because:
+# - it should be possible to build a GraalVM that includes this macro and not
+#   `SubstrateVM`, which can be installed via `gu`
+# - we prefer to define this component here rather than in the `substratevm`
+#   suite
+# - The `SubstrateVM` component explicitly depends on this macro, to make sure
+#   that it is always present whenever `SubstrateVM` is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
@@ -888,13 +910,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
     stability="supported",
 ))
 
+# Typically not included in releases
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle DSL Processor',
+    short_name='tflp',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=['truffle:TRUFFLE_DSL_PROCESSOR'],
+    jvmci_parent_jars=[],
+    stability="supported",
+))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+truffle_nfi_component = mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
@@ -907,7 +942,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_nfi_component)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
