@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
@@ -311,8 +312,9 @@ public class ProgressReporter {
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
-        long reachableTypes = universe.getTypes().stream().filter(t -> t.isReachable()).count();
-        long totalTypes = universe.getTypes().size();
+        List<AnalysisType> types = universe.getTypes();
+        long reachableTypes = types.stream().filter(t -> t.isReachable()).count();
+        long totalTypes = types.size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
