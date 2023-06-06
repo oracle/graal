@@ -3478,6 +3478,12 @@ def _infer_env(graalvm_dist):
     elif isinstance(disableInstallables, bool):
         disableInstallables = [str(disableInstallables)]
 
+    enableInstallables = _enabled_installables()
+    if enableInstallables is None:
+        enableInstallables = []
+    elif isinstance(enableInstallables, bool):
+        enableInstallables = [str(enableInstallables)]
+
     non_rebuildable_images = _non_rebuildable_images()
     if isinstance(non_rebuildable_images, bool):
         non_rebuildable_images = [str(non_rebuildable_images)]
@@ -3770,8 +3776,12 @@ mx.add_argument('--components', action='store', help='Comma-separated list of co
 mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build. suite:NAME can be used to exclude all components of a suite.')
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
-mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
-                                                               'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
+mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu. '
+                                                               'This can be a comma-separated list of disabled components names, short names, or `true` to disable all installables. '
+                                                               'Cannot be used with \'--installables\'', default=None)
+mx.add_argument('--installables', action='store', help='Enable the \'installable\' distributions for gu. '
+                                                               'This can be a comma-separated list of enabled components names, short names, or `true` to enable all installables. '
+                                                               'Cannot be used with \'--disable-installables\'', default=None)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-O0\' and with \'-ea\'.')
 mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: LAUNCHER_NAME or lib:polyglot or suite:NAME) to build with Native Image.')
 mx.add_argument('--non-rebuildable-images', action='store', help='Comma-separated list of launchers and libraries (syntax: LAUNCHER_NAME or lib:polyglot or suite:NAME) in the final GraalVM that cannot be rebuilt using Native Image.')
@@ -4011,18 +4021,40 @@ def _get_library_name(image_config):
 
 
 def _disabled_installables():
-    return _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
+    """
+    :rtype: bool
+    """
+    disabled_installables = _parse_cmd_arg('disable_installables')
+    assert disabled_installables is None or _parse_cmd_arg('installables') is None, "Cannot set both '--disable-installables'/'$DISABLE_INSTALLABLES' (got '{}') and '--installables'/'$INSTALLABLES' (got: '{}')".format(disabled_installables, _parse_cmd_arg('installables'))
+    return disabled_installables
+
+
+def _enabled_installables():
+    """
+    :rtype: bool
+    """
+    enabled_installables = _parse_cmd_arg('installables')
+    assert enabled_installables is None or _parse_cmd_arg('disable_installables') is None, "Cannot set both '--installables'/'$INSTALLABLES' (got '{}') and '--disable-installables'/'$DISABLE_INSTALLABLES' (got: '{}')".format(enabled_installables, _parse_cmd_arg('disable_installables'))
+    return enabled_installables
 
 
 def _disable_installable(component):
-    """ :type component: str | mx_sdk.GraalVmComponent """
+    """ :type component: mx_sdk.GraalVmComponent """
+    assert isinstance(component, mx_sdk.GraalVmComponent)
     disabled = _disabled_installables()
-    if isinstance(disabled, bool):
-        return disabled
+    if disabled is None:
+        enabled = _enabled_installables()
+        if enabled is None:
+            return not has_vm_suite()
+        if isinstance(enabled, bool):
+            return not enabled
+        else:
+            return not any((name in enabled for name in [component.name, component.short_name]))
     else:
-        if isinstance(component, mx_sdk.GraalVmComponent):
-            component = component.short_name
-        return component in disabled
+        if isinstance(disabled, bool):
+            return disabled
+        else:
+            return any((name in disabled for name in [component.name, component.short_name]))
 
 
 def _has_forced_launchers(component):
