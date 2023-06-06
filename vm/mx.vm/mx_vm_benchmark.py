@@ -949,8 +949,9 @@ class NativeImageVM(GraalVm):
             # choose appropriate profiles
             jdk_version = mx.get_jdk().javaCompliance
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
-            adopted_profiles_zip = mx.library(jdk_profiles).get_path(False)
-            if adopted_profiles_zip:
+            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
+            if adopted_profiles_lib:
+                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
                 adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
                 with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
                     zip_ref.extractall(adopted_profiles_dir)
