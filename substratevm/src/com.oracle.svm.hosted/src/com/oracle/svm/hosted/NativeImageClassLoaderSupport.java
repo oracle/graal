@@ -74,7 +74,6 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -83,6 +82,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
@@ -109,6 +109,7 @@ public class NativeImageClassLoaderSupport {
 
     private final EconomicMap<URI, EconomicSet<String>> classes;
     private final EconomicMap<URI, EconomicSet<String>> packages;
+    private final EconomicMap<String, LinkageError> linkageErrors = EconomicMap.create();
     private final EconomicSet<String> emptySet;
     private final EconomicSet<URI> builderURILocations;
 
@@ -220,6 +221,10 @@ public class NativeImageClassLoaderSupport {
 
     public EconomicSet<String> packages(URI container) {
         return packages.get(container, emptySet);
+    }
+
+    public LinkageError getLinkageError(String className) {
+        return linkageErrors.get(className);
     }
 
     public boolean noEntryForURI(EconomicSet<String> set) {
@@ -845,6 +850,8 @@ public class NativeImageClassLoaderSupport {
                 clazz = imageClassLoader.forName(className, module);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
+            } catch (LinkageError le) {
+                linkageErrors.put(className, le);
             } catch (Throwable t) {
                 ImageClassLoader.handleClassLoadingError(t);
             }

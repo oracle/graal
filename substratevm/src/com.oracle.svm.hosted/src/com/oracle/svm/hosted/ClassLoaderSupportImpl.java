@@ -303,4 +303,9 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             prevValue.add(moduleName);
         }
     }
+
+    @Override
+    public LinkageError getLinkageError(String className) {
+        return classLoaderSupport.getLinkageError(className);
+    }
 }
