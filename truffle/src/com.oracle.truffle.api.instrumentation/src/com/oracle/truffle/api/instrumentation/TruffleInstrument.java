@@ -52,6 +52,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -81,6 +82,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -354,7 +356,7 @@ public abstract class TruffleInstrument {
      * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
      * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
      * should be done in this method.
-     * 
+     *
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -1055,6 +1057,37 @@ public abstract class TruffleInstrument {
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
+        }
+
+        /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. The internal resource is guaranteed to be fully
+         * {@link InternalResource#unpackFiles(Path) unpacked} before this method returns. When this
+         * method is called for the first time and the resource is not cached than the resource will
+         * be unpacked. Unpacking an internal resource can be an expensive operation, but the
+         * implementation makes sure that unpacking internal resources is cached.
+         * <p>
+         * The returned {@link TruffleFile} will only grant read-only access to the target
+         * directory, but access is provided even if IO access is disabled.
+         * <p>
+         * On a HotSpot VM the internal resource is typically cached in the user directory, so
+         * unpacking would be repeated once per operating system user. When the language was
+         * compiled using native-image internal resources are unpacked at native-image compile time
+         * and stored relative to the native-image.
+         *
+         * @param resource the resource class to load
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
+
+            // implementation notes:
+            // cache-dir on Mac = ${user.home}/Library/Caches/org.graalvm.polyglot/
+            // ${cache-dir}/${component-id}/${name()}/${versionHash()}/
+            // directory gets locked on unpacking
+            // native-image: ./resources/${language-id}/${name()}/
+
+            // TODO implement
+            return null;
         }
 
         /**

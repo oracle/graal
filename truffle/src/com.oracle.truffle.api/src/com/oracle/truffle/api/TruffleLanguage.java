@@ -518,6 +518,8 @@ public abstract class TruffleLanguage<C> {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        Class<? extends InternalResource>[] internalResources() default {};
     }
 
     /**
@@ -1932,7 +1934,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Creates a builder for threads that have access to the given context.
-         * 
+         *
          * @param runnable the runnable to run on the threads created by the builder.
          * @return the builder for threads that have access to the given context.
          *
@@ -3492,6 +3494,36 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. The internal resource is guaranteed to be fully
+         * {@link InternalResource#unpackFiles(Path) unpacked} before this method returns. When this
+         * method is called for the first time and the resource is not cached than the resource will
+         * be unpacked. Unpacking an internal resource can be an expensive operation, but the
+         * implementation makes sure that unpacking internal resources is cached.
+         * <p>
+         * The returned {@link TruffleFile} will only grant read-only access to the target
+         * directory, but access is provided even if IO access is disabled.
+         * <p>
+         * On a HotSpot VM the internal resource is typically cached in the user directory, so
+         * unpacking would be repeated once per operating system user. When the language was
+         * compiled using native-image internal resources are unpacked at native-image compile time
+         * and stored relative to the native-image.
+         *
+         * @param resource the resource class to load
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
+
+            // implementation notes:
+            // cache-dir on Mac = ${user.home}/Library/Caches/org.graalvm.polyglot/
+            // ${cache-dir}/${component-id}/${name()}/${versionHash()}/
+            // directory gets locked on unpacking
+            // native-image: ./resources/${language-id}/${name()}/
+
+            return null;
+        }
+
+        /**
          * Find or create a context-bound logger. The returned {@link TruffleLogger} always uses a
          * logging handler and options from this execution environment context and does not depend
          * on being entered on any thread.
@@ -4079,6 +4111,7 @@ public abstract class TruffleLanguage<C> {
          */
         HARD
     }
+
 }
 
 class TruffleLanguageSnippets {
