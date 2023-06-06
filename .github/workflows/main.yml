@@ -79,7 +79,7 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "21"
-              GATE_TAGS: "build,test,helloworld"
+              GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
