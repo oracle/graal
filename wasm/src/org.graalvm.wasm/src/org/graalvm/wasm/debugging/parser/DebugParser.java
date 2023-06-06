@@ -66,7 +66,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
  * Represents a parser for the DWARF Debug Information Format.
  */
 public class DebugParser {
-
+    private static final DebugLineMap[] EMPTY_LINE_MAPS = {};
     private final byte[] data;
     private int offset;
 
@@ -396,10 +396,13 @@ public class DebugParser {
     }
 
     @TruffleBoundary
-    public DebugLineMap[] readLineSection(int debugLineOffset, String compilationPath, String compilationUnitName) {
+    public DebugLineMap[] readLineSection(int debugLineOffset, String compilationPath) {
         final int currentOffset = this.offset;
         this.offset = debugLineOffset;
-        DebugState state = readLineSectionHeader(compilationPath, compilationUnitName);
+        DebugState state = readLineSectionHeader(compilationPath);
+        if (state == null) {
+            return EMPTY_LINE_MAPS;
+        }
         int sectionLength = debugLineOffset + state.length();
         while (offset < sectionLength) {
             int opcode = readUnsigned1();
@@ -482,7 +485,7 @@ public class DebugParser {
         return state.lineMaps();
     }
 
-    private DebugState readLineSectionHeader(String compilationPath, String compilationUnitName) {
+    private DebugState readLineSectionHeader(String compilationPath) {
         int length = read4();
         read2(); // read version
         read4(); // read header length
@@ -509,12 +512,7 @@ public class DebugParser {
         read1();
 
         List<Path> filePaths = new ArrayList<>();
-        if (compilationUnitName.startsWith(compilationPath)) {
-            filePaths.add(Paths.get(compilationUnitName));
-        } else {
-            filePaths.add(Paths.get(compilationPath, compilationUnitName));
-        }
-
+        filePaths.add(Paths.get(compilationPath));
         // read file names
         lastByte = peek1();
         while (lastByte != 0) {
@@ -531,6 +529,9 @@ public class DebugParser {
             }
         }
         read1();
+        if (filePaths.size() == 1) {
+            return null;
+        }
         return new DebugState(defaultIsStmt != 0, lineBase, lineRange, opcodeBase, minInstrLength, maxOpsPerInstr, length, filePaths);
     }
 

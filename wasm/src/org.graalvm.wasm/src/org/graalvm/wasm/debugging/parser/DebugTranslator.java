@@ -110,12 +110,11 @@ public class DebugTranslator {
         final Optional<Integer> stmtList = data.tryAsI32(Attributes.STMT_LIST);
         DebugLineMap[] fileLineMaps;
         if (stmtList.isPresent()) {
-            final String name = data.asString(Attributes.NAME);
             String compDir = data.asString(Attributes.COMP_DIR);
             if (!testCompDir.isEmpty()) {
                 compDir = testCompDir;
             }
-            fileLineMaps = parser.readLineSection(DebugUtil.lineOffset(customData, debugInfoOffset) + stmtList.get(), compDir, name);
+            fileLineMaps = parser.readLineSection(DebugUtil.lineOffset(customData, debugInfoOffset) + stmtList.get(), compDir);
         } else {
             return null;
         }
