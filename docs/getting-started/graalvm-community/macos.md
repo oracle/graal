@@ -9,7 +9,7 @@ permalink: /docs/getting-started/macos/
 
 GraalVM is available for macOS on x64 and AArch64 architectures.
 
-Note that on macOS the JDK installation path is: `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+Note that on macOS the JDK installation path is: _/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home_.
 
 Follow these steps to install GraalVM: 
 
@@ -18,7 +18,7 @@ To download GraalVM Community Edition, go to the [GraalVM Releases repository on
 
 2. Unzip the archive.
     ```shell
-    tar -xzf graalvm-ce-jdk-<version>_linux-<architecture>.tar.gz
+    tar -xzf graalvm-ce-jdk-<version>_macos-<architecture>.tar.gz
     ```
     Alternatively, open the file in Finder.
     > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
@@ -28,7 +28,7 @@ To download GraalVM Community Edition, go to the [GraalVM Releases repository on
 
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
     ```shell
-    sudo mv graalvm-ce-java<version>-<version> /Library/Java/JavaVirtualMachines
+    sudo mv graalvm-ce-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
     ```
 
   To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.

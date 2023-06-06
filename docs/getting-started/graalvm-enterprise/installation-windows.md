@@ -7,21 +7,16 @@ permalink: /getting-started/installation-windows/
 
 Oracle GraalVM is available for Windows on the x64 architecture.
 
-Follow these steps:
+Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/uk/java/technologies/downloads/).  
+Select the preferred Oracle GraalVM version, **17** or **20** for the Java version, and **Windows** for the operating system. Start downloading.
 
-2. Select the preferred Oracle GraalVM version in the Release Version dropdown, **17** or **19** for the Java version, and **Windows** for the operating system.
+2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 
-3. Click on the **Oracle GraalVM JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
+3. Unzip the archive to your file system.
 
-4. When the download button becomes active, click it to start downloading.
-
-5. Change the directory to the location where you want to install Oracle GraalVM, then move the _.zip_ archive to that directory.
-
-6. Unzip the archive to your file system.
-
-7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
+4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
   - Point the `PATH` environment variable to the Oracle GraalVM _bin_ directory:
     ```shell
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
@@ -32,7 +27,7 @@ Follow these steps:
     ```
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
-8. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
+5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
     ```shell
     echo %PATH%
     echo %JAVA_HOME%
@@ -48,10 +43,6 @@ Alternatively, you can set up environment variables through a Windows GUI:
 6. Restart Command Prompt to reload the environment variables.
 
 Repeat the same for the `PATH` environment variable.
-
-## Supported Functionalities
-
-Currently, the GraalVM environment on Windows can be extended with [Java on Truffle](../../reference-manual/java-on-truffle/README.md), [LLVM runtime](../../reference-manual/llvm/README.md), WebAssembly, JavaScript, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
