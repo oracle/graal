@@ -396,22 +396,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class IsInstantiable {
-        @Specialization(guards = "language.isShared()")
-        static boolean doShared(Klass receiver,
-                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
-                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
-            if (receiver.isPrimitive()) {
-                return doPrimitive(receiver);
-            }
-            if (isObjectKlass(receiver)) {
-                return doObject(receiver);
-            }
-            if (receiver.isArray()) {
-                return doArray(receiver);
-            }
-            return false;
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = "receiver.isPrimitive()")
         static boolean doPrimitive(Klass receiver) {
