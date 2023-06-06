@@ -31,7 +31,6 @@ To get used to Native Image terminology and get better understanding of the tech
 
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
-* [License](#license)
 * [Further Reading](#further-reading)
 
 ### Prerequisites
