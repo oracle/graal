@@ -101,11 +101,13 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     @ExportMessage
     public final Class<?> dispatch() {
-        if (EspressoLanguage.get(null).isShared()) {
-            return SharedInterop.class;
-        }
+        // BaseInterop is context independent. We can assign it directly for null and foreign
+        // objects.
         if (isNull(this) || isForeignObject()) {
             return BaseInterop.class;
+        }
+        if (EspressoLanguage.get(null).isShared()) {
+            return SharedInterop.class;
         }
         return getKlass().getDispatch();
     }
