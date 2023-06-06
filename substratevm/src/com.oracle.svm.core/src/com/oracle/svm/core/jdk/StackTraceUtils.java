@@ -49,6 +49,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -539,7 +540,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
      */
     @Fold
     static boolean useCompressedReferences() {
-        return ReferenceAccess.singleton().getCompressEncoding().hasShift();
+        return ConfigurationValues.getObjectLayout().getReferenceSize() == 4;
     }
 
     private static long assertNonZero(long rawValue) {
