@@ -84,10 +84,6 @@ jobs:
               PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
               JDK_VERSION: "21"
-              GATE_TAGS: "build,helloworld_debug"
-              PRIMARY: "substratevm"
-          - env:
-              JDK_VERSION: "21"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
