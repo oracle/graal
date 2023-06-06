@@ -268,7 +268,7 @@ public class StackTraceUtils {
  * native instruction pointer (for AOT compiled methods) or an encoded Java source reference
  * containing a source line number, a source class and a source method name (for JIT compiled
  * methods). A native instruction pointer is always a single {@code long} element, while an encoded
- * Java source reference takes {@linkplain #ENTRIES_PER_SOURCE_REFERENCE 2 elements} if references
+ * Java source reference takes {@linkplain #entriesPerSourceReference() 2 elements} if references
  * are {@link #useCompressedReferences() compressed}, or 3 otherwise. Native instruction pointers
  * and source references can be mixed. The source line number of the source reference is
  * {@linkplain #encodeLineNumber encoded} in a way that it can be distinguished from a native
@@ -333,7 +333,11 @@ final class BacktraceVisitor extends StackFrameVisitor {
     private long[] trace = new long[INITIAL_TRACE_SIZE];
 
     public static final int NATIVE_FRAME_LIMIT_MARGIN = 10;
-    static final int ENTRIES_PER_SOURCE_REFERENCE = useCompressedReferences() ? 2 : 3;
+
+    @Fold
+    static int entriesPerSourceReference() {
+        return useCompressedReferences() ? 2 : 3;
+    }
 
     /**
      * Gets the number of native frames to collect. Native frames and Java frames do not directly
@@ -411,9 +415,9 @@ final class BacktraceVisitor extends StackFrameVisitor {
         VMError.guarantee(Heap.getHeap().isInImageHeap(sourceClass), "Source class must be in the image heap");
         VMError.guarantee(Heap.getHeap().isInImageHeap(sourceMethodName), "Source method name string must be in the image heap");
 
-        ensureSize(index + ENTRIES_PER_SOURCE_REFERENCE);
+        ensureSize(index + entriesPerSourceReference());
         writeSourceReference(trace, index, sourceLineNumber, sourceClass, sourceMethodName);
-        index += ENTRIES_PER_SOURCE_REFERENCE;
+        index += entriesPerSourceReference();
         numFrames++;
         return numFrames != limit;
     }
