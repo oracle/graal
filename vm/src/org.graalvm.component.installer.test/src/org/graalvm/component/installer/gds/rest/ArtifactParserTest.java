@@ -28,6 +28,7 @@ package org.graalvm.component.installer.gds.rest;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Arrays;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.Version;
@@ -36,6 +37,8 @@ import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.StabilityLevel;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 import java.util.Collections;
@@ -59,6 +62,7 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_VAL_LIC_ID = "mockLicenseId";
     static final String JSON_KEY_LIC_NAME = "licenseName";
     static final String JSON_VAL_LIC_NAME = "mockLicenseName";
+    static final String JSON_KEY_IMPL_ACC = "isLicenseImplicitlyAccepted";
     static final String JSON_META_KEY = "key";
     static final String JSON_META_VAL = "value";
     static final String JSON_META_KEY_ARCH = "arch";
@@ -90,7 +94,7 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_META_KEY_WORK_DIR = "workingDirectories";
     static final String JSON_META_VAL_WORK_DIR = "languages/python";
 
-    GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
+    @SuppressWarnings("this-escape") GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
 
     @Test
     public void testConstruct() {
@@ -140,7 +144,7 @@ public class ArtifactParserTest extends TestBase {
             ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
-            assertEquals("begin 0, end -1, length 15", ex.getMessage());
+            assertEquals(makeSubstringExceptionMessage(0, -1, 15), ex.getMessage());
             // expected
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
@@ -181,6 +185,22 @@ public class ArtifactParserTest extends TestBase {
         assertEquals(JSON_META_VAL_SYMBOLIC_NAME, ap.getLabel());
     }
 
+    private static String makeSubstringExceptionMessage(int start, int end, int length) {
+        String str = makeStringOfLength(length);
+        try {
+            str.substring(start, end);
+        } catch (StringIndexOutOfBoundsException ex) {
+            return ex.getMessage();
+        }
+        return null;
+    }
+
+    private static String makeStringOfLength(int length) {
+        char[] arr = new char[length];
+        Arrays.fill(arr, 'a');
+        return String.valueOf(arr);
+    }
+
     @Test
     public void testAsComponentInfo() {
         JSONObject jo = prepareJO();
@@ -204,9 +224,12 @@ public class ArtifactParserTest extends TestBase {
                         REQ_VER, JSON_META_VAL_VERSION), ci.getRequiredGraalValues());
         assertEquals(Collections.singleton(JSON_META_VAL_SYMBOLIC_NAME), ci.getDependencies());
         assertEquals(StabilityLevel.fromName(JSON_META_VAL_STAB_EXPERIMENTAL), ci.getStability());
+        assertFalse(ci.isImplicitlyAccepted());
         setMeta(jo, JSON_META_KEY_STABILITY_LEVEL, JSON_META_VAL_STAB_SUPPORTED);
+        jo.put(JSON_KEY_IMPL_ACC, true);
         ci = ap.asComponentInfo(conn, this);
         assertEquals(StabilityLevel.fromName(JSON_META_VAL_STAB_SUPPORTED), ci.getStability());
+        assertTrue(ci.isImplicitlyAccepted());
     }
 
     JSONObject setMeta(JSONObject jo, String key, String val) {

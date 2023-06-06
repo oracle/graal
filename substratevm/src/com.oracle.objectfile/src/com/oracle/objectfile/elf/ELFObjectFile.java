@@ -166,7 +166,7 @@ public class ELFObjectFile extends ObjectFile {
     private ELFSymtab getSymtab(boolean isDynamic) {
         ELFSymtab symtab = (ELFSymtab) (isDynamic ? elementForName(".dynsym") : elementForName(".symtab"));
         if (symtab == null) {
-            throw new IllegalStateException("no appropriate symtab");
+            throw new IllegalStateException("No appropriate symtab");
         }
         return symtab;
     }
@@ -385,7 +385,7 @@ public class ELFObjectFile extends ObjectFile {
                         return (short) 0xFFFF;
                 }
             }
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 
@@ -542,7 +542,7 @@ public class ELFObjectFile extends ObjectFile {
 
                 @Override
                 public String toString() {
-                    return String.format("ELF Ident:\n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
+                    return String.format("ELF Ident:%n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
                 }
             }
 
@@ -723,7 +723,7 @@ public class ELFObjectFile extends ObjectFile {
                         return 0x7fffffff;
                 }
             }
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 
@@ -886,12 +886,12 @@ public class ELFObjectFile extends ObjectFile {
                 return "SHT NULL Entry";
             }
             return new StringBuilder("SHT Entry: ")
-                            .append(String.format("\n  %s", type))
-                            .append(String.format("\n  flags %#x", flags))
-                            .append(String.format("\n  virtual address %#x", virtualAddress))
-                            .append(String.format("\n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
-                            .append(String.format("\n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
-                            .append("\n").toString();
+                            .append(String.format("%n  %s", type))
+                            .append(String.format("%n  flags %#x", flags))
+                            .append(String.format("%n  virtual address %#x", virtualAddress))
+                            .append(String.format("%n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
+                            .append(String.format("%n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
+                            .append(String.format("%n")).toString();
         }
 
         public boolean isNullEntry() {
@@ -1138,7 +1138,7 @@ public class ELFObjectFile extends ObjectFile {
 
     @SuppressWarnings("unused")
     public ELFRelocationSection getOrCreateDynamicRelocSection(ELFSymtab syms, boolean withExplicitAddends) {
-        throw new AssertionError("can't create dynamic relocations in this kind of ELF file");
+        throw new AssertionError("Can't create dynamic relocations in this kind of ELF file");
     }
 
     public ELFRelocationSection getOrCreateRelocSection(ELFUserDefinedSection elfUserDefinedSection, ELFSymtab syms, boolean withExplicitAddends) {

@@ -27,16 +27,14 @@ package com.oracle.svm.core.posix;
 import java.io.Console;
 
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Time.timeval;
-import com.oracle.svm.core.posix.headers.Time.timezone;
+import com.oracle.svm.core.util.TimeUtils;
 
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System_Posix {
@@ -47,9 +45,9 @@ final class Target_java_lang_System_Posix {
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
-        timeval timeval = StackValue.get(timeval.class);
-        timezone timezone = WordFactory.nullPointer();
-        Time.NoTransitions.gettimeofday(timeval, timezone);
-        return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
+        Time.timespec ts = StackValue.get(Time.timespec.class);
+        int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
+        PosixUtils.checkStatusIs0(status, "System.currentTimeMillis(): clock_gettime(CLOCK_REALTIME) failed.");
+        return ts.tv_sec() * TimeUtils.millisPerSecond + ts.tv_nsec() / TimeUtils.nanosPerMilli;
     }
 }

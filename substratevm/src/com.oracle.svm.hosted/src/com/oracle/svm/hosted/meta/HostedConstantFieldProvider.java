@@ -28,10 +28,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -39,8 +37,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
 
-    public HostedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, SVMHost hostVM) {
-        super(metaAccess, classInitializationSupport, hostVM);
+    public HostedConstantFieldProvider(MetaAccessProvider metaAccess, SVMHost hostVM) {
+        super(metaAccess, hostVM);
     }
 
     /**
@@ -54,21 +52,14 @@ public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
 
         if (field.location == HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT) {
             return true;
-        } else if (!field.wrapped.isWritten()) {
+        } else if (!(field.isWritten() || field.isUnknownValue())) {
             return true;
         }
         return super.isFinalField(field, tool);
     }
 
     @Override
-    public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        AnalysisField f = ((HostedField) field).wrapped;
-        if (f.wrapped instanceof ReadableJavaField) {
-            ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
-            if (!readableField.isValueAvailable()) {
-                return null;
-            }
-        }
-        return super.readConstantField(field, tool);
+    protected AnalysisField asAnalysisField(ResolvedJavaField field) {
+        return ((HostedField) field).getWrapped();
     }
 }

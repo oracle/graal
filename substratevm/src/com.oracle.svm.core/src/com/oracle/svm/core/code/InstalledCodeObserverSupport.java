@@ -38,8 +38,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.meta.SharedMethod;
 
 @AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {
@@ -119,7 +119,7 @@ public final class InstalledCodeObserverSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void removeObserversOnTearDown(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
         if (observerHandles.isNonNull()) {
             int length = NonmovableArrays.lengthOf(observerHandles);

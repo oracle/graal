@@ -37,9 +37,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -167,6 +169,14 @@ public abstract class Heap {
     public abstract int getImageHeapNullRegionSize();
 
     /**
+     * Returns whether the runtime page size doesn't have to match the page size set at image
+     * creation ({@link SubstrateOptions#getPageSize()}). If there is a mismatch, then the page size
+     * set at image creation must be a multiple of the runtime page size.
+     */
+    @Fold
+    public abstract boolean allowPageSizeMismatch();
+
+    /**
      * Returns true if the given object is located in the image heap.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -244,4 +254,20 @@ public abstract class Heap {
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);
+
+    /**
+     * Returns the longest time (in ms) that has elapsed since the last time that the whole heap has
+     * been examined by a garbage collection.
+     */
+    public abstract long getMillisSinceLastWholeHeapExamined();
+
+    /**
+     * Retrieves a salt value for computing the {@linkplain System#identityHashCode identity hash
+     * code} of the passed object (and potentially other objects) from its address. The same salt
+     * value will be returned for this object at least until the next garbage collection.
+     *
+     * Implementations must use {@link IdentityHashCodeSupport#IDENTITY_HASHCODE_SALT_LOCATION}.
+     */
+    @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
+    public abstract long getIdentityHashSalt(Object obj);
 }

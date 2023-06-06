@@ -60,10 +60,10 @@ public enum PECoffMachine/* implements Integral */ {
                         return PECoffX86_64Relocation.SECREL;
                     case UNKNOWN:
                     default:
-                        throw new IllegalArgumentException("cannot map unknown relocation kind to an PECoff x86-64 relocation type");
+                        throw new IllegalArgumentException("Cannot map unknown relocation kind to an PECoff x86-64 relocation type");
                 }
             default:
-                throw new IllegalStateException("unknown PECoff machine type");
+                throw new IllegalStateException("Unknown PECoff machine type");
         }
     }
 
@@ -72,7 +72,7 @@ public enum PECoffMachine/* implements Integral */ {
             case IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_AMD64:
                 return X86_64;
             default:
-                throw new IllegalStateException("unknown PECoff machine type");
+                throw new IllegalStateException("Unknown PECoff machine type");
         }
     }
 
@@ -80,16 +80,16 @@ public enum PECoffMachine/* implements Integral */ {
         if (this == X86_64) {
             return (short) IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_AMD64;
         } else {
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 
     public static PECoffMachine getSystemNativeValue() {
-        String archStr = System.getProperty("os.arch").toLowerCase();
-        if (archStr.equals("amd64") || archStr.equals("x86_64")) {
-            return X86_64;
-        }
-        throw new IllegalStateException("unknown PECoff machine type");
+        String arch = System.getProperty("os.arch");
+        return switch (arch) {
+            case "amd64", "x86_64" -> X86_64;
+            default -> throw new IllegalArgumentException("Unsupported PECoff machine type: " + arch);
+        };
     }
 }
 

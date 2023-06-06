@@ -74,7 +74,7 @@ final class PolyglotLanguageInstance implements VMObject {
     private final Map<Class<?>, CallTarget> callTargetCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
-    final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
+    final Map<Class<?>, Object> staticObjectClassLoaders = new ConcurrentHashMap<>();
     final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = new ConcurrentHashMap<>();
 
     final WeakAssumedValue<PolyglotLanguageContext> singleLanguageContext = new WeakAssumedValue<>("single language context");

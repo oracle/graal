@@ -113,7 +113,7 @@ final class EnumSwitchPlugin implements NodePlugin {
                     ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).add(b.getMethod(), b.bci(), switchTable);
                 }
             } catch (ReflectiveOperationException ex) {
-                throw GraalError.shouldNotReachHere(ex);
+                throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
             }
         }
 

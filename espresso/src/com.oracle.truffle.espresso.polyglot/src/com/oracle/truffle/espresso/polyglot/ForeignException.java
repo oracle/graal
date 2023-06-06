@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,9 @@ package com.oracle.truffle.espresso.polyglot;
  * Handy wrapper for foreign exceptions.
  * 
  * <p>
- * Allows foreign exceptions to be caught in guest Java and provides seamless access to the message
- * and cause. {@link ForeignException} can only catch and wrap foreign exceptions.
+ * Allows foreign exceptions to be caught in guest Java and provides seamless access to the message,
+ * cause and a polyglot stacktrace containing all guest frames if any. {@link ForeignException} can
+ * only catch and wrap foreign exceptions.
  *
  * <pre>
  * assert Interop.isException(foreignException);
@@ -58,6 +59,10 @@ package com.oracle.truffle.espresso.polyglot;
  *     throw e;
  * }
  * </pre>
+ * 
+ * The raw foreign exception object which can serve polyglot messages e.g.
+ * InteropLibrary#isException(rawForeignException) can be retrieved with
+ * {@link ForeignException#getForeignExceptionObject()}.
  *
  * @see Interop#throwException(Object)
  * @since 21.0
@@ -70,12 +75,21 @@ public final class ForeignException extends RuntimeException {
         throw new RuntimeException("No instance of ForeignException can be created directly");
     }
 
+    /**
+     * Returns the original wrapped foreign exception. The returned instance should be used for
+     * {@link Interop} messages.
+     * 
+     * @return the wrapped foreign exception.
+     */
+    public native Object getForeignExceptionObject();
+
     @Override
     public String getMessage() {
-        assert Interop.isException(this);
-        if (Interop.hasExceptionMessage(this)) {
+        Object rawForeignObject = getForeignExceptionObject();
+        assert Interop.isException(rawForeignObject);
+        if (Interop.hasExceptionMessage(rawForeignObject)) {
             try {
-                Object message = Interop.getExceptionMessage(this);
+                Object message = Interop.getExceptionMessage(rawForeignObject);
                 return Interop.asString(message);
             } catch (UnsupportedMessageException e) {
                 throw new AssertionError("Unexpected exception", e);
@@ -87,11 +101,12 @@ public final class ForeignException extends RuntimeException {
     @SuppressWarnings("sync-override")
     @Override
     public Throwable getCause() {
-        assert Interop.isException(this);
-        if (Interop.hasExceptionCause(this)) {
-            Object cause = null;
+        Object rawForeignObject = getForeignExceptionObject();
+        assert Interop.isException(rawForeignObject);
+        if (Interop.hasExceptionCause(rawForeignObject)) {
+            Object cause;
             try {
-                cause = Interop.getExceptionCause(this);
+                cause = Interop.getExceptionCause(rawForeignObject);
             } catch (UnsupportedMessageException e) {
                 throw new AssertionError("Unexpected exception", e);
             }
@@ -105,14 +120,9 @@ public final class ForeignException extends RuntimeException {
         return null;
     }
 
-    @Override
-    public StackTraceElement[] getStackTrace() {
-        return super.getStackTrace(); // empty
-    }
-
     /**
-     * Unsupported, {@link ForeignException} instances are not writable therefore setting the stack
-     * trace has no effect for them.
+     * Unsupported, {@link ForeignException} instances are by definition foreign and thus
+     * stacktraces should not be controllable by the guest.
      */
     @Override
     public void setStackTrace(StackTraceElement[] stackTrace) {

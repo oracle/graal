@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -81,6 +80,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -105,10 +105,15 @@ public class GraalSupport {
     private LIRSuites firstTierLirSuites;
     private Providers firstTierProviders;
 
-    private SubstrateMethod[] methodsToCompile;
-    private byte[] graphEncoding;
-    private Object[] graphObjects;
-    private NodeClass<?>[] graphNodeTypes;
+    /*
+     * The following four fields are set late in the image build process. To ensure their values are
+     * not prematurely constant folded we must mark them as unknown object fields.
+     */
+
+    @UnknownObjectField private SubstrateMethod[] methodsToCompile;
+    @UnknownObjectField private byte[] graphEncoding;
+    @UnknownObjectField private Object[] graphObjects;
+    @UnknownObjectField private NodeClass<?>[] graphNodeTypes;
 
     public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();
@@ -363,19 +368,20 @@ public class GraalSupport {
         return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, false, trackNodeSourcePosition);
     }
 
-    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {
+    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method, StructuredGraph caller) {
         EncodedGraph encodedGraph = encodedGraph(method, false);
         if (encodedGraph == null) {
             return null;
         }
 
-        boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+        boolean isSubstitution = method.isSnippet();
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .name(name)
                         .method(method)
                         .recordInlinedMethods(false)
                         .compilationId(compilationId)
                         .setIsSubstitution(isSubstitution)
+                        .speculationLog((caller != null) ? caller.getSpeculationLog() : null)
                         .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);
@@ -397,5 +403,17 @@ public class GraalSupport {
 
     public static void setRuntimeBackendProvider(Function<Providers, SubstrateBackend> backendProvider) {
         get().runtimeBackendProvider = backendProvider;
+    }
+
+    public EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> getBasePhaseStatistics() {
+        return basePhaseStatistics;
+    }
+
+    public EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> getLirPhaseStatistics() {
+        return lirPhaseStatistics;
+    }
+
+    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+        return debugHandlersFactories;
     }
 }

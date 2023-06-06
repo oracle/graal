@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -269,9 +270,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
                 exportedSymbols.append("global:\n");
-                for (String symbol : getImageSymbols(true)) {
-                    exportedSymbols.append('\"').append(symbol).append("\";\n");
-                }
+                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
+                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");
@@ -280,7 +280,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
                 additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
-                VMError.shouldNotReachHere();
+                VMError.shouldNotReachHere(e);
             }
 
             additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
@@ -311,7 +311,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("-shared");
                     break;
                 default:
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -378,7 +378,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,-exported_symbols_list");
                 additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
-                VMError.shouldNotReachHere();
+                VMError.shouldNotReachHere(e);
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
@@ -453,7 +453,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("/LD");
                     break;
                 default:
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
             }
         }
 

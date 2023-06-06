@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.security.AccessController;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,8 +46,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jfr.events.ThreadSleepEventJDK17;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -114,24 +113,13 @@ public final class JavaThreads {
      * in VM-internal contexts.
      */
     public static boolean isInterrupted(Thread thread) {
-        return getInterruptedFlag(thread);
-    }
-
-    private static boolean getInterruptedFlag(Thread thread) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return toTarget(thread).interruptedJDK17OrLater;
-        }
-        return toTarget(thread).interruptedJDK11OrEarlier;
+        return toTarget(thread).interrupted;
     }
 
     static boolean getAndClearInterrupt(Thread thread) {
         if (supportsVirtual() && isVirtual(thread)) {
             return VirtualThreads.singleton().getAndClearInterrupt(thread);
         }
-        return getAndClearInterruptedFlag(thread);
-    }
-
-    static boolean getAndClearInterruptedFlag(Thread thread) {
         /*
          * As we don't use a lock, it is possible to observe any kinds of races with other threads
          * that try to set the interrupted status to true. However, those races don't cause any
@@ -139,19 +127,11 @@ public final class JavaThreads {
          * There also can't be any problematic races with other calls to check the interrupt status
          * because it is cleared only by the current thread.
          */
-        boolean oldValue = isInterrupted(thread);
-        if (oldValue) {
-            writeInterruptedFlag(thread, false);
+        if (!isInterrupted(thread)) {
+            return false;
         }
-        return oldValue;
-    }
-
-    static void writeInterruptedFlag(Thread thread, boolean value) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            toTarget(thread).interruptedJDK17OrLater = value;
-        } else {
-            toTarget(thread).interruptedJDK11OrEarlier = value;
-        }
+        toTarget(thread).interrupted = false;
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -164,7 +144,7 @@ public final class JavaThreads {
         return VirtualThreads.isSupported();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isVirtual(Thread thread) {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
@@ -178,15 +158,6 @@ public final class JavaThreads {
         return thread != null && toTarget(thread).vthread != null;
     }
 
-    @AlwaysInline("Enable constant folding in case of Loom.")
-    private static boolean isVirtualDisallowLoom(Thread thread) {
-        if (LoomSupport.isEnabled()) {
-            assert !isVirtual(thread) : "should not see Loom virtual thread objects here";
-            return false;
-        }
-        return isVirtual(thread);
-    }
-
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
@@ -194,20 +165,12 @@ public final class JavaThreads {
 
     static void join(Thread thread, long millis) throws InterruptedException {
         if (millis < 0) {
-            throw new IllegalArgumentException("timeout value is negative");
+            throw new IllegalArgumentException("Timeout value is negative");
         }
         if (supportsVirtual() && isVirtual(thread)) {
             VirtualThreads.singleton().join(thread, millis);
         } else {
             PlatformThreads.join(thread, millis);
-        }
-    }
-
-    static void yieldCurrent() {
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
-            VirtualThreads.singleton().yield();
-        } else {
-            PlatformThreads.singleton().yieldCurrent();
         }
     }
 
@@ -224,6 +187,22 @@ public final class JavaThreads {
             return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTrace(filterExceptions, thread, callerSP);
         }
         return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
+    }
+
+    @NeverInline("Starting a stack walk in the caller frame")
+    public static void visitCurrentStackFrames(StackFrameVisitor visitor) {
+        /*
+         * If our own thread's stack was requested, we can walk it without a VMOperation using a
+         * stack pointer. It is intentional that we use the caller stack pointer: the calling
+         * Thread.getStackTrace method itself needs to be included in the result.
+         */
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+
+        if (supportsVirtual()) { // NOTE: also for platform threads!
+            VirtualThreads.singleton().visitCurrentVirtualOrPlatformThreadStackFrames(callerSP, visitor);
+        } else {
+            PlatformThreads.visitCurrentStackFrames(callerSP, visitor);
+        }
     }
 
     /** If there is an uncaught exception handler, call it. */
@@ -277,7 +256,7 @@ public final class JavaThreads {
                     boolean allowThreadLocals,
                     boolean inheritThreadLocals) {
         if (name == null) {
-            throw new NullPointerException("name cannot be null");
+            throw new NullPointerException("The name cannot be null");
         }
         tjlt.name = name;
 
@@ -328,17 +307,29 @@ public final class JavaThreads {
     }
 
     static void initNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19 && !allowThreadLocals) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC <= 20 && !allowThreadLocals) {
             tjlt.threadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
             tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
             tjlt.contextClassLoader = Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER;
         } else if (inheritThreadLocals) {
             Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
-            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 || (parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED && parentMap.size() > 0))) {
-                tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+            if (parentMap != null) {
+                boolean inherit = false;
+                if (JavaVersionUtil.JAVA_SPEC < 19) {
+                    inherit = true;
+                } else if (parentMap.size() > 0) {
+                    if (JavaVersionUtil.JAVA_SPEC > 20) {
+                        inherit = true;
+                    } else {
+                        inherit = parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+                    }
+                }
+                if (inherit) {
+                    tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+                }
             }
             ClassLoader parentLoader = parent.getContextClassLoader();
-            if (JavaVersionUtil.JAVA_SPEC < 19 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
+            if (JavaVersionUtil.JAVA_SPEC < 19 || JavaVersionUtil.JAVA_SPEC > 20 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
                 tjlt.contextClassLoader = parentLoader;
             } else {
                 tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
@@ -348,44 +339,7 @@ public final class JavaThreads {
         }
     }
 
-    static void sleep(long millis) throws InterruptedException {
-        /* Starting with JDK 19, the thread sleep event is implemented as a Java-level event. */
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
-                Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
-                try {
-                    event.time = TimeUnit.MILLISECONDS.toNanos(millis);
-                    event.begin();
-                    sleep0(millis);
-                } finally {
-                    event.commit();
-                }
-            } else {
-                sleep0(millis);
-            }
-        } else {
-            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-            sleep0(millis);
-            ThreadSleepEventJDK17.emit(millis, startTicks);
-        }
-    }
-
-    private static void sleep0(long millis) throws InterruptedException {
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
-            VirtualThreads.singleton().sleepMillis(millis);
-        } else {
-            PlatformThreads.sleep(millis);
-        }
-    }
-
-    static boolean isAlive(Thread thread) {
-        if (supportsVirtual() && isVirtualDisallowLoom(thread) && !LoomSupport.isEnabled()) {
-            return VirtualThreads.singleton().isAlive(thread);
-        }
-        return PlatformThreads.isAlive(thread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setCurrentThreadLockHelper(Object helper) {
         if (supportsVirtual()) {
             toTarget(Thread.currentThread()).lockHelper = helper;

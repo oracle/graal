@@ -246,8 +246,8 @@ public final class SamplerBuffersAccess {
         }
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-        CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
         try {
+            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
             return visitFrame(data, tetheredCodeInfo, ip);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);

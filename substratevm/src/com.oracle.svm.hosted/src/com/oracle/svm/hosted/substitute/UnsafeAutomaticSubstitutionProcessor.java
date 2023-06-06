@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,27 +72,28 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -222,17 +223,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                /*
-                 * JDK 17 and later add checks for hidden classes and record classes in
-                 * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
-                 * checks make control flow too complex to detect offset field assignments.
-                 */
-                Method sunMiscUnsafeObjectFieldOffset = sunMiscUnsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
-                sunMiscUnsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(sunMiscUnsafeObjectFieldOffset);
-                noCheckedExceptionsSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
-                neverInlineSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
-            }
+            /*
+             * The JDK checks for hidden classes and record classes in sun.misc.Unsafe before
+             * delegating to jdk.internal.misc.Unsafe. When inlined, the checks make control flow
+             * too complex to detect offset field assignments.
+             */
+            Method sunMiscUnsafeObjectFieldOffset = sunMiscUnsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
+            sunMiscUnsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(sunMiscUnsafeObjectFieldOffset);
+            noCheckedExceptionsSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
+            neverInlineSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
 
             Method unsafeArrayBaseOffset = unsafeClass.getMethod("arrayBaseOffset", java.lang.Class.class);
             unsafeArrayBaseOffsetMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayBaseOffset);
@@ -284,8 +283,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
+        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
-                        ParsingReason.UnsafeSubstitutionAnalysis);
+                        ParsingReason.UnsafeSubstitutionAnalysis, fallbackFeature);
 
         /*
          * Note: ConstantFoldLoadFieldPlugin should not be installed because it will disrupt
@@ -369,7 +369,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             return;
         }
 
-        if (annotationSubstitutions.findSubstitution(hostType).isPresent()) {
+        if (annotationSubstitutions.findFullSubstitution(hostType).isPresent()) {
             /* If the class is substituted clinit will be eliminated, so bail early. */
             reportSkippedSubstitution(hostType);
             return;
@@ -480,13 +480,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         boolean valid = true;
-        if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+        if (isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
-            if (RecordSupport.singleton().isRecord(declaringClass)) {
+            if (declaringClass.isRecord()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a record.");
                 valid = false;
             }
-            if (SubstrateUtil.isHiddenClass(declaringClass)) {
+            if (declaringClass.isHidden()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a hidden class.");
                 valid = false;
             }
@@ -672,7 +672,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      *          byteArrayIndexShift = 31 - Integer.numberOfLeadingZeros(byteArrayIndexScale);
      *      }
      * </code>
-     * 
+     *
      * It is important that constant folding is not enabled for the byteArrayIndexScale load because
      * it would break the link between the scale and shift computations.
      */
@@ -895,7 +895,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 producer = "subtraction operation " + valueNode;
                 operation = "subtraction";
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(valueNode); // ExcludeFromJacocoGeneratedReport
             }
             Supplier<String> message = () -> "Could not determine the field where the value produced by the " + producer +
                             " for the " + kindAsString(substitutionKind) + " computation is stored. The " + operation +
@@ -940,7 +940,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     /**
      * Try to register the automatic substitution for a field. Bail if the field was deleted or
      * another substitution is detected.
-     * 
+     *
      * @param field stores the value of the recomputation, i.e., an offset, array idx scale or shift
      */
     private boolean tryAutomaticRecomputation(ResolvedJavaField field, Kind kind, Supplier<ComputedValueField> substitutionSupplier) {
@@ -1009,9 +1009,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     private static void reportSkippedSubstitution(ResolvedJavaType type) {
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= DEBUG_LEVEL) {
-            String msg = "Warning: Skipped automatic unsafe substitutions analysis for type " + type.getName() +
-                            ". The entire type is substituted, therefore its class initializer is eliminated.";
-            System.out.println(msg);
+            LogUtils.warning("Skipped automatic unsafe substitutions analysis for type " + type.getName() +
+                            ". The entire type is substituted, therefore its class initializer is eliminated.");
         }
     }
 
@@ -1021,12 +1020,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String kindStr = RecomputeFieldValue.class.getSimpleName() + "." + kind;
             String annotatedFieldStr = computedSubstitutionField.getAnnotated().format("%H.%n");
             String offsetFieldStr = offsetField.format("%H.%n");
-
-            String msg = "Warning: Detected unnecessary " + kindStr + " " + annotatedFieldStr + " substitution field for " + offsetFieldStr + ". ";
-            msg += "The annotated field can be removed. This " + kind + " computation can be detected automatically. ";
-            msg += "Use option -H:+" + Options.UnsafeAutomaticSubstitutionsLogLevel.getName() + "=" + INFO_LEVEL + " to print all automatically detected substitutions. ";
-
-            System.out.println(msg);
+            String optionStr = SubstrateOptionsParser.commandArgument(Options.UnsafeAutomaticSubstitutionsLogLevel, "+");
+            LogUtils.warning(
+                            "Detected unnecessary %s %s substitution field for %s. The annotated field can be removed. This %s computation can be detected automatically. Use option -H:+%s=%s to print all automatically detected substitutions.",
+                            kindStr, annotatedFieldStr, offsetFieldStr, kind, optionStr, INFO_LEVEL);
         }
     }
 
@@ -1034,9 +1031,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= INFO_LEVEL) {
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
             String substitutedFieldStr = substitutedField.format("%H.%n");
-
-            String msg = "Info:" + substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
-            System.out.println(msg);
+            LogUtils.info("%s substitution automatically registered for %s, target element %s.", substitutionKindStr, substitutedFieldStr, target);
         }
     }
 
@@ -1046,11 +1041,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String overwrittenKindStr = RecomputeFieldValue.class.getSimpleName() + "." + overwrittenKind;
             String offsetFieldStr = offsetField.format("%H.%n");
             String overwrittenFieldStr = overwrittenField.format("%H.%n");
-
-            String msg = "Info: The " + overwrittenKindStr + " " + overwrittenFieldStr + " substitution was overwritten. ";
-            msg += "A " + newKindStr + " substitution for " + offsetFieldStr + " was automatically registered.";
-
-            System.out.println(msg);
+            LogUtils.info("The %s %s substitution was overwritten. A %s substitution for %s was automatically registered.", overwrittenKindStr, overwrittenFieldStr, newKindStr, offsetFieldStr);
         }
     }
 
@@ -1058,12 +1049,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             String fieldStr = field.format("%H.%n");
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
-
-            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
-            msg += "Conflicting substitution: " + conflictingSubstitution;
-            msg += "Add a " + substitutionKindStr + " manual substitution for " + fieldStr + ". ";
-
-            System.out.println(msg);
+            LogUtils.warning(
+                            "The %s substitution for %s could not be recomputed automatically because a conflicting substitution was detected. Conflicting substitution: %s. Add a %s manual substitution for %s.",
+                            substitutionKindStr, fieldStr, conflictingSubstitution, substitutionKindStr, fieldStr);
         }
     }
 
@@ -1071,11 +1059,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             String fieldStr = field.format("%H.%n");
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
-
-            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
-            msg += "Conflicting substitution: " + conflictingSubstitution;
-
-            System.out.println(msg);
+            LogUtils.warning("The %s substitution for %s could not be recomputed automatically because a conflicting substitution was detected. Conflicting substitution: %s.",
+                            substitutionKindStr, fieldStr, conflictingSubstitution);
         }
     }
 
@@ -1110,15 +1095,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 } else if (isAliased(type)) {
                     msg += "is aliased";
                 } else {
-                    ResolvedJavaType substitutionType = findSubstitutionType(type);
-                    msg += "is substituted by " + substitutionType.toJavaName();
+                    ResolvedJavaType substitutionType = findFullSubstitutionType(type);
+                    msg += "is fully substituted by " + substitutionType.toJavaName();
                 }
                 msg += ".)";
             }
         }
 
         if (!msg.isEmpty()) {
-            System.out.println("Warning: " + msg);
+            LogUtils.warning(msg);
         }
     }
 
@@ -1140,15 +1125,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     private boolean suppressWarningsFor(ResolvedJavaType type) {
-        return warningsAreWhiteListed(type) || isAliased(type) || findSubstitutionType(type) != null;
+        return warningsAreWhiteListed(type) || isAliased(type) || findFullSubstitutionType(type) != null;
     }
 
     private boolean warningsAreWhiteListed(ResolvedJavaType type) {
         return suppressWarnings.contains(type);
     }
 
-    private ResolvedJavaType findSubstitutionType(ResolvedJavaType type) {
-        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findSubstitution(type);
+    private ResolvedJavaType findFullSubstitutionType(ResolvedJavaType type) {
+        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findFullSubstitution(type);
         return substTypeOptional.orElse(null);
     }
 

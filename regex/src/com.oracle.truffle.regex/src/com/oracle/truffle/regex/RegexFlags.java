@@ -63,6 +63,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     private static final String PROP_UNICODE = "unicode";
     private static final String PROP_DOT_ALL = "dotAll";
     private static final String PROP_HAS_INDICES = "hasIndices";
+    private static final String PROP_UNICODE_SETS = "unicodeSets";
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
                     PROP_SOURCE,
@@ -72,7 +73,8 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                     PROP_GLOBAL,
                     PROP_UNICODE,
                     PROP_DOT_ALL,
-                    PROP_HAS_INDICES);
+                    PROP_HAS_INDICES,
+                    PROP_UNICODE_SETS);
 
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
@@ -82,6 +84,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     private static final int UNICODE = 1 << 4;
     private static final int DOT_ALL = 1 << 5;
     private static final int HAS_INDICES = 1 << 6;
+    private static final int UNICODE_SETS = 1 << 7;
 
     public static final RegexFlags DEFAULT = new RegexFlags("", NONE);
 
@@ -120,6 +123,9 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                     flags = addFlag(source, flags, i, STICKY);
                     break;
                 case 'u':
+                    if ((flags & UNICODE_SETS) != 0) {
+                        throw RegexSyntaxException.createFlags(source, JsErrorMessages.BOTH_FLAGS_SET_U_V, i);
+                    }
                     flags = addFlag(source, flags, i, UNICODE);
                     break;
                 case 's':
@@ -127,6 +133,12 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                     break;
                 case 'd':
                     flags = addFlag(source, flags, i, HAS_INDICES);
+                    break;
+                case 'v':
+                    if ((flags & UNICODE) != 0) {
+                        throw RegexSyntaxException.createFlags(source, JsErrorMessages.BOTH_FLAGS_SET_U_V, i);
+                    }
+                    flags = addFlag(source, flags, i, UNICODE_SETS);
                     break;
                 default:
                     throw RegexSyntaxException.createFlags(source, JsErrorMessages.UNSUPPORTED_FLAG, i);
@@ -174,6 +186,14 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         return isSet(HAS_INDICES);
     }
 
+    public boolean isUnicodeSets() {
+        return isSet(UNICODE_SETS);
+    }
+
+    public boolean isEitherUnicode() {
+        return isSet(UNICODE | UNICODE_SETS);
+    }
+
     public boolean isNone() {
         return value == NONE;
     }
@@ -206,7 +226,8 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                         Json.prop(PROP_STICKY, isSticky()),
                         Json.prop(PROP_UNICODE, isUnicode()),
                         Json.prop(PROP_DOT_ALL, isDotAll()),
-                        Json.prop(PROP_HAS_INDICES, hasIndices()));
+                        Json.prop(PROP_HAS_INDICES, hasIndices()),
+                        Json.prop(PROP_UNICODE_SETS, isUnicodeSets()));
     }
 
     @Override
@@ -225,6 +246,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
             case PROP_UNICODE:
             case PROP_DOT_ALL:
             case PROP_HAS_INDICES:
+            case PROP_UNICODE_SETS:
                 return true;
             default:
                 return false;
@@ -250,6 +272,8 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                 return isDotAll();
             case PROP_HAS_INDICES:
                 return hasIndices();
+            case PROP_UNICODE_SETS:
+                return isUnicodeSets();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
@@ -291,6 +315,9 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         }
 
         public Builder unicode(boolean enabled) {
+            if (enabled) {
+                updateFlag(false, UNICODE_SETS);
+            }
             updateFlag(enabled, UNICODE);
             return this;
         }
@@ -302,6 +329,14 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
 
         public Builder hasIndices(boolean enabled) {
             updateFlag(enabled, HAS_INDICES);
+            return this;
+        }
+
+        public Builder unicodeSets(boolean enabled) {
+            if (enabled) {
+                updateFlag(false, UNICODE);
+            }
+            updateFlag(enabled, UNICODE_SETS);
             return this;
         }
 
@@ -344,6 +379,9 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
             }
             if (isSet(HAS_INDICES)) {
                 sb.append("d");
+            }
+            if (isSet(UNICODE_SETS)) {
+                sb.append("v");
             }
             return sb.toString();
         }

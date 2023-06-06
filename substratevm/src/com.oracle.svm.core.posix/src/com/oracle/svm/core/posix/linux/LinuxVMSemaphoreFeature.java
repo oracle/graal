@@ -99,7 +99,9 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
         LinuxVMSemaphore[] semaphores = semaphoreReplacer.getReplacements().toArray(new LinuxVMSemaphore[0]);
         int semaphoreSize = NumUtil.roundUp(SizeOf.get(Semaphore.sem_t.class), alignment);
         for (LinuxVMSemaphore semaphore : semaphores) {
-            semaphore.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            semaphore.structOffset = WordFactory.unsigned(offset);
             nextIndex += semaphoreSize;
         }
 
@@ -112,15 +114,13 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
 final class LinuxVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = LinuxVMSemaphore[].class)//
-    LinuxVMSemaphore[] semaphores;
+    @UnknownObjectField LinuxVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the semaphore lock structures. The offset into this array is stored in
      * {@link LinuxVMSemaphore#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] semaphoreStructs;
+    @UnknownObjectField byte[] semaphoreStructs;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")

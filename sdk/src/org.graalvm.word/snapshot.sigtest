@@ -39,6 +39,7 @@ hcls AnyLocationIdentity,InitLocationIdentity
 CLSS public abstract interface org.graalvm.word.Pointer
 intf org.graalvm.word.PointerBase
 intf org.graalvm.word.UnsignedWord
+meth public abstract <%0 extends java.lang.Object> {%%0} toObject(java.lang.Class<{%%0}>,boolean)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} compareAndSwapWord(int,{%%0},{%%0},org.graalvm.word.LocationIdentity)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} compareAndSwapWord(org.graalvm.word.WordBase,{%%0},{%%0},org.graalvm.word.LocationIdentity)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWord(int)

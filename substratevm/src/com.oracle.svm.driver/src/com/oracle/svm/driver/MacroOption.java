@@ -237,7 +237,7 @@ final class MacroOption {
                     sb.append("macro-");
                 }
                 lineOut.accept(sb.append("options are:").toString());
-                optionsToShow.forEach(lineOut);
+                optionsToShow.stream().sorted().forEachOrdered(lineOut);
             }
         }
 

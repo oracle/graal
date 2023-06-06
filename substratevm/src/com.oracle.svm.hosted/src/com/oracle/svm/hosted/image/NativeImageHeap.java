@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -55,24 +56,26 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.jdk.StringInternSupport;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
+import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -90,10 +93,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * make any assumptions about the final layout of the image heap.
  */
 public final class NativeImageHeap implements ImageHeap {
-    private final HostedUniverse universe;
-    private final AnalysisUniverse aUniverse;
-    private final HostedMetaAccess metaAccess;
-    private final ObjectLayout objectLayout;
+    public final AnalysisUniverse aUniverse;
+    public final HostedUniverse hUniverse;
+    public final HostedMetaAccess hMetaAccess;
+    public final HostedConstantReflectionProvider hConstantReflection;
+    public final ObjectLayout objectLayout;
+
     private final ImageHeapLayouter heapLayouter;
     private final int minInstanceSize;
     private final int minArraySize;
@@ -124,17 +129,25 @@ public final class NativeImageHeap implements ImageHeap {
     /** Objects that are known to be immutable in the native image heap. */
     private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    public NativeImageHeap(AnalysisUniverse aUniverse, HostedUniverse universe, HostedMetaAccess metaAccess, ImageHeapLayouter heapLayouter) {
+    /** For diagnostic purpose only. */
+    Map<ObjectInfo, ObjectReachabilityInfo> objectReachabilityInfo = null;
+
+    public NativeImageHeap(AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess, HostedConstantReflectionProvider hConstantReflection, ImageHeapLayouter heapLayouter) {
         this.aUniverse = aUniverse;
-        this.universe = universe;
-        this.metaAccess = metaAccess;
+        this.hUniverse = hUniverse;
+        this.hMetaAccess = hMetaAccess;
+        this.hConstantReflection = hConstantReflection;
 
         this.objectLayout = ConfigurationValues.getObjectLayout();
         this.heapLayouter = heapLayouter;
 
-        this.minInstanceSize = objectLayout.getMinimumInstanceObjectSize();
-        this.minArraySize = objectLayout.getMinimumArraySize();
+        this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
+        this.minArraySize = objectLayout.getMinImageHeapArraySize();
         assert assertFillerObjectSizes();
+
+        if (ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {
+            this.objectReachabilityInfo = new IdentityHashMap<>();
+        }
     }
 
     @Override
@@ -147,23 +160,11 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
-        return objects.get(SubstrateObjectConstant.forObject(obj));
+        return objects.get(hUniverse.getSnippetReflection().forObject(obj));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
-        return objects.get(uncompress(constant));
-    }
-
-    protected HostedUniverse getUniverse() {
-        return universe;
-    }
-
-    protected HostedMetaAccess getMetaAccess() {
-        return metaAccess;
-    }
-
-    protected AnalysisUniverse getAnalysisUniverse() {
-        return aUniverse;
+        return objects.get(maybeUnwrap(uncompress(constant)));
     }
 
     protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
@@ -172,10 +173,6 @@ public final class NativeImageHeap implements ImageHeap {
 
     protected boolean isBlacklisted(Object obj) {
         return blacklist.contains(obj);
-    }
-
-    protected ObjectLayout getObjectLayout() {
-        return objectLayout;
     }
 
     public ImageHeapLayouter getLayouter() {
@@ -204,14 +201,14 @@ public final class NativeImageHeap implements ImageHeap {
         // Process any remaining objects on the worklist, especially that might intern strings.
         processAddObjectWorklist();
 
-        HostedField internedStringsField = (HostedField) StringInternFeature.getInternedStringsField(metaAccess);
+        HostedField internedStringsField = (HostedField) StringInternFeature.getInternedStringsField(hMetaAccess);
         boolean usesInternedStrings = internedStringsField.isAccessed();
 
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
              */
-            addObject(getMetaAccess().lookupJavaType(String[].class).getHub(), false, "internedStrings table");
+            addObject(hMetaAccess.lookupJavaType(String[].class).getHub(), false, HeapInclusionReason.InternedStringsTable);
             /*
              * We are no longer allowed to add new interned strings, because that would modify the
              * table we are about to write.
@@ -224,8 +221,7 @@ public final class NativeImageHeap implements ImageHeap {
             String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
             Arrays.sort(imageInternedStrings);
             ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
-
-            addObject(imageInternedStrings, true, "internedStrings table");
+            addObject(imageInternedStrings, true, HeapInclusionReason.InternedStringsTable);
 
             // Process any objects that were transitively added to the heap.
             processAddObjectWorklist();
@@ -237,25 +233,34 @@ public final class NativeImageHeap implements ImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
-    private static Object readObjectField(HostedField field, JavaConstant receiver) {
-        return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
+    private Object readObjectField(HostedField field, JavaConstant receiver) {
+        /*
+         * This method is only used to read the special fields of hybrid objects, which are
+         * currently not maintained as separate ImageHeapConstant and therefore cannot we read via
+         * the snapshot heap.
+         */
+        JavaConstant hostedConstant = receiver;
+        if (receiver instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+        }
+        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, hostedConstant));
     }
 
-    private static JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
-        return field.readStorageValue(receiver);
+    private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
+        return hConstantReflection.readFieldValue(field, receiver);
     }
 
     private void addStaticFields() {
-        addObject(StaticFieldsSupport.getStaticObjectFields(), false, "staticObjectFields");
-        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, "staticPrimitiveFields");
+        addObject(StaticFieldsSupport.getStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
+        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
 
         /*
          * We only have empty holder arrays for the static fields, so we need to add static object
          * fields manually.
          */
-        for (HostedField field : getUniverse().getFields()) {
+        for (HostedField field : hUniverse.getFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
-                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || field.isUnknownValue() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addConstant(readConstantField(field, null), false, field);
             }
         }
@@ -273,23 +278,19 @@ public final class NativeImageHeap implements ImageHeap {
      * Not every object is added to the heap, for various reasons.
      */
     public void addObject(final Object original, boolean immutableFromParent, final Object reason) {
-        addConstant(SubstrateObjectConstant.forObject(original), immutableFromParent, reason);
+        addConstant(hUniverse.getSnippetReflection().forObject(original), immutableFromParent, reason);
     }
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
 
-        if (constant.isNull() || metaAccess.isInstanceOf(constant, WordBase.class)) {
+        if (constant.getJavaKind().isPrimitive() || constant.isNull() || hMetaAccess.isInstanceOf(constant, WordBase.class)) {
             return;
         }
 
-        if (metaAccess.isInstanceOf(constant, Class.class)) {
-            Object original = SubstrateObjectConstant.asObject(constant);
-            if (original instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have Class in native image heap: " + original);
-            }
-            assert original instanceof DynamicHub;
-            if (((DynamicHub) original).getClassInitializationInfo() == null) {
+        if (hMetaAccess.isInstanceOf(constant, Class.class)) {
+            DynamicHub hub = hUniverse.getSnippetReflection().asObject(DynamicHub.class, constant);
+            if (hub.getClassInitializationInfo() == null) {
                 /*
                  * All DynamicHub instances written into the image heap must have a
                  * ClassInitializationInfo, otherwise we can get a NullPointerException at run time.
@@ -299,23 +300,47 @@ public final class NativeImageHeap implements ImageHeap {
                  * image that the static analysis has not seen - so this check actually protects
                  * against much more than just missing class initialization information.
                  */
-                throw reportIllegalType(original, reason);
+                throw reportIllegalType(hUniverse.getSnippetReflection().asObject(Object.class, constant), reason);
             }
         }
 
-        JavaConstant uncompressed = uncompress(constant);
+        JavaConstant uncompressed = maybeUnwrap(uncompress(constant));
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
-        if (metaAccess.isInstanceOf(uncompressed, String.class)) {
-            handleImageString((String) SubstrateObjectConstant.asObject(uncompressed));
+        Object objectConstant = hUniverse.getSnippetReflection().asObject(Object.class, uncompressed);
+        if (objectConstant instanceof String stringConstant) {
+            handleImageString(stringConstant);
+        } else if (objectConstant instanceof Enum<?> enumConstant) {
+            /*
+             * Starting with JDK 21, Enum caches the identity hash code in a separate hash field. We
+             * want to allow Enum values to be manually marked as immutable objects, so we eagerly
+             * initialize the hash field. This is safe because Enum.hashCode() is a final method,
+             * i.e., cannot be overwritten by the user.
+             */
+            forceHashCodeComputation(enumConstant);
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
         if (existing == null) {
             addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, reason);
+        } else if (objectReachabilityInfo != null) {
+            objectReachabilityInfo.get(existing).addReason(reason);
         }
+    }
+
+    /**
+     * When an object is represented as an {@link ImageHeapConstant} we unwrap it before using it as
+     * a key for {@link NativeImageHeap#objects}. This is necessary to avoid duplication of
+     * {@link ObjectInfo} for the same object. Eventually, there will be a complete shadow heap with
+     * only {@link ImageHeapConstant} and this code will be removed.
+     */
+    private static JavaConstant maybeUnwrap(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant ihc && ihc.getHostedObject() != null) {
+            return uncompress(ihc.getHostedObject());
+        }
+        return constant;
     }
 
     /**
@@ -349,7 +374,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countDynamicHubs() {
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (metaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
                 count++;
             }
         }
@@ -368,20 +393,20 @@ public final class NativeImageHeap implements ImageHeap {
         if (size >= minArraySize) {
             int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
             int arrayLength = (size - minArraySize) / elementSize;
-            assert objectLayout.getArraySize(JavaKind.Int, arrayLength) == size;
-            return addLateToImageHeap(new int[arrayLength], "Filler object");
+            assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
+            return addLateToImageHeap(new int[arrayLength], HeapInclusionReason.FillerObject);
         } else if (size >= minInstanceSize) {
-            return addLateToImageHeap(new FillerObject(), "Filler object");
+            return addLateToImageHeap(new FillerObject(), HeapInclusionReason.FillerObject);
         } else {
             return null;
         }
     }
 
     private boolean assertFillerObjectSizes() {
-        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0);
+        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0, true);
 
-        HostedType filler = metaAccess.lookupJavaType(FillerObject.class);
-        UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub().getLayoutEncoding());
+        HostedType filler = hMetaAccess.lookupJavaType(FillerObject.class);
+        UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub(), true);
         assert fillerSize.equal(minInstanceSize);
 
         assert minInstanceSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
@@ -399,11 +424,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     /**
-     * For immutable Strings in the native image heap, force eager computation of the hash field.
+     * For immutable Strings and other objects in the native image heap, force eager computation of
+     * the hash field.
      */
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
-    private static void forceHashCodeComputation(final String str) {
-        str.hashCode();
+    private static void forceHashCodeComputation(Object object) {
+        object.hashCode();
     }
 
     /**
@@ -413,7 +439,7 @@ public final class NativeImageHeap implements ImageHeap {
      */
     private void addObjectToImageHeap(final JavaConstant constant, boolean immutableFromParent, final int identityHashCode, final Object reason) {
 
-        final HostedType type = metaAccess.lookupJavaType(constant);
+        final HostedType type = hMetaAccess.lookupJavaType(constant);
         final DynamicHub hub = type.getHub();
         final ObjectInfo info;
 
@@ -439,7 +465,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (HybridLayout.isHybrid(clazz)) {
                 HybridLayout<?> hybridLayout = hybridLayouts.get(clazz);
                 if (hybridLayout == null) {
-                    hybridLayout = new HybridLayout<>(clazz, objectLayout, metaAccess);
+                    hybridLayout = new HybridLayout<>(clazz, objectLayout, hMetaAccess);
                     hybridLayouts.put(clazz, hybridLayout);
                 }
 
@@ -466,16 +492,16 @@ public final class NativeImageHeap implements ImageHeap {
                 }
 
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
-                size = hybridLayout.getTotalSize(Array.getLength(hybridArray));
+                size = hybridLayout.getTotalSize(Array.getLength(hybridArray), true);
             } else {
-                size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
+                size = LayoutEncoding.getPureInstanceSize(hub, true).rawValue();
             }
 
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
             try {
                 recursiveAddObject(hub, false, info);
                 // Recursively add all the fields of the object.
-                final boolean fieldsAreImmutable = metaAccess.isInstanceOf(constant, String.class);
+                final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
                     boolean fieldRelocatable = false;
                     if (field.isRead() &&
@@ -483,10 +509,10 @@ public final class NativeImageHeap implements ImageHeap {
                                     !field.equals(hybridTypeIDSlotsField)) {
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
-                            JavaConstant fieldValueConstant = field.readValue(constant);
+                            JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
-                                    fieldRelocatable = metaAccess.isInstanceOf(fieldValueConstant, RelocatedPointer.class);
+                                    fieldRelocatable = hMetaAccess.isInstanceOf(fieldValueConstant, RelocatedPointer.class);
                                 }
                                 recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, info);
                                 references = true;
@@ -499,7 +525,7 @@ public final class NativeImageHeap implements ImageHeap {
                          */
                         relocatable = relocatable || fieldRelocatable;
                     }
-                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
+                    written = written || ((field.isWritten() || field.isUnknownValue()) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
@@ -511,16 +537,16 @@ public final class NativeImageHeap implements ImageHeap {
 
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
-            int length = universe.getConstantReflectionProvider().readArrayLength(constant);
-            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length);
+            int length = hConstantReflection.readArrayLength(constant);
+            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length, true);
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
             try {
                 recursiveAddObject(hub, false, info);
-                if (metaAccess.isInstanceOf(constant, Object[].class)) {
+                if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
                     if (constant instanceof ImageHeapConstant) {
                         relocatable = addConstantArrayElements(constant, length, false, info);
                     } else {
-                        Object object = SubstrateObjectConstant.asObject(constant);
+                        Object object = hUniverse.getSnippetReflection().asObject(Object.class, constant);
                         relocatable = addArrayElements((Object[]) object, false, info);
                     }
                     references = true;
@@ -531,11 +557,11 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
 
         if (relocatable && !isKnownImmutableConstant(constant)) {
-            VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + SubstrateObjectConstant.asObject(constant));
+            VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + hUniverse.getSnippetReflection().asObject(Object.class, constant));
         }
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
     }
@@ -570,37 +596,34 @@ public final class NativeImageHeap implements ImageHeap {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
             msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append(System.lineSeparator());
-            return fillReasonStack(msg, info.reason);
+            return fillReasonStack(msg, info.getMainReason());
         }
         return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
-    /** Determine if a constant will be immutable in the native image heap. */
-    private boolean isKnownImmutableConstant(final JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant) {
-            /* Currently injected ImageHeapObject cannot be marked as immutable. */
-            return false;
+    /**
+     * Determine if a constant will be immutable in the native image heap.
+     */
+    private boolean isKnownImmutableConstant(JavaConstant constant) {
+        JavaConstant hostedConstant = constant;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+            if (hostedConstant == null) {
+                /* A simulated ImageHeapConstant cannot be marked as immutable. */
+                return false;
+            }
         }
-        return isKnownImmutable(SubstrateObjectConstant.asObject(constant));
-    }
-
-    /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isKnownImmutable(final Object obj) {
-        if (obj instanceof String) {
-            // Strings need to have their hash code set or they are not immutable.
-            // If the hash is 0, then it will be recomputed again (and again)
-            // so the String is not immutable.
-            return obj.hashCode() != 0;
-        }
+        Object obj = hUniverse.getSnippetReflection().asObject(Object.class, hostedConstant);
         return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 
     /** Add an object to the model of the native image heap. */
     private ObjectInfo addToImageHeap(Object object, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        return addToImageHeap(SubstrateObjectConstant.forObject(object), clazz, size, identityHashCode, reason);
+        return addToImageHeap(hUniverse.getSnippetReflection().forObject(object), clazz, size, identityHashCode, reason);
     }
 
-    private ObjectInfo addToImageHeap(JavaConstant constant, HostedClass clazz, long size, int identityHashCode, Object reason) {
+    private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        JavaConstant constant = maybeUnwrap(add);
         ObjectInfo info = new ObjectInfo(constant, size, clazz, identityHashCode, reason);
         assert !objects.containsKey(constant) && !isCompressed(constant);
         objects.put(constant, info);
@@ -613,11 +636,11 @@ public final class NativeImageHeap implements ImageHeap {
      * objects are not processed recursively. Use this method with care.
      */
     @Override
-    public ObjectInfo addLateToImageHeap(Object object, String reason) {
+    public ObjectInfo addLateToImageHeap(Object object, Object reason) {
         assert !(object instanceof DynamicHub) : "needs a different identity hashcode";
         assert !(object instanceof String) : "needs String interning";
 
-        final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
+        final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
         return addToImageHeap(object, (HostedClass) type, getSize(object, type), System.identityHashCode(object), reason);
     }
@@ -626,11 +649,11 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             HostedInstanceClass clazz = (HostedInstanceClass) type;
             assert !HybridLayout.isHybrid(clazz);
-            return LayoutEncoding.getPureInstanceSize(clazz.getHub().getLayoutEncoding()).rawValue();
+            return LayoutEncoding.getPureInstanceSize(clazz.getHub(), true).rawValue();
         } else if (type.isArray()) {
-            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
+            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -650,10 +673,10 @@ public final class NativeImageHeap implements ImageHeap {
     private boolean addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
         boolean relocatable = otherFieldsRelocatable;
         for (int idx = 0; idx < length; idx++) {
-            JavaConstant value = universe.getConstantReflectionProvider().readArrayElement(array, idx);
+            JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
             if (spawnIsolates()) {
-                relocatable = relocatable || metaAccess.isInstanceOf(value, RelocatedPointer.class);
+                relocatable = relocatable || hMetaAccess.isInstanceOf(value, RelocatedPointer.class);
             }
             recursiveAddConstant(value, false, reason);
         }
@@ -666,7 +689,7 @@ public final class NativeImageHeap implements ImageHeap {
      */
     private void recursiveAddObject(Object original, boolean immutableFromParent, Object reason) {
         if (original != null) {
-            addObjectWorklist.push(new AddObjectData(SubstrateObjectConstant.forObject(original), immutableFromParent, reason));
+            addObjectWorklist.push(new AddObjectData(hUniverse.getSnippetReflection().forObject(original), immutableFromParent, reason));
         }
     }
 
@@ -710,13 +733,9 @@ public final class NativeImageHeap implements ImageHeap {
          *
          * This is either another ObjectInfo, saying which object refers to this object, eventually
          * a root object which refers to this object, or is a String explaining why this object is
-         * in the heap. The reason field is like a "comes from" pointer.
+         * in the heap, or an {@link HeapInclusionReason}, or a {@link HostedField}.
          */
-        final Object reason;
-
-        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason) {
-            this(SubstrateObjectConstant.forObject(object), size, clazz, identityHashCode, reason);
-        }
+        private final Object reason;
 
         ObjectInfo(JavaConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
             this.constant = constant;
@@ -725,12 +744,17 @@ public final class NativeImageHeap implements ImageHeap {
             this.offsetInPartition = -1L;
             this.size = size;
             this.identityHashCode = identityHashCode;
+
+            // For diagnostic purposes only
             this.reason = reason;
+            if (objectReachabilityInfo != null) {
+                objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reason));
+            }
         }
 
         @Override
         public Object getObject() {
-            return SubstrateObjectConstant.asObject(constant);
+            return hUniverse.getSnippetReflection().asObject(Object.class, constant);
         }
 
         @Override
@@ -811,16 +835,20 @@ public final class NativeImageHeap implements ImageHeap {
             return identityHashCode;
         }
 
+        Object getMainReason() {
+            return this.reason;
+        }
+
         @Override
         public String toString() {
-            StringBuilder result = new StringBuilder(getObject().getClass().getName()).append(" -> ");
-            Object cur = reason;
+            StringBuilder result = new StringBuilder(((TypedConstant) constant).getType(hMetaAccess).toJavaName(true)).append(":").append(identityHashCode).append(" -> ");
+            Object cur = getMainReason();
             Object prev = null;
             boolean skipped = false;
             while (cur instanceof ObjectInfo) {
                 skipped = prev != null;
                 prev = cur;
-                cur = ((ObjectInfo) cur).reason;
+                cur = ((ObjectInfo) cur).getMainReason();
             }
             if (skipped) {
                 result.append("... -> ");
@@ -832,6 +860,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
             return result.toString();
         }
+
     }
 
     protected static final class Phase {
@@ -872,6 +901,93 @@ public final class NativeImageHeap implements ImageHeap {
             BEFORE,
             ALLOWED,
             AFTER
+        }
+    }
+
+    enum HeapInclusionReason {
+        InternedStringsTable,
+        FillerObject,
+        StaticObjectFields,
+        DataSection,
+        StaticPrimitiveFields,
+        Resource,
+    }
+
+    final class ObjectReachabilityInfo {
+        private final LinkedHashSet<Object> allReasons;
+        private int objectReachabilityGroup;
+
+        ObjectReachabilityInfo(ObjectInfo info, Object firstReason) {
+            this.allReasons = new LinkedHashSet<>();
+            this.allReasons.add(firstReason);
+            this.objectReachabilityGroup = ObjectReachabilityGroup.getFlagForObjectInfo(info, firstReason, objectReachabilityInfo);
+        }
+
+        void addReason(Object additionalReason) {
+            this.allReasons.add(additionalReason);
+            this.objectReachabilityGroup |= ObjectReachabilityGroup.getByReason(additionalReason, objectReachabilityInfo);
+        }
+
+        Set<Object> getAllReasons() {
+            return this.allReasons;
+        }
+
+        int getObjectReachabilityGroup() {
+            return objectReachabilityGroup;
+        }
+
+        boolean objectReachableFrom(ObjectReachabilityGroup other) {
+            return (this.objectReachabilityGroup & other.flag) != 0;
+        }
+    }
+
+    /**
+     * For diagnostic purposes only when
+     * {@link ImageHeapConnectedComponentsFeature.Options#PrintImageHeapConnectedComponents} is
+     * enabled.
+     */
+    enum ObjectReachabilityGroup {
+        Resources(1 << 1, "Resources byte arrays", "resources"),
+        InternedStringsTable(1 << 2, "Interned strings table", "internedStringsTable"),
+        DynamicHubs(1 << 3, "Class data", "classData"),
+        ImageCodeInfo(1 << 4, "Code metadata", "codeMetadata"),
+        MethodOrStaticField(1 << 5, "Connected components accessed from method or a static field", "connectedComponents"),
+        Other(1 << 6, "Other", "other");
+
+        public final int flag;
+        public final String description;
+        public final String name;
+
+        ObjectReachabilityGroup(int flag, String description, String name) {
+            this.flag = flag;
+            this.description = description;
+            this.name = name;
+        }
+
+        static int getFlagForObjectInfo(ObjectInfo object, Object firstReason, Map<ObjectInfo, ObjectReachabilityInfo> additionalReasonInfoHashMap) {
+            int result = 0;
+            if (object.getObjectClass().equals(ImageCodeInfo.class)) {
+                result |= ImageCodeInfo.flag;
+            }
+            if (object.getObject().getClass().equals(DynamicHub.class) || object.getObject().getClass().equals(DynamicHubCompanion.class)) {
+                result |= DynamicHubs.flag;
+            }
+            result |= getByReason(firstReason, additionalReasonInfoHashMap);
+            return result;
+        }
+
+        static int getByReason(Object reason, Map<ObjectInfo, ObjectReachabilityInfo> additionalReasonInfoHashMap) {
+            if (reason.equals(HeapInclusionReason.InternedStringsTable)) {
+                return ObjectReachabilityGroup.InternedStringsTable.flag;
+            } else if (reason.equals(HeapInclusionReason.Resource)) {
+                return ObjectReachabilityGroup.Resources.flag;
+            } else if (reason instanceof String || reason instanceof HostedField) {
+                return ObjectReachabilityGroup.MethodOrStaticField.flag;
+            } else if (reason instanceof ObjectInfo) {
+                ObjectInfo r = (ObjectInfo) reason;
+                return additionalReasonInfoHashMap.get(r).getObjectReachabilityGroup();
+            }
+            return ObjectReachabilityGroup.Other.flag;
         }
     }
 }

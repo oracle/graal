@@ -185,7 +185,7 @@ public final class Support {
     }
 
     public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int slot) {
-        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+        assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
             return nullHandle();
@@ -198,7 +198,7 @@ public final class Support {
      * for instance methods, not static methods.
      */
     public static JNIObjectHandle getReceiver(JNIObjectHandle thread) {
-        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+        assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), thread, 0, handlePtr);
         if (result != JvmtiError.JVMTI_ERROR_NONE) {
@@ -446,12 +446,14 @@ public final class Support {
     }
 
     public static void check(JvmtiError resultCode) {
-        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
+        if (!resultCode.equals(JvmtiError.JVMTI_ERROR_NONE)) {
+            throw VMError.shouldNotReachHere("JVMTI call failed with " + resultCode);
+        }
     }
 
-    public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {
+    public static void checkPhase(JvmtiError resultCode) {
         if (resultCode == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
-            throw new WrongPhaseException();
+            throw new WrongPhaseError();
         }
         check(resultCode);
     }
@@ -463,7 +465,7 @@ public final class Support {
     private Support() {
     }
 
-    public static class WrongPhaseException extends Exception {
+    public static class WrongPhaseError extends Error {
         private static final long serialVersionUID = 8503239518909756105L;
     }
 }

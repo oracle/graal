@@ -32,9 +32,13 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 
 import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class ThreadConstantPoolParser extends ConstantPoolParser {
+public class ThreadConstantPoolParser extends AbstractRepositoryParser {
+    public ThreadConstantPoolParser(JfrFileParser parser) {
+        super(parser);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {
@@ -47,7 +51,7 @@ public class ThreadConstantPoolParser extends ConstantPoolParser {
             Assert.assertTrue("JavaThreadId is not correct!", input.readLong() >= 0); // JavaThreadId.
             addExpectedId(JfrType.ThreadGroup, input.readLong()); // ThreadGroupId.
             if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                Assert.assertFalse("Unexpected virtual thread!", input.readBoolean()); // isVirtual
+                input.readBoolean();
             }
         }
     }

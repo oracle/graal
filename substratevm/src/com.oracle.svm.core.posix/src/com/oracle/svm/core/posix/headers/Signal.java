@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -74,9 +76,9 @@ public class Signal {
     }
 
     /**
-     * Warning: use {@link #sigaction} or {@link PosixUtils#installSignalHandler}. Do NOT introduce
-     * calls to {@code signal} or {@code sigset}, which are not portable, and when running in
-     * HotSpot, signal chaining (libjsig) will print warnings.
+     * Warning: use {@link PosixUtils#installSignalHandler}. Do NOT introduce calls to
+     * {@code signal} or {@code sigset}, which are not portable, and when running in HotSpot, signal
+     * chaining (libjsig) will print warnings.
      */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
@@ -177,7 +179,7 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
-    /** @param signum from {@link SignalEnum#getCValue()} */
+    /** Don't call this function directly, see {@link PosixUtils#sigaction}. */
     @CFunction
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
 
@@ -446,4 +448,8 @@ public class Signal {
         long pc();
     }
 
+    public static class NoTransitions {
+        @CFunction(transition = NO_TRANSITION)
+        public static native int kill(int pid, int sig);
+    }
 }

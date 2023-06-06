@@ -932,6 +932,13 @@ public final class EspressoContext {
         shutdownManager.destroyVM();
     }
 
+    public void ensureThreadsJoined() {
+        // shutdownManager could be null if we are closing a pre-initialized context
+        if (shutdownManager != null) {
+            shutdownManager.ensureThreadsJoined();
+        }
+    }
+
     public boolean isClosing() {
         return shutdownManager.isClosing();
     }
@@ -1115,5 +1122,9 @@ public final class EspressoContext {
         } else {
             throw EspressoError.shouldNotReachHere();
         }
+    }
+
+    public long nextThreadId() {
+        return espressoEnv.getThreadRegistry().nextThreadId();
     }
 }

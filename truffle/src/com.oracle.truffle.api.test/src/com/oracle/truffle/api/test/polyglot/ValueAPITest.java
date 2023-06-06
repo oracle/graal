@@ -272,6 +272,15 @@ public class ValueAPITest {
         assertValueInContexts(context.asValue(null), HOST_OBJECT, NULL);
     }
 
+    private static class BigIntegerSubClass extends BigInteger {
+
+        private static final long serialVersionUID = -8639948598957064947L;
+
+        BigIntegerSubClass(String val) {
+            super(val);
+        }
+    }
+
     private static final Object[] HOST_OBJECTS = new Object[]{
                     new ArrayList<>(),
                     new HashMap<>(),
@@ -280,6 +289,7 @@ public class ValueAPITest {
                     new FieldAccess(),
                     new JavaSuperClass(),
                     new BigInteger("42"),
+                    new BigIntegerSubClass("42"),
                     new BigDecimal("42"),
                     new Function<>() {
                         public Object apply(Object t) {
@@ -307,6 +317,32 @@ public class ValueAPITest {
                     }), ByteBuffer.wrap(new byte[0])};
 
     @Test
+    public void testBigIntegerNumberAccess() {
+        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowPublicAccess(true).allowBigIntegerNumberAccess(false).build()).build()) {
+            Value val = ctx.asValue(new BigInteger("42"));
+            assertFalse(val.fitsInByte());
+            assertFalse(val.fitsInShort());
+            assertFalse(val.fitsInInt());
+            assertFalse(val.fitsInLong());
+            assertFalse(val.fitsInBigInteger());
+            assertFalse(val.fitsInFloat());
+            assertFalse(val.fitsInDouble());
+            assertFalse(val.isNumber());
+        }
+        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowPublicAccess(true).build()).build()) {
+            Value val = ctx.asValue(new BigInteger("42"));
+            assertTrue(val.fitsInByte());
+            assertTrue(val.fitsInShort());
+            assertTrue(val.fitsInInt());
+            assertTrue(val.fitsInLong());
+            assertTrue(val.fitsInBigInteger());
+            assertTrue(val.fitsInFloat());
+            assertTrue(val.fitsInDouble());
+            assertTrue(val.isNumber());
+        }
+    }
+
+    @Test
     public void testHostObject() {
         assertTrue(context.asValue(new EmptyObject()).getMemberKeys().isEmpty());
         assertTrue(context.asValue(new PrivateObject()).getMemberKeys().isEmpty());
@@ -315,6 +351,10 @@ public class ValueAPITest {
             List<Trait> expectedTraits = new ArrayList<>();
             expectedTraits.add(MEMBERS);
             expectedTraits.add(HOST_OBJECT);
+
+            if (value.getClass() == BigInteger.class) {
+                expectedTraits.add(NUMBER);
+            }
 
             if (value instanceof Supplier || value instanceof Function) {
                 expectedTraits.add(EXECUTABLE);
@@ -1398,6 +1438,9 @@ public class ValueAPITest {
         assertFails(() -> nullValue.asLong(), NullPointerException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'long' using Value.asLong(). " +
                                         "You can ensure that the operation is supported using Value.fitsInLong().");
+        assertFails(() -> nullValue.asBigInteger(), ClassCastException.class,
+                        "Cannot convert 'null'(language: Java) to Java type 'java.math.BigInteger' using Value.asBigInteger(): Invalid or lossy coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInBigInteger().");
         assertFails(() -> nullValue.as(long.class), NullPointerException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'long'.");
         assertFails(() -> nullValue.asFloat(), NullPointerException.class,
@@ -1456,6 +1499,10 @@ public class ValueAPITest {
                         "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'long': Invalid or lossy primitive coercion.");
         assertFails(() -> nan.as(Long.class), ClassCastException.class,
                         "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'java.lang.Long': Invalid or lossy primitive coercion.");
+
+        assertFails(() -> nan.asBigInteger(), ClassCastException.class,
+                        "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'java.math.BigInteger' using Value.asBigInteger(): Invalid or lossy coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInBigInteger().");
 
         Value nofloat = context.asValue(Double.MAX_VALUE);
 

@@ -90,9 +90,9 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("this-escape")
 public class ContextPolicyTest {
 
     private static final String EXCLUSIVE0 = "ExclusiveLanguage0";
@@ -131,7 +131,6 @@ public class ContextPolicyTest {
 
     @Registration(contextPolicy = ContextPolicy.SHARED)
     static class AssertTestLanguage extends AbstractExecutableTestLanguage {
-        static final String ID = TestUtils.getDefaultLanguageId(AssertTestLanguage.class);
 
         @Override
         @TruffleBoundary

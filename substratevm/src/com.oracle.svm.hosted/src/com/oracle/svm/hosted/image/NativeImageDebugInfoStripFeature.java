@@ -41,18 +41,18 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.util.LogUtils;
 
 @AutomaticallyRegisteredFeature
 public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.GenerateDebugInfo.getValue() > 0 && SubstrateOptions.StripDebugInfo.getValue() && (SubstrateOptions.useLIRBackend() || SubstrateOptions.useLLVMBackend());
+        return SubstrateOptions.useDebugInfoGeneration() || SubstrateOptions.UseOldDebugInfo.getValue();
     }
 
     @SuppressWarnings("try")
@@ -65,11 +65,11 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
                 case ELF:
                     stripLinux(accessImpl);
                     break;
-                case MACH_O:
                 case PECOFF:
-                    if (SubstrateOptions.StripDebugInfo.hasBeenSet()) {
-                        System.out.println("Warning: Using " + SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+") + " not supported on macOS and Windows");
-                    }
+                    // debug info is always "stripped" to a pdb file
+                    break;
+                case MACH_O:
+                    // Not supported. See warning in SubstrateOptions.validateStripDebugInfo
                     break;
                 default:
                     throw UserError.abort("Unsupported object file format");
@@ -94,7 +94,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         }
 
         if (!objcopyAvailable) {
-            System.out.printf("Warning: %s not available. Skipping generation of separate debuginfo file %s, debuginfo will remain embedded in the executable%n", objcopyExe, debugInfoName);
+            LogUtils.warning("%s not available. Skipping generation of separate debuginfo file %s, debuginfo will remain embedded in the executable.", objcopyExe, debugInfoName);
         } else {
             try {
                 String imageFilePath = outputDirectory.resolve(imageName).toString();

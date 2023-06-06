@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -81,6 +83,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -197,8 +200,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     final void writeMember(String member, Object value,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
-                    @Shared("error") @Cached BranchProfile error,
-                    @Exclusive @Cached ToEspressoNode toEspressoNode) throws UnknownIdentifierException, UnsupportedTypeException {
+                    @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
+                    @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
         Field field = lookupFieldNode.execute(this, member, true);
         // Can only write to non-final fields.
         if (field != null && !field.isFinalFlagSet()) {
@@ -222,34 +225,42 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Exclusive @Cached ToEspressoNode toEspressoNode)
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (candidates != null) {
-            if (candidates.length == 1) {
-                Method method = candidates[0];
-                assert method.isStatic() && method.isPublic();
-                assert member.startsWith(method.getNameAsString());
-                if (!method.isVarargs()) {
-                    assert method.getParameterCount() == arguments.length;
-                    return invoke.execute(method, null, arguments);
-                } else {
-                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
-                    if (matched != null) {
-                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+        try {
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    Method method = candidates[0];
+                    assert method.isStatic() && method.isPublic();
+                    assert member.startsWith(method.getNameAsString());
+                    if (!method.isVarargs()) {
+                        assert method.getParameterCount() == arguments.length;
+                        return invoke.execute(method, null, arguments);
+                    } else {
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            if (matched != null) {
+                                return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            }
                         }
                     }
-                }
-            } else {
-                CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
-                if (typeMatched != null) {
-                    return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                } else {
+                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                    }
                 }
             }
+            throw UnknownIdentifierException.create(member);
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+                // rethrow the original foreign exception when leaving espresso interop
+                throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
+            }
+            throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     @SuppressWarnings("static-method")
@@ -285,7 +296,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
-        return new KeysArray(members.toArray(new String[members.size()]));
+        return new KeysArray<>(members.toArray(new String[members.size()]));
     }
 
     protected static boolean isObjectKlass(Klass receiver) {
@@ -328,10 +339,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             throw UnsupportedMessageException.create();
         }
 
-        private static int convertLength(Object argument, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException {
+        private static int convertLength(Object argument, ToPrimitive.ToInt toInt) throws UnsupportedTypeException {
             int length = 0;
             try {
-                length = (int) toEspressoNode.execute(argument, meta._int);
+                length = (int) toInt.execute(argument);
             } catch (UnsupportedTypeException e) {
                 throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
             }
@@ -341,11 +352,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return length;
         }
 
-        private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
+        private static int getLength(Object[] arguments, ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             if (arguments.length != 1) {
                 throw ArityException.create(1, 1, arguments.length);
             }
-            return convertLength(arguments[0], toEspressoNode, meta);
+            return convertLength(arguments[0], toInt);
         }
 
         protected static boolean isPrimitiveArray(Klass receiver) {
@@ -363,37 +374,37 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isPrimitiveArray(receiver)")
         static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
+                        @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            EspressoContext context = EspressoContext.get(toInt);
+            int length = getLength(arguments, toInt);
             GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
             return context.getAllocator().createNewPrimitiveArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException, ArityException {
+                        @Cached ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            EspressoContext context = EspressoContext.get(toInt);
+            int length = getLength(arguments, toInt);
             GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
             return context.getAllocator().createNewReferenceArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
+                        @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
                 throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
-            EspressoContext context = EspressoContext.get(toEspressoNode);
+            EspressoContext context = EspressoContext.get(toInt);
             int[] dimensions = new int[arguments.length];
             for (int i = 0; i < dimensions.length; ++i) {
-                dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
+                dimensions[i] = convertLength(arguments[i], toInt);
             }
             GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(context.getMeta(), arrayKlass.getComponentType(), dimensions);
             return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);
@@ -453,6 +464,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     boolean isMetaInstance(Object instance) {
         return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    @ExportMessage
+    boolean hasMetaParents() {
+        if (isPrimitive()) {
+            return false;
+        }
+        if (isInterface()) {
+            return getSuperInterfaces().length > 0;
+        }
+        return this != getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (hasMetaParents()) {
+            Klass[] result;
+            if (isInterface()) {
+                ObjectKlass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superKlass = getSuperKlass();
+                Klass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superKlass;
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
+            }
+            return new KeysArray<>(result);
+        }
+        throw UnsupportedMessageException.create();
     }
 
     // endregion ### Meta-objects
@@ -588,7 +637,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(Klass klass, Klass accessingKlass) {
+    public static boolean checkAccess(Klass klass, Klass accessingKlass, boolean ignoreMagicAccessor) {
         if (accessingKlass == null) {
             return true;
         }
@@ -613,8 +662,23 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return true;
             }
         }
-        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
 
+        if (ignoreMagicAccessor) {
+            /*
+             * Prevents any class inheriting from MagicAccessorImpl to have access to
+             * MagicAccessorImpl just because it implements MagicAccessorImpl.
+             * 
+             * Only generated accessors in the {sun|jdk.internal}.reflect package, defined by
+             * {sun|jdk.internal}.reflect.DelegatingClassLoader(s) have access to MagicAccessorImpl.
+             */
+            ObjectKlass magicAccessorImpl = context.getMeta().sun_reflect_MagicAccessorImpl;
+            return !StaticObject.isNull(accessingKlass.getDefiningClassLoader()) &&
+                            context.getMeta().sun_reflect_DelegatingClassLoader.equals(accessingKlass.getDefiningClassLoader().getKlass()) &&
+                            magicAccessorImpl.getRuntimePackage().equals(accessingKlass.getRuntimePackage()) &&
+                            magicAccessorImpl.isAssignableFrom(accessingKlass);
+        }
+
+        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
     }
 
     public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
@@ -697,6 +761,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @Override
+    @Idempotent
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
@@ -1434,10 +1499,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**

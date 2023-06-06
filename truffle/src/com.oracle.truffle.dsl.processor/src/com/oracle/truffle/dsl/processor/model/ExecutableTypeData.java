@@ -81,6 +81,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         this.ignoreUnexpected = false;
     }
 
+    @SuppressWarnings("this-escape")
     public ExecutableTypeData(NodeData node, ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes, boolean ignoreUnexpected) {
         this.node = node;
         this.method = method;
@@ -121,7 +122,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public static String createName(ExecutableTypeData type) {
-        return "execute" + (ElementUtils.isObject(type.getReturnType()) ? "" : ElementUtils.getTypeId(type.getReturnType()));
+        return "execute" + (ElementUtils.isObject(type.getReturnType()) ? "" : ElementUtils.getTypeSimpleId(type.getReturnType()));
     }
 
     public void addDelegatedFrom(ExecutableTypeData child) {

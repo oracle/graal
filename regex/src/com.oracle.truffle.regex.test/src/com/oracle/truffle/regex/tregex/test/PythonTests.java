@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -378,6 +380,11 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testInlineGlobalFlagsEscaped() {
+        test("\\\\(?i)foo", "", "\\FOO", 0, true, 0, 4, -1);
+    }
+
+    @Test
     public void testPythonFlagChecks() {
         expectSyntaxError("", "au", "ASCII and UNICODE flags are incompatible");
         expectSyntaxError("(?a)", "u", "ASCII and UNICODE flags are incompatible");
@@ -455,6 +462,51 @@ public class PythonTests extends RegexTestBase {
         test("(?=(a)x(?(1)a|b))", "", "axa", 0, true, 0, 0, 0, 1, 1);
         test("(?=(a)xy(?(1)a|b))", "", "axya", 0, true, 0, 0, 0, 1, 1);
         test("(?=(?(1)a|b)())", "", "b", 0, true, 0, 0, 1, 1, 1);
+    }
+
+    @Test
+    public void gr44233() {
+        test("(\\bNone|\\bFalse|\\bTrue)?\\s*([=!]=)\\s*(?(1)|(None|False|True))\\b", "", "x == True", 0, true, 1, 9, -1, -1, 2, 4, 5, 9, 3);
+
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "a", 0, true, 0, 1, 0, 1, -1, -1, 1);
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "b", 0, true, 0, 1, -1, -1, 0, 1, 2);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "a", 0, false);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "b", 0, false);
+
+        test("(x)?(?(1)a|b)(?<=a)", "", "xa", 0, true, 0, 2, 0, 1, 1);
+        test("(x)?(?(1)a|b)(?<=a)", "", "b", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "xa", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "b", 0, true, 0, 1, -1, -1, -1);
+    }
+
+    @Test
+    public void testIgnoreCase() {
+        // \u00b5 (micro sign) and \u03bc (greek small letter mu) are considered equivalent when
+        // either of them appears in the pattern and the other in the text.
+        test("(\u00b5)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        test("(\u03bc)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        // However, these characters are not considered equal when matched using a backreference.
+        test("(\u00b5)\\1", "i", "\u00b5\u03bc", 0, false);
+        test("(\u03bc)\\1", "i", "\u00b5\u03bc", 0, false);
+        // This is because these two characters receive special care when compiling a regular
+        // expression. They are considered equivalent because they map to the same Uppercase
+        // character. However, when two strings are compared at runtime during the execution of a
+        // backreference, the characters are only tested by comparing their Lowercase mappings.
+
+        // We used to mistakenly consider a character equivalent to the first character of its
+        // extended case mapping. The ligature \ufb00 uppercases to FF and and the ligature \ufb01
+        // uppercases to FI. Both should be distinct from each other and from the letter F.
+        test("\ufb00", "i", "\ufb01", 0, false);
+        test("\ufb00", "i", "F", 0, false);
+    }
+
+    @Test
+    public void testLazyLastGroup() {
+        Value compiledRegex = compileRegex(".*(.*bbba|ab)", "");
+        for (int i = 0; i < TRegexOptions.TRegexGenerateDFAThresholdCalls * 4; i++) {
+            Value result = execRegex(compiledRegex, "xxxxxxabxx", 0);
+            Assert.assertEquals(1, result.getMember("lastGroup").asInt());
+        }
     }
 
     @Test

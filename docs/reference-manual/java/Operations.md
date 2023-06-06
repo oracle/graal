@@ -14,7 +14,7 @@ That is, it is first interpreted before its hot methods are compiled.
 This can translate into slightly longer times until the application reaches peak performance when compared to the native compilers in the JVM such as C1 and C2.
 
 To address the issue of taking longer to reach to peak performance, **libgraal** was introduced -- a shared library, produced using [Native Image](../native-image/README.md) to ahead-of-time compile the compiler itself.
-That means the GraalVM Enterprise compiler is deployed as a native shared library.
+That means the Oracle GraalVM compiler is deployed as a native shared library.
 
 In this mode, the compiler uses memory separate from the HotSpot heap, and it runs compiled from the start.
 Therefore it has execution properties similar to other native HotSpot compilers such as C1 and C2.
@@ -23,7 +23,7 @@ It can be disabled with `-XX:-UseJVMCINativeLibrary`.
 
 ## Measuring Performance
 
-The first thing to be sure of when measuring performance is to ensure the JVM is using the GraalVM Enterprise compiler.
+The first thing to be sure of when measuring performance is to ensure the JVM is using the Oracle GraalVM compiler.
 In the GraalVM binary, the JVM is configured to use the Graal compiler as the top tier compiler by default.
 You can confirm this by adding `-Dgraal.ShowConfiguration=info` to the command line.
 It will produce a line of output similar to the one below when the compiler is initialized:
@@ -155,3 +155,8 @@ ls -l /Users/demo/graal-dumps/1499768882600
 -rw-r--r--  1 demo  staff   1727409 Jul 13 11:46 HotSpotCompilation-791[NodeLIRBuilder.matchComplexExpressions(List)].cfg
 ```
 You should attach a .zip of this directory to an issue on [GitHub](https://github.com/oracle/graal/issues).
+
+### Related Documentation
+
+- [Graal Compiler](compiler.md)
+- [Compiler Configuration on JVM](Options.md)

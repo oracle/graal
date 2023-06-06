@@ -376,18 +376,28 @@ meth public abstract void onThreadInitialized(com.oracle.truffle.api.TruffleCont
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument
 cons protected init()
+fld protected final com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalProvider locals
 innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
+innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public final static Env
 meth protected abstract void onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected org.graalvm.options.OptionDescriptors getContextOptionDescriptors()
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
 meth protected void onDispose(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected void onFinalize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
+supr java.lang.Object
+
+CLSS protected final static com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalProvider
+ outer com.oracle.truffle.api.instrumentation.TruffleInstrument
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)
 supr java.lang.Object
 hfds contextLocals,contextThreadLocals
 
@@ -433,6 +443,7 @@ meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(com.or
 meth public long calculateContextHeapSize(com.oracle.truffle.api.TruffleContext,long,java.util.concurrent.atomic.AtomicBoolean)
 meth public org.graalvm.options.OptionValues getOptions()
 meth public org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.TruffleContext)
+meth public org.graalvm.polyglot.SandboxPolicy getSandboxPolicy()
 meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org.graalvm.polyglot.io.MessageEndpoint) throws java.io.IOException,org.graalvm.polyglot.io.MessageTransport$VetoException
 meth public void registerService(java.lang.Object)
 meth public void setAsynchronousStackDepth(int)
@@ -442,6 +453,7 @@ hcls GuardedExecutableNode,MessageTransportProxy
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
 meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
 meth public abstract java.lang.String getInstrumentClassName()
 meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
@@ -452,11 +464,22 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean internal()
+meth public abstract !hasdefault java.lang.Class<?>[] aotLibraryExports()
+meth public abstract !hasdefault java.lang.Class<?>[] defaultLibraryExports()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
+
+CLSS public abstract com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider
+cons protected init()
+meth protected abstract <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
+meth protected abstract java.lang.Object create()
+meth protected abstract java.lang.String getInstrumentClassName()
+meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
@@ -505,6 +528,14 @@ meth public abstract !hasdefault java.lang.String shortName()
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface java.lang.Cloneable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forRemoval()
+meth public abstract !hasdefault java.lang.String since()
 
 CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Documented()

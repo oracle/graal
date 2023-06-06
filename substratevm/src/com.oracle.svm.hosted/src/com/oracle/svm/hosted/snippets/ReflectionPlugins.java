@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -71,9 +72,12 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -91,7 +95,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compile-time constants, e.g., for {@link Method}, {@link MethodHandle}, or {@code VarHandle}
  * instances. This avoids manual registration of these elements using a reflection configuration
  * file.
- * 
+ *
  * One important assumption made in this class is that the return types of all folded methods do not
  * have object identity, i.e., it is allowed to return a cached object instead of creating a new
  * object at every invocation. While the types {@link #ALLOWED_CONSTANT_CLASSES we allow} are not
@@ -118,19 +122,24 @@ public final class ReflectionPlugins {
     private final ClassInitializationPlugin classInitializationPlugin;
     private final AnalysisUniverse aUniverse;
     private final ParsingReason reason;
+    private final FallbackFeature fallbackFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason) {
+                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
         this.imageClassLoader = imageClassLoader;
         this.snippetReflection = snippetReflection;
         this.annotationSubstitutions = annotationSubstitutions;
         this.classInitializationPlugin = classInitializationPlugin;
         this.aUniverse = aUniverse;
         this.reason = reason;
+        this.fallbackFeature = fallbackFeature;
+
+        this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason) {
+                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
         /*
          * Initialize the registry if we are during analysis. If hosted is false, i.e., we are
          * analyzing the static initializers, then we always intrinsify, so don't need a registry.
@@ -141,7 +150,7 @@ public final class ReflectionPlugins {
             }
         }
 
-        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, classInitializationPlugin, aUniverse, reason);
+        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, classInitializationPlugin, aUniverse, reason, fallbackFeature);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
     }
@@ -151,23 +160,27 @@ public final class ReflectionPlugins {
      * return only objects of classes that are "immutable enough", i.e., cannot change their
      * meaning. Otherwise, the object could be modified between the intrinsification at image build
      * time and the actual method invocation at run time.
-     * 
+     *
      * Note that many of the classes are not completely immutable because they have lazily
      * initialized caches, or the "accessible" flag of reflection objects. That is OK, because these
      * mutable fields do not affect the outcome of any of the methods that we register for constant
      * folding.
-     * 
+     *
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
-    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
+    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = Set.of(
                     Class.class, String.class, ClassLoader.class,
                     Method.class, Constructor.class, Field.class,
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
                     VarHandle.class,
-                    ByteOrder.class));
+                    ByteOrder.class);
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
+        for (Class<?> clazz : List.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class)) {
+            registerFoldInvocationPlugins(plugins, clazz, "toString", "toBinaryString", "toOctalString", "toHexString");
+        }
+        registerFoldInvocationPlugins(plugins, String.class, "valueOf");
 
         registerFoldInvocationPlugins(plugins, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
@@ -211,7 +224,7 @@ public final class ReflectionPlugins {
             /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
             Object classArg = args[0];
             if (classArg instanceof Class<?>) {
-                if (shouldInitializeAtRuntime((Class<?>) classArg)) {
+                if (classInitializationSupport.shouldInitializeAtRuntime((Class<?>) classArg)) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
@@ -234,7 +247,7 @@ public final class ReflectionPlugins {
             Object fieldArg = args[0];
             if (fieldArg instanceof Field) {
                 Field field = (Field) fieldArg;
-                if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
+                if (isStatic(field) && classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);
@@ -250,6 +263,21 @@ public final class ReflectionPlugins {
         registerFoldInvocationPlugins(plugins, Class.class,
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
+
+        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+            registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
+            registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredConstructors", RuntimeReflection::registerAllDeclaredConstructors);
+            registerBulkInvocationPlugin(plugins, Class.class, "getFields", RuntimeReflection::registerAllFields);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredFields", RuntimeReflection::registerAllDeclaredFields);
+            registerBulkInvocationPlugin(plugins, Class.class, "getMethods", RuntimeReflection::registerAllMethods);
+            registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredMethods", RuntimeReflection::registerAllDeclaredMethods);
+            registerBulkInvocationPlugin(plugins, Class.class, "getNestMembers", RuntimeReflection::registerAllNestMembers);
+            registerBulkInvocationPlugin(plugins, Class.class, "getPermittedSubclasses", RuntimeReflection::registerAllPermittedSubclasses);
+            registerBulkInvocationPlugin(plugins, Class.class, "getRecordComponents", RuntimeReflection::registerAllRecordComponents);
+            registerBulkInvocationPlugin(plugins, Class.class, "getSigners", RuntimeReflection::registerAllSigners);
+        }
 
         Registration r = new Registration(plugins, Class.class);
         r.register(new RequiredInvocationPlugin("forName", String.class) {
@@ -386,7 +414,7 @@ public final class ReflectionPlugins {
     }
 
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding) {
-        if (!ALLOWED_CONSTANT_CLASSES.contains(reflectionMethod.getReturnType()) && !reflectionMethod.getReturnType().isPrimitive()) {
+        if (!isAllowedReturnType(reflectionMethod.getReturnType())) {
             throw VMError.shouldNotReachHere("Return type of method " + reflectionMethod + " is not on the allow-list for types that are immutable");
         }
         reflectionMethod.setAccessible(true);
@@ -403,6 +431,10 @@ public final class ReflectionPlugins {
                 return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding);
             }
         });
+    }
+
+    private static boolean isAllowedReturnType(Class<?> returnType) {
+        return ALLOWED_CONSTANT_CLASSES.contains(returnType) || returnType.isPrimitive();
     }
 
     private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
@@ -465,9 +497,46 @@ public final class ReflectionPlugins {
         return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
     }
 
-    private static boolean shouldInitializeAtRuntime(Class<?> classArg) {
-        ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        return classInitializationSupport.shouldInitializeAtRuntime(classArg);
+    private <T> void registerBulkInvocationPlugin(InvocationPlugins plugins, Class<T> declaringClass, String methodName, Consumer<T> registrationCallback) {
+        plugins.register(declaringClass, new RequiredInvocationPlugin(methodName, new Class<?>[]{Receiver.class}) {
+            @Override
+            public boolean isDecorator() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                VMError.guarantee(!targetMethod.isStatic(), "Bulk reflection queries are not static");
+                return registerConstantBulkReflectionQuery(b, receiver, registrationCallback);
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> boolean registerConstantBulkReflectionQuery(GraphBuilderContext b, Receiver receiver, Consumer<T> registrationCallback) {
+        /*
+         * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in the
+         * process. It is an error for invocation plugins that do not replace the call to modify the
+         * graph.
+         */
+        Object receiverValue = unbox(b, receiver.get(false), JavaKind.Object);
+        if (receiverValue == null || receiverValue == NULL_MARKER) {
+            return false;
+        }
+
+        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
+        return true;
+    }
+
+    private <T> void registerForRuntimeReflection(T receiver, Consumer<T> registrationCallback) {
+        try {
+            registrationCallback.accept(receiver);
+            if (fallbackFeature != null) {
+                fallbackFeature.ignoreReflectionFallback = true;
+            }
+        } catch (LinkageError e) {
+            // Ignore, the call should be registered manually
+        }
     }
 
     private static boolean isStatic(Field field) {
@@ -480,7 +549,7 @@ public final class ReflectionPlugins {
              * If the argument is not a constant, we try to extract a varargs-parameter list for
              * Class[] arrays. This is used in many reflective lookup methods.
              */
-            return SubstrateGraphBuilderPlugins.extractClassArray(annotationSubstitutions, snippetReflection, arg, true);
+            return SubstrateGraphBuilderPlugins.extractClassArray(b, annotationSubstitutions, snippetReflection, arg, true);
         }
 
         JavaConstant argConstant = arg.asJavaConstant();
@@ -507,7 +576,7 @@ public final class ReflectionPlugins {
             case Object:
                 return unboxObjectConstant(b, argConstant);
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(argKind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -525,7 +594,7 @@ public final class ReflectionPlugins {
 
         /* Any other object that is not a Class. */
         Object result = snippetReflection.asObject(Object.class, argConstant);
-        if (ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
+        if (result != null && ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
             return result;
         }
         return null;

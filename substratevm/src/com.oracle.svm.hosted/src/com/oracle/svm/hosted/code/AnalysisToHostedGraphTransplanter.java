@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.Fields;
@@ -101,7 +102,12 @@ public class AnalysisToHostedGraphTransplanter {
         OptionValues compileOptions = compileQueue.getCustomizedOptions(hMethod, debug);
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(compileOptions);
         assert aMethod.equals(aGraph.method());
-        StructuredGraph graph = aGraph.copy(hMethod, compileOptions, debug, trackNodeSourcePosition);
+
+        List<ResolvedJavaMethod> inlinedHMethods = null;
+        if (aGraph.isRecordingInlinedMethods()) {
+            inlinedHMethods = aGraph.getMethods().stream().map(m -> getHostedMethod(universe, m)).collect(Collectors.toList());
+        }
+        StructuredGraph graph = aGraph.copy(hMethod, inlinedHMethods, compileOptions, debug, trackNodeSourcePosition);
 
         transplantEscapeAnalysisState(graph);
 
@@ -333,10 +339,7 @@ public class AnalysisToHostedGraphTransplanter {
             SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
             newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
         } else if (obj instanceof ImageHeapConstant) {
-            ImageHeapConstant imageObj = (ImageHeapConstant) obj;
-            ResolvedJavaType type = imageObj.getType(null);
-            imageObj.setType(type instanceof AnalysisType ? hUniverse.lookup(type) : type);
-            newReplacement = imageObj;
+            newReplacement = obj;
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;

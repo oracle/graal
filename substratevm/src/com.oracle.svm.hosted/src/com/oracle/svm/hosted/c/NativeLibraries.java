@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -550,13 +550,13 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish() {
+    public void finish(ImageClassLoader loader) {
         libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-                new CAnnotationProcessor(this, context).process(cache);
+                new CAnnotationProcessor(this, context).process(cache, loader);
             }
         }
     }
@@ -595,10 +595,6 @@ public final class NativeLibraries {
 
     public boolean isEnum(ResolvedJavaType type) {
         return enumType.isAssignableFrom(type);
-    }
-
-    public ResolvedJavaType enumType() {
-        return enumType;
     }
 
     public ResolvedJavaType getPointerBaseType() {

@@ -29,12 +29,8 @@ import java.lang.reflect.Field;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
 
@@ -43,8 +39,6 @@ import jdk.vm.ci.meta.JavaTypeProfile;
  */
 public class HostedField extends HostedElement implements OriginalFieldProvider, SharedField, WrappedJavaField {
 
-    private final HostedUniverse universe;
-    private final HostedMetaAccess metaAccess;
     public final AnalysisField wrapped;
 
     private final HostedType holder;
@@ -56,9 +50,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     static final int LOC_UNMATERIALIZED_STATIC_CONSTANT = -10;
 
-    public HostedField(HostedUniverse universe, HostedMetaAccess metaAccess, AnalysisField wrapped, HostedType holder, HostedType type, JavaTypeProfile typeProfile) {
-        this.universe = universe;
-        this.metaAccess = metaAccess;
+    public HostedField(AnalysisField wrapped, HostedType holder, HostedType type, JavaTypeProfile typeProfile) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.type = type;
@@ -126,6 +118,11 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     @Override
+    public boolean isUnknownValue() {
+        return wrapped.isUnknownValue();
+    }
+
+    @Override
     public String getName() {
         return wrapped.getName();
     }
@@ -150,29 +147,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped.hashCode();
     }
 
-    public JavaConstant readValue(JavaConstant receiver) {
-        JavaConstant wrappedReceiver;
-        if (metaAccess.isInstanceOf(receiver, Class.class)) {
-            Object classObject = SubstrateObjectConstant.asObject(receiver);
-            if (classObject instanceof Class) {
-                throw VMError.shouldNotReachHere("Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.");
-            } else {
-                VMError.guarantee(classObject instanceof DynamicHub);
-                wrappedReceiver = receiver;
-            }
-        } else {
-            wrappedReceiver = receiver;
-        }
-        return universe.lookup(universe.getConstantReflectionProvider().readValue(metaAccess, wrapped, wrappedReceiver));
-    }
-
-    public JavaConstant readStorageValue(JavaConstant receiver) {
-        JavaConstant result = readValue(receiver);
-        assert result != null : "Cannot read value for field " + this.format("%H.%n");
-        assert result.getJavaKind() == getType().getStorageKind() : this;
-        return result;
-    }
-
     @Override
     public HostedType getDeclaringClass() {
         return holder;
@@ -190,7 +164,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     @Override
     public String toString() {
-        return "HostedField<" + format("%h.%n") + " location: " + location + "   " + wrapped.toString() + ">";
+        return "HostedField<" + format("%h.%n") + " -> " + wrapped.toString() + ", location: " + location + ">";
     }
 
     @Override

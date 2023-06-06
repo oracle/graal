@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     /**
      * Tests two inlining tree nodes for equality by comparing the {@link InliningTreeNode#getBCI()
-     * bci of their callsites}, positivity of the inlining decision, indirectness, and
+     * bci of their callsites}, {@link InliningTreeNode#getCallsiteKind() callsite kind}, and
      * {@link InliningTreeNode#getName() method names}.
      *
      * @param node1 the first inlining-tree node
@@ -44,14 +44,13 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
      */
     @Override
     public boolean nodesEqual(InliningTreeNode node1, InliningTreeNode node2) {
-        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && node1.isIndirect() == node2.isIndirect() && Objects.equals(node1.getName(), node2.getName());
+        return node1.getBCI() == node2.getBCI() && node1.getCallsiteKind() == node2.getCallsiteKind() && Objects.equals(node1.getName(), node2.getName());
     }
 
     /**
      * Gets the cost of relabeling the first node to the second. If the nodes differ only in the
-     * positivity of the inlining decision, but they correspond the same method, the
-     * {@link #UNIT_COST unit cost} is returned. Otherwise, the cost of relabeling is
-     * {@link #INFINITE_COST infinite}.
+     * callsite kind, but they correspond to the same method, the {@link #UNIT_COST unit cost} is
+     * returned. Otherwise, the cost of relabelling is {@link #INFINITE_COST infinite}.
      *
      * @param node1 the first node
      * @param node2 the second node
@@ -60,7 +59,7 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     @Override
     public long relabelCost(InliningTreeNode node1, InliningTreeNode node2) {
         assert node1 != node2;
-        if (node1.getBCI() == node2.getBCI() && node1.isIndirect() == node2.isIndirect() && Objects.equals(node1.getName(), node2.getName())) {
+        if (node1.getBCI() == node2.getBCI() && Objects.equals(node1.getName(), node2.getName())) {
             return UNIT_COST;
         }
         return INFINITE_COST;

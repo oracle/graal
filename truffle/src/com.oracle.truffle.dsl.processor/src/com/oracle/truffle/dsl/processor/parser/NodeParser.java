@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,6 +148,7 @@ import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.ParameterSpec;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -418,6 +419,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeAOT(node);
         boolean recommendInline = initializeInlinable(resolver, node);
 
+        initializeFastPathIdempotentGuards(node);
+
         if (mode == ParseMode.DEFAULT) {
             boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
                             !TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
@@ -440,6 +443,45 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyRecommendationWarnings(node, recommendInline);
 
         return node;
+    }
+
+    private void initializeFastPathIdempotentGuards(NodeData node) {
+        for (SpecializationData specialization : node.getReachableSpecializations()) {
+            for (GuardExpression guard : specialization.getGuards()) {
+                DSLExpression expression = guard.getExpression();
+
+                if (guard.isWeakReferenceGuard() || FlatNodeGenFactory.guardNeedsNodeStateBit(specialization, guard)) {
+                    guard.setFastPathIdempotent(false);
+                    continue;
+                }
+
+                Idempotence idempotence = specialization.getIdempotence(expression);
+                switch (idempotence) {
+                    case IDEMPOTENT:
+                        guard.setFastPathIdempotent(true);
+                        break;
+                    case NON_IDEMPOTENT:
+                        guard.setFastPathIdempotent(false);
+                        break;
+                    case UNKNOWN:
+                        StringBuilder message = new StringBuilder(String.format("The guard '%s' invokes methods that would benefit from the @%s or @%s annotations: %n",
+                                        guard.getExpression().asString(), getSimpleName(types.Idempotent), getSimpleName(types.NonIdempotent)));
+                        for (ExecutableElement method : specialization.getBoundMethods(expression)) {
+                            if (ElementUtils.getIdempotent(method) == Idempotence.UNKNOWN) {
+                                message.append("  - ").append(ElementUtils.getReadableReference(node.getTemplateType(), method)).append(System.lineSeparator());
+                            }
+                        }
+                        message.append("The DSL will invoke guards always or only in the slow-path during specialization depending these annotations. ");
+                        message.append("To resolve this annotate the methods, remove the guard or suppress the warning.");
+                        specialization.addSuppressableWarning(TruffleSuppressedWarnings.GUARD, message.toString());
+                        guard.setFastPathIdempotent(true);
+                        break;
+                    default:
+                        throw new AssertionError();
+
+                }
+            }
+        }
     }
 
     private DSLExpressionResolver createBaseResolver(NodeData node, List<Element> members) {
@@ -568,9 +610,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     break;
                 }
             }
+
             if (usesInlinedNodes) {
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
+                    /*
+                     * For inlined nodes we need pass down the inlineTarget Node even for shared
+                     * nodes using the first specialization parameter.
+                     */
                     boolean firstParameterNode = false;
                     for (Parameter p : specialization.getSignatureParameters()) {
                         firstParameterNode = p.isDeclared();
@@ -587,8 +634,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         "To resolve this add the static keyword to the specialization method. ",
                                         getSimpleName(types.GenerateInline));
                     }
-                } else if (FlatNodeGenFactory.useSpecializationClass(specialization) || mode == ParseMode.EXPORTED_MESSAGE) {
-
+                } else if (mode == ParseMode.EXPORTED_MESSAGE || FlatNodeGenFactory.substituteNodeWithSpecializationClass(specialization)) {
+                    /*
+                     * For exported message we need to use @Bind("$node") always even for any
+                     * inlined cache as the "this" receiver refers to the library receiver.
+                     *
+                     * For regular cached nodes @Bind("this") must be used if a specialization data
+                     * class is in use. If all inlined caches are shared we can use this and avoid
+                     * the warning.
+                     */
                     boolean hasNodeParameter = false;
                     for (CacheExpression cache : specialization.getCaches()) {
                         if (cache.isBind() && specialization.isNodeReceiverBound(cache.getDefaultExpression())) {
@@ -1490,6 +1544,22 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
         }
+
+        for (SpecializationData specialization : specializations) {
+            if (!specialization.getAssumptionExpressions().isEmpty() && specialization.isReachesFallback()) {
+                specialization.addSuppressableWarning(TruffleSuppressedWarnings.ASSUMPTION,
+                                """
+                                                It is discouraged to use assumptions with a specialization that reaches a @%s specialization.\s\
+                                                Specialization instances get removed if assumptions are no longer valid, which may lead to unexpected @%s invocations.\s\
+                                                This may be fixed by translating the assumption usage to a regular method guard instead.\s\
+                                                Instead of assumptions="a" you may use guards="a.isValid()".\s\
+                                                This problem may also be fixed by adding a new more generic specialization that replaces this specialization.\s\
+                                                """,
+                                getSimpleName(types.Fallback),
+                                getSimpleName(types.Fallback));
+            }
+        }
+
     }
 
     private static void initializeExecutableTypeHierarchy(NodeData node) {
@@ -3683,41 +3753,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
          */
         ProcessorContext context = ProcessorContext.getInstance();
         TruffleTypes types = context.getTypes();
-        if (method != null) {
-            TypeMirror enclosingType = method.getEnclosingElement().asType();
-            String simpleName = method.getSimpleName().toString();
-            if (ElementUtils.typeEquals(context.getType(Object.class), enclosingType) &&
-                            (simpleName.equals("getClass") || simpleName.equals("toString"))) {
-                return true;
-            }
-
-            if ((ElementUtils.typeEquals(types.Frame, enclosingType) || ElementUtils.typeEquals(types.VirtualFrame, enclosingType) ||
-                            ElementUtils.typeEquals(types.MaterializedFrame, enclosingType)) && //
-                            (simpleName.equals("getFrameDescriptor") || //
-                                            simpleName.equals("getArguments") || //
-                                            simpleName.equals("materialize"))) {
-                return true;
-            }
-            if ((ElementUtils.typeEquals(types.FrameDescriptor, enclosingType)) && //
-                            (simpleName.equals("getSlotKind") || //
-                                            simpleName.equals("getAuxiliarySlots"))) {
-                return true;
-            }
-
-            if (typeEquals(enclosingType, types.DirectCallNode) && simpleName.equals("create")) {
-                return true;
-            }
-
-            if (typeEquals(enclosingType, types.IndirectCallNode) && simpleName.equals("create")) {
-                return true;
-            }
-
+        if (method != null && types.isBuiltinNeverDefault(method)) {
+            return true;
         }
 
         VariableElement var = expression.resolveVariable();
-        if (var != null && var.getSimpleName().toString().equals("this")) {
-            // this pointer for libraries never null
-            return true;
+        if (var != null) {
+            if (var.getSimpleName().toString().equals("this")) {
+                // this pointer for libraries never null
+                return true;
+            }
+
+            if (types.isBuiltinNeverDefault(var)) {
+                return true;
+            }
         }
 
         /*
@@ -3849,7 +3898,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
      * on. This enables that @Cached InlinedBranchProfile inlines by default even if a cached
      * version is generated and no warning is printed.
      */
-    private static boolean forceInlineByDefault(CacheExpression cache) {
+    private boolean forceInlineByDefault(CacheExpression cache) {
         AnnotationMirror cacheAnnotation = cache.getMessageAnnotation();
         TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
         if (parameterType == null) {
@@ -3858,6 +3907,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
         boolean defaultCached = getAnnotationValue(cacheAnnotation, "value", false) == null;
         if (defaultCached && !hasDefaultCreateCacheMethod(parameterType.asType())) {
             return hasInlineMethod(cache);
+        }
+        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+            if (inlineAnnotation != null) {
+                return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
+                                getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
+            }
         }
         return false;
     }
@@ -3959,7 +4015,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     @SuppressWarnings({"unchecked", "try"})
     private NodeData lookupNodeData(NodeData node, TypeMirror type, MessageContainer errorTarget) {
         TypeElement parameterType = ElementUtils.castTypeElement(type);
-        String typeId = ElementUtils.getTypeId(type);
+        String typeId = ElementUtils.getQualifiedName(type);
         NodeData nodeData = nodeDataCache.get(typeId);
         if (nodeDataCache.containsKey(typeId)) {
             return nodeData;

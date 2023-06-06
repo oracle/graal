@@ -109,6 +109,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
@@ -1201,7 +1202,7 @@ public class TruffleFileTest {
     private static void resetLanguageHomes() throws ReflectiveOperationException {
         Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
         Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-        reset.setAccessible(true);
+        ReflectionUtils.setAccessible(reset, true);
         reset.invoke(null);
     }
 
@@ -1219,6 +1220,7 @@ public class TruffleFileTest {
         private Charset encoding;
         private Predicate<? super TruffleFile> recognizer;
 
+        @SuppressWarnings("this-escape")
         protected BaseDetector() {
             INSTANCES.put(getClass(), this);
         }

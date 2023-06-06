@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -88,13 +89,13 @@ public abstract class NativeImageViaCC extends NativeImage {
 
     @Override
     @SuppressWarnings("try")
-    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 0. Free codecache to make space for writing the objectFile
             codeCache.purge();
 
             // 1. write the relocatable file
-            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()), forkJoinPool);
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }
@@ -157,17 +158,19 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
                 /* Provide an import library for the built shared library. */
-                String importLib = imageName + ".lib";
-                Path importLibPath = imagePath.resolveSibling(importLib);
-                Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
-                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibPath);
+                Path importLib = inv.getTempDirectory().resolve(imageName + ".lib");
+                Path importLibCopy = Files.copy(importLib, imagePath.resolveSibling(importLib.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibCopy);
             }
 
             if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                if (SubstrateOptions.UseOldDebugInfo.getValue()) {
+                    return;
+                }
                 BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
                 if (Platform.includedIn(Platform.WINDOWS.class)) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
-                } else {
+                } else if (!SubstrateOptions.StripDebugInfo.getValue()) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
                 }
             }

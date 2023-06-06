@@ -70,6 +70,8 @@ public final class GuardExpression extends MessageContainer {
     private boolean libraryAcceptsGuard;
     private boolean weakReferenceGuard;
 
+    private Boolean fastPathIdempotent;
+
     public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
         this.expression = expression;
@@ -95,6 +97,17 @@ public final class GuardExpression extends MessageContainer {
     @Override
     public AnnotationValue getMessageAnnotationValue() {
         return ElementUtils.getAnnotationValue(getMessageAnnotation(), "guards");
+    }
+
+    public boolean isFastPathIdempotent() {
+        if (fastPathIdempotent == null) {
+            throw new AssertionError("Idempotent not yet initialized.");
+        }
+        return fastPathIdempotent;
+    }
+
+    public void setFastPathIdempotent(boolean idempotent) {
+        this.fastPathIdempotent = idempotent;
     }
 
     public DSLExpression getExpression() {

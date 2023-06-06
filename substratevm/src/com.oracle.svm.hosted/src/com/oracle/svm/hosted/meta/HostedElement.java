@@ -27,6 +27,8 @@ package com.oracle.svm.hosted.meta;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
+import com.oracle.svm.core.util.VMError;
+
 public abstract class HostedElement implements AnnotatedElement {
 
     protected abstract AnnotatedElement getWrapped();
@@ -48,11 +50,11 @@ public abstract class HostedElement implements AnnotatedElement {
 
     @Override
     public final Annotation[] getAnnotations() {
-        return getWrapped().getAnnotations();
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 
     @Override
     public final Annotation[] getDeclaredAnnotations() {
-        return getWrapped().getDeclaredAnnotations();
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 }

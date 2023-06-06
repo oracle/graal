@@ -69,7 +69,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getPureInstanceSize(layoutEncoding);
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
         return alloc().formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }
@@ -80,7 +80,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
+        UnsignedWord size = LayoutEncoding.getArrayAllocationSize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
         return alloc().formatArray(objectHeader, size, length, memory, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
@@ -90,7 +90,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                     @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
+        UnsignedWord size = LayoutEncoding.getArrayAllocationSize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
         return alloc().formatStoredContinuation(objectHeader, size, length, memory, emitMemoryBarrier, ipOffset, snippetCounters);
     }
@@ -103,13 +103,13 @@ public final class GenScavengeAllocationSnippets implements Snippets {
         byte[] refMapNonNull = (byte[]) PiNode.piCastNonNull(referenceMap, SnippetAnchorNode.anchor());
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
+        UnsignedWord allocationSize = LayoutEncoding.getArrayAllocationSize(layoutEncoding, arrayLength);
         return alloc().formatPod(objectHeader, hubNonNull, allocationSize, arrayLength, refMapNonNull, memory, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling,
                         snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
-        return ObjectHeaderImpl.encodeAsObjectHeader(hub, rememberedSet, unaligned);
+        return ObjectHeaderImpl.getObjectHeaderImpl().encodeAsObjectHeader(hub, rememberedSet, unaligned);
     }
 
     @Fold
@@ -124,6 +124,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
         private final SnippetInfo formatStoredContinuation;
         private final SnippetInfo formatPod;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
             super(options, providers);
             this.baseTemplates = baseTemplates;

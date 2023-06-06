@@ -281,33 +281,36 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     }
 
     public void removeSuccessor(NFAState state) {
-        int remove = indexOfTransition(state);
-        if (remove == -1) {
-            return;
-        }
-        NFAStateTransition[] newNext = new NFAStateTransition[getSuccessors().length - 1];
-        System.arraycopy(getSuccessors(), 0, newNext, 0, remove);
-        System.arraycopy(getSuccessors(), remove + 1, newNext, remove, newNext.length - remove);
-        setSuccessors(newNext);
-        if (transitionToAnchoredFinalState == remove) {
-            transitionToAnchoredFinalState = -1;
-        } else if (transitionToAnchoredFinalState > remove) {
-            transitionToAnchoredFinalState--;
-        }
-        if (transitionToUnAnchoredFinalState == remove) {
-            transitionToUnAnchoredFinalState = -1;
-        } else if (transitionToUnAnchoredFinalState > remove) {
-            transitionToUnAnchoredFinalState--;
-        }
-    }
-
-    private int indexOfTransition(NFAState target) {
-        for (int i = 0; i < getSuccessors().length; i++) {
-            if (getSuccessors()[i].getTarget() == target) {
-                return i;
+        int toRemove = 0;
+        for (NFAStateTransition successor : getSuccessors()) {
+            if (successor.getTarget() == state) {
+                toRemove++;
             }
         }
-        return -1;
+        if (toRemove == 0) {
+            return;
+        }
+        NFAStateTransition[] newNext = new NFAStateTransition[getSuccessors().length - toRemove];
+        short iNew = 0;
+        for (short i = 0; i < getSuccessors().length; i++) {
+            if (getSuccessors()[i].getTarget() == state) {
+                if (i == transitionToAnchoredFinalState) {
+                    transitionToAnchoredFinalState = -1;
+                }
+                if (i == transitionToUnAnchoredFinalState) {
+                    transitionToUnAnchoredFinalState = -1;
+                }
+            } else {
+                if (i == transitionToAnchoredFinalState) {
+                    transitionToAnchoredFinalState = iNew;
+                }
+                if (i == transitionToUnAnchoredFinalState) {
+                    transitionToUnAnchoredFinalState = iNew;
+                }
+                newNext[iNew++] = getSuccessors()[i];
+            }
+        }
+        setSuccessors(newNext);
     }
 
     public void linkPredecessors() {
@@ -346,6 +349,26 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
             possibleResults = new TBitSet(TRegexOptions.TRegexTraceFinderMaxNumberOfResults);
         }
         possibleResults.set(index);
+    }
+
+    /**
+     * Creates a copy of the {@code original} state. This copy is shallow as the state is just a
+     * part of a larger cyclic graph. However, it has its own copy of the {@link #getSuccessors()}
+     * and {@link #getPredecessors()} arrays. When copying the entire NFA, the
+     * {@link #getSuccessors()} and {@link #getPredecessors()} must be updated to point to
+     * transitions in the new NFA.
+     */
+    public NFAState(NFAState original) {
+        super(original);
+        this.stateSet = original.stateSet;
+        this.transitionToAnchoredFinalState = original.transitionToAnchoredFinalState;
+        this.transitionToUnAnchoredFinalState = original.transitionToUnAnchoredFinalState;
+        this.revTransitionToAnchoredFinalState = original.revTransitionToAnchoredFinalState;
+        this.revTransitionToUnAnchoredFinalState = original.revTransitionToUnAnchoredFinalState;
+        this.possibleResults = original.possibleResults;
+        this.matcherBuilder = original.matcherBuilder;
+        this.finishedLookBehinds = original.finishedLookBehinds;
+        this.matchedConditionGroupsMap = original.matchedConditionGroupsMap;
     }
 
     @TruffleBoundary

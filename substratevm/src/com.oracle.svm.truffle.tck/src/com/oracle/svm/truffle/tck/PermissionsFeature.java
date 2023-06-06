@@ -139,6 +139,7 @@ public class PermissionsFeature implements Feature {
         compilerPackages = new HashSet<>();
         compilerPackages.add("org.graalvm.");
         compilerPackages.add("com.oracle.graalvm.");
+        compilerPackages.add("com.oracle.svm.core.");
         compilerPackages.add("com.oracle.truffle.api.");
         compilerPackages.add("com.oracle.truffle.polyglot.");
         compilerPackages.add("com.oracle.truffle.host.");
@@ -542,7 +543,7 @@ public class PermissionsFeature implements Feature {
      * @return the methods accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findMethods(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrapped().getDeclaredMethods(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredMethods(false), filter);
     }
 
     /**
@@ -555,7 +556,7 @@ public class PermissionsFeature implements Feature {
      * @return the constructors accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findConstructors(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrapped().getDeclaredConstructors(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredConstructors(false), filter);
     }
 
     private static Set<AnalysisMethodNode> findImpl(BigBang bb, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {

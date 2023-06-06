@@ -32,7 +32,6 @@ import java.util.concurrent.ThreadFactory;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -41,7 +40,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 
 /**
  * In a JDK that supports Project Loom virtual threads (JEP 425, starting with JDK 19 as preview
@@ -63,7 +62,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return Target_java_lang_VirtualThread.class.isInstance(thread);
     }
@@ -76,49 +75,9 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
     }
 
-    @Platforms({}) // fails image build if reachable
-    private static RuntimeException unreachable() {
-        return VMError.shouldNotReachHere();
-    }
-
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
         return cast(thread).getAndClearInterrupt();
-    }
-
-    @Override
-    public void yield() {
-        throw unreachable();
-    }
-
-    @Override
-    public void sleepMillis(long millis) {
-        throw unreachable();
-    }
-
-    @Override
-    public boolean isAlive(Thread thread) {
-        throw unreachable();
-    }
-
-    @Override
-    public void unpark(Thread thread) {
-        throw unreachable();
-    }
-
-    @Override
-    public void park() {
-        throw unreachable();
-    }
-
-    @Override
-    public void parkNanos(long nanos) {
-        throw unreachable();
-    }
-
-    @Override
-    public void parkUntil(long deadline) {
-        throw unreachable();
     }
 
     @Override
@@ -129,6 +88,13 @@ final class LoomVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         Target_jdk_internal_vm_Continuation.unpin();
+    }
+
+    @Override
+    public boolean isCurrentPinned() {
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        Target_jdk_internal_vm_ContinuationScope scope = carrier.cont.getScope();
+        return Target_jdk_internal_vm_Continuation.isPinned(scope);
     }
 
     @Override
@@ -154,6 +120,15 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    public void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        if (!isVirtual(Thread.currentThread())) {
+            visitCurrentPlatformThreadStackFrames(callerSP, visitor);
+            return;
+        }
+        visitCurrentVirtualThreadStackFrames(callerSP, visitor);
+    }
+
+    @Override
     public StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         if (!isVirtual(thread)) {
             return getPlatformThreadStackTraceAtSafepoint(thread, callerSP);
@@ -175,6 +150,18 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
         assert VMOperation.isInProgressAtSafepoint();
         return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+    }
+
+    private static void visitCurrentVirtualThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Thread carrier = cast(Thread.currentThread()).carrierThread;
+        if (carrier == null) {
+            return;
+        }
+        Pointer endSP = getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+        if (endSP.isNull()) {
+            return;
+        }
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
 
     private static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
@@ -218,6 +205,11 @@ final class LoomVirtualThreads implements VirtualThreads {
         return StackTraceUtils.asyncGetStackTrace(thread);
     }
 
+    private static void visitCurrentPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
+    }
+
     private static StackTraceElement[] getPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
         IsolateThread isolateThread = PlatformThreads.getIsolateThread(thread);
@@ -235,5 +227,4 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
         return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
     }
-
 }

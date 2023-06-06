@@ -40,19 +40,24 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -152,15 +157,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              */
             monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
 
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /*
-                 * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When
-                 * the secondary storage monitors map is modified it can trigger a
-                 * slow-path-new-instance allocation which in turn can trigger a GC which processes
-                 * all the pending cleaners.
-                 */
-                monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
-            }
+            /*
+             * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When the
+             * secondary storage monitors map is modified it can trigger a slow-path-new-instance
+             * allocation which in turn can trigger a GC which processes all the pending cleaners.
+             */
+            monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
 
             /*
              * Use as the delegate for locking on {@link Class} (i.e. {@link DynamicHub}) since the
@@ -205,7 +207,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is deadlocked");
         try {
-            singleton().monitorEnter(obj);
+            singleton().monitorEnter(obj, MonitorInflationCause.MONITOR_ENTER);
 
         } catch (OutOfMemoryError ex) {
             /*
@@ -238,8 +240,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
-    public void monitorEnter(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+    public void monitorEnter(Object obj, MonitorInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, cause);
         lockObject.monitorEnter(obj);
     }
 
@@ -248,7 +250,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     private static void slowPathMonitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            singleton().monitorExit(obj);
+            /*
+             * Monitor inflation cannot happen here because Graal enforces structured locking and
+             * unlocking, see comment below.
+             */
+            singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
 
         } catch (OutOfMemoryError ex) {
             /*
@@ -275,8 +281,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
-    public void monitorExit(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+    public void monitorExit(Object obj, MonitorInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, cause);
         lockObject.monitorExit();
     }
 
@@ -296,7 +302,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * internal state of the lock immediately here. The actual state patching therefore happens
          * later in doRelockObject.
          */
-        return getOrCreateMonitor(obj, true);
+        return getOrCreateMonitor(obj, MonitorInflationCause.VM_INTERNAL);
     }
 
     @Uninterruptible(reason = "called during deoptimization")
@@ -308,13 +314,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @Override
     public boolean isLockedByCurrentThread(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, false);
+        JavaMonitor lockObject = getMonitor(obj);
         return lockObject != null && lockObject.isHeldByCurrentThread();
     }
 
     @Override
     public boolean isLockedByAnyThread(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, false);
+        JavaMonitor lockObject = getMonitor(obj);
         return lockObject != null && lockObject.isLocked();
     }
 
@@ -322,22 +328,42 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     protected void doWait(Object obj, long timeoutMillis) throws InterruptedException {
         /*
-         * Ensure that the current thread holds the lock. Required by the specification of
-         * Object.wait, and also required for our implementation.
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned
+         * unless the thread is pinned for other reasons. Also, we get interrupted on the virtual
+         * thread instead of the carrier thread, which clears the carrier thread's interrupt status
+         * too, so we don't have to intercept an InterruptedException from the carrier thread to
+         * clear the virtual thread interrupt.
          */
-        JavaMonitor lock = ensureLocked(obj);
-        JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
-        if (timeoutMillis == 0L) {
-            condition.await(obj);
-        } else {
-            condition.await(obj, timeoutMillis, TimeUnit.MILLISECONDS);
+        long compensation = -1;
+        boolean pinned = JavaVersionUtil.JAVA_SPEC >= 19 && VirtualThreads.isSupported() &&
+                        VirtualThreads.singleton().isVirtual(Thread.currentThread()) && VirtualThreads.singleton().isCurrentPinned();
+        if (pinned) {
+            compensation = Target_jdk_internal_misc_Blocker.begin();
+        }
+        try {
+            /*
+             * Ensure that the current thread holds the lock. Required by the specification of
+             * Object.wait, and also required for our implementation.
+             */
+            JavaMonitor lock = ensureLocked(obj, MonitorInflationCause.WAIT);
+            JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
+            if (timeoutMillis == 0L) {
+                condition.await(obj);
+            } else {
+                condition.await(obj, timeoutMillis, TimeUnit.MILLISECONDS);
+            }
+        } finally {
+            if (pinned) {
+                Target_jdk_internal_misc_Blocker.end(compensation);
+            }
         }
     }
 
     @Override
     public void notify(Object obj, boolean notifyAll) {
         /* Make sure the current thread holds the lock on the receiver. */
-        JavaMonitor lock = ensureLocked(obj);
+        JavaMonitor lock = ensureLocked(obj, MonitorInflationCause.NOTIFY);
         /* Find the wait/notify condition of the receiver. */
         JavaMonitorConditionObject condition = lock.getOrCreateCondition(false);
         /* If the receiver does not have a condition, then it has not been waited on. */
@@ -351,8 +377,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     /** Returns the lock of the object. */
-    protected JavaMonitor ensureLocked(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+    protected JavaMonitor ensureLocked(Object obj, MonitorInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, cause);
         if (!lockObject.isHeldByCurrentThread()) {
             throw new IllegalMonitorStateException("Receiver is not locked by the current thread.");
         }
@@ -375,43 +401,53 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return unreplacedObject;
     }
 
-    protected final JavaMonitor getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
+    protected final JavaMonitor getMonitor(Object obj) {
+        return getOrCreateMonitor(obj, false, null);
+    }
+
+    protected final JavaMonitor getOrCreateMonitor(Object obj, MonitorInflationCause cause) {
+        return getOrCreateMonitor(obj, true, cause);
+    }
+
+    private JavaMonitor getOrCreateMonitor(Object obj, boolean createIfNotExisting, MonitorInflationCause cause) {
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
             /* The common case: pointer to the monitor reserved in the object. */
-            return getOrCreateMonitorFromObject(obj, createIfNotExisting, monitorOffset);
+            return getOrCreateMonitorFromObject(obj, createIfNotExisting, monitorOffset, cause);
         } else {
-            return getOrCreateMonitorSlow(obj, createIfNotExisting);
+            return getOrCreateMonitorSlow(obj, createIfNotExisting, cause);
         }
     }
 
-    private JavaMonitor getOrCreateMonitorSlow(Object unreplacedObject, boolean createIfNotExisting) {
+    private JavaMonitor getOrCreateMonitorSlow(Object unreplacedObject, boolean createIfNotExisting, MonitorInflationCause cause) {
         Object replacedObject = replaceObject(unreplacedObject);
         if (replacedObject != unreplacedObject) {
             int monitorOffset = getMonitorOffset(replacedObject);
             if (monitorOffset != 0) {
-                return getOrCreateMonitorFromObject(replacedObject, createIfNotExisting, monitorOffset);
+                return getOrCreateMonitorFromObject(replacedObject, createIfNotExisting, monitorOffset, cause);
             }
         }
         /* No memory reserved for a lock in the object, fall back to secondary storage. */
-        return getOrCreateMonitorFromMap(replacedObject, createIfNotExisting);
+        return getOrCreateMonitorFromMap(replacedObject, createIfNotExisting, cause);
     }
 
-    protected JavaMonitor getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
+    protected JavaMonitor getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset, MonitorInflationCause cause) {
         JavaMonitor existingMonitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
         if (existingMonitor != null || !createIfNotExisting) {
             return existingMonitor;
         }
+        long startTicks = JfrTicks.elapsedTicks();
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         JavaMonitor newMonitor = newMonitorLock();
         if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
+            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
         return (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
     }
 
-    protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
+    protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting, MonitorInflationCause cause) {
         assert JavaVersionUtil.JAVA_SPEC > 17 ||
                         obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
@@ -427,9 +463,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             if (existingMonitor != null || !createIfNotExisting) {
                 return existingMonitor;
             }
+            long startTicks = JfrTicks.elapsedTicks();
             JavaMonitor newMonitor = newMonitorLock();
             JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
             VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
+            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
             return newMonitor;
         } finally {
             additionalMonitorsLock.unlock();
@@ -443,4 +481,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock", onlyWith = JDK17OrEarlier.class)
 final class Target_java_lang_ref_ReferenceQueue_Lock {
+}
+
+@TargetClass(className = "jdk.internal.misc.Blocker", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_misc_Blocker {
+    @Alias
+    public static native long begin();
+
+    @Alias
+    public static native void end(long compensateReturn);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ public abstract class AbstractBinarySuite {
 
     protected static void runRuntimeTest(byte[] binary, Consumer<Context.Builder> options, Consumer<Value> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.allowExperimentalOptions(true);
         if (options != null) {
             options.accept(contextBuilder);
         }
@@ -339,6 +340,31 @@ public abstract class AbstractBinarySuite {
         }
     }
 
+    private static class BinaryCustomSections {
+        private final List<byte[]> names = new ArrayList<>();
+        private final List<byte[]> sections = new ArrayList<>();
+
+        private void add(String name, byte[] section) {
+            names.add(name.getBytes(StandardCharsets.UTF_8));
+            sections.add(section);
+        }
+
+        private byte[] generateCustomSections() {
+            ByteArrayList b = new ByteArrayList();
+            for (int i = 0; i < names.size(); i++) {
+                b.add(getByte("00"));
+                final byte[] name = names.get(i);
+                final byte[] section = sections.get(i);
+                final int size = 1 + name.length + section.length;
+                b.add((byte) size); // length is patched at the end
+                b.add((byte) name.length);
+                b.addRange(name, 0, name.length);
+                b.addRange(section, 0, section.length);
+            }
+            return b.toArray();
+        }
+    }
+
     protected static class BinaryBuilder {
         private final BinaryTypes binaryTypes = new BinaryTypes();
         private final BinaryTables binaryTables = new BinaryTables();
@@ -348,6 +374,8 @@ public abstract class AbstractBinarySuite {
         private final BinaryElements binaryElements = new BinaryElements();
         private final BinaryDatas binaryDatas = new BinaryDatas();
         private final BinaryGlobals binaryGlobals = new BinaryGlobals();
+
+        private final BinaryCustomSections binaryCustomSections = new BinaryCustomSections();
 
         public BinaryBuilder addType(byte[] params, byte[] results) {
             binaryTypes.add(params, results);
@@ -389,6 +417,11 @@ public abstract class AbstractBinarySuite {
             return this;
         }
 
+        public BinaryBuilder addCustomSection(String name, byte[] section) {
+            binaryCustomSections.add(name, section);
+            return this;
+        }
+
         public byte[] build() {
             final byte[] preamble = {
                             getByte("00"),
@@ -410,8 +443,9 @@ public abstract class AbstractBinarySuite {
             final byte[] dataCountSection = binaryDatas.generateDataCountSection();
             final byte[] codeSection = binaryFunctions.generateCodeSection();
             final byte[] dataSection = binaryDatas.generateDataSection();
+            final byte[] customSections = binaryCustomSections.generateCustomSections();
             final int totalLength = preamble.length + typeSection.length + functionSection.length + tableSection.length + memorySection.length + globalSection.length + exportSection.length +
-                            elementSection.length + dataCountSection.length + codeSection.length + dataSection.length;
+                            elementSection.length + dataCountSection.length + codeSection.length + dataSection.length + customSections.length;
             final byte[] binary = new byte[totalLength];
             int length = 0;
             System.arraycopy(preamble, 0, binary, length, preamble.length);
@@ -435,6 +469,8 @@ public abstract class AbstractBinarySuite {
             System.arraycopy(codeSection, 0, binary, length, codeSection.length);
             length += codeSection.length;
             System.arraycopy(dataSection, 0, binary, length, dataSection.length);
+            length += dataSection.length;
+            System.arraycopy(customSections, 0, binary, length, customSections.length);
             return binary;
         }
     }

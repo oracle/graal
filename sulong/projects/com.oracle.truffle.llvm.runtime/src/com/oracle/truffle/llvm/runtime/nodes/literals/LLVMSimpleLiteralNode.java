@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMManagedPointerLiteralNodeGen;
@@ -177,6 +178,22 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         @Specialization
         public LLVM80BitFloat do80BitFloat() {
             return new LLVM80BitFloat(expSign, fraction);
+        }
+    }
+
+    public abstract static class LLVM128BitFloatLiteralNode extends LLVMSimpleLiteralNode {
+
+        private final long expSignFraction;
+        private final long fraction;
+
+        public LLVM128BitFloatLiteralNode(LLVM128BitFloat literal) {
+            this.expSignFraction = literal.getExpSignFractionPart();
+            this.fraction = literal.getSecondFractionPart();
+        }
+
+        @Specialization
+        public LLVM128BitFloat do80BitFloat() {
+            return new LLVM128BitFloat(expSignFraction, fraction);
         }
     }
 

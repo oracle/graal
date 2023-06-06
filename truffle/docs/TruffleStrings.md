@@ -161,6 +161,8 @@ Search:
   Find the first occurrence of a given codepoint in a string and return its codepoint-based index.
 * [ByteIndexOfCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteIndexOfCodePointNode.html):
   Find the first occurrence of a given codepoint in a string and return its byte-based index.
+* [ByteIndexOfCodePointSet](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteIndexOfCodePointSetNode.html):
+  Find the first occurrence of a codepoint contained in a given set in a string and return its byte-based index.
 * [LastIndexOfCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.LastIndexOfCodePointNode.html):
   Find the last occurrence of a given codepoint in a string and return its codepoint-based index.
 * [LastByteIndexOfCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.LastByteIndexOfCodePointNode.html):

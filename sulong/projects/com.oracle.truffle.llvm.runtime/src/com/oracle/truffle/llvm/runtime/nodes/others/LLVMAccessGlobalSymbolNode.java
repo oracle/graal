@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ public abstract class LLVMAccessGlobalSymbolNode extends LLVMAccessSymbolNode {
      * CachedContext is very efficient in single-context mode, otherwise we should get the context
      * from the frame.
      */
-    @Specialization(assumptions = "singleContextAssumption()")
+    @Specialization(guards = "isSingleContext($node)")
     @GenerateAOT.Exclude
     public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         return checkNull(getContext().getSymbol(symbol, exception), exception);

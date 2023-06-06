@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,6 +96,16 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * This node represents the function body of a WebAssembly function. It executes the instruction
+ * sequence contained in a function and represents the main interpreter loop. This node also
+ * functions as a support node for the {@link WasmInstrumentableFunctionNode}. When an instrument
+ * attaches, the {@link WasmInstrumentableFunctionNode} replaces the current instruction sequence of
+ * this node with a slightly modified version. The modified version contains {@link Bytecode#NOTIFY}
+ * instructions for all locations in the WebAssembly bytecode that map to a position in the source
+ * code (C, C++, Rust, ...). When the {@link Bytecode#NOTIFY} instruction is executed, the
+ * instrument gets notified that a certain line in the source code was reached.
+ */
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
@@ -125,18 +135,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
-    private final int bytecodeStartOffset;
-    private final int bytecodeEndOffset;
 
     @Children private Node[] callNodes;
-
     @CompilationFinal private Object osrMetadata;
+
+    @CompilationFinal private int bytecodeStartOffset;
+    @CompilationFinal private int bytecodeEndOffset;
+    @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    @CompilationFinal private WasmNotifyFunction notifyFunction;
 
     public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
+        this.bytecode = codeEntry.bytecode();
     }
 
     @SuppressWarnings("hiding")
@@ -148,48 +161,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return bytecodeStartOffset;
     }
 
-    public void enterErrorBranch() {
+    private void enterErrorBranch() {
         codeEntry.errorBranch();
     }
 
-    public int paramCount() {
-        return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
-    }
-
-    public int localCount() {
-        return codeEntry.localCount();
-    }
-
-    public byte localType(int localIndex) {
-        return codeEntry.localType(localIndex);
-    }
-
-    public WasmInstance instance() {
-        return instance;
-    }
-
-    public String name() {
-        return codeEntry.function().name();
-    }
-
-    public String qualifiedName() {
-        return codeEntry.function().moduleName() + "." + name();
-    }
-
-    public int resultCount() {
-        return codeEntry.resultCount();
-    }
-
-    public byte resultType(int resultIndex) {
-        return codeEntry.resultType(resultIndex);
+    @SuppressWarnings("hiding")
+    void updateBytecode(byte[] bytecode, int bytecodeStartOffset, int bytecodeEndOffset, WasmNotifyFunction notifyFunction) {
+        this.bytecode = bytecode;
+        this.bytecodeStartOffset = bytecodeStartOffset;
+        this.bytecodeEndOffset = bytecodeEndOffset;
+        this.notifyFunction = notifyFunction;
     }
 
     // region OSR support
     private static final class WasmOSRInterpreterState {
         final int stackPointer;
+        final int line;
 
-        WasmOSRInterpreterState(int stackPointer) {
+        WasmOSRInterpreterState(int stackPointer, int line) {
             this.stackPointer = stackPointer;
+            this.line = line;
         }
     }
 
@@ -197,7 +188,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
         WasmContext context = WasmContext.get(this);
-        return executeBodyFromOffset(context, osrFrame, target, state.stackPointer);
+        return executeBodyFromOffset(context, osrFrame, target, state.stackPointer, state.line);
     }
 
     @Override
@@ -223,17 +214,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int count;
     }
 
-    public void execute(WasmContext context, VirtualFrame frame) {
-        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount());
+    public void execute(VirtualFrame frame, WasmContext context) {
+        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
     }
 
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    @SuppressWarnings("UnusedAssignment")
-    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer) {
-        final WasmCodeEntry wasmCodeEntry = codeEntry;
-        final int localCount = wasmCodeEntry.localCount();
-        final byte[] bytecode = wasmCodeEntry.bytecode();
+    @SuppressWarnings({"UnusedAssignment", "hiding"})
+    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+        final int localCount = codeEntry.localCount();
+        final byte[] bytecode = this.bytecode;
 
         // The back edge count is stored in an object, since else the MERGE_EXPLODE policy would
         // interpret this as a constant value in every loop iteration. This would prevent the
@@ -243,6 +233,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         int offset = startOffset;
         int stackPointer = startStackPointer;
+        int line = startLine;
 
         final WasmMemory memory = instance.memory();
 
@@ -347,7 +338,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         backEdgeCounter.count = 0;
                     }
                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer), null, frame);
+                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, line), null, frame);
                         if (result != null) {
                             if (backEdgeCounter.count > 0) {
                                 LoopNode.reportLoopCount(this, backEdgeCounter.count);
@@ -1752,6 +1743,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
+                    break;
+                }
+                case Bytecode.NOTIFY: {
+                    final int nextLine = rawPeekI32(bytecode, offset);
+                    final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);
+                    offset += 8;
+                    if (notifyFunction != null) {
+                        notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
+                    }
+                    line = nextLine;
                     break;
                 }
                 default:
@@ -3372,7 +3373,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private static boolean profileBranchTable(byte[] data, final int counterOffset, final int profileOffset, boolean condition) {
-        assert !CompilerDirectives.inInterpreter();
         int t = rawPeekU16(data, profileOffset);
         int sum = rawPeekU16(data, counterOffset);
         boolean val = condition;

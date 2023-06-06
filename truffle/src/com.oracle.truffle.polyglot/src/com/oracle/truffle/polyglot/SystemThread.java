@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.polyglot.PolyglotThreadLocalActions.TL_HANDSHAKE;
+
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 abstract class SystemThread extends Thread {
@@ -61,6 +63,7 @@ abstract class SystemThread extends Thread {
         AbstractPolyglotImpl rootPolyglot = polyglot.getRootImpl();
         try (AbstractPolyglotImpl.ThreadScope threadScope = rootPolyglot.createThreadScope()) {
             beforeExecute();
+            TL_HANDSHAKE.ensureThreadInitialized();
             try {
                 super.run();
             } finally {

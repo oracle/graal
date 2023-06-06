@@ -59,6 +59,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
      */
     protected SubstrateOptimizedCallTargetInstalledCode installedCode;
 
+    @SuppressWarnings("this-escape")
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
         this.installedCode = createInitializationInstalledCode();

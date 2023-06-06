@@ -1,23 +1,23 @@
 {
   local common     = import "../../../ci/ci_common/common.jsonnet",
-  local tools      = import "tools.libsonnet",
   local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet",
 
   local task_spec     = run_spec.task_spec,
   local evaluate_late = run_spec.evaluate_late,
-  local _make_visible = tools._make_visible,
+  local make_visible  = (import "../../../common-utils.libsonnet").make_visible,
   local t(limit)      = task_spec({timelimit: limit}),
-  local require_musl = task_spec((import 'include.libsonnet').musl_dependency),
+  local require_musl  = task_spec((import '../../../ci/ci_common/musl-common.libsonnet').musl_dependency),
 
-  local std_get = tools.std_get,
+  local std_get = (import "../../../common-utils.libsonnet").std_get,
 
   // mx gate build config
-  mxgate(tags, suite, suite_short=suite):: task_spec(common.disable_proxies + {
+  mxgate(tags, suite, suite_short=suite, enable_proxies=false):: task_spec((if !enable_proxies then common.disable_proxies else {}) + {
       mxgate_batch:: null,
       mxgate_tags:: std.split(tags, ","),
       mxgate_config:: [],
       mxgate_extra_args:: [],
       mxgate_dy:: [],
+      mxgate_target_arch:: null,
       setup+: [
         ["cd", "./" + suite],
         ["mx", "hsdis", "||", "true"],
@@ -28,6 +28,8 @@
         local batch = outer.mxgate_batch,
         local config = outer.mxgate_config,
         local batch_suffix = if batch == null then "" else "_" + batch,
+        local target_arch = outer.mxgate_target_arch,
+        local target_arch_suffix = if target_arch == null then [] else [target_arch, "cross"],
         local dynamic_imports = if std.length(outer.mxgate_dy) == 0 then [] else ["--dy", std.join(",", outer.mxgate_dy)],
         // the outer assert just ensures that the expression is evaluated
         assert
@@ -35,13 +37,12 @@
           local _context = [outer[f] for f in ["build_name"] + _fields if std.objectHasAll(outer, f)];
           _fields == [
           // here is the actual check
-          assert std.objectHasAll(outer, f): "build object is missing field '%s' (context: %s) object:\n%s" % [f, _context, std.manifestJsonEx(_make_visible(outer), indent="  ")];
+          assert std.objectHasAll(outer, f): "build object is missing field '%s' (context: %s) object:\n%s" % [f, _context, std.manifestJsonEx(make_visible(outer), indent="  ")];
           f
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + ["jdk" + outer.jdk_version, outer.os, outer.arch]) + batch_suffix,
-        environment+: if batch == null then {} else {MX_SVMTEST_BATCH: batch},
+        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + ["jdk" + outer.jdk_version] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
@@ -91,5 +92,26 @@
 
   clone_js_benchmarks:: task_spec({
     setup+: [["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"]],
+  }),
+
+  riscv64_cross_compile:: task_spec({
+    mxgate_target_arch:: "riscv64",
+    environment+: {CAPCACHE: "$HOME/capcache"},
+    packages+: {
+      "git": ">=1.8.3",
+      "python": "==3.4.1",
+      "make": ">=3.83",
+      "zlib": ">=1.2.11",
+      "riscv-gnu-toolchain": "==8.3.0",
+      "qemu": ">=4.0.0",
+      "glib": "==2.56.1",
+      "pcre": "==8.43",
+      "sshpass": "==1.05"
+    },
+    downloads+: {
+      QEMU_HOME          : {name : "qemu-riscv64", version : "1.0"},
+      C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : "1.0"},
+      JAVA_HOME_RISCV    : {name : "labsjdk", version : "ce-20+24-jvmci-23.0-b02-linux-riscv64" }
+    },
   }),
 }

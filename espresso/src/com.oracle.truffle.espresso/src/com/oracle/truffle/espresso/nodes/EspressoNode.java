@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -43,6 +44,7 @@ import com.oracle.truffle.espresso.vm.VM;
 @NodeInfo(language = EspressoLanguage.NAME, description = "The abstract base node for all " + EspressoLanguage.IMPLEMENTATION_NAME + " nodes")
 public abstract class EspressoNode extends Node implements ContextAccess {
     @Override
+    @Idempotent // NOTE: this only works as long as no EspressoNode is shared
     public final EspressoContext getContext() {
         return EspressoContext.get(this);
     }
@@ -53,21 +55,25 @@ public abstract class EspressoNode extends Node implements ContextAccess {
     }
 
     @Override
+    @Idempotent
     public final Names getNames() {
         return getLanguage().getNames();
     }
 
     @Override
+    @Idempotent
     public final Types getTypes() {
         return getLanguage().getTypes();
     }
 
     @Override
+    @Idempotent
     public final Signatures getSignatures() {
         return getLanguage().getSignatures();
     }
 
     @Override
+    @Idempotent
     public final Meta getMeta() {
         return getContext().getMeta();
     }

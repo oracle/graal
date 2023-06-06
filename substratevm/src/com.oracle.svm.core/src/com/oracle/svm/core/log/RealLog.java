@@ -39,12 +39,17 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.BacktraceDecoder;
 import com.oracle.svm.core.jdk.JDKUtils;
+import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
@@ -288,6 +293,12 @@ public class RealLog extends Log {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(long value) {
         number(value, 10, true);
+        return this;
+    }
+
+    @Override
+    public Log signed(long value, int fill, int align) {
+        number(value, 10, true, fill, align);
         return this;
     }
 
@@ -560,13 +571,19 @@ public class RealLog extends Log {
     }
 
     @Override
-    @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
+        return hexdump(from, wordSize, numWords, 16);
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
         Pointer base = WordFactory.pointer(from.rawValue());
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
-            if (offset % 16 == 0) {
+            if (offset % bytesPerLine == 0) {
                 zhex(base.add(offset));
                 string(":");
             }
@@ -585,7 +602,7 @@ public class RealLog extends Log {
                     zhex(base.readLong(offset));
                     break;
             }
-            if ((offset + sanitizedWordsize) % 16 == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
+            if ((offset + sanitizedWordsize) % bytesPerLine == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
                 newline();
             }
         }
@@ -614,25 +631,78 @@ public class RealLog extends Log {
          * is better than printing nothing.
          */
         String detailMessage = JDKUtils.getRawMessage(t);
-        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (stackTrace != null) {
-            int i;
-            for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                StackTraceElement element = stackTrace[i];
-                if (element != null) {
-                    newline();
-                    string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                    string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+        if (!JDKUtils.isStackTraceValid(t)) {
+            /*
+             * We accept that there might be a race with concurrent calls to
+             * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that and
+             * the code can deal with that. Worst case we don't get a stack trace.
+             */
+            int remaining = printBacktraceLocked(t, maxFrames);
+            printRemainingFramesCount(remaining);
+        } else {
+            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
+            if (stackTrace != null) {
+                int i;
+                for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
+                    StackTraceElement element = stackTrace[i];
+                    if (element != null) {
+                        printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
+                    }
                 }
-            }
-            int remaining = stackTrace.length - i;
-            if (remaining > 0) {
-                newline().string("    ... ").unsigned(remaining).string(" more");
+                int remaining = stackTrace.length - i;
+                printRemainingFramesCount(remaining);
             }
         }
         newline();
         return this;
+    }
+
+    private static final VMMutex BACKTRACE_PRINTER_MUTEX = new VMMutex("RealLog.backTracePrinterMutex");
+    private final BacktracePrinter backtracePrinter = new BacktracePrinter();
+
+    private int printBacktraceLocked(Throwable t, int maxFrames) {
+        if (VMOperation.isInProgress()) {
+            if (BACKTRACE_PRINTER_MUTEX.hasOwner()) {
+                /*
+                 * The FrameInfoCursor is locked. We cannot safely print the stack trace. Do nothing
+                 * and accept that we will not get a stack track.
+                 */
+                return 0;
+            }
+        }
+        BACKTRACE_PRINTER_MUTEX.lock();
+        try {
+            Object backtrace = JDKUtils.getBacktrace(t);
+            return backtracePrinter.printBacktrace(backtrace, maxFrames);
+        } finally {
+            BACKTRACE_PRINTER_MUTEX.unlock();
+        }
+    }
+
+    private void printJavaFrame(String className, String methodName, String fileName, int lineNumber) {
+        newline();
+        string("    at ").string(className).string(".").string(methodName);
+        string("(").string(fileName).string(":").signed(lineNumber).string(")");
+    }
+
+    private void printRemainingFramesCount(int remaining) {
+        if (remaining > 0) {
+            newline().string("    ... ").unsigned(remaining).string(" more");
+        }
+    }
+
+    private class BacktracePrinter extends BacktraceDecoder {
+
+        protected final int printBacktrace(Object backtrace, int maxFramesProcessed) {
+            return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+        protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
+            printJavaFrame(frameInfo.getSourceClassName(), frameInfo.getSourceMethodName(), frameInfo.getSourceFileName(), frameInfo.getSourceLineNumber());
+        }
     }
 }

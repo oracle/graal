@@ -121,6 +121,7 @@ meth public {org.graalvm.collections.EconomicMapWrap%1} get({org.graalvm.collect
 meth public {org.graalvm.collections.EconomicMapWrap%1} put({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} putIfAbsent({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} removeKey({org.graalvm.collections.EconomicMapWrap%0})
+meth public java.lang.String toString()
 supr java.lang.Object
 hfds map
 
@@ -152,24 +153,71 @@ meth public abstract boolean equals(java.lang.Object,java.lang.Object)
 meth public abstract int hashCode(java.lang.Object)
 supr java.lang.Object
 
-CLSS public org.graalvm.collections.LockFreePrefixTree
+CLSS public org.graalvm.collections.LockFreePool<%0 extends java.lang.Object>
 cons public init()
-innr public static Node
-meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
-meth public org.graalvm.collections.LockFreePrefixTree$Node root()
+meth public void add({org.graalvm.collections.LockFreePool%0})
+meth public {org.graalvm.collections.LockFreePool%0} get()
 supr java.lang.Object
-hfds root
+hfds head
+hcls Node
+
+CLSS public org.graalvm.collections.LockFreePrefixTree
+cons public init(org.graalvm.collections.LockFreePrefixTree$Allocator)
+innr public abstract static Allocator
+innr public static HeapAllocator
+innr public static Node
+innr public static ObjectPoolingAllocator
+meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
+meth public org.graalvm.collections.LockFreePrefixTree$Allocator allocator()
+meth public org.graalvm.collections.LockFreePrefixTree$Node root()
+meth public void reset()
+supr java.lang.Object
+hfds allocator,root
+hcls FailedAllocationException
+
+CLSS public abstract static org.graalvm.collections.LockFreePrefixTree$Allocator
+ outer org.graalvm.collections.LockFreePrefixTree
+cons public init()
+meth public abstract java.util.concurrent.atomic.AtomicReferenceArray newHashChildren(int)
+meth public abstract java.util.concurrent.atomic.AtomicReferenceArray newLinearChildren(int)
+meth public abstract org.graalvm.collections.LockFreePrefixTree$Node newNode(long)
+meth public abstract void shutdown()
+supr java.lang.Object
+hfds FAILED_ALLOCATION_EXCEPTION
+
+CLSS public static org.graalvm.collections.LockFreePrefixTree$HeapAllocator
+ outer org.graalvm.collections.LockFreePrefixTree
+cons public init()
+meth public java.util.concurrent.atomic.AtomicReferenceArray newHashChildren(int)
+meth public java.util.concurrent.atomic.AtomicReferenceArray newLinearChildren(int)
+meth public org.graalvm.collections.LockFreePrefixTree$Node newNode(long)
+meth public void shutdown()
+supr org.graalvm.collections.LockFreePrefixTree$Allocator
 
 CLSS public static org.graalvm.collections.LockFreePrefixTree$Node
  outer org.graalvm.collections.LockFreePrefixTree
 meth public java.lang.String toString()
+meth public long bitwiseOrValue(long)
 meth public long incValue()
 meth public long value()
-meth public org.graalvm.collections.LockFreePrefixTree$Node at(long)
+meth public org.graalvm.collections.LockFreePrefixTree$Node at(org.graalvm.collections.LockFreePrefixTree$Allocator,long)
 meth public void setValue(long)
 supr java.util.concurrent.atomic.AtomicLong
 hfds CHILDREN_UPDATER,FROZEN_NODE,INITIAL_HASH_NODE_SIZE,INITIAL_LINEAR_NODE_SIZE,MAX_HASH_SKIPS,MAX_LINEAR_NODE_SIZE,children,key,serialVersionUID
 hcls FrozenNode,HashChildren,LinearChildren
+
+CLSS public static org.graalvm.collections.LockFreePrefixTree$ObjectPoolingAllocator
+ outer org.graalvm.collections.LockFreePrefixTree
+cons public init()
+cons public init(int)
+meth public java.lang.String status()
+meth public java.util.concurrent.atomic.AtomicReferenceArray newHashChildren(int)
+meth public java.util.concurrent.atomic.AtomicReferenceArray newLinearChildren(int)
+meth public org.graalvm.collections.LockFreePrefixTree$Node newNode(long)
+meth public void shutdown()
+supr org.graalvm.collections.LockFreePrefixTree$Allocator
+hfds DEFAULT_HOUSEKEEPING_PERIOD_MILLIS,EXPECTED_MAX_HASH_NODE_SIZE,INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT,INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT,INITIAL_NODE_PREALLOCATION_COUNT,LOGGING,MAX_CHILDREN_PREALLOCATION_COUNT,MAX_NODE_PREALLOCATION_COUNT,MIN_HOUSEKEEPING_PERIOD_MILLIS,SIZE_CLASS_COUNT,hashChildrenPool,housekeepingThread,linearChildrenPool,missedHashChildrenRequestCounts,missedLinearChildrenRequestCounts,missedNodePoolRequestCount,nodePool
+hcls HousekeepingThread
 
 CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.MapCursor%0},{org.graalvm.collections.MapCursor%1}>

@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: Enhanced HotSwap
 permalink: /reference-manual/java-on-truffle/hotswap/

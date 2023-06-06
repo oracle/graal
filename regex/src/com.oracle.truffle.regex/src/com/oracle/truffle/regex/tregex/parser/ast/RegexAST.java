@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -56,6 +55,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
@@ -86,6 +86,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
+    private final TBitSet recursivelyReferencedGroups = new TBitSet(Long.SIZE);
     private final TBitSet conditionGroups = new TBitSet(Long.SIZE);
     private RegexASTNode[] nodes;
     /**
@@ -285,6 +286,14 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public boolean isGroupReferenced(int groupNumber) {
         return referencedGroups.get(groupNumber);
+    }
+
+    public void setGroupRecursivelyReferenced(int groupNumber) {
+        recursivelyReferencedGroups.set(groupNumber);
+    }
+
+    public boolean isGroupRecursivelyReferenced(int groupNumber) {
+        return recursivelyReferencedGroups.get(groupNumber);
     }
 
     public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {

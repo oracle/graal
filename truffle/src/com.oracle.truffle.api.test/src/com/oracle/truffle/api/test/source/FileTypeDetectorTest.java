@@ -281,7 +281,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         return tmpFile;
     }
 
-    public static class AbstractFileTypeDetector implements TruffleFile.FileTypeDetector {
+    public abstract static class AbstractFileTypeDetector implements TruffleFile.FileTypeDetector {
 
         static volatile boolean active = false;
         private final List<? super Event> sink;

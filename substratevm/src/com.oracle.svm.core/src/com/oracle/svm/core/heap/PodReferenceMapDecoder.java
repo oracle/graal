@@ -34,16 +34,19 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.JavaMemoryUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class PodReferenceMapDecoder {
     @DuplicatedInNativeCode
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
@@ -55,11 +58,11 @@ public final class PodReferenceMapDecoder {
         int gap;
         do {
             mapOffset = mapOffset.subtract(2);
-            gap = Byte.toUnsignedInt(baseAddress.readByte(mapOffset));
-            nrefs = Byte.toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
+            gap = UninterruptibleUtils.Byte.toUnsignedInt(baseAddress.readByte(mapOffset));
+            nrefs = UninterruptibleUtils.Byte.toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
 
             for (int i = 0; i < nrefs; i++) {
-                if (!visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj)) {
+                if (!callVisitor(baseAddress, visitor, obj, isCompressed, refOffset)) {
                     return false;
                 }
                 refOffset = refOffset.add(referenceSize);
@@ -68,6 +71,11 @@ public final class PodReferenceMapDecoder {
         } while (gap != 0 || nrefs == 0xff);
 
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(Pointer baseAddress, ObjectReferenceVisitor visitor, Object obj, boolean isCompressed, UnsignedWord refOffset) {
+        return visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj);
     }
 
     /**

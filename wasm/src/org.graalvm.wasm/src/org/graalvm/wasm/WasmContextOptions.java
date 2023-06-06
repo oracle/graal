@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,9 @@ public class WasmContextOptions {
     @CompilationFinal private boolean unsafeMemory;
 
     @CompilationFinal private boolean memoryOverheadMode;
+    @CompilationFinal private boolean constantRandomGet;
+
+    @CompilationFinal private String debugCompDirectory;
     private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
@@ -76,6 +79,8 @@ public class WasmContextOptions {
         this.memory64 = readBooleanOption(WasmOptions.Memory64);
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
+        this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
+        this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
     }
 
     private void checkOptionDependencies() {
@@ -85,6 +90,10 @@ public class WasmContextOptions {
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
+        return key.getValue(optionValues);
+    }
+
+    private String readStringOption(OptionKey<String> key) {
         return key.getValue(optionValues);
     }
 
@@ -120,6 +129,14 @@ public class WasmContextOptions {
         return memoryOverheadMode;
     }
 
+    public boolean constantRandomGet() {
+        return constantRandomGet;
+    }
+
+    public String debugCompDirectory() {
+        return debugCompDirectory;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -130,6 +147,8 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.memory64 ? 1 : 0);
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
+        hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
+        hash = 53 * hash + (this.debugCompDirectory.hashCode());
         return hash;
     }
 
@@ -164,6 +183,12 @@ public class WasmContextOptions {
             return false;
         }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {
+            return false;
+        }
+        if (this.constantRandomGet != other.constantRandomGet) {
+            return false;
+        }
+        if (!this.debugCompDirectory.equals(other.debugCompDirectory)) {
             return false;
         }
         return true;

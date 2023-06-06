@@ -25,8 +25,10 @@
 package com.oracle.svm.hosted.meta;
 
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -42,18 +44,28 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof WordBase) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) object).rawValue());
+        if (object instanceof WordBase word && !(object instanceof RelocatedPointer)) {
+            /* Relocated pointers are subject to relocation, so we don't know their value yet. */
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
         return super.forObject(object);
     }
 
     @Override
-    public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if ((type == Class.class || type == Object.class) && constant instanceof SubstrateObjectConstant) {
-            Object objectValue = SubstrateObjectConstant.asObject(constant);
-            if (objectValue instanceof DynamicHub) {
-                return type.cast(((DynamicHub) objectValue).getHostedJavaClass());
+    public <T> T asObject(Class<T> type, JavaConstant c) {
+        JavaConstant constant = c;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            constant = imageHeapConstant.getHostedObject();
+            if (constant == null) {
+                /* Simulated image heap object without a hosted backing object. */
+                return null;
+            }
+        }
+
+        if (type == Class.class && constant instanceof SubstrateObjectConstant) {
+            /* Only unwrap the DynamicHub if a Class object is required explicitly. */
+            if (SubstrateObjectConstant.asObject(constant) instanceof DynamicHub hub) {
+                return type.cast(hub.getHostedJavaClass());
             }
         }
         return super.asObject(type, constant);

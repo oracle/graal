@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -46,13 +45,7 @@ public final class StatisticsPrinter {
     public static void print(BigBang bb, String reportsPath, String reportName) {
         StatisticsPrinter printer = new StatisticsPrinter(bb);
         Consumer<PrintWriter> consumer = printer::printStats;
-        String description = "analysis results stats";
-        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bb.getOptions())) {
-            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bb.getOptions())).getAbsoluteFile();
-            ReportUtils.report(description, file.toPath(), consumer);
-        } else {
-            ReportUtils.report(description, reportsPath, "analysis_stats_" + reportName, "json", consumer);
-        }
+        ReportUtils.report("analysis results stats", reportsPath, "analysis_stats_" + reportName, "json", consumer);
     }
 
     private final BigBang bb;

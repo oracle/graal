@@ -158,18 +158,15 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
 
     private static char getFieldCpi(boolean isSetter, Method.MethodVersion method) {
         byte desc = 0;
-        desc |= (isSetter ? 0b01 : 0b00);
-        desc |= (method.isStatic() ? 0b10 : 0b00);
-        char bci;
-        // @formatter:off
-        switch (desc) {
-            case INSTANCE_SETTER: bci = INSTANCE_SETTER_BCI; break;
-            case STATIC_SETTER: bci = STATIC_SETTER_BCI; break;
-            case INSTANCE_GETTER: bci = INSTANCE_GETTER_BCI; break;
-            case STATIC_GETTER: bci = STATIC_GETTER_BCI; break;
-            default: throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
+        desc |= (byte) (isSetter ? 0b01 : 0b00);
+        desc |= (byte) (method.isStatic() ? 0b10 : 0b00);
+        char bci = switch (desc) {
+            case INSTANCE_SETTER -> INSTANCE_SETTER_BCI;
+            case STATIC_SETTER -> STATIC_SETTER_BCI;
+            case INSTANCE_GETTER -> INSTANCE_GETTER_BCI;
+            case STATIC_GETTER -> STATIC_GETTER_BCI;
+            default -> throw EspressoError.shouldNotReachHere();
+        };
         return new BytecodeStream(method.getOriginalCode()).readCPI(bci);
     }
 }

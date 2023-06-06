@@ -169,10 +169,6 @@ public final class ObjectKlass extends Klass {
         return getLinkedKlass().getAttribute(attrName);
     }
 
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
-        this(context, linkedKlass, superKlass, superInterfaces, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
-    }
-
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), info.klassID);
 
@@ -360,10 +356,15 @@ public final class ObjectKlass extends Klass {
     }
 
     boolean isInitializingOrInitializedImpl() {
-        return (initState == INITIALIZED) ||
-                        /* Initializing thread */
-                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
-                        (initState == ERRONEOUS);
+        /*
+         * This has currently 2 uses: 1) In actualInit where it is used under the init lock. 2) In
+         * assertions in the root node.
+         *
+         * In the first case, we know that the current thread holds the init lock. In the second
+         * case, if the state is INITIALIZING we cannot really check the lock because an object
+         * might have been leaked to another thread by the clinit.
+         */
+        return initState >= ERRONEOUS;
     }
 
     boolean isInitializedImpl() {
@@ -1286,6 +1287,11 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
+    public int getRedefinitionAwareModifiers() {
+        return getKlassVersion().getModifiers();
+    }
+
+    @Override
     public Klass[] getSuperTypes() {
         return getKlassVersion().getSuperTypes();
     }
@@ -1888,6 +1894,7 @@ public final class ObjectKlass extends Klass {
             if (flags == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 computedModifiers = flags = computeModifiers();
+                assert flags != -1;
             }
             // Remember to strip ACC_SUPER bit
             return flags & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;

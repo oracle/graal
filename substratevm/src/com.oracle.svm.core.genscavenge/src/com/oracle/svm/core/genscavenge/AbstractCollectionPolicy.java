@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.svm.core.heap.GCCause;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +35,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -105,17 +105,17 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         return HeapParameters.getAlignedHeapChunkSize();
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord alignUp(UnsignedWord size) {
         return UnsignedUtils.roundUp(size, getAlignment());
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord alignDown(UnsignedWord size) {
         return UnsignedUtils.roundDown(size, getAlignment());
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isAligned(UnsignedWord size) {
         return UnsignedUtils.isAMultiple(size, getAlignment());
     }
@@ -125,7 +125,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         return getAlignment().multiply(MIN_SPACE_SIZE_IN_ALIGNED_CHUNKS);
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord minSpaceSize(UnsignedWord size) {
         return UnsignedUtils.max(size, minSpaceSize());
     }
@@ -193,13 +193,21 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
          * but we must still ensure that computations can handle it (for example, no overflows).
          */
         survivorSize = UnsignedUtils.min(survivorSize, params.maxSurvivorSize());
-        edenSize = UnsignedUtils.min(edenSize, maxEdenSize());
+        edenSize = UnsignedUtils.min(edenSize, getMaximumEdenSize());
         oldSize = UnsignedUtils.min(oldSize, params.maxOldSize());
         promoSize = UnsignedUtils.min(promoSize, params.maxOldSize());
     }
 
+    @Override
+    public UnsignedWord getInitialEdenSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialEdenSize;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord maxEdenSize() {
+    public UnsignedWord getMaximumEdenSize() {
+        guaranteeSizeParametersInitialized();
         return alignDown(sizes.maxYoungSize.subtract(survivorSize.multiply(2)));
     }
 
@@ -216,6 +224,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    public UnsignedWord getInitialSurvivorSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialSurvivorSize;
+    }
+
+    @Override
+    public UnsignedWord getMaximumSurvivorSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.maxSurvivorSize();
+    }
+
+    @Override
     public UnsignedWord getCurrentHeapCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
@@ -223,6 +243,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getSurvivorSpacesCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
@@ -234,6 +255,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public UnsignedWord getYoungGenerationCapacity() {
         guaranteeSizeParametersInitialized();
         return edenSize.add(survivorSize);
+    }
+
+    @Override
+    public UnsignedWord getInitialOldSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialOldSize();
+    }
+
+    @Override
+    public UnsignedWord getMaximumOldSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.maxOldSize();
     }
 
     @Override
@@ -258,9 +291,21 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getTenuringAge() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         return tenuringThreshold;
+    }
+
+    @Override
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
+        // Capture the fraction of bytes in aligned chunks at the start to include all allocated
+        // (also dead) objects, because we use it to reserve aligned chunks for future allocations
+        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
+        if (youngChunkBytes.notEqual(0)) {
+            UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
+            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));
+        }
     }
 
     @Override

@@ -100,7 +100,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     /** The cached handle of the image heap file mapping that closes when the process exits. */
     private static final CGlobalData<WordPointer> IMAGE_HEAP_FILE_MAPPING = CGlobalDataFactory.createWord(WindowsUtils.UNINITIALIZED_HANDLE);
 
-    @Uninterruptible(reason = "Called during isolate initialization.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     private static HANDLE getImageHeapFileMapping() {
         HANDLE value = IMAGE_HEAP_FILE_MAPPING.get().read();
         if (value.equal(WindowsUtils.UNINITIALIZED_HANDLE)) {
@@ -120,7 +120,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     }
 
     /** Returns a handle to the image heap file mapping or the null pointer in case of an error. */
-    @Uninterruptible(reason = "Called during isolate initialization.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     private static HANDLE createImageHeapFileMapping() {
         /* Get the path of the file that contains the image heap. */
         WCharPointer filePath = StackValue.get(WinBase.MAX_PATH, WCharPointer.class);
@@ -145,7 +145,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
 
     private static final CGlobalData<WordPointer> IMAGE_HEAP_FILE_OFFSET = CGlobalDataFactory.createWord();
 
-    @Uninterruptible(reason = "Called during isolate initialization.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     private static UnsignedWord getImageHeapFileOffset() {
         /*
          * The file offset of a relative virtual address (RVA) in a PE image can be determined by
@@ -180,7 +180,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     private static final int ERROR_BAD_EXE_FORMAT = 0xC1;
 
     /** Locates the IMAGE_NT_HEADERS structure in a PE image and returns a pointer to the data. */
-    @Uninterruptible(reason = "Called during isolate initialization.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     private static PointerBase invokeRtlImageNtHeader(PointerBase imageBase) {
         RtlImageNtHeader rtlImageNtHeader = WindowsUtils.getFunctionPointer(NTDLL_DLL.get(), RTL_IMAGE_NT_HEADER.get(), true);
         PointerBase ntHeader = rtlImageNtHeader.invoke(imageBase);
@@ -199,7 +199,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
      * Locates a relative virtual address (RVA) within the image header of a file that is mapped as
      * a file and returns the offset of the corresponding byte in the file.
      */
-    @Uninterruptible(reason = "Called during isolate initialization.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     private static UnsignedWord invokeRtlAddressInSectionTable(PointerBase ntHeader, int rva) {
         RtlAddressInSectionTable rtlAddressInSectionTable = WindowsUtils.getFunctionPointer(NTDLL_DLL.get(), RTL_ADDRESS_IN_SECTION_TABLE.get(), true);
         UnsignedWord offset = (UnsignedWord) rtlAddressInSectionTable.invoke(ntHeader, WordFactory.nullPointer(), rva);

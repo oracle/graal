@@ -182,13 +182,32 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         List<String> expectedErrors = ExpectError.getExpectedErrors(element);
         if (!expectedErrors.isEmpty()) {
             List<Message> foundMessages = emitted.get(element);
-            foundMessages = foundMessages == null ? Collections.emptyList() : foundMessages;
-            if (expectedErrors.size() != foundMessages.size()) {
+
+            ProcessorContext c = ProcessorContext.getInstance();
+            List<Message> messages = null;
+            if (foundMessages != null) {
+                for (Message m : foundMessages) {
+                    /*
+                     * Check for suppressed using an annotation, but not using the options. This
+                     * avoids failing in the truffle.dsl tests if an option is set, e.g. for a
+                     * language.
+                     */
+                    if (!c.getLog().isSuppressed(m.kind, m.suppressionKey, m.originalContainer.getMessageElement(), false)) {
+                        if (messages == null) {
+                            messages = new ArrayList<>();
+                        }
+                        messages.add(m);
+                    }
+                }
+            }
+
+            messages = messages == null ? Collections.emptyList() : messages;
+            if (expectedErrors.size() != messages.size()) {
                 ProcessorContext.getInstance().getLog().message(Kind.ERROR, element, null, null, "Error count expected %s but was %s. Expected errors %s but got %s.",
                                 expectedErrors.size(),
-                                foundMessages.size(),
+                                messages.size(),
                                 expectedErrors.toString(),
-                                foundMessages.toString());
+                                messages.toString());
             }
         }
 
@@ -220,6 +239,10 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             throw new AssertionError("Tried to emit message to generated element: " + messageElement + ". Make sure messages are redirected correctly. Message: " + message.getText());
         }
 
+        if (log.isSuppressed(kind, message.suppressionKey, messageElement)) {
+            return targetElement;
+        }
+
         String text = trimLongMessage(message.getText());
         List<String> expectedErrors = ExpectError.getExpectedErrors(targetElement);
         if (!expectedErrors.isEmpty()) {
@@ -228,9 +251,6 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             }
             log.message(Kind.ERROR, targetElement, null, null, "Message expected one of '%s' but was '%s'.", expectedErrors, text);
         } else {
-            if (log.isSuppressed(kind, message.suppressionKey, messageElement)) {
-                return targetElement;
-            }
             if (message.suppressionKey != null) {
                 text = text + " This warning may be suppressed using @SuppressWarnings(\"" + message.suppressionKey + "\").";
             }

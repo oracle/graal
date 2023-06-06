@@ -40,6 +40,7 @@ import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
+import com.oracle.svm.hosted.code.CompileQueue.ParseHooks;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 public class CompilationInfo {
@@ -57,6 +58,7 @@ public class CompilationInfo {
     private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
+    protected boolean trivialInliningDisabled;
 
     protected boolean canDeoptForTesting;
 
@@ -69,6 +71,11 @@ public class CompilationInfo {
     /* Custom parsing and compilation code that is executed instead of that of CompileQueue */
     protected ParseFunction customParseFunction;
     protected CompileFunction customCompileFunction;
+
+    /*
+     * Custom parsing hook which is called during the default parse method.
+     */
+    protected ParseHooks customParseHooks;
 
     /* Statistics collected before/during compilation. */
     protected long numNodesAfterParsing;
@@ -144,6 +151,14 @@ public class CompilationInfo {
         isTrivialMethod = trivial;
     }
 
+    public boolean isTrivialInliningDisabled() {
+        return trivialInliningDisabled;
+    }
+
+    public void setTrivialInliningDisabled(boolean trivialInliningDisabled) {
+        this.trivialInliningDisabled = trivialInliningDisabled;
+    }
+
     public void setCustomParseFunction(ParseFunction parseFunction) {
         this.customParseFunction = parseFunction;
     }
@@ -158,5 +173,13 @@ public class CompilationInfo {
 
     public CompileFunction getCustomCompileFunction() {
         return customCompileFunction;
+    }
+
+    public void setCustomParseHooks(ParseHooks parseHooks) {
+        this.customParseHooks = parseHooks;
+    }
+
+    public ParseHooks getCustomParseHooks() {
+        return customParseHooks;
     }
 }

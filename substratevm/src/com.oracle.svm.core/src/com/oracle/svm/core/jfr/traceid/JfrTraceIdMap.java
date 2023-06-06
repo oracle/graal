@@ -41,7 +41,7 @@ import com.oracle.svm.core.hub.DynamicHub;
  * Map for storing trace ids. Initialized before compilation with static class count from analysis.
  */
 public class JfrTraceIdMap {
-    @UnknownObjectField(types = {long[].class}) private long[] traceIDs;
+    @UnknownObjectField private long[] traceIDs;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdMap() {
@@ -65,7 +65,15 @@ public class JfrTraceIdMap {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void setId(int index, long id) {
+        assert traceIDs[index] == -1;
         traceIDs[index] = id;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void tag(int index, long value) {
+        long id = traceIDs[index];
+        assert id != -1;
+        traceIDs[index] = id | value;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,14 +40,17 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
 
+/**
+ * This class provides a partial implementation of {@link com.sun.management.ThreadMXBean} for SVM.
+ * <p>
+ * Some methods are not actually implemented but return <code>null</code>, <code>false</code>, or
+ * empty arrays (instead of throwing errors) only to improve compatibility with tools that interact
+ * with JMX. These still need to be implemented (GR-44559).
+ */
 public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
-
-    private static final String MSG = "ThreadMXBean methods";
-
     private final AtomicLong totalStartedThreadCount = new AtomicLong(0);
     private final AtomicInteger peakThreadCount = new AtomicInteger(0);
     private final AtomicInteger threadCount = new AtomicInteger(0);
@@ -148,27 +151,27 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long[] getAllThreadIds() {
-        throw VMError.unsupportedFeature(MSG);
+        return new long[0];
     }
 
     @Override
     public ThreadInfo getThreadInfo(long id) {
-        throw VMError.unsupportedFeature(MSG);
+        return null;
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids) {
-        throw VMError.unsupportedFeature(MSG);
+        return new ThreadInfo[0];
     }
 
     @Override
     public ThreadInfo getThreadInfo(long id, int maxDepth) {
-        throw VMError.unsupportedFeature(MSG);
+        return null;
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids, int maxDepth) {
-        throw VMError.unsupportedFeature(MSG);
+        return new ThreadInfo[0];
     }
 
     @Override
@@ -250,32 +253,32 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long[] findMonitorDeadlockedThreads() {
-        throw VMError.unsupportedFeature(MSG);
+        return new long[0];
     }
 
     @Override
     public long[] findDeadlockedThreads() {
-        throw VMError.unsupportedFeature(MSG);
+        return new long[0];
     }
 
     @Override
     public boolean isObjectMonitorUsageSupported() {
-        throw VMError.unsupportedFeature(MSG);
+        return false;
     }
 
     @Override
     public boolean isSynchronizerUsageSupported() {
-        throw VMError.unsupportedFeature(MSG);
+        return false;
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids, boolean lockedMonitors, boolean lockedSynchronizers) {
-        throw VMError.unsupportedFeature(MSG);
+        return new ThreadInfo[0];
     }
 
     @Override
     public ThreadInfo[] dumpAllThreads(boolean lockedMonitors, boolean lockedSynchronizers) {
-        throw VMError.unsupportedFeature(MSG);
+        return new ThreadInfo[0];
     }
 
     @Override

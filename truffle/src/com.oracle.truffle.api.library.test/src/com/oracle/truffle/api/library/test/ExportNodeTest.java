@@ -57,6 +57,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -144,6 +145,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage
         abstract static class Foo {
 
+            @Idempotent
             static boolean guard0() {
                 return true;
             }
@@ -192,6 +194,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         int cachedExecute = 0;
 
+        @Idempotent
         static boolean guard0() {
             return true;
         }

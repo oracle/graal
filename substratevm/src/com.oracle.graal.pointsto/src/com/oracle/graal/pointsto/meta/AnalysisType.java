@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -108,6 +109,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
+    private ResolvedJavaType wrappedWithResolve;
+    private final String qualifiedName;
+    private final String unqualifiedName;
 
     @SuppressWarnings("unused") private volatile Object isInHeap;
     @SuppressWarnings("unused") private volatile Object isAllocated;
@@ -207,9 +211,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
+    @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
+        qualifiedName = wrapped.toJavaName(true);
+        unqualifiedName = wrapped.toJavaName(false);
+
         isArray = wrapped.isArray();
         isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
@@ -648,6 +656,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (dimension > 0 && !elementalType.isPrimitive() && !elementalType.isJavaLangObject()) {
             forAllSuperTypes(universe.objectType(), dimension, true, superTypeConsumer);
         }
+        if (this.isInterface()) {
+            superTypeConsumer.accept(universe.objectType());
+        }
     }
 
     private static void forAllSuperTypes(AnalysisType elementType, int arrayDimension, boolean processType, Consumer<AnalysisType> superTypeConsumer) {
@@ -832,7 +843,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public ResolvedJavaType getWrappedWithResolve() {
-        return universe.substitutions.resolve(wrapped);
+        if (wrappedWithResolve == null) {
+            wrappedWithResolve = universe.substitutions.resolve(wrapped);
+        }
+        return wrappedWithResolve;
     }
 
     @Override
@@ -843,6 +857,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public final String getName() {
         return wrapped.getName();
+    }
+
+    @Override
+    public String toJavaName() {
+        return qualifiedName;
+    }
+
+    @Override
+    public String toJavaName(boolean qualified) {
+        return qualified ? qualifiedName : unqualifiedName;
     }
 
     @Override
@@ -875,7 +899,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public void initialize() {
         if (!wrapped.isInitialized()) {
-            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName());
+            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1021,7 +1045,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * available to implement it for JIT compilation at image run time. So we want to make sure
          * that Graal is not using this method, and only resolveConcreteMethod instead.
          */
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -1075,20 +1099,27 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /*
-     * Cache is volatile to ensure that the final contents of AnalysisField[] are visible after the
-     * array gets visible.
+     * Cache is volatile to ensure that the final contents of ResolvedJavaField[] are visible after
+     * the array gets visible.
+     *
+     * Although all elements are of type AnalysisField, we set this array to be of type
+     * ResolvedJavaField so that runtime compilation does not need to convert the array type.
      */
-    private volatile AnalysisField[] instanceFieldsWithSuper;
-    private volatile AnalysisField[] instanceFieldsWithoutSuper;
+    private volatile ResolvedJavaField[] instanceFieldsWithSuper;
+    private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
 
     public void clearInstanceFieldsCache() {
         instanceFieldsWithSuper = null;
         instanceFieldsWithoutSuper = null;
     }
 
+    /**
+     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
+     * AnalysisField and can be casted to AnalysisField without problem.
+     */
     @Override
-    public AnalysisField[] getInstanceFields(boolean includeSuperclasses) {
-        AnalysisField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        ResolvedJavaField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
         if (result != null) {
             return result;
         } else {
@@ -1096,12 +1127,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    private AnalysisField[] initializeInstanceFields(boolean includeSuperclasses) {
-        List<AnalysisField> list = new ArrayList<>();
+    private ResolvedJavaField[] initializeInstanceFields(boolean includeSuperclasses) {
+        List<ResolvedJavaField> list = new ArrayList<>();
         if (includeSuperclasses && getSuperclass() != null) {
             list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
         }
-        AnalysisField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
+        ResolvedJavaField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
         if (includeSuperclasses) {
             instanceFieldsWithSuper = result;
         } else {
@@ -1110,7 +1141,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    private AnalysisField[] convertFields(ResolvedJavaField[] originals, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
+    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
         for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
@@ -1129,11 +1160,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 }
             }
         }
-        return list.toArray(new AnalysisField[list.size()]);
+        return list.toArray(new ResolvedJavaField[list.size()]);
     }
 
+    /**
+     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
+     * AnalysisField and can be casted to AnalysisField without problem.
+     */
     @Override
-    public AnalysisField[] getStaticFields() {
+    public ResolvedJavaField[] getStaticFields() {
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
     }
 
@@ -1145,7 +1180,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + toJavaName(true) + ", allocated: " + isAllocated + ", inHeap: " + isInHeap + ", reachable: " + isReachable + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
+                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override
@@ -1158,7 +1194,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            System.err.println("warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            LogUtils.warning("Unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }
@@ -1175,18 +1211,30 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredConstructors() {
-        return universe.lookup(wrapped.getDeclaredConstructors());
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredMethods() {
-        return universe.lookup(wrapped.getDeclaredMethods());
+    public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
     }
 
     @Override
     public AnalysisMethod findMethod(String name, Signature signature) {
-        for (AnalysisMethod method : getDeclaredMethods()) {
+        for (AnalysisMethod method : getDeclaredMethods(false)) {
             if (method.getName().equals(name) && method.getSignature().equals(signature)) {
                 return method;
             }

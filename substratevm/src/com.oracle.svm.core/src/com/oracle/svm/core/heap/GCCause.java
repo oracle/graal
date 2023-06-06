@@ -47,13 +47,13 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    @UnknownObjectField(types = GCCause[].class) //
-    protected static GCCause[] GCCauses;
+    @UnknownObjectField protected static GCCause[] GCCauses;
 
     private final int id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     protected GCCause(String name, int id) {
         this.id = id;
         this.name = name;

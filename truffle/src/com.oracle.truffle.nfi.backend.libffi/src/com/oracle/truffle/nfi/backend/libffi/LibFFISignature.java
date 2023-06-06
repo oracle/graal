@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.libffi.FunctionExecuteNode.SignatureExecuteNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.PolymorphicClosureInfo;
@@ -83,12 +84,11 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
  * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
-// TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
     @TruffleBoundary
+    @NeverDefault
     public static LibFFISignature create(LibFFIContext context, CachedSignatureInfo info, LibFFIType retType, int argCount, int fixedArgCount, LibFFIType[] argTypes) {
         LibFFIType realRetType = retType;
         if (retType == null) {
@@ -120,43 +120,45 @@ final class LibFFISignature {
 
         @Specialization
         static Object callLibFFI(LibFFISignature self, LibFFISymbol functionPointer, Object[] args,
+                        @Bind("$node") Node node,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             long pointer = functionPointer.asPointer();
-            return functionExecute.execute(pointer, self, args);
+            return functionExecute.execute(node, pointer, self, args);
         }
 
         @Specialization(limit = "3")
         @GenerateAOT.Exclude
         static Object callGeneric(LibFFISignature self, Object functionPointer, Object[] args,
                         @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Cached BranchProfile isExecutable,
-                        @Cached BranchProfile toNative,
-                        @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile isExecutable,
+                        @Cached InlinedBranchProfile toNative,
+                        @Cached InlinedBranchProfile error,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             if (interop.isExecutable(functionPointer)) {
                 // This branch can be invoked when SignatureLibrary is used to invoke a function
                 // pointer without prior engaging the interop to execute executable function
                 // pointers. It may happen, for example, in SVM for function substitutes.
                 try {
-                    isExecutable.enter();
+                    isExecutable.enter(node);
                     return interop.execute(functionPointer, args);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
+                    error.enter(node);
                     throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
                 }
             }
             if (!interop.isPointer(functionPointer)) {
-                toNative.enter();
+                toNative.enter(node);
                 interop.toNative(functionPointer);
             }
             long pointer;
             try {
                 pointer = interop.asPointer(functionPointer);
             } catch (UnsupportedMessageException e) {
-                error.enter();
+                error.enter(node);
                 throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
             }
-            return functionExecute.execute(pointer, self, args);
+            return functionExecute.execute(node, pointer, self, args);
         }
     }
 
@@ -164,7 +166,7 @@ final class LibFFISignature {
     @ImportStatic(LibFFILanguage.class)
     static class CreateClosure {
 
-        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()", limit = "3")
         static LibFFIClosure doCachedExecutable(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
@@ -177,7 +179,7 @@ final class LibFFISignature {
             return LibFFIClosure.newClosureWrapper(nativePointer);
         }
 
-        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo", limit = "3")
         static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @CachedLibrary("signature") NFIBackendSignatureLibrary self,
@@ -198,6 +200,7 @@ final class LibFFISignature {
     }
 
     @TruffleBoundary
+    @NeverDefault
     public static CachedSignatureInfo prepareSignatureInfo(CachedTypeInfo retTypeInfo, ArgsState state) {
         if (retTypeInfo instanceof ArrayType) {
             throw new IllegalArgumentException("array type as return value is not supported");
@@ -325,6 +328,7 @@ final class LibFFISignature {
             }
         }
 
+        @NeverDefault
         PolymorphicClosureInfo getCachedClosureInfo() {
             if (cachedClosureInfo == null) {
                 initCachedClosureInfo();
@@ -359,6 +363,7 @@ final class LibFFISignature {
             this.prev = prev;
         }
 
+        @NeverDefault
         ArgsState addArg(CachedTypeInfo typeInfo) {
             if (typeInfo instanceof LibFFIType.VoidType) {
                 throw new IllegalArgumentException("void is not a valid argument type");
@@ -393,7 +398,7 @@ final class LibFFISignature {
 
         static final int NOT_VARARGS = -1;
 
-        ArgsState state;
+        @NeverDefault ArgsState state;
         CachedTypeInfo retTypeInfo;
 
         LibFFIType retType;
@@ -446,7 +451,7 @@ final class LibFFISignature {
                 return v0 == v1;
             }
 
-            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"})
+            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"}, limit = "1")
             static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
                             @SuppressWarnings("unused") @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
                             @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
@@ -475,7 +480,7 @@ final class LibFFISignature {
         @ImportStatic(LibFFISignature.class)
         static class Build {
 
-            @Specialization(guards = {"builder.state == cachedState", "builder.retTypeInfo == cachedRetType"})
+            @Specialization(guards = {"builder.state == cachedState", "builder.retTypeInfo == cachedRetType"}, limit = "1")
             static Object doCached(SignatureBuilder builder,
                             @Cached("builder.state") ArgsState cachedState,
                             @SuppressWarnings("unused") @Cached("builder.retType.typeInfo") CachedTypeInfo cachedRetType,

@@ -102,14 +102,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Object.class) StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached CastImpl castImpl) {
+            Meta meta = getMeta();
             if (StaticObject.isNull(targetClass)) {
-                Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass(getMeta()))) {
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass(meta))) {
                 return value;
             }
-            return castImpl.execute(getContext(), targetClass.getMirrorKlass(getMeta()), value);
+            return castImpl.execute(getContext(), targetClass.getMirrorKlass(meta), value);
         }
     }
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -42,7 +42,7 @@ add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME}
 
 add_library(sulong-native SHARED
     src/misc.c
-    src/fp80.c
+    src/longdouble.c
     src/globals.c
 )
 if(NOT WIN32)

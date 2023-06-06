@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -63,6 +62,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -161,6 +162,18 @@ public class CompileQueue {
         CompilationResult compile(DebugContext debug, HostedMethod method, CompilationIdentifier identifier, CompileReason reason, RuntimeConfiguration config);
     }
 
+    public static class ParseHooks {
+        private final CompileQueue compileQueue;
+
+        protected ParseHooks(CompileQueue compileQueue) {
+            this.compileQueue = compileQueue;
+        }
+
+        protected PhaseSuite<HighTierContext> getAfterParseSuite() {
+            return compileQueue.afterParseCanonicalization();
+        }
+    }
+
     protected final HostedUniverse universe;
     private final Boolean deoptimizeAll;
     protected CompletionExecutor executor;
@@ -177,6 +190,7 @@ public class CompileQueue {
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
+    private final ParseHooks defaultParseHooks;
 
     private volatile boolean inliningProgress;
 
@@ -340,18 +354,20 @@ public class CompileQueue {
         }
     }
 
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, SharedRuntimeConfigurationBuilder runtimeConfigBuilder, Boolean deoptimizeAll,
+    @SuppressWarnings("this-escape")
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
                     SnippetReflectionProvider snippetReflection, ForkJoinPool executorService) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
-        this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
-        this.metaAccess = runtimeConfigBuilder.metaAccess;
+        this.runtimeConfig = runtimeConfiguration;
+        this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
         this.graphTransplanter = createGraphTransplanter();
+        this.defaultParseHooks = new ParseHooks(this);
 
         callForReplacements(debug, runtimeConfig);
     }
@@ -464,6 +480,15 @@ public class CompileQueue {
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
     }
 
+    /**
+     * Get suites for the compilation of {@code graph}. Parameter {@code suites} can be used to
+     * create new suites, they must not be modified directly as this code is called concurrently by
+     * multiple threads. Rather implementors can copy suites and modify them.
+     */
+    protected Suites createSuitesForRegularCompile(@SuppressWarnings("unused") StructuredGraph graph, Suites originalSuites) {
+        return originalSuites;
+    }
+
     protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new ImplicitAssertionsPhase());
@@ -561,23 +586,26 @@ public class CompileQueue {
         System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
+    public CompletionExecutor getExecutor() {
+        return executor;
+    }
+
+    public final void runOnExecutor(Runnable runnable) throws InterruptedException {
+        executor.init();
+        runnable.run();
+        executor.start();
+        executor.complete();
+        executor.shutdown();
+    }
+
     protected void parseAll() throws InterruptedException {
         /*
          * We parse ahead of time compiled methods before deoptimization targets so that we remove
          * deoptimization entrypoints which are determined to be unneeded. This both helps the
          * performance of deoptimization target methods and also reduces their code size.
          */
-        executor.init();
-        parseAheadOfTimeCompiledMethods();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
-
-        executor.init();
-        parseDeoptimizationTargetMethods();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::parseAheadOfTimeCompiledMethods);
+        runOnExecutor(this::parseDeoptimizationTargetMethods);
     }
 
     /**
@@ -622,16 +650,19 @@ public class CompileQueue {
         }
     }
 
+    public boolean isRegisteredDeoptTarget(HostedMethod method) {
+        return SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method);
+    }
+
     private void parseDeoptimizationTargetMethods() {
         if (parseOnce) {
             /*
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().filter(method -> {
-                HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
-                if (deoptTarget != null) {
-                    return deoptTarget.wrapped.isImplementationInvoked();
+            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
+                if (method != null) {
+                    return isRegisteredDeoptTarget(method);
                 }
                 return false;
             }).forEach(method -> ensureParsed(method.getMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
@@ -640,7 +671,7 @@ public class CompileQueue {
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().filter(method -> SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method)).forEach(
+            universe.getMethods().stream().filter(this::isRegisteredDeoptTarget).forEach(
                             method -> ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
         }
         /*
@@ -671,20 +702,17 @@ public class CompileQueue {
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
-
-                executor.init();
-                universe.getMethods().forEach(method -> {
-                    assert method.isOriginalMethod();
-                    for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                        HostedMethod hMethod = (HostedMethod) multiMethod;
-                        if (hMethod.compilationInfo.getCompilationGraph() != null) {
-                            executor.execute(new TrivialInlineTask(hMethod));
+                runOnExecutor(() -> {
+                    universe.getMethods().forEach(method -> {
+                        assert method.isOriginalMethod();
+                        for (MultiMethod multiMethod : method.getAllMultiMethods()) {
+                            HostedMethod hMethod = (HostedMethod) multiMethod;
+                            if (hMethod.compilationInfo.getCompilationGraph() != null) {
+                                executor.execute(new TrivialInlineTask(hMethod));
+                            }
                         }
-                    }
+                    });
                 });
-                executor.start();
-                executor.complete();
-                executor.shutdown();
             }
         } while (inliningProgress);
     }
@@ -720,6 +748,27 @@ public class CompileQueue {
         }
     }
 
+    // Wrapper to clearly identify phase
+    class TrivialInlinePhase extends Phase {
+        final InliningGraphDecoder decoder;
+        final HostedMethod method;
+
+        TrivialInlinePhase(InliningGraphDecoder decoder, HostedMethod method) {
+            this.decoder = decoder;
+            this.method = method;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            decoder.decode(method);
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "TrivialInline";
+        }
+    }
+
     @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
@@ -744,18 +793,34 @@ public class CompileQueue {
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
-            decoder.decode(method);
+            new TrivialInlinePhase(decoder, method).apply(graph);
 
             if (inliningPlugin.inlinedDuringDecoding) {
                 CanonicalizerPhase.create().apply(graph, providers);
-                /*
-                 * Publish the new graph, it can be picked up immediately by other threads trying to
-                 * inline this method. This can be a minor source of non-determinism in inlining
-                 * decisions.
-                 */
-                method.compilationInfo.encodeGraph(graph);
-                if (checkTrivial(method, graph)) {
+
+                if (!method.compilationInfo.isTrivialInliningDisabled() && graph.getNodeCount() > SubstrateOptions.MaxNodesAfterTrivialInlining.getValue()) {
+                    /*
+                     * The method is too larger after inlining. There is no good way of just
+                     * inlining some but not all trivial callees, because inlining is done during
+                     * graph decoding so the total graph size is not known until the whole graph is
+                     * decoded. We therefore disable all trivial inlining for the method. Except
+                     * callees that are annotated as "always inline" - therefore we need to pretend
+                     * that there was inlining progress, which triggers another round of inlining
+                     * where only "always inline" methods are inlined.
+                     */
+                    method.compilationInfo.setTrivialInliningDisabled(true);
                     inliningProgress = true;
+
+                } else {
+                    /*
+                     * Publish the new graph, it can be picked up immediately by other threads
+                     * trying to inline this method. This can be a minor source of non-determinism
+                     * in inlining decisions.
+                     */
+                    method.compilationInfo.encodeGraph(graph);
+                    if (checkTrivial(method, graph)) {
+                        inliningProgress = true;
+                    }
                 }
             }
         } catch (Throwable ex) {
@@ -770,7 +835,7 @@ public class CompileQueue {
         if (callee.shouldBeInlined()) {
             return true;
         }
-        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
+        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
             return true;
         }
         return false;
@@ -818,17 +883,9 @@ public class CompileQueue {
          * deoptimization entrypoints which are determined to be unneeded. This both helps the
          * performance of deoptimization target methods and also reduces their code size.
          */
-        executor.init();
-        scheduleEntryPoints();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::scheduleEntryPoints);
 
-        executor.init();
-        scheduleDeoptTargets();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::scheduleDeoptTargets);
     }
 
     public void scheduleEntryPoints() {
@@ -840,11 +897,13 @@ public class CompileQueue {
                 }
 
                 HostedMethod hMethod = (HostedMethod) multiMethod;
-                if (!ignoreEntryPoint(hMethod) && (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod)) ||
+                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureCompiled(hMethod, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
+                    MultiMethod.MultiMethodKey key = hMethod.getMultiMethodKey();
+                    assert key != DEOPT_TARGET_METHOD && key != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD : "unexpected method as virtual root " + hMethod;
                     for (HostedMethod impl : hMethod.getImplementations()) {
                         VMError.guarantee(impl.wrapped.isImplementationInvoked());
                         ensureCompiled(impl, new EntryPointReason());
@@ -857,15 +916,23 @@ public class CompileQueue {
     public void scheduleDeoptTargets() {
         for (HostedMethod method : universe.getMethods()) {
             HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
-            if (deoptTarget != null && deoptTarget.wrapped.isImplementationInvoked()) {
-                ensureCompiled(deoptTarget, new EntryPointReason());
+            if (deoptTarget != null) {
+                boolean isDeoptTarget;
+                if (parseOnce) {
+                    /*
+                     * Not all methods will be deopt targets since the optimization of runtime
+                     * compiled methods may eliminate FrameStates.
+                     */
+                    isDeoptTarget = isRegisteredDeoptTarget(deoptTarget);
+                } else {
+                    isDeoptTarget = isRegisteredDeoptTarget(method) || method.compilationInfo.canDeoptForTesting;
+                    assert isDeoptTarget : "unexpected Deopt Target " + deoptTarget;
+                }
+                if (isDeoptTarget) {
+                    ensureCompiled(deoptTarget, new EntryPointReason());
+                }
             }
         }
-    }
-
-    @SuppressWarnings("unused")
-    protected boolean ignoreEntryPoint(HostedMethod method) {
-        return false;
     }
 
     protected void ensureParsed(HostedMethod method, HostedMethod callerMethod, CompileReason reason) {
@@ -881,17 +948,23 @@ public class CompileQueue {
     }
 
     protected final void doParse(DebugContext debug, ParseTask task) {
-        ParseFunction fun = task.method.compilationInfo.getCustomParseFunction();
-        if (fun == null) {
-            fun = this::defaultParseFunction;
+        ParseFunction customFunction = task.method.compilationInfo.getCustomParseFunction();
+        if (customFunction != null) {
+            customFunction.parse(debug, task.method, task.reason, runtimeConfig);
+        } else {
+
+            ParseHooks hooks = task.method.compilationInfo.getCustomParseHooks();
+            if (hooks == null) {
+                hooks = defaultParseHooks;
+            }
+            defaultParseFunction(debug, task.method, task.reason, runtimeConfig, hooks);
         }
-        fun.parse(debug, task.method, task.reason, runtimeConfig);
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     @SuppressWarnings("try")
-    private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
+    private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
@@ -918,7 +991,7 @@ public class CompileQueue {
             }
             if (graph == null && method.isNative() &&
                             NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE);
+                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE, Purpose.AOT_COMPILATION);
             }
             if (graph == null) {
                 needParsing = true;
@@ -938,7 +1011,7 @@ public class CompileQueue {
                     graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
                 }
 
-                PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
+                PhaseSuite<HighTierContext> afterParseSuite = hooks.getAfterParseSuite();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
@@ -1088,6 +1161,7 @@ public class CompileQueue {
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
         CompilationInfo compilationInfo = method.compilationInfo;
+        assert method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
         if (printMethodHistogram) {
             if (reason instanceof DirectCallReason) {
@@ -1128,7 +1202,8 @@ public class CompileQueue {
                         OptionValues options,
                         DebugContext debug,
                         CompilationResult compilationResult,
-                        Register uncompressedNullRegister) {
+                        Register uncompressedNullRegister,
+                        LIR lir) {
             return new CompilationResultBuilder(providers,
                             frameMap,
                             asm,
@@ -1139,7 +1214,8 @@ public class CompileQueue {
                             compilationResult,
                             uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache),
-                            CompilationResultBuilder.NO_VERIFIERS);
+                            CompilationResultBuilder.NO_VERIFIERS,
+                            lir);
         }
     }
 
@@ -1163,6 +1239,7 @@ public class CompileQueue {
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
+            customizeGraph(graph, reason);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
                             "Hosted compilations must have explicit exceptions [guard stage] %s=%s", graph, graph.getGraphState().getGuardsStage());
@@ -1193,16 +1270,16 @@ public class CompileQueue {
                 method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream().map(MethodCallTargetNode::invoke).filter(
                                 invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false)).count();
 
-                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
+                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : createSuitesForRegularCompile(graph, regularSuites);
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
-                try (Indent indent = debug.logAndIndent("compile %s", method);
-                                DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(backend.getProviders(), graph.getDebug()))) {
+                try (Indent indent = debug.logAndIndent("compile %s", method)) {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }
+                graph.getOptimizationLog().emit(new StableMethodNameFormatter(backend.getProviders(), debug));
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
                 if (method.isDeoptTarget()) {
@@ -1224,12 +1301,26 @@ public class CompileQueue {
         }
     }
 
+    /**
+     * Allows subclasses to customize the {@link StructuredGraph graph} after its creation.
+     *
+     * @param graph A newly created {@link StructuredGraph graph} for one particular compilation
+     *            unit.
+     * @param reason The reason for compiling this compilation unit.
+     */
+    protected void customizeGraph(StructuredGraph graph, CompileReason reason) {
+        // Hook for subclasses
+    }
+
+    protected boolean isDynamicallyResolvedCall(@SuppressWarnings("unused") CompilationResult result, @SuppressWarnings("unused") Call call) {
+        return false;
+    }
+
     protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (Infopoint infopoint : result.getInfopoints()) {
-            if (infopoint instanceof Call) {
-                Call call = (Call) infopoint;
+            if (infopoint instanceof Call call) {
                 HostedMethod callTarget = (HostedMethod) call.target;
-                if (call.direct) {
+                if (call.direct || isDynamicallyResolvedCall(result, call)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {

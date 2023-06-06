@@ -102,4 +102,28 @@ public abstract class DSLSupport {
         return o;
     }
 
+    /**
+     * Helper method for DSL generated code to assert idempotence.
+     *
+     * @see Idempotent
+     * @see NonIdempotent
+     * @since 23.0
+     */
+    public static boolean assertIdempotence(boolean guardValue) {
+        if (!guardValue) {
+            throw new AssertionError("A guard was assumed idempotent, but returned a different value for a consecutive execution.");
+        }
+        return true;
+    }
+
+    /**
+     * Interface implemented by specialization data classes. This marker interface is needed for
+     * better validation and error handling during node object inlining. Intended to be used by the
+     * DSL implementation, please do not use otherwise.
+     *
+     * @since 23.1
+     */
+    public static interface SpecializationDataNode {
+    }
+
 }

@@ -41,11 +41,14 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.options.Option;
@@ -61,6 +64,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -78,6 +82,7 @@ import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -91,6 +96,7 @@ import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -100,7 +106,6 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -126,10 +131,10 @@ import jdk.vm.ci.services.Services;
 public abstract class RuntimeCompilationFeature {
 
     public static class Options {
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
 
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print call tree of methods reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
@@ -329,13 +334,14 @@ public abstract class RuntimeCompilationFeature {
     protected GraalGraphObjectReplacer objectReplacer;
     protected HostedProviders hostedProviders;
     protected GraphEncoder graphEncoder;
-    private SharedRuntimeConfigurationBuilder runtimeConfigBuilder;
 
     private boolean initialized;
     protected GraphBuilderConfiguration graphBuilderConfig;
     protected OptimisticOptimizations optimisticOpts;
     protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
     protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
+
+    private SubstrateUniverseFactory universeFactory = new SubstrateUniverseFactory();
 
     public HostedProviders getHostedProviders() {
         return hostedProviders;
@@ -352,6 +358,10 @@ public abstract class RuntimeCompilationFeature {
         return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
+    public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
+        this.universeFactory = universeFactory;
+    }
+
     protected final void duringSetupHelper(DuringSetupAccess c) {
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
@@ -364,7 +374,7 @@ public abstract class RuntimeCompilationFeature {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
         AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
         SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess);
-        objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), aMetaAccess, substrateProviders);
+        objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, universeFactory);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
@@ -375,14 +385,13 @@ public abstract class RuntimeCompilationFeature {
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
-        runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
-                        config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider(),
-                        platformConfig).build();
-        RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
+        RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
+                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
+                        .build();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
-        WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
+        WordTypes wordTypes = runtimeConfig.getWordTypes();
         hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider(),
@@ -390,11 +399,13 @@ public abstract class RuntimeCompilationFeature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
+
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
+
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
@@ -503,10 +514,24 @@ public abstract class RuntimeCompilationFeature {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
     }
 
+    public abstract void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator);
+
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
     protected final void afterAnalysisHelper() {
         ProgressReporter.singleton().setNumRuntimeCompiledMethods(getRuntimeCompiledMethods().size());
+    }
+
+    /**
+     * Checks if any illegal nodes are present within the graph. Runtime Compiled methods should
+     * never have explicit BytecodeExceptions; instead they should have deoptimizations.
+     */
+    protected static boolean verifyNodes(StructuredGraph graph) {
+        for (var node : graph.getNodes()) {
+            boolean invalidNodeKind = node instanceof BytecodeExceptionNode || node instanceof ThrowBytecodeExceptionNode;
+            assert !invalidNodeKind : "illegal node in graph: " + node + " method: " + graph.method();
+        }
+        return true;
     }
 
     protected final void beforeCompilationHelper() {
@@ -603,11 +628,11 @@ public abstract class RuntimeCompilationFeature {
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
-        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
+        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) runtimeConfigBuilder.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
@@ -689,7 +714,7 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
 
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

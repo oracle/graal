@@ -81,11 +81,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         return objectFlow;
     }
 
-    /** Return the state of the receiver object. */
-    public TypeState getObjectState() {
-        return objectFlow.getState();
-    }
-
     @Override
     public abstract TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
@@ -192,17 +187,28 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public final AbstractUnsafeStoreTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            AbstractUnsafeStoreTypeFlow copy = makeCopy(bb, methodFlows);
-            // Register the unsafe store. It will be force-updated when new unsafe fields are
-            // registered. Only the clones are registered since the original flows are not updated.
-            bb.registerUnsafeStore(copy);
-            return copy;
+            return makeCopy(bb, methodFlows);
         }
 
         protected abstract AbstractUnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
         public void initFlow(PointsToAnalysis bb) {
+            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone();
+            /*
+             * Register the unsafe store. It will be force-updated when new unsafe fields are
+             * registered.
+             */
+            bb.registerUnsafeStore(this);
+            forceUpdate(bb);
+        }
+
+        @Override
+        public boolean needsInitialization() {
+            return true;
+        }
+
+        public void forceUpdate(PointsToAnalysis bb) {
             /*
              * Unsafe store type flow models unsafe writes to both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe store

@@ -566,8 +566,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
+    @SuppressWarnings("serial")
     private static final class EspressoOSRReturnException extends ControlFlowException {
-        private static final long serialVersionUID = 117347248600170993L;
         private final Object result;
         private final Throwable throwable;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -42,15 +41,12 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
-/**
- * Foundation for continuation support via {@link SubstrateVirtualThread} or
- * {@linkplain Target_jdk_internal_vm_Continuation Project Loom}.
- */
+/** Foundation for {@linkplain Target_jdk_internal_vm_Continuation Project Loom} support. */
 @InternalVMMethod
 public final class Continuation {
     @Fold
     public static boolean isSupported() {
-        return SubstrateOptions.SupportContinuations.getValue() || LoomSupport.isEnabled();
+        return LoomSupport.isEnabled();
     }
 
     public static final int YIELDING = -2;
@@ -69,7 +65,6 @@ public final class Continuation {
     /** While executing, frame pointer of initial frame of continuation, {@code null} otherwise. */
     private Pointer baseSP;
 
-    private boolean done;
     private int overflowCheckState;
 
     Continuation(Runnable target) {
@@ -125,7 +120,6 @@ public final class Continuation {
     private Object enter1(boolean isContinue) {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
-        Pointer currentSP = KnownIntrinsics.readStackPointer();
 
         assert sp.isNull() && ip.isNull() && baseSP.isNull();
         if (isContinue) {
@@ -133,26 +127,26 @@ public final class Continuation {
             assert cont != null;
             this.ip = callerIP;
             this.sp = callerSP;
-            this.baseSP = currentSP;
+            this.baseSP = KnownIntrinsics.readStackPointer();
             this.stored = null;
 
             int framesSize = StoredContinuationAccess.getFramesSizeInBytes(cont);
-            Pointer topSP = currentSP.subtract(framesSize);
+            Pointer topSP = KnownIntrinsics.readStackPointer().subtract(framesSize);
             if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
                 throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
             }
 
             Object preparedData = ImageSingletons.lookup(ContinuationSupport.class).prepareCopy(cont);
             ContinuationSupport.enter(cont, topSP, preparedData);
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         } else {
             assert stored == null;
             this.ip = callerIP;
             this.sp = callerSP;
-            this.baseSP = currentSP;
+            this.baseSP = KnownIntrinsics.readStackPointer();
 
             enter2();
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
@@ -167,14 +161,13 @@ public final class Continuation {
         Pointer returnSP = sp;
         CodePointer returnIP = ip;
 
-        done = true;
         ip = WordFactory.nullPointer();
         sp = WordFactory.nullPointer();
         baseSP = WordFactory.nullPointer();
         assert isEmpty();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
     int tryPreempt(Thread thread) {
@@ -212,19 +205,15 @@ public final class Continuation {
         baseSP = WordFactory.nullPointer();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
-    public boolean isStarted() {
+    boolean isStarted() {
         return stored != null || ip.isNonNull();
     }
 
-    public boolean isEmpty() {
+    boolean isEmpty() {
         return stored == null;
-    }
-
-    public boolean isDone() {
-        return done;
     }
 
     private static final class TryPreemptOperation extends JavaVMOperation {

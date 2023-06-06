@@ -28,8 +28,7 @@ import static jdk.vm.ci.meta.JavaKind.Byte;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 
 /**
  * Similar to {@link PerfStringConstant} and {@link PerfStringVariable} but supports direct memory
@@ -47,6 +46,6 @@ public class PerfDirectMemoryString extends PerfDirectMemoryEntry {
         int nullTerminatedMaxLength = maxLength + 1;
         allocate(variability, Byte, nullTerminatedMaxLength);
         writeNullTerminatedString(valuePtr, value, maxLength);
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(valuePtr.rawValue(), nullTerminatedMaxLength), ByteBuffer.class);
+        return DirectByteBufferUtil.allocate(valuePtr.rawValue(), nullTerminatedMaxLength);
     }
 }

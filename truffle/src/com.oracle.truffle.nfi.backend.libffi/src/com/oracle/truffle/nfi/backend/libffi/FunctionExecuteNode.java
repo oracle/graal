@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,11 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -59,16 +62,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @GenerateUncached
+@GenerateCached(false)
+@GenerateInline(true)
 @ImportStatic(LibFFILanguage.class)
 @GenerateAOT
 abstract class FunctionExecuteNode extends Node {
 
-    public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
+    public abstract Object execute(Node node, long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
-    @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @Specialization(guards = "signature.signatureInfo == cachedInfo", limit = "3")
     @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, LibFFISignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
@@ -84,6 +87,7 @@ abstract class FunctionExecuteNode extends Node {
         }
     }
 
+    @NeverDefault
     protected static DirectCallNode createCachedSignatureCall(CachedSignatureInfo signature) {
         DirectCallNode callNode = DirectCallNode.create(signature.callTarget);
         callNode.forceInlining();
@@ -92,7 +96,7 @@ abstract class FunctionExecuteNode extends Node {
 
     @Specialization(replaces = "cachedSignature")
     static Object genericExecute(long receiver, LibFFISignature signature, Object[] args,
-                    @Cached IndirectCallNode execute) {
+                    @Cached(inline = false) IndirectCallNode execute) {
         try {
             return execute.call(signature.signatureInfo.callTarget, receiver, args, signature);
         } finally {

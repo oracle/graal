@@ -33,10 +33,10 @@ import java.util.TimeZone;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.VMRuntime;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
@@ -46,7 +46,7 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.EnableSignalAPI.getValue();
+        return VMInspectionOptions.hasHeapDumpSupport();
     }
 
     @Override
@@ -58,7 +58,7 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 final class DumpHeapStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             DumpHeapReport.install();
         }
     }

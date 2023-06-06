@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -382,40 +384,53 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
             List<byte[]> blocks = new ArrayList<>();
             while (true) {
-                blocks.add(new byte[1024 * 1024]);
+                blocks.add(new byte[100 * 1024 * 1024]);
             }
         }
     }
 
     @SuppressWarnings("unused")
     @Test
-    public void testGuestOOMResourceLimit() {
-        Context.Builder builder = Context.newBuilder();
-        if (TruffleTestAssumptions.isStrongEncapsulation()) {
-            builder.option("engine.IsolateOption.MaxHeapSize", "1g");
-        }
-        try (Context c = builder.build()) {
-
-            assertFails(() -> evalTestLanguage(c, GuestOOMLanguage.class, "test"), PolyglotException.class, (e) -> {
-                assertTrue(e.isResourceExhausted());
-                assertFalse(e.isInternalError());
-                assertTrue(e.isGuestException());
-                assertFalse(e.isHostException());
-                assertFalse(e.isCancelled());
-                Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
-                boolean foundFrame = false;
-                while (iterator.hasNext()) {
-                    StackFrame frame = iterator.next();
-                    if (frame.isGuestFrame()) {
-                        foundFrame = true;
-                        assertTrue(frame.isGuestFrame());
-                        assertEquals("testRootName", frame.getRootName());
+    public void testGuestOOMResourceLimit() throws IOException, InterruptedException {
+        Runnable test = () -> {
+            Context.Builder builder = Context.newBuilder();
+            if (TruffleTestAssumptions.isStrongEncapsulation()) {
+                builder.option("engine.IsolateOption.MaxHeapSize", "1g");
+            }
+            try (Context c = builder.build()) {
+                assertFails(() -> evalTestLanguage(c, GuestOOMLanguage.class, "test"), PolyglotException.class, (e) -> {
+                    assertTrue(e.isResourceExhausted());
+                    assertFalse(e.isInternalError());
+                    assertTrue(e.isGuestException());
+                    assertFalse(e.isHostException());
+                    assertFalse(e.isCancelled());
+                    Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
+                    boolean foundFrame = false;
+                    while (iterator.hasNext()) {
+                        StackFrame frame = iterator.next();
+                        if (frame.isGuestFrame()) {
+                            foundFrame = true;
+                            assertTrue(frame.isGuestFrame());
+                            assertEquals("testRootName", frame.getRootName());
+                        }
                     }
-                }
-                if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
-                    assertTrue(foundFrame);
-                }
-            });
+                    if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
+                        // No guest stack trace injected into OutOfMemoryError.
+                        assertFalse(foundFrame);
+                    }
+                });
+            }
+        };
+        if (ImageInfo.inImageCode() || TruffleTestAssumptions.isStrongEncapsulation()) {
+            test.run();
+        } else {
+            /*
+             * Limits the maximum heap size to prevent hotspot crashes when the operating system is
+             * unable to commit the reserved memory. This can happen when the physical memory is
+             * unable to hold a large heap and the swap space is not configured or is too small.
+             */
+            String[] vmOptions = {"-Xmx1G"};
+            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions).run();
         }
     }
 
@@ -455,7 +470,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                     }
                 }
                 if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
-                    assertTrue(foundFrame);
+                    // No guest stack trace injected into StackOverflowError.
+                    assertFalse(foundFrame);
                 }
             });
         }

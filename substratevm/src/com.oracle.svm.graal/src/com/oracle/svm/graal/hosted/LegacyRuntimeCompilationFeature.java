@@ -36,9 +36,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -173,6 +175,18 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             }
             return result;
         }
+
+        @Override
+        protected boolean shouldVerifyFrameStates() {
+            /*
+             * (GR-46115) Ideally we should verify frame states in methods registered for runtime
+             * compilations, as well as any other methods that can deoptimize. Because runtime
+             * compiled methods can pull in almost arbitrary code, this means most frame states
+             * should be verified. We currently use illegal states as placeholders in many places,
+             * so this cannot be enabled at the moment.
+             */
+            return false;
+        }
     }
 
     @Override
@@ -293,6 +307,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
+                assert RuntimeCompilationFeature.verifyNodes(graph);
 
             } catch (Throwable ex) {
                 debug.handle(ex);
@@ -457,6 +472,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
 
                     graphEncoder.prepare(graph);
+                    assert RuntimeCompilationFeature.verifyNodes(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);
                 }
@@ -527,4 +543,12 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
     }
+
+    @Override
+    public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
+        /*
+         * No action is needed for the legacy implementation.
+         */
+    }
+
 }

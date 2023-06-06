@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -48,6 +47,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -99,7 +99,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isFolded;
 
     private boolean isJNIAccessed;
-    private boolean isUsedInComparison;
+
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
     @SuppressWarnings("unused") private volatile int unsafeFrozenTypeState;
     @SuppressWarnings("unused") private volatile Object observers;
@@ -121,6 +121,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     protected final AnalysisType declaringClass;
     protected final AnalysisType fieldType;
 
+    /**
+     * Marks a field whose value is computed during image building, in general derived from other
+     * values, and it cannot be constant-folded or otherwise optimized.
+     */
+    protected final boolean isUnknownValue;
+
+    @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
 
@@ -136,8 +143,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
 
-        isUsedInComparison = false;
-
         if (this.isStatic()) {
             this.canBeNull = false;
             this.staticFieldFlow = new FieldTypeFlow(this, getType());
@@ -147,6 +152,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
+
+        isUnknownValue = universe.hostVM().isUnknownValueField(this);
     }
 
     @Override
@@ -191,15 +198,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         isWrittenUpdater.set(this, this.isWritten != null & other.isWritten != null ? this.isWritten : null);
         isFoldedUpdater.set(this, this.isFolded != null & other.isFolded != null ? this.isFolded : null);
         isReadUpdater.set(this, this.isRead != null & other.isRead != null ? this.isRead : null);
-        notifyUpdateAccessInfo();
-    }
-
-    public void clearAccessInfos() {
-        isAccessedUpdater.set(this, 0);
-        this.canBeNull = true;
-        isWrittenUpdater.set(this, 0);
-        isFoldedUpdater.set(this, 0);
-        isReadUpdater.set(this, null);
         notifyUpdateAccessInfo();
     }
 
@@ -386,18 +384,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
-     * Returns all methods where the field is written. It does not include the methods where the
-     * field is written with unsafe access.
-     */
-    public Set<Object> getWrittenBy() {
-        return writtenBy.keySet();
-    }
-
-    private boolean isAccessedSet() {
-        return AtomicUtils.isSet(this, isAccessedUpdater);
-    }
-
-    /**
      * Returns true if the field is reachable. Fields that are read or manually registered as
      * reachable are always reachable. For fields that are write-only, more cases need to be
      * considered:
@@ -417,24 +403,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                         (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
-    private boolean isReadSet() {
-        return AtomicUtils.isSet(this, isReadUpdater);
-    }
-
     public boolean isRead() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
-    private boolean isWrittenSet() {
-        return AtomicUtils.isSet(this, isWrittenUpdater);
-    }
-
     public boolean isWritten() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
-    }
-
-    private boolean isFoldedSet() {
-        return AtomicUtils.isSet(this, isFoldedUpdater);
     }
 
     public boolean isFolded() {
@@ -450,6 +424,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public void onReachable() {
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
+    }
+
+    public boolean isUnknownValue() {
+        return isUnknownValue;
     }
 
     public void setCanBeNull(boolean canBeNull) {
@@ -492,7 +470,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
          * the hosting HotSpot VM, but it is safer to disallow the operation entirely. The offset
          * from the hosting VM can be accessed by explicitly calling `wrapped.getOffset()`.
          */
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -517,20 +495,18 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessedSet() + " reads: " + isReadSet() + " written: " + isWrittenSet() + " folded: " + isFoldedSet() + ">";
-    }
-
-    public void markAsUsedInComparison() {
-        isUsedInComparison = true;
-    }
-
-    public boolean isUsedInComparison() {
-        return isUsedInComparison;
+        return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
+                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
     }
 
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(wrapped);
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return getUniverse().lookup(getWrapped().getConstantValue());
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

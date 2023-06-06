@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -151,7 +151,7 @@ public final class SulongLibrary implements TruffleObject {
          * @param name
          * @see #execute(SulongLibrary, String)
          */
-        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"}, assumptions = "singleContextAssumption()")
+        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)", "isSingleContext($node)"})
         LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
                         @Cached("library") @SuppressWarnings("unused") SulongLibrary cachedLibrary,
                         @Cached("name") @SuppressWarnings("unused") String cachedName,

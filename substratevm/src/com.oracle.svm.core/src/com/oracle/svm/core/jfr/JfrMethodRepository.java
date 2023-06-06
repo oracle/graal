@@ -38,7 +38,7 @@ import com.oracle.svm.core.locks.VMMutex;
 /**
  * Repository that collects and writes used methods.
  */
-public class JfrMethodRepository implements JfrConstantPool {
+public class JfrMethodRepository implements JfrRepository {
     private final VMMutex mutex;
     private final JfrMethodEpochData epochData0;
     private final JfrMethodEpochData epochData1;
@@ -56,107 +56,106 @@ public class JfrMethodRepository implements JfrConstantPool {
         epochData1.teardown();
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public long getMethodId(Class<?> clazz, String methodName, int methodId) {
         assert clazz != null;
         assert methodName != null;
         assert methodId > 0;
 
+        JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
+        jfrVisited.setId(methodId);
+        jfrVisited.setHash(methodId);
+
         mutex.lockNoTransition();
         try {
-            return getMethodId0(clazz, methodName, methodId);
+            JfrMethodEpochData epochData = getEpochData(false);
+            if (!epochData.table.putIfAbsent(jfrVisited)) {
+                return methodId;
+            }
+
+            /* New entry, so serialize it to the buffer. */
+            if (epochData.buffer.isNull()) {
+                epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
+            }
+
+            JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
+            JfrTypeRepository typeRepo = SubstrateJVM.getTypeRepository();
+
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
+            JfrNativeEventWriter.putLong(data, methodId);
+            JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
+            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
+            /* Dummy value for signature. */
+            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
+            /* Dummy value for modifiers. */
+            JfrNativeEventWriter.putShort(data, (short) 0);
+            /* Dummy value for isHidden. */
+            JfrNativeEventWriter.putBoolean(data, false);
+            if (!JfrNativeEventWriter.commit(data)) {
+                return methodId;
+            }
+
+            epochData.unflushedEntries++;
+            /* The buffer may have been replaced with a new one. */
+            epochData.buffer = data.getJfrBuffer();
+            return methodId;
         } finally {
             mutex.unlock();
         }
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private long getMethodId0(Class<?> clazz, String methodName, int methodId) {
-        JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
-        jfrVisited.setId(methodId);
-        jfrVisited.setHash(methodId);
-
-        JfrMethodEpochData epochData = getEpochData(false);
-        if (!epochData.visitedMethods.putIfAbsent(jfrVisited)) {
-            return methodId;
-        }
-
-        if (epochData.methodBuffer.isNull()) {
-            // This will happen only on the first call.
-            epochData.methodBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
-        }
-
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
-        JfrTypeRepository typeRepo = SubstrateJVM.getTypeRepository();
-
-        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-        JfrNativeEventWriterDataAccess.initialize(data, epochData.methodBuffer);
-        JfrNativeEventWriter.putLong(data, methodId);
-        JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
-        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
-        /* Dummy value for signature. */
-        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
-        /* Dummy value for modifiers. */
-        JfrNativeEventWriter.putShort(data, (short) 0);
-        /* Dummy value for isHidden. */
-        JfrNativeEventWriter.putBoolean(data, false);
-        JfrNativeEventWriter.commit(data);
-
-        /* The buffer may have been replaced with a new one. */
-        epochData.methodBuffer = data.getJfrBuffer();
-        return methodId;
-    }
-
     @Override
-    public int write(JfrChunkWriter writer) {
-        JfrMethodEpochData epochData = getEpochData(true);
-        int count = writeMethods(writer, epochData);
-        epochData.clear();
-        return count;
-    }
-
-    private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData) {
-        int numberOfMethods = epochData.visitedMethods.getSize();
-        if (numberOfMethods == 0) {
-            return EMPTY;
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
+        mutex.lockNoTransition();
+        try {
+            JfrMethodEpochData epochData = getEpochData(!flushpoint);
+            int count = epochData.unflushedEntries;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.Method.getId());
+                writer.writeCompressedInt(count);
+                writer.write(epochData.buffer);
+            }
+            epochData.clear(flushpoint);
+            return count == 0 ? EMPTY : NON_EMPTY;
+        } finally {
+            mutex.unlock();
         }
-
-        writer.writeCompressedLong(JfrType.Method.getId());
-        writer.writeCompressedInt(numberOfMethods);
-        writer.write(epochData.methodBuffer);
-
-        return NON_EMPTY;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrMethodEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 
     private static class JfrMethodEpochData {
-        private JfrBuffer methodBuffer;
-        private final JfrVisitedTable visitedMethods;
+        private final JfrVisitedTable table;
+        private int unflushedEntries;
+        private JfrBuffer buffer;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrMethodEpochData() {
-            this.visitedMethods = new JfrVisitedTable();
+            this.table = new JfrVisitedTable();
+            this.unflushedEntries = 0;
+        }
+
+        @Uninterruptible(reason = "May write current epoch data.")
+        void clear(boolean flushpoint) {
+            if (!flushpoint) {
+                table.clear();
+            }
+            unflushedEntries = 0;
+            JfrBufferAccess.reinitialize(buffer);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void teardown() {
-            visitedMethods.teardown();
-            if (methodBuffer.isNonNull()) {
-                JfrBufferAccess.free(methodBuffer);
-            }
-            methodBuffer = WordFactory.nullPointer();
-        }
-
-        void clear() {
-            visitedMethods.clear();
-            if (methodBuffer.isNonNull()) {
-                JfrBufferAccess.reinitialize(methodBuffer);
-            }
+            table.teardown();
+            unflushedEntries = 0;
+            JfrBufferAccess.free(buffer);
+            buffer = WordFactory.nullPointer();
         }
     }
 }

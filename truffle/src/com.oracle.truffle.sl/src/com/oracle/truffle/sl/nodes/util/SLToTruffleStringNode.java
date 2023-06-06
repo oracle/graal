@@ -44,9 +44,9 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
@@ -111,7 +111,7 @@ public abstract class SLToTruffleStringNode extends Node {
 
     @Specialization
     @TruffleBoundary
-    protected static TruffleString fromBigNumber(SLBigNumber value,
+    protected static TruffleString fromBigNumber(SLBigInteger value,
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING);
     }
@@ -131,8 +131,8 @@ public abstract class SLToTruffleStringNode extends Node {
                 return fromLongNode.execute(interop.asLong(value), SLLanguage.STRING_ENCODING, true);
             } else if (interop.isString(value)) {
                 return fromJavaStringNode.execute(interop.asString(value), SLLanguage.STRING_ENCODING);
-            } else if (interop.isNumber(value) && value instanceof SLBigNumber) {
-                return fromJavaStringNode.execute(bigNumberToString((SLBigNumber) value), SLLanguage.STRING_ENCODING);
+            } else if (interop.isNumber(value) && value instanceof SLBigInteger) {
+                return fromJavaStringNode.execute(bigNumberToString((SLBigInteger) value), SLLanguage.STRING_ENCODING);
             } else if (interop.isNull(value)) {
                 return SLStrings.NULL_LC;
             } else {
@@ -144,7 +144,7 @@ public abstract class SLToTruffleStringNode extends Node {
     }
 
     @TruffleBoundary
-    private static String bigNumberToString(SLBigNumber value) {
+    private static String bigNumberToString(SLBigInteger value) {
         return value.toString();
     }
 }

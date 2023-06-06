@@ -31,8 +31,8 @@ For example:
 
 ### Software Bill of Materials (SBOM)
 
-GraalVM Enterprise Native Image can embed a Software Bill of Materials (SBOM) into a native executable by using an experimental option.
-The option takes the desired SBOM format as input, and the embedded SBOM can be passively obtained by using the [Native Image Inspection Tool](InspectTool.md).
+Oracle GraalVM Native Image can embed a Software Bill of Materials (SBOM) into a native executable by using an experimental option.
+The option takes the desired SBOM format as input, and the embedded SBOM can be passively obtained by using the [Native Image Inspection Tool](InspectTool.md) or by saving the SBOM alongside the native executable using the optional `print` flag.
 Currently, the CycloneDX format is supported. Users may embed a CycloneDX SBOM into a native executable by using the `--enable-sbom` option during compilation.
 The SBOM is stored in a compressed format (`gzip`) with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol its size.
 

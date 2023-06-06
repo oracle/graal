@@ -55,7 +55,7 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
         }
     };
     protected final Universe universe;
-    private final MetaAccessProvider wrapped;
+    protected final MetaAccessProvider wrapped;
 
     public UniverseMetaAccess(Universe universe, MetaAccessProvider wrapped) {
         this.universe = universe;

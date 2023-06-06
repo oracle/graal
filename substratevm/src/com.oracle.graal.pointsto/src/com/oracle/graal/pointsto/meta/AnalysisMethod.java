@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
@@ -96,6 +97,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
+
+    public record Signature(String name, AnalysisType[] parameterTypes) {
+    }
 
     public final ResolvedJavaMethod wrapped;
 
@@ -147,6 +151,17 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    /**
+     * Indicates that this method returns all instantiated types. This is necessary when there are
+     * control flows present which cannot be tracked by analysis, which happens for continuation
+     * support.
+     *
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    private boolean returnsAllInstantiatedTypes;
+
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         id = universe.nextMethodId.getAndIncrement();
@@ -194,6 +209,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;
@@ -209,6 +225,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
+        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -218,7 +235,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
         String aName = wrapped.getName();
         if (multiMethodKey != ORIGINAL_METHOD) {
-            aName += MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+            aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
     }
@@ -285,22 +302,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /**
      * @return the position of the invocation that triggered parsing for this method, or null
      */
-    public abstract BytecodePosition getParsingReason();
+    public abstract Object getParsingReason();
 
     /**
      * @return the parsing context in which given method was parsed
      */
     public final StackTraceElement[] getParsingContext() {
         List<StackTraceElement> trace = new ArrayList<>();
-        BytecodePosition curr = getParsingReason();
+        Object curr = getParsingReason();
 
         while (curr != null) {
+            if (!(curr instanceof BytecodePosition)) {
+                AnalysisError.guarantee(curr instanceof String, "Parsing reason should be a BytecodePosition or String: %s", curr);
+                trace.add(ReportUtils.rootMethodSentinel((String) curr));
+                break;
+            }
             if (trace.size() > parsingContextMaxDepth) {
                 trace.add(ReportUtils.truncatedStackTraceSentinel(this));
                 break;
             }
-            AnalysisMethod caller = (AnalysisMethod) curr.getMethod();
-            trace.add(caller.asStackTraceElement(curr.getBCI()));
+            BytecodePosition position = (BytecodePosition) curr;
+            AnalysisMethod caller = (AnalysisMethod) position.getMethod();
+            trace.add(caller.asStackTraceElement(position.getBCI()));
             curr = caller.getParsingReason();
         }
         return trace.toArray(new StackTraceElement[0]);
@@ -418,10 +441,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
-    public boolean isSimplyInvoked() {
-        return AtomicUtils.isSet(this, isInvokedUpdater);
-    }
-
     public boolean isSimplyImplementationInvoked() {
         return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
@@ -471,16 +490,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             declaringClass.forAllSuperTypes(superType -> {
                 /*
                  * Iterate all the super types (including this type itself) looking for installed
-                 * override notifications. If this method resolves in a super type, and it has an
+                 * override notifications. If this method is found in a super type, and it has an
                  * override handler installed in that type, pass this method to the callback. It
                  * doesn't matter if the superMethod is actually reachable, only if it has any
-                 * override handlers installed.
+                 * override handlers installed. Note that ResolvedJavaType.resolveMethod() cannot be
+                 * used here because it only resolves methods declared by the type itself or if the
+                 * method's declaring class is assignable from the type.
                  */
-                AnalysisMethod superMethod = resolveInType(superType);
+                AnalysisMethod superMethod = findInType(superType);
                 if (superMethod != null) {
                     superMethod.notifyMethodOverride(AnalysisMethod.this);
                 }
             });
+        }
+    }
+
+    /** Find if the type declares a method with the same name and signature as this method. */
+    private AnalysisMethod findInType(AnalysisType type) {
+        try {
+            return type.findMethod(wrapped.getName(), getSignature());
+        } catch (UnsupportedFeatureException | LinkageError e) {
+            /* Ignore linking errors and deleted methods. */
+            return null;
         }
     }
 
@@ -534,7 +565,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
     }
 
     @Override
@@ -650,7 +681,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ConstantPool getConstantPool() {
-        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
     }
 
     @Override
@@ -685,7 +716,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public String toString() {
-        return "AnalysisMethod<" + format("%H.%n") + " -> " + wrapped.toString() + ">";
+        return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ", invoked: " + (isInvoked != null) +
+                        ", implInvoked: " + (isImplementationInvoked != null) + ", intrinsic: " + (isIntrinsicMethod != null) + ", inlined: " + (isInlined != null) +
+                        (isVirtualRootMethod != 0 ? ", virtual root" : "") + (isDirectRootMethod != 0 ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
     }
 
     @Override
@@ -900,6 +933,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             createAction.accept(newMethod);
             return newMethod;
         });
+    }
+
+    /**
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    public void setReturnsAllInstantiatedTypes() {
+        returnsAllInstantiatedTypes = true;
+    }
+
+    public boolean getReturnsAllInstantiatedTypes() {
+        return returnsAllInstantiatedTypes;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);

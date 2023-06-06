@@ -54,7 +54,9 @@ public final class ModulesHelperVM {
         if (!StaticObject.isNull(toModule)) {
             toModuleEntry = getModuleEntry(toModule, meta);
             if (toModuleEntry == null) {
-                profiler.profile(8);
+                if (profiler != null) {
+                    profiler.profile(8);
+                }
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
             }
         }
@@ -64,12 +66,16 @@ public final class ModulesHelperVM {
     public static ModuleTable.ModuleEntry extractFromModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject fromModule, Meta meta,
                     SubstitutionProfiler profiler) {
         if (StaticObject.isNull(fromModule)) {
-            profiler.profile(9);
+            if (profiler != null) {
+                profiler.profile(9);
+            }
             throw meta.throwNullPointerException();
         }
         ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(fromModule, meta);
         if (fromModuleEntry == null) {
-            profiler.profile(10);
+            if (profiler != null) {
+                profiler.profile(10);
+            }
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
         }
         return fromModuleEntry;
@@ -82,12 +88,16 @@ public final class ModulesHelperVM {
             packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
         }
         if (packageEntry == null) {
-            profiler.profile(11);
+            if (profiler != null) {
+                profiler.profile(11);
+            }
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " cannot be found in ", fromModuleEntry.getNameAsString()));
         }
         if (packageEntry.module() != fromModuleEntry) {
-            profiler.profile(12);
+            if (profiler != null) {
+                profiler.profile(12);
+            }
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " found in ", packageEntry.module().getNameAsString(), ", not in ", fromModuleEntry.getNameAsString()));
         }

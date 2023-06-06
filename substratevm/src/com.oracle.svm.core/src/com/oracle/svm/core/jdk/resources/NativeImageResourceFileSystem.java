@@ -122,6 +122,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private final IndexNode lookupKey = new IndexNode(null, true);
     private final LinkedHashMap<IndexNode, IndexNode> inodes = new LinkedHashMap<>(10);
 
+    @SuppressWarnings("this-escape")
     public NativeImageResourceFileSystem(NativeImageResourceFileSystemProvider provider, Path resourcePath, Map<String, ?> env) {
         this.provider = provider;
         this.resourcePath = resourcePath;
@@ -650,13 +651,11 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Pair<String, String>, ResourceStorageEntry> entries = Resources.singleton().resources().getEntries();
+        MapCursor<Pair<Module, String>, ResourceStorageEntry> entries = Resources.singleton().getResourceStorage().getEntries();
         while (entries.advance()) {
             byte[] name = getBytes(entries.getKey().getRight());
-            if (!entries.getValue().isDirectory()) {
-                IndexNode newIndexNode = new IndexNode(name, false);
-                inodes.put(newIndexNode, newIndexNode);
-            }
+            IndexNode newIndexNode = new IndexNode(name, entries.getValue().isDirectory());
+            inodes.put(newIndexNode, newIndexNode);
         }
         buildNodeTree();
     }

@@ -29,25 +29,14 @@ To get used to Native Image terminology and get better understanding of the tech
 
 ### Table of Contents
 
-* [Install Native Image](#install-native-image)
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
 * [License](#license)
 * [Further Reading](#further-reading)
 
-## Install Native Image
-
-Native Image can be added to GraalVM with the [GraalVM Updater](../graalvm-updater.md) tool.
-
-Run this command to install Native Image:
-```shell
-gu install native-image
-```
-The `native-image` tool is installed in the `$JAVA_HOME/bin` directory.
-
 ### Prerequisites
 
-The `native-image` tool depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
+The `native-image` tool, available in the `bin` directory of your GraalVM installation, depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
 These dependencies can be installed (if not yet installed) using a package manager on your machine.
 Choose your operating system to find instructions to meet the prerequisites.
 
@@ -85,16 +74,13 @@ xcode-select --install
 
 #### Windows
 
-To use Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC).
-There are two installation options:
+To use Native Image on Windows, install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) version 17.1.0 or later, and Microsoft Visual C++ (MSVC). There are two installation options:
+* Install the Visual Studio Build Tools with the Windows 10 or later SDK
+* Install Visual Studio with the Windows 10 or later SDK
 
-* Install the Visual Studio Build Tools with the Windows 10 SDK
-* Install Visual Studio with the Windows 10 SDK
+Native Image runs in both a PowerShell or Command Prompt and will automatically set up build environments on Windows, given that it can find a suitable Visual Studio installation.
 
-You can use Visual Studio 2017 version 15.9 or later.
-
-The `native-image` builder will only work when it is run from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt varies according to whether you only have the Visual Studio Build Tools installed or if you have the full Visual Studio 2019 installed. For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
+For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 
 ## Build a Native Executable
 
@@ -222,19 +208,12 @@ To automatically collect metadata for your application, see [Automatic Collectio
 
 There are also Maven and Gradle plugins for Native Image to automate building, testing and configuring native executables. Learn more [here](https://graalvm.github.io/native-build-tools/latest/index.html).
 
-Lastly, not all applications may be compatible with Native Image. 
+Some applications may need additional configuration to be compiled with GraalVM Native Image.
 For more details, see [Native Image Compatibility Guide](Compatibility.md).
 
 Native Image can also interop with native languages through a custom API.
 Using this API, you can specify custom native entry points into your Java application and build it into a nativw shared library.
 To learn more, see [Interoperability with Native Code](InteropWithNativeCode.md).
- 
-## License
-
-The Native Image technology is distributed as a separate installable to GraalVM.
-Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Classpath Exception](https://github.com/oracle/graal/blob/master/substratevm/LICENSE).
-
-Native Image for GraalVM Enterprise Edition is licensed under the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
 ### Further Reading
 

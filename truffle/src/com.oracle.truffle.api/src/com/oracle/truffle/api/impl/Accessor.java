@@ -68,6 +68,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -77,6 +78,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -105,6 +107,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
+import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -167,6 +171,8 @@ public abstract class Accessor {
         public abstract RootNode cloneUninitialized(CallTarget sourceCallTarget, RootNode rootNode, RootNode uninitializedRootNode);
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
+
+        public abstract int computeSize(RootNode rootNode);
 
         public abstract Object getLanguageCache(LanguageInfo languageInfo);
 
@@ -414,6 +420,8 @@ public abstract class Accessor {
 
         public abstract void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev);
 
+        public abstract <T, R> R leaveAndEnter(Object polyglotContext, Interrupter interrupter, InterruptibleFunction<T, R> runWhileOutsideContext, T object);
+
         public abstract Object enterIfNeeded(Object polyglotContext);
 
         public abstract void leaveIfNeeded(Object polyglotContext, Object prev);
@@ -446,15 +454,7 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
-            return createThread(polyglotLanguageContext, runnable, innerContextImpl, group, 0);
-        }
-
-        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl) {
-            return createThread(polyglotLanguageContext, runnable, innerContextImpl, null, 0);
-        }
-
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -631,9 +631,10 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor);
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
+
+        public abstract boolean isHostToGuestRootNode(RootNode root);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
 
@@ -653,9 +654,9 @@ public abstract class Accessor {
 
         public abstract Object getContext(Object polyglotLanguageContext);
 
-        public abstract ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass);
+        public abstract Object getStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass);
 
-        public abstract void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
+        public abstract void setStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass, Object value);
 
         public abstract ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> getGeneratorCache(Object polyglotLanguageInstance);
 
@@ -707,8 +708,6 @@ public abstract class Accessor {
 
         public abstract Throwable createInterruptExecution(SourceSection sourceSection);
 
-        public abstract Map<String, String> readOptionsFromSystemProperties(Map<String, String> options);
-
         public abstract AbstractHostLanguageService getHostService(Object polyglotEngineImpl);
 
         public abstract LogHandler getEngineLogHandler(Object polyglotEngineImpl);
@@ -742,6 +741,14 @@ public abstract class Accessor {
         public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
 
         public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Object getEngineFromPolyglotObject(Object polyglotObject);
+
+        public abstract SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext);
+
+        public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
+
+        public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -796,7 +803,7 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
 
-        public abstract void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame);
+        public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
         public abstract boolean isThreadAccessAllowed(Env env, Thread current, boolean singleThread);
 
@@ -818,7 +825,7 @@ public abstract class Accessor {
 
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
-        public abstract void materializeHostFrames(Throwable original);
+        public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
 
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
 
@@ -875,6 +882,8 @@ public abstract class Accessor {
         public abstract boolean isRecurringTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
+        public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
     }
 
@@ -1036,7 +1045,7 @@ public abstract class Accessor {
 
         public abstract boolean hasExceptionStackTrace(Object receiver);
 
-        public abstract Object getExceptionStackTrace(Object receiver);
+        public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
         public abstract boolean hasSourceLocation(Object receiver);
 
@@ -1208,17 +1217,66 @@ public abstract class Accessor {
 
         public abstract int getBaseInstanceSize(Class<?> type);
 
-        public abstract Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
-
-        public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
+        public abstract int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
 
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;
         }
     }
 
+    public abstract static class LanguageProviderSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.provider.LanguageProviderSupportImpl";
+
+        protected LanguageProviderSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract String getLanguageClassName(TruffleLanguageProvider provider);
+
+        public abstract Object create(TruffleLanguageProvider provider);
+
+        public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
+
+        public abstract <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type);
+
+    }
+
+    public abstract static class InstrumentProviderSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.instrumentation.provider.InstrumentProviderSupportImpl";
+
+        protected InstrumentProviderSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract String getInstrumentClassName(Object truffleInstrumentProvider);
+
+        public abstract Object create(Object truffleInstrumentProvider);
+
+        public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
+
+        public abstract <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type);
+    }
+
+    public abstract static class DynamicObjectSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.object.DynamicObjectSupportImpl";
+
+        protected DynamicObjectSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract <T> Iterable<T> lookupTruffleService(Class<T> type);
+
+    }
+
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
+    }
+
+    public final void startOSRFrameTransfer(FrameWithoutBoxing target) {
+        target.startOSRTransfer();
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize
@@ -1236,6 +1294,9 @@ public abstract class Accessor {
         private static final Accessor.EngineSupport ENGINE;
         private static final Accessor.HostSupport HOST;
         private static final Accessor.RuntimeSupport RUNTIME;
+        private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
+        private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
+        private static final DynamicObjectSupport DYNAMIC_OBJECT;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1251,6 +1312,9 @@ public abstract class Accessor {
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
             HOST = loadSupport(HostSupport.IMPL_CLASS_NAME);
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
+            LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
+            INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
+            DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1344,6 +1408,18 @@ public abstract class Accessor {
 
     public final IOSupport ioSupport() {
         return Constants.IO;
+    }
+
+    public final LanguageProviderSupport languageProviderSupport() {
+        return Constants.LANGUAGE_PROVIDER;
+    }
+
+    public final InstrumentProviderSupport instrumentProviderSupport() {
+        return Constants.INSTRUMENT_PROVIDER;
+    }
+
+    public final DynamicObjectSupport dynamicObjectSupport() {
+        return Constants.DYNAMIC_OBJECT;
     }
 
     /**

@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
@@ -61,6 +64,7 @@ import sun.nio.ch.DirectBuffer;
  * contents; layout decisions (offsets, ordering) are modelled separately (see
  * {@link LayoutDecision}), being computed on write-out (see {@link WriteLayout}).
  */
+@SuppressWarnings("this-escape")
 public abstract class ObjectFile {
 
     /*
@@ -103,7 +107,8 @@ public abstract class ObjectFile {
     public enum Format {
         ELF,
         MACH_O,
-        PECOFF
+        PECOFF,
+        LLVM
     }
 
     public abstract Format getFormat();
@@ -121,7 +126,7 @@ public abstract class ObjectFile {
     private final int pageSize;
 
     public ObjectFile(int pageSize) {
-        assert pageSize > 0 : "invalid page size";
+        assert pageSize > 0 : "Invalid page size";
         this.pageSize = pageSize;
     }
 
@@ -177,7 +182,7 @@ public abstract class ObjectFile {
         } else if (osName.startsWith("Windows")) {
             return "Windows";
         } else {
-            throw new IllegalStateException("unsupported OS: " + osName);
+            throw new IllegalStateException("Unsupported OS: " + osName);
         }
     }
 
@@ -191,15 +196,15 @@ public abstract class ObjectFile {
     }
 
     public static String getFilenameSuffix() {
-        switch (ObjectFile.getNativeFormat()) {
-            case ELF:
-            case MACH_O:
-                return ".o";
-            case PECOFF:
-                return ".obj";
-            default:
-                throw new AssertionError("unreachable");
-        }
+        return getFilenameSuffix(getNativeFormat());
+    }
+
+    public static String getFilenameSuffix(Format format) {
+        return switch (format) {
+            case ELF, MACH_O -> ".o";
+            case PECOFF -> ".obj";
+            case LLVM -> ".bc";
+        };
     }
 
     public static Format getNativeFormat() {
@@ -211,7 +216,7 @@ public abstract class ObjectFile {
             case "Windows":
                 return Format.PECOFF;
             default:
-                throw new AssertionError("unreachable"); // we must handle any output of getHostOS()
+                throw new AssertionError("Unreachable"); // we must handle any output of getHostOS()
         }
     }
 
@@ -224,7 +229,7 @@ public abstract class ObjectFile {
             case PECOFF:
                 return new PECoffObjectFile(pageSize);
             default:
-                throw new AssertionError("unreachable");
+                throw new AssertionError("Unreachable");
         }
     }
 
@@ -1236,9 +1241,9 @@ public abstract class ObjectFile {
             }
         }
         if (headers.size() == 0) {
-            throw new IllegalStateException("file has no header");
+            throw new IllegalStateException("File has no header");
         } else if (headers.size() > 1) {
-            throw new IllegalStateException("file has multiple headers");
+            throw new IllegalStateException("File has multiple headers");
         } else {
             assert headers.size() == 1;
         }
@@ -1262,6 +1267,14 @@ public abstract class ObjectFile {
 
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
+
+    public void write(DebugContext context, Path outputFile, @SuppressWarnings("unused") ForkJoinPool forkJoinPool) throws IOException {
+        try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+            withDebugContext(context, "ObjectFile.write", () -> {
+                write(channel);
+            });
+        }
+    }
 
     @SuppressWarnings("try")
     public final void write(FileChannel outputChannel) {
@@ -1317,13 +1330,13 @@ public abstract class ObjectFile {
     private String dependencyGraphAsDotString(Set<LayoutDecision> decisionsToInclude) {
         // null argument means "include all decisions"
         StringBuilder sb = new StringBuilder();
-        sb.append("digraph deps {\n");
+        sb.append("digraph deps {").append(System.lineSeparator());
         for (BuildDependency d : allDependencies) {
             if (decisionsToInclude == null || (decisionsToInclude.contains(d.depending) && decisionsToInclude.contains(d.dependedOn))) {
-                sb.append("\t\"" + d.depending + "\" -> \"" + d.dependedOn + "\";\n");
+                sb.append(String.format("\t\"%s\" -> \"%s\";%n", d.depending, d.dependedOn));
             }
         }
-        sb.append("}\n");
+        sb.append('}').append(System.lineSeparator());
         return sb.toString();
     }
 
@@ -1558,7 +1571,7 @@ public abstract class ObjectFile {
             Set<LayoutDecision> remainingDecisions = new HashSet<>();
             remainingDecisions.addAll(allDecisions);
             remainingDecisions.removeAll(reverseBuildOrder);
-            throw new IllegalStateException("cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
+            throw new IllegalStateException("Cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
         }
         assert reverseBuildOrder.get(0) == dummyFinalDecision; // it's the final one, innit
 
@@ -1631,7 +1644,7 @@ public abstract class ObjectFile {
                         assert valueDecided != null;
                         break;
                     default:
-                        throw new AssertionError("unreachable");
+                        throw new AssertionError("Unreachable");
                 }
                 d.setValue(valueDecided); // sets decision to "taken"
             }
@@ -1683,7 +1696,7 @@ public abstract class ObjectFile {
     protected abstract int getMinimumFileSize();
 
     public int getPageSize() {
-        assert pageSize > 0 : "must be initialized";
+        assert pageSize > 0 : "Must be initialized";
         return pageSize;
     }
 

@@ -140,6 +140,10 @@ public class InspectorAddressTest {
         return new String[]{host, port, path};
     }
 
+    static int parseWSPort(String out) {
+        return Integer.parseInt(parseWSAddress(out)[1]);
+    }
+
     private static void assertAddress(String host, String port, String path, String[] wsAddress) {
         assertEquals(host, wsAddress[0]);
         if (!"?".equals(port)) {

@@ -41,7 +41,9 @@
 #
 
 # If you update this number make sure the graalvm.version value in ./pom.xml matches
-VERSION="23.0.0-dev"
+VERSION="23.1.0-dev"
+# If you update this number make sure the antlr.version value in language/pom.xml matches
+ANTLR_VERSION="4.12.0"
 
 MAIN_CLASS="com.oracle.truffle.sl.launcher.SLMain"
 SCRIPT_HOME="$(cd "$(dirname "$0")" && pwd -P)"
@@ -79,6 +81,7 @@ if [[ "$GRAALVM_VERSION" != "" ]]; then
     versionCheck "Installed in wrong version of GraalVM. Expected: $VERSION, found $GRAALVM_VERSION"
 else
     LANGUAGE_PATH="$SCRIPT_HOME/language/target/simplelanguage.jar"
+    ANTLR_RUNTIME_PATH="$SCRIPT_HOME/language/target/jars/antlr-runtime.jar"
     LAUNCHER_PATH="$SCRIPT_HOME/launcher/target/launcher-$VERSION.jar"
     # Check the GraalVM version in JAVA_HOME
     if [[ "$JAVA_HOME" != "" ]]; then
@@ -122,7 +125,10 @@ if [[ "$GRAALVM_VERSION" != "" ]]; then
             PROGRAM_ARGS+=("$opt") ;;
       esac
     done
-    "$JAVACMD" "${JAVA_ARGS[@]}" -Dtruffle.class.path.append="$LANGUAGE_PATH" -cp "$LAUNCHER_PATH" "$MAIN_CLASS" "${PROGRAM_ARGS[@]}"
+    if [[ "$LANGUAGE_PATH" != "" ]]; then
+        MODULE_PATH_ARGS="-p $LANGUAGE_PATH:$ANTLR_RUNTIME_PATH"
+    fi        
+    "$JAVACMD" "${JAVA_ARGS[@]}" $MODULE_PATH_ARGS -cp "$LAUNCHER_PATH" "$MAIN_CLASS" "${PROGRAM_ARGS[@]}"
 else
     echo "Warning: Could not find GraalVM on $JAVA_HOME. Running on JDK without support for compilation."
     echo
@@ -151,5 +157,5 @@ else
     fi
     GRAAL_SDK_PATH="$HOME/.m2/repository/org/graalvm/sdk/graal-sdk/$VERSION/graal-sdk-$VERSION.jar"
     TRUFFLE_API_PATH="$HOME/.m2/repository/org/graalvm/truffle/truffle-api/$VERSION/truffle-api-$VERSION.jar"
-    "$JAVACMD" "${JAVA_ARGS[@]}" -cp "$GRAAL_SDK_PATH":"$LAUNCHER_PATH":"$LANGUAGE_PATH":"$TRUFFLE_API_PATH" "$MAIN_CLASS" "${PROGRAM_ARGS[@]}"
+    "$JAVACMD" "${JAVA_ARGS[@]}" -p "$GRAAL_SDK_PATH":"$TRUFFLE_API_PATH":"$ANTLR_RUNTIME_PATH":"$LANGUAGE_PATH" --add-modules "org.graalvm.truffle" -cp "$LAUNCHER_PATH" "$MAIN_CLASS" "${PROGRAM_ARGS[@]}"
 fi

@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.blocking;
 
+import java.lang.invoke.VarHandle;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -42,7 +43,7 @@ public interface EspressoLock {
     /**
      * Creates a new {@code EspressoLock} instance.
      */
-    @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
+    @TruffleBoundary // ReentrantLock.<init> blocklisted by SVM
     static EspressoLock create(BlockingSupport<?> blockingSupport) {
         return new EspressoLockImpl(blockingSupport);
     }
@@ -256,6 +257,7 @@ public interface EspressoLock {
 /**
  * {@link EspressoLock} is not a final class to hide the {@link ReentrantLock} implementation.
  */
+@SuppressWarnings("serial")
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final Node dummy = new Node() {
@@ -264,7 +266,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             return false;
         }
     };
-    private static final long serialVersionUID = -2776792497346642438L;
 
     EspressoLockImpl(BlockingSupport<?> blockingSupport) {
         assert blockingSupport != null;
@@ -272,37 +273,50 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     private final BlockingSupport<?> blockingSupport;
-    private volatile Condition waitCondition;
+    private ReentrantLock waitLock;
+    private Condition waitCondition;
     private int waiters = 0;
     private int signals = 0;
 
-    @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Espresso runtime method.")
-    private Condition getWaitCondition() {
-        Condition cond = waitCondition;
-        if (cond == null) {
-            synchronized (this) {
-                cond = waitCondition;
-                if (cond == null) {
-                    waitCondition = cond = super.newCondition();
-                }
-            }
+    private void ensureWaitLockInitialized() {
+        /*
+         * `this` lock is always held by the current thread here. As a result, the `waitLock` read
+         * happens-after `this.lock()` and the `waitLock` write happens-before `this.unlock()`.
+         */
+        assert isHeldByCurrentThread();
+        if (waitLock == null) {
+            ReentrantLock lock = new ReentrantLock();
+            Condition cond = lock.newCondition();
+            VarHandle.storeStoreFence(); // ensure safe publication
+            waitLock = lock;
+            waitCondition = cond;
+        } else {
+            assert waitCondition != null;
         }
-        return cond;
     }
 
     @Override
+    @TruffleBoundary // ReetrantLock.tryLock() blocklisted by SVM
     public void lock() {
+        if (tryLock()) {
+            // fast-path before involving safepoint support
+            return;
+        }
         TruffleSafepoint.setBlockedThreadInterruptible(dummy, EspressoLockImpl::doLock, this);
     }
 
     @Override
-    @TruffleBoundary // ReetrantLock.unlock() blacklisted by SVM
+    @TruffleBoundary // ReetrantLock.unlock() blocklisted by SVM
     public void unlock() {
         super.unlock();
     }
 
     @Override
     public void lockInterruptible() throws GuestInterruptedException {
+        if (tryLock()) {
+            // fast-path before involving safepoint support
+            return;
+        }
         blockingSupport.enterBlockingRegion(EspressoLockImpl::doLock, dummy, this);
     }
 
@@ -338,20 +352,33 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     @Override
     @TruffleBoundary
     public void signal() {
-        if (isHeldByCurrentThread()) {
-            signals = Math.min(signals + 1, waiters);
+        if (!isHeldByCurrentThread()) {
+            throw new IllegalMonitorStateException("Cannot signal lock that is not held");
         }
-        // Will throw if not held;
-        getWaitCondition().signal();
+        ensureWaitLockInitialized();
+        waitLock.lock();
+        try {
+            signals = Math.min(signals + 1, waiters);
+            waitCondition.signal();
+        } finally {
+            waitLock.unlock();
+        }
     }
 
     @Override
     @TruffleBoundary
     public void signalAll() {
-        if (isHeldByCurrentThread()) {
-            signals = waiters;
+        if (!isHeldByCurrentThread()) {
+            throw new IllegalMonitorStateException("Cannot signal lock that is not held");
         }
-        getWaitCondition().signalAll();
+        ensureWaitLockInitialized();
+        waitLock.lock();
+        try {
+            signals = waiters;
+            waitCondition.signalAll();
+        } finally {
+            waitLock.unlock();
+        }
     }
 
     @Override
@@ -377,16 +404,24 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         }
     }
 
+    @SuppressFBWarnings(value = "UL_UNRELEASED_LOCK", justification = "this lock is released at the start of the method and re-acquired at the end")
     private void enterWaitInterruptible(InterruptibleWithBooleanResult<EspressoLockImpl> interruptible) throws GuestInterruptedException {
+        ensureWaitLockInitialized();
+        waitLock.lock();
         waiters++;
+        int holdCount = 0;
         try {
+            while (isHeldByCurrentThread()) {
+                unlock();
+                holdCount++;
+            }
             blockingSupport.enterBlockingRegion(interruptible, dummy, this,
                             /*
                              * Upon being notified to safepoint, control is returned after lock has
                              * been acquired. We must unlock it, allowing other thread to process
                              * safepoints while we process ours.
                              */
-                            this::unlock,
+                            waitLock::unlock,
                             /*
                              * Since we unlocked to allow other threads to process safepoints, we
                              * must re-lock ourselves. If this lock was woken up by a signal, then a
@@ -403,12 +438,18 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             consumeSignal();
             throw e;
         } finally {
+            waitLock.unlock();
+            // We need to ensure that we re-acquire the lock (even if the guest is getting
+            // interrupted)
+            for (int i = 0; i < holdCount; i++) {
+                lock();
+            }
             waiters--;
         }
     }
 
     private boolean consumeSignal() {
-        assert isHeldByCurrentThread();
+        assert waitLock.isHeldByCurrentThread();
         if (signals > 0) {
             signals--;
             return true;
@@ -417,7 +458,9 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     private void afterSafepointForWait(Throwable t) {
-        lock();
+        // this happens on the thread that called `ensureWaitLockInitialized` in
+        // `enterWaitInterruptible`.
+        waitLock.lock();
         if (consumeSignal()) {
             /* Another thread might have signaled while processing safepoints. */
             throw new Signaled(t);
@@ -475,14 +518,16 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         @Override
         @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso lock runtime method.")
         public void apply(EspressoLockImpl lock) throws InterruptedException {
+            // this happens on the thread that called `ensureWaitLockInitialized` in
+            // `enterWaitInterruptible`.
             if (nanoTimeout == 0L) {
-                lock.getWaitCondition().await();
+                lock.waitCondition.await();
             } else {
                 long left = nanoTimeout - (System.nanoTime() - start);
                 if (left <= 0) {
                     return; // fully waited.
                 }
-                setResult(lock.getWaitCondition().await(left, TimeUnit.NANOSECONDS));
+                setResult(lock.waitCondition.await(left, TimeUnit.NANOSECONDS));
             }
         }
     }
@@ -498,7 +543,9 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         @Override
         @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso lock runtime method.")
         public void apply(EspressoLockImpl lock) throws InterruptedException {
-            setResult(lock.getWaitCondition().awaitUntil(date));
+            // this happens on the thread that called `ensureWaitLockInitialized` in
+            // `enterWaitInterruptible`.
+            setResult(lock.waitCondition.awaitUntil(date));
         }
     }
 }

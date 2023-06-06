@@ -50,6 +50,7 @@ import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -86,6 +87,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
@@ -238,6 +240,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isMapAccessible(HostAccess access);
 
+        public abstract boolean isBigIntegerAccessibleAsNumber(HostAccess access);
+
         public abstract boolean allowsPublicAccess(HostAccess hostAccess);
 
         public abstract boolean allowsAccessInheritance(HostAccess hostAccess);
@@ -257,6 +261,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void engineClosed(Engine engine);
 
         public abstract MutableTargetMapping[] getMutableTargetMappings(HostAccess access);
+
+        public abstract Map<String, String> readOptionsFromSystemProperties();
 
     }
 
@@ -327,11 +333,10 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
-                    boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
-                    AbstractPolyglotHostService polyglotHostService) {
-        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage,
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
+        return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
@@ -571,7 +576,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in,
+        public abstract Context createContext(Object receiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                         boolean allowHostLookup,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
@@ -599,6 +604,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void shutdown(Object engine);
 
         public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
+
+        public abstract SandboxPolicy getSandboxPolicy(Object engineReceiver);
 
     }
 
@@ -832,6 +839,12 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void hostExit(int exitCode);
 
+        public abstract boolean allowsPublicAccess();
+
+        public final boolean isHostStackTraceVisibleToGuest() {
+            return allowsPublicAccess();
+        }
+
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
@@ -959,6 +972,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract long asLong(Object context, Object receiver);
+
+        public boolean fitsInBigInteger(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract BigInteger asBigInteger(Object context, Object receiver);
 
         public boolean fitsInDouble(Object context, Object receiver) {
             return false;
@@ -1159,12 +1178,20 @@ public abstract class AbstractPolyglotImpl {
         return getNext().isInternalFileSystem(fileSystem);
     }
 
+    public boolean isHostFileSystem(FileSystem fileSystem) {
+        return getNext().isHostFileSystem(fileSystem);
+    }
+
     public ThreadScope createThreadScope() {
         return getNext().createThreadScope();
     }
 
     public LogHandler newLogHandler(Object logHandlerOrStream) {
         return getNext().newLogHandler(logHandlerOrStream);
+    }
+
+    public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+        return getNext().createUnionOptionDescriptors(optionDescriptors);
     }
 
     /**
@@ -1178,7 +1205,7 @@ public abstract class AbstractPolyglotImpl {
         }
         OptionDescriptors union = OptionDescriptors.EMPTY;
         while (current != null) {
-            union = OptionDescriptors.createUnion(current.createEngineOptionDescriptors(), union);
+            union = createUnionOptionDescriptors(current.createEngineOptionDescriptors(), union);
             current = current.next;
         }
         return union;

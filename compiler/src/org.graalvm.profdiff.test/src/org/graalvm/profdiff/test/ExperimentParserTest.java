@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
@@ -40,12 +41,15 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.Position;
 import org.graalvm.profdiff.parser.ExperimentFiles;
 import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.parser.FileView;
 import org.graalvm.profdiff.core.StdoutWriter;
 import org.graalvm.profdiff.core.Writer;
@@ -117,6 +121,37 @@ public class ExperimentParserTest {
         }
     }
 
+    /**
+     * Experiment files mocked using a string.
+     */
+    private static final class ExperimentString implements ExperimentFiles {
+        private final String optimizationLogString;
+
+        private ExperimentString(String optimizationLogString) {
+            this.optimizationLogString = optimizationLogString;
+        }
+
+        @Override
+        public ExperimentId getExperimentId() {
+            return ExperimentId.ONE;
+        }
+
+        @Override
+        public Optional<FileView> getProftoolOutput() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Iterable<FileView> getOptimizationLogs() {
+            return List.of(fileViewFromString("<string>", optimizationLogString));
+        }
+
+        @Override
+        public Experiment.CompilationKind getCompilationKind() {
+            return Experiment.CompilationKind.JIT;
+        }
+    }
+
     @Test
     public void testExperimentParser() throws Exception {
         ExperimentFiles experimentFiles = new ExperimentResources();
@@ -135,15 +170,15 @@ public class ExperimentParserTest {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getMethod().getMethodName());
 
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null);
-                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined"), false, null));
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
+                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined"), false, null, true));
                     assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");
                     rootPhase.addChild(someTier);
                     someTier.addChild(new Optimization("LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
+                                    Position.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
                                     EconomicMap.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhase("EmptyPhase"));
                     assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
@@ -152,15 +187,15 @@ public class ExperimentParserTest {
                 case "2": {
                     assertEquals("Klass.someMethod()",
                                     compilationUnit.getMethod().getMethodName());
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null);
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
                     ReceiverTypeProfile receiverTypeProfile = new ReceiverTypeProfile(true, List.of(new ReceiverTypeProfile.ProfiledType("KlassImpl", 1.0, "KlassImpl.abstractMethod()")));
-                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile));
+                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile, true));
                     assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("Klass.someMethod()", 2),
+                                    Position.of("Klass.someMethod()", 2),
                                     EconomicMap.of("unrollFactor", 1)));
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
@@ -175,5 +210,49 @@ public class ExperimentParserTest {
                     break;
             }
         }
+    }
+
+    /**
+     * Verifies that multi-method keys are separated from multi-method names.
+     *
+     * The optimization logs from Graal contain method names with multi-method keys. In profdiff, we
+     * want to be able to compare two compilation units even if they come from a different
+     * multi-method. For this reason the parser removes multi-method keys from positions and
+     * inlining-tree nodes.
+     */
+    @Test
+    public void multiMethodKeys() throws ExperimentParserError, IOException {
+        String compilationUnitJSON = """
+                        {"methodName": "foo.Bar%%MultiMethodKey(Baz)", "compilationId": "100",
+                            "inliningTree": {
+                                "methodName": "foo.Bar%%MultiMethodKey(Baz)",
+                                "callsiteBci": -1,
+                                "inlined": false,
+                                "indirect": false,
+                                "alive": false,
+                                "reason": null,
+                                "invokes": []
+                            },
+                            "optimizationTree": {
+                                "phaseName": "RootPhase",
+                                "optimizations": [
+                                    {
+                                        "optimizationName": "DeadCodeElimination",
+                                        "eventName": "NodeRemoval",
+                                        "position": {"foo.Bar%%MultiMethodKey(Baz)": 10}
+                                    }
+                                ]
+                            }
+                        }""".replace("\n", "");
+        Experiment experiment = new ExperimentParser(new ExperimentString(compilationUnitJSON), new StdoutWriter(null)).parse();
+        String methodName = "foo.Bar(Baz)";
+        Method method = experiment.getMethodsByName().get(methodName);
+        assertNotNull(method);
+        CompilationUnit compilationUnit = method.getCompilationUnits().get(0);
+        assertEquals("MultiMethodKey", compilationUnit.getMultiMethodKey());
+        CompilationUnit.TreePair treePair = compilationUnit.loadTrees();
+        assertEquals(methodName, treePair.getInliningTree().getRoot().getName());
+        Optimization optimization = treePair.getOptimizationTree().getRoot().getOptimizationsRecursive().get(0);
+        assertEquals(methodName, optimization.getPosition().enclosingMethodPath().get(0).getMethodName());
     }
 }

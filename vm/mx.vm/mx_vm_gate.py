@@ -24,6 +24,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import shutil
 
 import mx
 import mx_benchmark
@@ -104,7 +105,7 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
         mx.log(compiler_log)
     remove(compiler_log_file)
 
-def _test_libgraal_basic(extra_vm_arguments):
+def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
@@ -112,7 +113,7 @@ def _test_libgraal_basic(extra_vm_arguments):
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     graalvm_jdk = mx.JDKConfig(graalvm_home)
-    jres = [graalvm_home]
+    jres = [(graalvm_home, [])]
 
     if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
@@ -120,8 +121,21 @@ def _test_libgraal_basic(extra_vm_arguments):
         if exists(libgraal_jre):
             mx.rmtree(libgraal_jre)
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
-        jres.append(libgraal_jre)
+        jres.append((libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
+
+    # Tests that dropping libgraal into OracleJDK works
+    oraclejdk = mx.get_env('ORACLEJDK_JAVA_HOME')
+    if oraclejdk:
+        libjvmci = libgraal_location
+        assert exists(libjvmci), ('missing', libjvmci)
+        oraclejdk_libgraal = abspath('oraclejdk_libgraal')
+        if exists(oraclejdk_libgraal):
+            mx.rmtree(oraclejdk_libgraal)
+        shutil.copytree(oraclejdk, oraclejdk_libgraal)
+        shutil.copy(libjvmci, join(oraclejdk_libgraal, 'lib'))
+        jres.append((oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
+        atexit.register(mx.rmtree, oraclejdk_libgraal)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
@@ -153,19 +167,19 @@ def _test_libgraal_basic(extra_vm_arguments):
                 stub = f'{m.group(1)}{m.group(2)}'
                 stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
         if not stub_compilations:
-            mx.abort('Expected at least one stub compilation in compiler log')
+            mx.abort(f'Expected at least one stub compilation in compiler log:\n{compiler_log}')
         duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
         if duplicated:
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
     args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose',
-            '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
+            '-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre in jres:
+    for jre, jre_args in jres:
         try:
-            mx.run([join(jre, 'bin', 'java')] + args)
+            mx.run([join(jre, 'bin', 'java')] + jre_args + args)
         finally:
             _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
@@ -183,7 +197,7 @@ def _test_libgraal_fatal_error_handling():
     vmargs = ['-XX:+PrintFlagsFinal',
               '-Dlibgraal.CrashAt=length,hashCode',
               '-Dlibgraal.CrashAtIsFatal=true']
-    cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
+    cmd = ["dacapo:xalan", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
     out = mx.OutputCapture()
     exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
     if exitcode == 0:
@@ -226,6 +240,33 @@ def _test_libgraal_fatal_error_handling():
         mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
         mx.rmtree(scratch_dir)
 
+def _test_libgraal_systemic_failure_detection():
+    """
+    Tests that system compilation failures are detected and cause the VM to exit.
+    """
+    for rate in (-1, 1):
+        vmargs = [
+            '-Dgraal.CrashAt=*e*,*a*',
+            f'-Dgraal.SystemicCompilationFailureRate={rate}',
+            '-Dgraal.DumpOnError=false',
+            '-Dgraal.CompilationFailureAction=Silent'
+        ]
+        cmd = ["dacapo:xalan", "--tracker=none", "--"] + vmargs + ["--", "--preserve", '-n', '20']
+        out = mx.OutputCapture()
+        exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+        expect_exitcode_0 = rate >= 0
+        if (exitcode == 0) != expect_exitcode_0:
+            mx.abort(f'Unexpected benchmark exit code ({exitcode}): ' + ' '.join(cmd) + linesep + out.data)
+        else:
+            expect = 'Systemic Graal compilation failure detected'
+            if expect not in out.data:
+                mx.abort(f'Expected "{expect}" in output:{linesep}{out.data}')
+
+        # Only clean up scratch dir on success
+        for scratch_dir in bench_suite.scratchDirs():
+            mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+            mx.rmtree(scratch_dir)
+
 def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
     """
     Determines if `jdk` supports the `-Djvmci.ForceTranslateFailure` option.
@@ -256,7 +297,7 @@ def _test_libgraal_CompilationTimeout_JIT():
                   f'{G}LogFile={compiler_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
 
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '3']
         exit_code = mx.run(cmd, nonZeroIsFatal=False)
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
@@ -403,7 +444,7 @@ def gate_body(args, tasks):
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
             # 1. the build must be a GraalVM
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
-            mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), graalvm_version_regex=mx_sdk_vm_impl.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
+            mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), expect_graalvm=True, check_jvmci=True)
 
     libgraal_suite_name = 'substratevm'
     if mx.suite(libgraal_suite_name, fatalIfMissing=False) is not None:
@@ -419,11 +460,12 @@ def gate_body(args, tasks):
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 
-                # run avrora on the GraalVM binary itself
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_basic(extra_vm_arguments)
+                    if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_systemic_failure_detection()
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
                     if t: _test_libgraal_CompilationTimeout_JIT()
                 with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
@@ -492,7 +534,15 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--enable-url-protocols=jar',
                 '--enable-url-protocols=http'
             ]
+            truffle_without_compilation = truffle_with_compilation + [
+                '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
+            ]
             args = ['--force-builder-on-cp', '--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svm._native_unittest(native_image, args)
+
+            args = ['--force-builder-on-cp', '--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)

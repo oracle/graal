@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -32,20 +34,20 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -53,9 +55,13 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
+import com.oracle.svm.core.heap.ReferenceInternals;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.InteriorObjRefWalker;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -72,7 +78,9 @@ import com.oracle.truffle.api.utilities.TriState;
 
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -143,6 +151,24 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
+        return super.getPartialEvaluationMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
+        return super.getHostMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return super.getConstantFieldInfo(field);
     }
 
     private void teardown() {
@@ -328,11 +354,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return super.getGraalOptions(type);
     }
 
-    @Override
-    protected boolean isPrintGraphEnabled() {
-        return DebugOptions.PrintGraph.getValue(getGraalOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
-    }
-
     @Platforms(HOSTED_ONLY.class)
     public void resetNativeImageState() {
         clearState();
@@ -371,18 +392,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean isInlineable(ResolvedJavaMethod method) {
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
-            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
-                /* The semantics of Uninterruptible would get lost during partial evaluation. */
-                return false;
-            }
-        }
-        return super.isInlineable(method);
-    }
-
-    @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
@@ -403,13 +412,62 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return stackOverflowCheck.getStackOverflowBoundary().rawValue();
     }
 
+    @Override
+    protected int getObjectAlignment() {
+        return ConfigurationValues.getObjectLayout().getAlignment();
+    }
+
+    @Override
+    protected int getArrayBaseOffset(Class<?> componentType) {
+        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.fromJavaClass(componentType));
+    }
+
+    @Override
+    protected int getArrayIndexScale(Class<?> componentType) {
+        return ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.fromJavaClass(componentType));
+    }
+
+    @Override
+    protected int getBaseInstanceSize(Class<?> type) {
+        int le = DynamicHub.fromClass(type).getLayoutEncoding();
+        return (int) LayoutEncoding.getPureInstanceAllocationSize(le).rawValue();
+    }
+
+    @Override
+    protected int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
+        if (type.isArray() || type.isPrimitive()) {
+            throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
+        }
+        if (includePrimitive) {
+            throw new IllegalArgumentException("Retrieval of primitive field offsets is not supported!");
+        }
+        if (!includeSuperclasses) {
+            throw new IllegalArgumentException("Exclusion of field offsets from superclasses is not supported!");
+        }
+
+        List<Integer> fieldOffsets = new ArrayList<>();
+
+        DynamicHub dh = DynamicHub.fromClass(type);
+        boolean referenceInstanceClass = dh.isReferenceInstanceClass();
+        int monitorOffset = dh.getMonitorOffset();
+        InteriorObjRefWalker.walkInstanceReferenceOffsets(dh, (offset) -> {
+            if (offset == monitorOffset) {
+                // Object monitor is not a proper field.
+            } else if (referenceInstanceClass && ReferenceInternals.isAnyReferenceFieldOffset(offset)) {
+                // Reference class field offsets must not be exposed.
+            } else {
+                fieldOffsets.add(offset);
+            }
+        });
+        return fieldOffsets.stream().mapToInt(Integer::intValue).toArray();
+    }
+
     /**
      * Compilation task used when Truffle runtime is run in single threaded mode.
      */
-    private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
+    private static class SingleThreadedCompilationTask extends AbstractCompilationTask {
         private final boolean lastTierCompilation;
         private final boolean hasNextTier;
-        TruffleInlining inlining = new TruffleInlining();
 
         SingleThreadedCompilationTask(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
             this.hasNextTier = !optimizedCallTarget.engine.firstTierOnly && !lastTierCompilation;
@@ -428,14 +486,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         @Override
-        public TruffleInliningData inliningData() {
-            return inlining;
-        }
-
-        @Override
         public boolean hasNextTier() {
             return hasNextTier;
         }
 
     }
+
 }

@@ -37,6 +37,7 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -49,11 +50,14 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -69,6 +73,7 @@ public abstract class HostVM {
     protected final ClassLoader classLoader;
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
+    private HostedProviders providers;
 
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
@@ -168,7 +173,7 @@ public abstract class HostVM {
         return config;
     }
 
-    public abstract Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+    public abstract Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext);
 
     /**
@@ -217,10 +222,9 @@ public abstract class HostVM {
         return true;
     }
 
-    @SuppressWarnings("unused")
-    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
+    public InlineBeforeAnalysisGraphDecoder<?> createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
-        return InlineBeforeAnalysisPolicy.NO_INLINING;
+        return new InlineBeforeAnalysisGraphDecoder<>(bb, InlineBeforeAnalysisPolicy.NO_INLINING, resultGraph, bb.getProviders(method), null);
     }
 
     @SuppressWarnings("unused")
@@ -264,7 +268,7 @@ public abstract class HostVM {
      *         {@link StructuredGraph} when a custom parsing routine has been performed.
      */
     @SuppressWarnings("unused")
-    public Object parseGraph(BigBang bb, AnalysisMethod method) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         return PARSING_UNHANDLED;
     }
 
@@ -284,6 +288,16 @@ public abstract class HostVM {
     @SuppressWarnings("unused")
     public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
         return StructuredGraph.AllowAssumptions.NO;
+    }
+
+    public void initializeProviders(HostedProviders newProviders) {
+        AnalysisError.guarantee(providers == null, "can only initialize providers once");
+        providers = newProviders;
+    }
+
+    @SuppressWarnings("unused")
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        return providers;
     }
 
     /**
@@ -362,6 +376,10 @@ public abstract class HostVM {
     }
 
     public boolean ignoreInstanceOfTypeDisallowed() {
+        return false;
+    }
+
+    public boolean isUnknownValueField(@SuppressWarnings("unused") AnalysisField field) {
         return false;
     }
 }

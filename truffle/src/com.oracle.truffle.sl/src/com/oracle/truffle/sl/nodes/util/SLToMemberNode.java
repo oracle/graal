@@ -56,7 +56,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLTypes;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 
 /**
  * The node to normalize any value to an SL value. This is useful to reduce the number of values
@@ -97,7 +97,7 @@ public abstract class SLToMemberNode extends Node {
 
     @Specialization
     @TruffleBoundary
-    protected static String fromBigNumber(SLBigNumber value) {
+    protected static String fromBigNumber(SLBigInteger value) {
         return value.toString();
     }
 
@@ -108,8 +108,8 @@ public abstract class SLToMemberNode extends Node {
                 return longToString(interop.asLong(value));
             } else if (interop.isString(value)) {
                 return interop.asString(value);
-            } else if (interop.isNumber(value) && value instanceof SLBigNumber) {
-                return bigNumberToString((SLBigNumber) value);
+            } else if (interop.isNumber(value) && value instanceof SLBigInteger) {
+                return bigNumberToString((SLBigInteger) value);
             } else {
                 throw error(value);
             }
@@ -124,7 +124,7 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @TruffleBoundary
-    private static String bigNumberToString(SLBigNumber value) {
+    private static String bigNumberToString(SLBigInteger value) {
         return value.toString();
     }
 

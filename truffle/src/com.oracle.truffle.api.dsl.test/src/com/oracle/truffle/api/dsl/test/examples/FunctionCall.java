@@ -50,6 +50,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.examples.FunctionCallFactory.FunctionCallNodeGen;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -122,6 +123,7 @@ public class FunctionCall {
             return callNode.call(new Object[]{argument});
         }
 
+        @Idempotent
         protected final boolean cacheFunctionTarget(Function function) {
             CompilerAsserts.neverPartOfCompilation("do not cache function target in compiled code");
             if (cachedFunctions != null) {

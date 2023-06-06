@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -101,21 +101,21 @@ public class VMThreadSTFeature implements InternalFeature {
             Registration r = new Registration(plugins.getInvocationPlugins(), threadLocalClass);
             Class<?> valueClass = VMThreadLocalInfo.getValueClass(threadLocalClass);
 
-            registerAccessors(r, valueClass, false);
-            registerAccessors(r, valueClass, true);
+            registerAccessors(r, snippetReflection, valueClass, false);
+            registerAccessors(r, snippetReflection, valueClass, true);
 
             /* compareAndSet() method without the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, valueClass, valueClass) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode expect, ValueNode update) {
-                    return handleCompareAndSet(b, targetMethod, receiver, expect, update);
+                    return handleCompareAndSet(b, snippetReflection, targetMethod, receiver, expect, update);
                 }
             });
             /* get() method with the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, IsolateThread.class, valueClass, valueClass) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
-                    return handleCompareAndSet(b, targetMethod, receiver, expect, update);
+                    return handleCompareAndSet(b, snippetReflection, targetMethod, receiver, expect, update);
                 }
             });
         }
@@ -127,20 +127,20 @@ public class VMThreadSTFeature implements InternalFeature {
             r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    return handleGetAddress(b, targetMethod, receiver);
+                    return handleGetAddress(b, snippetReflection, targetMethod, receiver);
                 }
             });
             /* getAddress() method with the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-                    return handleGetAddress(b, targetMethod, receiver);
+                    return handleGetAddress(b, snippetReflection, targetMethod, receiver);
                 }
             });
         }
     }
 
-    private void registerAccessors(Registration r, Class<?> valueClass, boolean isVolatile) {
+    private void registerAccessors(Registration r, SnippetReflectionProvider snippetReflection, Class<?> valueClass, boolean isVolatile) {
         /*
          * Volatile accesses do not need memory barriers in single-threaded mode, i.e., we register
          * the same plugin for normal and volatile accesses.
@@ -151,41 +151,41 @@ public class VMThreadSTFeature implements InternalFeature {
         r.register(new RequiredInvocationPlugin("get" + suffix, Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                return handleGet(b, targetMethod, receiver);
+                return handleGet(b, snippetReflection, targetMethod, receiver);
             }
         });
         /* get() method with the VMThread parameter. */
         r.register(new RequiredInvocationPlugin("get" + suffix, Receiver.class, IsolateThread.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-                return handleGet(b, targetMethod, receiver);
+                return handleGet(b, snippetReflection, targetMethod, receiver);
             }
         });
         /* set() method without the VMThread parameter. */
         r.register(new RequiredInvocationPlugin("set" + suffix, Receiver.class, valueClass) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode valueNode) {
-                return handleSet(b, receiver, valueNode);
+                return handleSet(b, snippetReflection, receiver, valueNode);
             }
         });
         /* set() method with the VMThread parameter. */
         r.register(new RequiredInvocationPlugin("set" + suffix, Receiver.class, IsolateThread.class, valueClass) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode valueNode) {
-                return handleSet(b, receiver, valueNode);
+                return handleSet(b, snippetReflection, receiver, valueNode);
             }
         });
     }
 
-    private boolean handleGet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-        VMThreadLocalInfo info = threadLocalCollector.findInfo(b, receiver.get());
+    private boolean handleGet(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod targetMethod, Receiver receiver) {
+        VMThreadLocalInfo info = threadLocalCollector.findInfo(b, snippetReflection, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
-        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), info, holder, BarrierType.ARRAY, MemoryOrderMode.PLAIN));
+        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), info, holder, BarrierType.NONE, MemoryOrderMode.PLAIN));
         return true;
     }
 
-    private boolean handleSet(GraphBuilderContext b, Receiver receiver, ValueNode valueNode) {
-        VMThreadLocalInfo info = threadLocalCollector.findInfo(b, receiver.get());
+    private boolean handleSet(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, Receiver receiver, ValueNode valueNode) {
+        VMThreadLocalInfo info = threadLocalCollector.findInfo(b, snippetReflection, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
         StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.ARRAY, MemoryOrderMode.PLAIN);
         b.add(store);
@@ -193,8 +193,8 @@ public class VMThreadSTFeature implements InternalFeature {
         return true;
     }
 
-    private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode expect, ValueNode update) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+    private boolean handleCompareAndSet(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode expect, ValueNode update) {
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, snippetReflection, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(threadLocalInfo));
         CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, holder, expect, update);
         b.addPush(targetMethod.getSignature().getReturnKind(), cas);
@@ -202,8 +202,8 @@ public class VMThreadSTFeature implements InternalFeature {
         return true;
     }
 
-    private boolean handleGetAddress(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+    private boolean handleGetAddress(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod targetMethod, Receiver receiver) {
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, snippetReflection, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(threadLocalInfo));
         b.addPush(targetMethod.getSignature().getReturnKind(), new AddressOfVMThreadLocalNode(threadLocalInfo, holder));
         return true;

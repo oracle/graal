@@ -57,7 +57,7 @@ class Checker:
         self.name = name
         if not isinstance(regexps, list):
             regexps = [regexps]
-        self.rexps = [re.compile(regexp) for regexp in regexps]
+        self.rexps = [re.compile(r) for r in regexps if r is not None]
 
     # Check that successive lines of a gdb command's output text
     # match the corresponding regexp patterns provided when this
@@ -110,7 +110,11 @@ class Checker:
 
 def execute(command):
     print('(gdb) %s'%(command))
-    return gdb.execute(command, to_string=True)
+    try:
+        return gdb.execute(command, to_string=True)
+    except gdb.error as e:
+        print(e)
+        sys.exit(1)
 
 # Configure this gdb session
 
@@ -180,6 +184,9 @@ def test():
     # disable printing of address symbols
     execute("set print symbol off")
 
+    exec_string = execute("ptype _objhdr")
+    fixed_idhash_field = "int idHash;" in exec_string
+
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
     rexp = [r"type = class hello\.Hello\$DefaultGreeter : public hello\.Hello\$Greeter {",
@@ -241,7 +248,7 @@ def test():
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
                 r"%shub = %s,"%(spaces_pattern, address_pattern),
-                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>}, "%(spaces_pattern),
                 r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
                 r"%slen = 0x0,"%(spaces_pattern),
@@ -260,7 +267,7 @@ def test():
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
                     r"%shub = %s,"%(spaces_pattern, address_pattern),
-                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                     r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -270,7 +277,7 @@ def test():
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
                     r"%shub = %s,"%(spaces_pattern, address_pattern),
-                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                     r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -310,7 +317,7 @@ def test():
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
                 r"%shub = %s,"%(spaces_pattern, address_pattern),
-                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>},"%(spaces_pattern),
                 r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                 r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -426,12 +433,12 @@ def test():
     if isolates:
         rexp = [r"type = struct _objhdr {",
                 r"%s_z_\.java\.lang\.Class \*hub;"%(spaces_pattern),
-                r"%sint idHash;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern) if fixed_idhash_field else None,
                 r"}"]
     else:
         rexp = [r"type = struct _objhdr {",
                 r"%sjava\.lang\.Class \*hub;"%(spaces_pattern),
-                r"%sint idHash;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern) if fixed_idhash_field else None,
                 r"}"]
 
     checker = Checker('ptype _objhdr', rexp)

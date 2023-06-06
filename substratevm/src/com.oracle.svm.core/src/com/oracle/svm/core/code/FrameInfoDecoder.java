@@ -76,7 +76,7 @@ public class FrameInfoDecoder {
     /**
      * Value added to source line to guarantee the value is greater than zero.
      */
-    protected static final int COMPRESSED_SOURCE_LINE_ADDEND = 2;
+    protected static final int COMPRESSED_SOURCE_LINE_ADDEND = 3;
 
     protected static boolean isFrameInfoMatch(long frameInfoIndex, NonmovableArray<Byte> frameInfoEncodings, long searchEncodedBci) {
         NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(frameInfoEncodings, frameInfoIndex);
@@ -377,10 +377,11 @@ public class FrameInfoDecoder {
         FrameInfoQueryResult prev = null;
         ValueInfo[][] virtualObjects = null;
 
-        while (true) {
+        while (!state.isDone) {
             long start = readBuffer.getByteIndex();
             int encodedBci = readBuffer.getSVInt();
             if (encodedBci == NO_CALLER_BCI) {
+                state.isDone = true;
                 return result;
             }
 
@@ -460,6 +461,8 @@ public class FrameInfoDecoder {
 
             state.isFirstFrame = false;
         }
+
+        return result;
     }
 
     @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)

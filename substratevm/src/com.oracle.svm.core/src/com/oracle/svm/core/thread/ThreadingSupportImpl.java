@@ -142,7 +142,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             return rawValue >= 0 ? rawValue : -rawValue;
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Must not contain safepoint checks.")
         private void executeCallback() {
             if (isCallbackDisabled()) {
                 return;
@@ -177,7 +177,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Must not contain safepoint checks.")
         private void updateSafepointRequested() {
             long nextDeadline = lastCallbackExecution + targetIntervalNanos;
             long remainingNanos = nextDeadline - System.nanoTime();
@@ -196,13 +196,13 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void setSafepointRequested(int value) {
             requestedChecks = value;
             Safepoint.setSafepointRequested(value);
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private boolean isCallbackDisabled() {
             return isExecuting || isRecurringCallbackPaused();
         }
@@ -250,7 +250,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
-                throw new IllegalArgumentException("intervalNanos");
+                throw new IllegalArgumentException("The intervalNanos field is less than one.");
             }
 
             RecurringCallbackTimer timer = createRecurringCallbackTimer(intervalNanos, callback);
@@ -292,7 +292,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return null;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void removeRecurringCallback(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
@@ -319,12 +319,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isRecurringCallbackRegistered(IsolateThread thread) {
         return isRecurringCallbackSupported() && activeTimer.get(thread) != null;
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
         return ActionOnTransitionToJavaSupport.isActionPending() ||
                         (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
@@ -406,7 +406,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return SupportRecurringCallback.getValue() && MultiThreaded.getValue();
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> void throwUnchecked(Throwable exception) throws T {
         throw (T) exception; // T is inferred as RuntimeException, but doesn't have to be

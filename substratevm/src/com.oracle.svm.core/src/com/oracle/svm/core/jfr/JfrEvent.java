@@ -36,6 +36,7 @@ import com.oracle.svm.core.Uninterruptible;
 public final class JfrEvent {
     public static final JfrEvent ThreadStart = create("jdk.ThreadStart");
     public static final JfrEvent ThreadEnd = create("jdk.ThreadEnd");
+    public static final JfrEvent ThreadCPULoad = create("jdk.ThreadCPULoad");
     public static final JfrEvent DataLoss = create("jdk.DataLoss");
     public static final JfrEvent ClassLoadingStatistics = create("jdk.ClassLoadingStatistics");
     public static final JfrEvent InitialEnvironmentVariable = create("jdk.InitialEnvironmentVariable");
@@ -58,6 +59,9 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
     public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
+    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate");
+    public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
+    public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary");
 
     private final long id;
     private final String name;
@@ -85,6 +89,6 @@ public final class JfrEvent {
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit() {
-        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
     }
 }

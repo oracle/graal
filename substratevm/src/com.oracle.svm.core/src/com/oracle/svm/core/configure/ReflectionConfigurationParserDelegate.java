@@ -42,7 +42,13 @@ public interface ReflectionConfigurationParserDelegate<T> {
 
     void registerDeclaredClasses(T type);
 
+    void registerRecordComponents(T type);
+
     void registerPermittedSubclasses(T type);
+
+    void registerNestMembers(T type);
+
+    void registerSigners(T type);
 
     void registerPublicFields(T type);
 

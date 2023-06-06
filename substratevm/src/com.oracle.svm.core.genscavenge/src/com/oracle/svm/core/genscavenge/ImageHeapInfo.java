@@ -30,10 +30,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -46,29 +46,29 @@ public final class ImageHeapInfo {
     /** Indicates no chunk with {@link #initialize} chunk offset parameters. */
     public static final long NO_CHUNK = -1;
 
-    @UnknownObjectField(types = Object.class) public Object firstReadOnlyPrimitiveObject;
-    @UnknownObjectField(types = Object.class) public Object lastReadOnlyPrimitiveObject;
+    @UnknownObjectField public Object firstReadOnlyPrimitiveObject;
+    @UnknownObjectField public Object lastReadOnlyPrimitiveObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstReadOnlyReferenceObject;
-    @UnknownObjectField(types = Object.class) public Object lastReadOnlyReferenceObject;
+    @UnknownObjectField public Object firstReadOnlyReferenceObject;
+    @UnknownObjectField public Object lastReadOnlyReferenceObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstReadOnlyRelocatableObject;
-    @UnknownObjectField(types = Object.class) public Object lastReadOnlyRelocatableObject;
+    @UnknownObjectField public Object firstReadOnlyRelocatableObject;
+    @UnknownObjectField public Object lastReadOnlyRelocatableObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstWritablePrimitiveObject;
-    @UnknownObjectField(types = Object.class) public Object lastWritablePrimitiveObject;
+    @UnknownObjectField public Object firstWritablePrimitiveObject;
+    @UnknownObjectField public Object lastWritablePrimitiveObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstWritableReferenceObject;
-    @UnknownObjectField(types = Object.class) public Object lastWritableReferenceObject;
+    @UnknownObjectField public Object firstWritableReferenceObject;
+    @UnknownObjectField public Object lastWritableReferenceObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstWritableHugeObject;
-    @UnknownObjectField(types = Object.class) public Object lastWritableHugeObject;
+    @UnknownObjectField public Object firstWritableHugeObject;
+    @UnknownObjectField public Object lastWritableHugeObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstReadOnlyHugeObject;
-    @UnknownObjectField(types = Object.class) public Object lastReadOnlyHugeObject;
+    @UnknownObjectField public Object firstReadOnlyHugeObject;
+    @UnknownObjectField public Object lastReadOnlyHugeObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstObject;
-    @UnknownObjectField(types = Object.class) public Object lastObject;
+    @UnknownObjectField public Object firstObject;
+    @UnknownObjectField public Object lastObject;
 
     // All offsets are relative to the heap base.
     @UnknownPrimitiveField public long offsetOfFirstWritableAlignedChunk;
@@ -187,23 +187,26 @@ public final class ImageHeapInfo {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public AlignedHeader getFirstWritableAlignedChunk() {
         return asImageHeapChunk(offsetOfFirstWritableAlignedChunk);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnalignedHeader getFirstWritableUnalignedChunk() {
         return asImageHeapChunk(offsetOfFirstWritableUnalignedChunk);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Word getObjectEnd(Object obj) {
+    private static Pointer getObjectEnd(Object obj) {
         if (obj == null) {
             return WordFactory.nullPointer();
         }
-        return Word.objectToUntrackedPointer(obj).add(LayoutEncoding.getSizeFromObject(obj));
+        return LayoutEncoding.getImageHeapObjectEnd(obj);
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
         if (offsetInImageHeap < 0) {
             return (T) WordFactory.nullPointer();

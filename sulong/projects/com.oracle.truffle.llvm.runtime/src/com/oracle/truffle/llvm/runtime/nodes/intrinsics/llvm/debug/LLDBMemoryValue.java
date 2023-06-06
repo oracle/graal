@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -80,7 +80,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
 
     private Object loadValue(Type loadtype, int byteOffset) {
         final LLVMPointer offsetPointer = pointer.increment(byteOffset);
-        CallTarget loadFunction = LLVMLanguage.getLLDBSupport().getLoadFunction(loadtype);
+        CallTarget loadFunction = LLVMLanguage.getLLDBLoadFunction(loadtype);
         return loadFunction.call(offsetPointer);
     }
 

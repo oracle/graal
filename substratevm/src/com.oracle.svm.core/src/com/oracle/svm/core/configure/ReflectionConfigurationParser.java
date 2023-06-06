@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * Parses JSON describing classes, methods and fields and delegates their registration to a
@@ -48,7 +49,8 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final ReflectionConfigurationParserDelegate<T> delegate;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
+                    "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
+                    "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
@@ -83,7 +85,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
         ConfigurationCondition condition = conditionResult.get();
 
-        TypeResult<T> result = delegate.resolveType(condition, className, false);
+        /*
+         * Even if primitives cannot be queried through Class.forName, they can be registered to
+         * allow getDeclaredMethods() and similar bulk queries at run time.
+         */
+        TypeResult<T> result = delegate.resolveType(condition, className, true);
         if (!result.isPresent()) {
             handleError("Could not resolve class " + className + " for reflection configuration.", result.getException());
             return;
@@ -132,9 +138,24 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                             delegate.registerDeclaredClasses(clazz);
                         }
                         break;
+                    case "allRecordComponents":
+                        if (asBoolean(value, "allRecordComponents")) {
+                            delegate.registerRecordComponents(clazz);
+                        }
+                        break;
                     case "allPermittedSubclasses":
                         if (asBoolean(value, "allPermittedSubclasses")) {
                             delegate.registerPermittedSubclasses(clazz);
+                        }
+                        break;
+                    case "allNestMembers":
+                        if (asBoolean(value, "allNestMembers")) {
+                            delegate.registerNestMembers(clazz);
+                        }
+                        break;
+                    case "allSigners":
+                        if (asBoolean(value, "allSigners")) {
+                            delegate.registerSigners(clazz);
                         }
                         break;
                     case "allPublicClasses":
@@ -291,6 +312,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        System.err.println("Warning: " + message);
+        LogUtils.warning(message);
     }
 }

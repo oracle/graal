@@ -402,7 +402,7 @@ public final class Safepoint {
     }
 
     @AlwaysInline("Always inline into foreign call stub")
-    @Uninterruptible(reason = "Must not contain safepoint checks")
+    @Uninterruptible(reason = "Must not contain safepoint checks", mayBeInlined = true)
     public static void slowPathSafepointCheck() throws Throwable {
         if (SafepointBehavior.ignoresSafepoints()) {
             /* Safepoints are explicitly disabled for this thread. */
@@ -440,8 +440,6 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void exitSlowPathCheck() {
         if (ActionOnExitSafepointSupport.isActionPending()) {
-            // LLVM Backend do not support `FarReturnNode`,
-            // we explicit specify Loom JDK here.
             if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.isSwitchStackPending()) {
                 ActionOnExitSafepointSupport.clearActions();
                 KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
@@ -660,7 +658,7 @@ public final class Safepoint {
 
         /** Send each of the threads (except myself) a request to come to a safepoint. */
         private static int requestSafepoints(String reason) {
-            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while requesting a safepoint.");
+            assert VMThreads.THREAD_MUTEX.isOwner() : "Must hold mutex while requesting a safepoint.";
             final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
             int numOfThreads = 0;
 
@@ -730,7 +728,7 @@ public final class Safepoint {
 
         /** Wait for there to be no threads (except myself) still waiting to reach a safepoint. */
         private static void waitForSafepoints(String reason) {
-            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while waiting for safepoints.");
+            assert VMThreads.THREAD_MUTEX.isOwner() : "Must hold mutex while waiting for safepoints.";
             final long startNanos = System.nanoTime();
             long loopNanos = startNanos;
 
@@ -850,7 +848,7 @@ public final class Safepoint {
         /** Release each thread at a safepoint. */
         private static void releaseSafepoints(String reason) {
             final Log trace = Log.noopLog().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
-            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
+            assert VMThreads.THREAD_MUTEX.isOwner() : "Must hold mutex when releasing safepoints.";
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {

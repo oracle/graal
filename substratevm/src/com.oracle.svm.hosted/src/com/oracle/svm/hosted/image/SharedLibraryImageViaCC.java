@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.oracle.svm.hosted.image;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -48,12 +49,12 @@ public class SharedLibraryImageViaCC extends NativeImageViaCC {
 
     @Override
     public String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
-        LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config);
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool) {
+        LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config, forkJoinPool);
         writeHeaderFiles(outputDirectory, imageName, false);
         writeHeaderFiles(outputDirectory, imageName, true);
         return inv;

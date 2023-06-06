@@ -26,10 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import org.graalvm.compiler.debug.GraalError;
-
-import java.util.ArrayList;
-
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.CV_CALL_NEAR_C;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.FUNC_IS_CONSTRUCTOR;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARGLIST;
@@ -61,6 +57,10 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_PURE_IVIRTUA
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_VSF_MASK;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_NOTYPE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UINT8;
+
+import java.util.ArrayList;
+
+import org.graalvm.compiler.debug.GraalError;
 
 /*
  * CV Type Record format (little-endian):
@@ -109,7 +109,7 @@ abstract class CVTypeRecord {
         pos = alignPadded4(buffer, pos);
         int length = pos - initialPos - Short.BYTES;
         if (length > CV_TYPE_RECORD_MAX_SIZE) {
-            throw GraalError.shouldNotReachHere(String.format("Type record too large: %d (maximum %d) bytes: %s", length, CV_TYPE_RECORD_MAX_SIZE, this));
+            throw GraalError.shouldNotReachHere(String.format("Type record too large: %d (maximum %d) bytes: %s", length, CV_TYPE_RECORD_MAX_SIZE, this)); // ExcludeFromJacocoGeneratedReport
         }
         CVUtil.putShort((short) length, buffer, initialPos);
         return pos;
@@ -168,17 +168,17 @@ abstract class CVTypeRecord {
 
         @Override
         public int computeSize(int initialPos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         protected int computeContents(byte[] buffer, int initialPos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int hashCode() {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

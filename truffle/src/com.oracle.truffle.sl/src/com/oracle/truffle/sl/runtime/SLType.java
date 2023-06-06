@@ -79,7 +79,7 @@ public final class SLType implements TruffleObject {
      * nicely match those of the types in InteropLibrary. This might not be the case and more
      * additional checks need to be performed (similar to number checking for SLBigNumber).
      */
-    public static final SLType NUMBER = new SLType("Number", (l, v) -> l.fitsInLong(v) || v instanceof SLBigNumber);
+    public static final SLType NUMBER = new SLType("Number", (l, v) -> l.fitsInLong(v) || v instanceof SLBigInteger);
     public static final SLType NULL = new SLType("NULL", (l, v) -> l.isNull(v));
     public static final SLType STRING = new SLType("String", (l, v) -> l.isString(v));
     public static final SLType BOOLEAN = new SLType("Boolean", (l, v) -> l.isBoolean(v));

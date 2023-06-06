@@ -48,6 +48,7 @@ import java.util.function.BiPredicate;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
@@ -82,6 +83,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -91,7 +93,6 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -108,8 +109,6 @@ import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.core.jdk.RecordSupport;
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
@@ -119,6 +118,7 @@ import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -128,6 +128,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -163,6 +164,8 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
+    private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
+    private final SVMParsingSupport parsingSupport;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
@@ -173,6 +176,14 @@ public class SVMHost extends HostVM {
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
         this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
+        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
+            multiMethodAnalysisPolicy = ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
+        } else {
+            /* Install the default so no other policy can be installed. */
+            ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
+            multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+        }
+        parsingSupport = ImageSingletons.contains(SVMParsingSupport.class) ? ImageSingletons.lookup(SVMParsingSupport.class) : null;
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -224,8 +235,9 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes(), this);
+    public Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                    IntrinsicContext initialIntrinsicContext) {
+        return new AnalysisGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, builderProviders.getWordTypes(), this);
     }
 
     @Override
@@ -398,18 +410,16 @@ public class SVMHost extends HostVM {
         String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
-        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
-        boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
+        boolean isHidden = javaClass.isHidden();
+        boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
-        boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
+        boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
 
-        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
+        return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
                         getDeclaringClass(javaClass));
-        ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
-        return dynamicHub;
     }
 
     private final Method getDeclaringClass0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaringClass0");
@@ -464,12 +474,9 @@ public class SVMHost extends HostVM {
         return resolvedJavaType.getAnnotation(UnknownClass.class) != null;
     }
 
-    public static boolean isUnknownObjectField(ResolvedJavaField resolvedJavaField) {
-        return resolvedJavaField.getAnnotation(UnknownObjectField.class) != null;
-    }
-
-    public static boolean isUnknownPrimitiveField(AnalysisField field) {
-        return field.getAnnotation(UnknownPrimitiveField.class) != null;
+    @Override
+    public boolean isUnknownValueField(AnalysisField field) {
+        return field.getAnnotation(UnknownPrimitiveField.class) != null || field.getAnnotation(UnknownObjectField.class) != null;
     }
 
     public ClassInitializationSupport getClassInitializationSupport() {
@@ -529,13 +536,22 @@ public class SVMHost extends HostVM {
         }
     }
 
+    protected boolean deoptsForbidden(AnalysisMethod method) {
+        /*
+         * Runtime compiled methods can deoptimize.
+         */
+        return method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+    }
+
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            if (deoptsForbidden(method)) {
+                graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            }
 
             if (parseOnce) {
-                new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+                new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
                 UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
                 optimizeAfterParsing(bb, method, graph);
@@ -543,7 +559,7 @@ public class SVMHost extends HostVM {
                  * Do a complete Canonicalizer run once before graph encoding, to clean up any
                  * leftover uncanonicalized nodes.
                  */
-                CanonicalizerPhase.create().apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().apply(graph, getProviders(method.getMultiMethodKey()));
             }
 
             super.methodAfterParsingHook(bb, method, graph);
@@ -551,12 +567,16 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions()) && !method.isDeoptTarget()) {
-            /*
-             * Deoptimization Targets cannot have virtual objects in frame states.
-             */
-            new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-            new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
+        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+            if (method.isOriginalMethod()) {
+                /*
+                 * Deoptimization Targets cannot have virtual objects in frame states.
+                 *
+                 * Also, more work is needed to enable PEA in Runtime Compiled Methods.
+                 */
+                new BoxNodeIdentityPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+                new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, getProviders(method.getMultiMethodKey()));
+            }
         }
     }
 
@@ -608,8 +628,10 @@ public class SVMHost extends HostVM {
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
+            } else if (n instanceof ReachabilityRegistrationNode node) {
+                bb.postTask(debug -> node.getRegistrationTask().ensureDone());
             }
-            checkClassInitializerSideEffect(bb, method, n);
+            checkClassInitializerSideEffect(method, n);
         }
     }
 
@@ -632,7 +654,7 @@ public class SVMHost extends HostVM {
      * call chain is the class initializer. But this does not fit well into the current approach
      * where each method has a `Safety` flag.
      */
-    private void checkClassInitializerSideEffect(BigBang bb, AnalysisMethod method, Node n) {
+    private void checkClassInitializerSideEffect(AnalysisMethod method, Node n) {
         if (n instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) n).field();
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
@@ -648,7 +670,7 @@ public class SVMHost extends HostVM {
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {
-            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(bb.getProviders());
+            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()).getConstantReflection());
             if (type != null) {
                 initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
             } else {
@@ -702,10 +724,10 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
+    @SuppressWarnings("this-escape")//
     private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this);
 
-    @Override
-    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
+    protected InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
         /*
          * Currently we only allow inlining before analysis in the original methods.
          */
@@ -714,6 +736,11 @@ public class SVMHost extends HostVM {
         } else {
             return InlineBeforeAnalysisPolicy.NO_INLINING;
         }
+    }
+
+    @Override
+    public InlineBeforeAnalysisGraphDecoder<?> createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
+        return new InlineBeforeAnalysisGraphDecoder<>(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method), null);
     }
 
     public static class Options {
@@ -729,8 +756,7 @@ public class SVMHost extends HostVM {
 
             String commandArgument = SubstrateOptionsParser.commandArgument(Options.PlatformInterfaceCompatibilityMode, "+");
             if (Options.PlatformInterfaceCompatibilityMode.getValue()) {
-                System.out.println("Warning: " + message + " The interface is filtered because the compatibility option " + commandArgument +
-                                " is used. This option will be removed in a future GraalVM version.");
+                LogUtils.warning("%s The interface is filtered because the compatibility option %s is used. This option will be removed in a future GraalVM version.", message, commandArgument);
                 return true;
             } else {
                 throw new UnsupportedFeatureException(
@@ -743,14 +769,34 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass((ResolvedJavaType) element).getPackage();
+            ResolvedJavaType javaType = (ResolvedJavaType) element;
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
                 return false;
             }
         }
         if (element instanceof Class) {
-            Package p = ((Class<?>) element).getPackage();
+            Class<?> clazz = (Class<?>) element;
+            Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            Class<?> enclosingClass;
+            try {
+                enclosingClass = clazz.getEnclosingClass();
+            } catch (LinkageError e) {
+                enclosingClass = null;
+            }
+            if (enclosingClass != null && !platformSupported(enclosingClass)) {
                 return false;
             }
         }
@@ -812,24 +858,24 @@ public class SVMHost extends HostVM {
         }
     }
 
-    public boolean preventConstantFolding(ResolvedJavaField field) {
+    public boolean allowConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
-        return finalFieldsInitializedOutsideOfConstructor.contains(aField);
+        return !finalFieldsInitializedOutsideOfConstructor.contains(aField);
     }
 
     @Override
-    public Object parseGraph(BigBang bb, AnalysisMethod method) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, method);
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
+        if (parsingSupport != null) {
+            return parsingSupport.parseGraph(bb, debug, method);
         } else {
-            return super.parseGraph(bb, method);
+            return super.parseGraph(bb, debug, method);
         }
     }
 
     @Override
     public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).validateGraph(bb, graph);
+        if (parsingSupport != null) {
+            return parsingSupport.validateGraph(bb, graph);
         } else {
             return super.validateGraph(bb, graph);
         }
@@ -837,8 +883,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            if (ImageSingletons.lookup(SVMParsingSupport.class).allowAssumptions(method)) {
+        if (parsingSupport != null) {
+            if (parsingSupport.allowAssumptions(method)) {
                 return StructuredGraph.AllowAssumptions.YES;
             }
         }
@@ -846,12 +892,19 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
-        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
-            return ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
-        } else {
-            return super.getMultiMethodAnalysisPolicy();
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        if (parsingSupport != null) {
+            HostedProviders providers = parsingSupport.getHostedProviders(key);
+            if (providers != null) {
+                return providers;
+            }
         }
+        return super.getProviders(key);
+    }
+
+    @Override
+    public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
+        return multiMethodAnalysisPolicy;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,8 +55,6 @@ import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
 import com.oracle.truffle.nfi.api.NativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISymbol implements TruffleObject {
@@ -100,7 +99,7 @@ final class NFISymbol implements TruffleObject {
     }
 
     @ExportMessage(name = "isPointer", library = NativePointerLibrary.class)
-    boolean isPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) {
+    boolean isPointerNFI(@Shared("backendNativePointer") @CachedLibrary(limit = "1") BackendNativePointerLibrary library) {
         return library.isPointer(nativeSymbol);
     }
 
@@ -110,7 +109,7 @@ final class NFISymbol implements TruffleObject {
     }
 
     @ExportMessage(name = "asPointer", library = NativePointerLibrary.class)
-    long asPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) throws UnsupportedMessageException {
+    long asPointerNFI(@Shared("backendNativePointer") @CachedLibrary(limit = "1") BackendNativePointerLibrary library) throws UnsupportedMessageException {
         return library.asPointer(nativeSymbol);
     }
 

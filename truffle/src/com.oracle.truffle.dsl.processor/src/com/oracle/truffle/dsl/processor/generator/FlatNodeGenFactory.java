@@ -48,7 +48,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterLowe
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeId;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeSimpleId;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getVisibility;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isObject;
@@ -218,6 +218,7 @@ public class FlatNodeGenFactory {
         this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants);
     }
 
+    @SuppressWarnings("this-escape")
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
                     Collection<NodeData> stateSharingNodes,
                     Map<CacheExpression, String> sharedCaches,
@@ -749,7 +750,7 @@ public class FlatNodeGenFactory {
     }
 
     /* Whether a new class should be generated for specialization instance fields. */
-    public static boolean useSpecializationClass(SpecializationData specialization) {
+    private static boolean useSpecializationClass(SpecializationData specialization) {
         if (shouldUseSpecializationClassBySize(specialization)) {
             return true;
         } else {
@@ -889,7 +890,7 @@ public class FlatNodeGenFactory {
     }
 
     private static String createImplicitTypeStateLocalName(Parameter execution) {
-        String name = firstLetterLowerCase(getTypeId(execution.getType()));
+        String name = firstLetterLowerCase(getTypeSimpleId(execution.getType()));
         return name + "Cast" + execution.getSpecification().getExecution().getIndex();
     }
 
@@ -1303,14 +1304,6 @@ public class FlatNodeGenFactory {
                     init.string(String.valueOf(range.offset));
                     init.string(String.valueOf(range.length));
                     init.end();
-
-                    if (specialization != null && parentAccess) {
-                        init.startGroup();
-                        init.startCall(".createParentAccessor");
-                        init.typeLiteral(createSpecializationClassReferenceType(specialization));
-                        init.end();
-                        init.end();
-                    }
                     init.end();
                 }
             } else {
@@ -1320,9 +1313,6 @@ public class FlatNodeGenFactory {
                     if (parentAccess) {
                         init.startGroup();
                         init.string("this.", inlinedFieldName);
-                        init.startCall(".createParentAccessor");
-                        init.typeLiteral(createSpecializationClassReferenceType(specialization));
-                        init.end();
                         init.end();
                     } else {
                         init.startStaticCall(field.getFieldType(), "create");
@@ -2063,6 +2053,8 @@ public class FlatNodeGenFactory {
         specializationClass = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, FINAL, STATIC),
                         createSpecializationTypeName(specialization), baseType);
         specializationClass.getAnnotationMirrors().add(new CodeAnnotationMirror(types.DenyReplace));
+        specializationClass.getImplements().add(types.DSLSupport_SpecializationDataNode);
+
         specializationClasses.put(specialization, specializationClass);
 
         TypeMirror referenceType = createSpecializationClassReferenceType(specialization);
@@ -2175,8 +2167,6 @@ public class FlatNodeGenFactory {
         InlinedNodeData inline = sharedCache.getInlinedNode();
 
         if (inline != null) {
-            boolean parentAccess = hasCacheParentAccess(cache);
-
             Parameter parameter = cache.getParameter();
             String fieldName = createStaticInlinedCacheName(specialization, cache);
             ExecutableElement cacheMethod = cache.getInlinedNode().getMethod();
@@ -2187,7 +2177,6 @@ public class FlatNodeGenFactory {
             builder.typeLiteral(cache.getParameter().getType());
 
             for (InlineFieldData field : inline.getFields()) {
-
                 builder.startGroup();
                 if (field.isState()) {
                     BitSet specializationBitSet = findInlinedState(specializationState, field);
@@ -2250,11 +2239,6 @@ public class FlatNodeGenFactory {
                     builder.end(); // static call
                 }
 
-                if (specialization != null && parentAccess) {
-                    builder.startCall(".createParentAccessor");
-                    builder.typeLiteral(createSpecializationClassReferenceType(specialization));
-                    builder.end();
-                }
                 builder.end();
 
             }
@@ -6809,15 +6793,16 @@ public class FlatNodeGenFactory {
             /*
              * We do not need to invoke a guard on the fast-path if:
              *
-             * (1) the guard does not bind any dynamic parameter, only cached valuees.
+             * (1) the guard is guaranteed constant true of the fast-path, after it was invoked in
+             * the slow-path.
              *
              * (2) The guard is not a weak reference. Weak references do not bind dynamic
              * parameters, but need to be checked each time.
              *
              * (3) The guard needs a state bit and may be partially initialized.
              */
-            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
-                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
+            if (guard.isFastPathIdempotent()) {
+                assertion = CodeTreeBuilder.createBuilder().startAssert().startStaticCall(types.DSLSupport, "assertIdempotence").tree(guardExpression).end().end().build();
             } else {
                 condition.tree(guardExpression);
             }
@@ -6975,7 +6960,7 @@ public class FlatNodeGenFactory {
         return localVariable;
     }
 
-    private static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
+    public static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
         if (!useSpecializationClass(specialization)) {
             return false;
         }
@@ -7236,7 +7221,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeExecutableElement method = constants.encodeConstants.get(typeId);
         if (method == null) {
-            String methodName = constants.reserveSymbol(mirror, "encode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeId(mirror)));
+            String methodName = constants.reserveSymbol(mirror, "encode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeSimpleId(mirror)));
             method = new CodeExecutableElement(modifiers(PRIVATE, STATIC), context.getType(int.class), methodName);
             method.addParameter(new CodeVariableElement(mirror, "e"));
             CodeTreeBuilder builder = method.createBuilder();
@@ -7254,7 +7239,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeExecutableElement method = constants.decodeConstants.get(typeId);
         if (method == null) {
-            String methodName = constants.reserveSymbol(mirror, "decode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeId(mirror)));
+            String methodName = constants.reserveSymbol(mirror, "decode" + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeSimpleId(mirror)));
             method = new CodeExecutableElement(modifiers(PRIVATE, STATIC), mirror, methodName);
             method.addParameter(new CodeVariableElement(context.getType(int.class), "state"));
             CodeTreeBuilder builder = method.createBuilder();
@@ -7272,7 +7257,7 @@ public class FlatNodeGenFactory {
         String typeId = ElementUtils.getUniqueIdentifier(mirror);
         CodeVariableElement var = constants.enumValues.get(typeId);
         if (var == null) {
-            String constantName = constants.reserveSymbol(mirror, ElementUtils.createConstantName(ElementUtils.getTypeId(mirror)) + "_VALUES");
+            String constantName = constants.reserveSymbol(mirror, ElementUtils.createConstantName(ElementUtils.getTypeSimpleId(mirror)) + "_VALUES");
             var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), new ArrayCodeTypeMirror(mirror), constantName);
             addCompilationFinalAnnotation(var, 1);
             CodeTreeBuilder init = var.createInitBuilder();

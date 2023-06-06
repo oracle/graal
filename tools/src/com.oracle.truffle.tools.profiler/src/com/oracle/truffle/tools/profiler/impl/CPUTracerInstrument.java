@@ -143,9 +143,15 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (enabled) {
             CPUTracerCLI.handleOutput(env, tracer);
+        }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
+        if (enabled) {
             tracer.close();
         }
     }

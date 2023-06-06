@@ -43,10 +43,13 @@ package com.oracle.truffle.regex;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.charset.collation.BinaryCollator;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
@@ -82,6 +85,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>fullmatch</b></li>
  * </ul>
  * </li>
+ * <li><b>PythonLocale</b>: specifies which locale is to be used by this locale-sensitive Python
+ * regexp</li>
  * <li><b>Validate</b>: don't generate a regex matcher object, just check the regex for syntax
  * errors.</li>
  * <li><b>U180EWhitespace</b>: treat 0x180E MONGOLIAN VOWEL SEPARATOR as part of {@code \s}. This is
@@ -129,12 +134,14 @@ public final class RegexOptions {
     private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
     private static final int MUST_ADVANCE = 1 << 10;
     public static final String MUST_ADVANCE_NAME = "MustAdvance";
+    public static final String COLLATION_NAME = "Collation";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
     public static final String FLAVOR_RUBY = "Ruby";
+    public static final String FLAVOR_ORACLE_DB = "OracleDB";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
-    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_RUBY, FLAVOR_ORACLE_DB, FLAVOR_ECMASCRIPT};
 
     public static final String ENCODING_NAME = "Encoding";
 
@@ -144,18 +151,24 @@ public final class RegexOptions {
     public static final String PYTHON_METHOD_FULLMATCH = "fullmatch";
     private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null);
+    public static final String PYTHON_LOCALE_NAME = "PythonLocale";
+
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null, null, null);
 
     private final int options;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
     private final PythonMethod pythonMethod;
+    private final String pythonLocale;
+    private final String collation;
 
-    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod) {
+    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod, String pythonLocale, String collation) {
         this.options = options;
         this.flavor = flavor;
         this.encoding = encoding;
         this.pythonMethod = pythonMethod;
+        this.pythonLocale = pythonLocale;
+        this.collation = collation;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -257,20 +270,24 @@ public final class RegexOptions {
         return pythonMethod;
     }
 
+    public String getPythonLocale() {
+        return pythonLocale;
+    }
+
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod);
+        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod, pythonLocale, collation);
     }
 
     public RegexOptions withoutPythonMethod() {
-        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null);
+        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null, pythonLocale, collation);
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod);
+        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale, collation);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale, collation);
     }
 
     @Override
@@ -280,6 +297,7 @@ public final class RegexOptions {
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
         hash = prime * hash + Objects.hashCode(pythonMethod);
+        hash = prime * hash + Objects.hashCode(pythonLocale);
         return hash;
     }
 
@@ -292,7 +310,8 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod;
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod &&
+                        this.pythonLocale.equals(other.pythonLocale);
     }
 
     @Override
@@ -344,6 +363,9 @@ public final class RegexOptions {
         } else if (pythonMethod == PythonMethod.fullmatch) {
             sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
         }
+        if (pythonLocale != null) {
+            sb.append(PYTHON_LOCALE_NAME + "=" + pythonLocale + ",");
+        }
         return sb.toString();
     }
 
@@ -355,6 +377,8 @@ public final class RegexOptions {
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
         private PythonMethod pythonMethod;
+        private String pythonLocale;
+        private String collation = BinaryCollator.NAME;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
@@ -373,6 +397,9 @@ public final class RegexOptions {
                         break;
                     case 'B':
                         i = parseBooleanOption(i, BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
+                        break;
+                    case 'C':
+                        i = parseCollation(i);
                         break;
                     case 'D':
                         i = parseBooleanOption(i, DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
@@ -393,7 +420,11 @@ public final class RegexOptions {
                         i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
                         break;
                     case 'P':
-                        i = parsePythonMethod(i);
+                        if (src.regionMatches(i, PYTHON_METHOD_NAME, 0, PYTHON_METHOD_NAME.length())) {
+                            i = parsePythonMethod(i);
+                        } else {
+                            i = parsePythonLocale(i);
+                        }
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -468,12 +499,28 @@ public final class RegexOptions {
                 case 'R':
                     flavor = RubyFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
+                case 'O':
+                    flavor = OracleDBFlavor.INSTANCE;
+                    return expectValue(iVal, FLAVOR_ORACLE_DB, FLAVOR_OPTIONS);
                 case 'P':
                     flavor = PythonFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
             }
+        }
+
+        private int parseCollation(int i) {
+            int iVal = expectOptionName(i, COLLATION_NAME);
+            if (iVal >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValueMsg(iVal, "expected a valid collation identifier");
+            }
+            int endPos = ArrayUtils.indexOf(src, iVal, src.length(), ',', '/');
+            if (endPos < 0) {
+                throw optionsSyntaxErrorUnexpectedValueMsg(iVal, "expected a valid collation identifier");
+            }
+            collation = src.substring(iVal, endPos);
+            return endPos;
         }
 
         private int parseEncoding(int i) throws RegexSyntaxException {
@@ -533,6 +580,16 @@ public final class RegexOptions {
             }
         }
 
+        private int parsePythonLocale(int i) throws RegexSyntaxException {
+            int iStart = expectOptionName(i, PYTHON_LOCALE_NAME);
+            int iEnd = ArrayUtils.indexOf(src, iStart, src.length(), ',', '/');
+            if (iEnd == -1) {
+                iEnd = src.length();
+            }
+            pythonLocale = src.substring(iStart, iEnd);
+            return iEnd;
+        }
+
         @TruffleBoundary
         private RegexSyntaxException optionsSyntaxErrorUnexpectedKey(int i) {
             int eqlPos = src.indexOf('=', i);
@@ -541,9 +598,14 @@ public final class RegexOptions {
 
         @TruffleBoundary
         private RegexSyntaxException optionsSyntaxErrorUnexpectedValue(int i, String... expected) {
+            return optionsSyntaxErrorUnexpectedValueMsg(i, String.format("expected one of %s", Arrays.toString(expected)));
+        }
+
+        @TruffleBoundary
+        private RegexSyntaxException optionsSyntaxErrorUnexpectedValueMsg(int i, String msg) {
             int commaPos = src.indexOf(',', i);
             String value = src.substring(i, commaPos < 0 ? src.length() : commaPos);
-            return optionsSyntaxError(String.format("unexpected value '%s', expected one of %s", value, Arrays.toString(expected)), i);
+            return optionsSyntaxError(String.format("unexpected value '%s', %s", value, msg), i);
         }
 
         @TruffleBoundary
@@ -641,8 +703,17 @@ public final class RegexOptions {
             return pythonMethod;
         }
 
+        public Builder pythonLocale(@SuppressWarnings("hiding") String pythonLocale) {
+            this.pythonLocale = pythonLocale;
+            return this;
+        }
+
+        public String getPythonLocale() {
+            return pythonLocale;
+        }
+
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor, this.encoding, this.pythonMethod);
+            return new RegexOptions(options, flavor, encoding, pythonMethod, pythonLocale, collation);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

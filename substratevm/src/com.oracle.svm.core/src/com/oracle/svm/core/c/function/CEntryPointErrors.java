@@ -125,6 +125,30 @@ public final class CEntryPointErrors {
     @Description("Current target does not support the following CPU features that are required by the image.") //
     public static final int CPU_FEATURE_CHECK_FAILED = 23;
 
+    @Description("Image page size is incompatible with run-time page size. Rebuild image with -H:PageSize=[pagesize] to set appropriately.") //
+    public static final int PAGE_SIZE_CHECK_FAILED = 24;
+
+    @Description("Creating an in-memory file for the GOT failed.") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_CREATE_FAILED = 25;
+
+    @Description("Resizing the in-memory file for the GOT failed.") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_RESIZE_FAILED = 26;
+
+    @Description("Mapping and populating the in-memory file for the GOT failed.") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_MAP_FAILED = 27;
+
+    @Description("Mapping the GOT before an isolate's heap failed (no mapping).") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_MMAP_FAILED = 28;
+
+    @Description("Mapping the GOT before an isolate's heap failed (wrong mapping).") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_WRONG_MMAP = 29;
+
+    @Description("Mapping the GOT before an isolate's heap failed (invalid file).") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_INVALID = 30;
+
+    @Description("Could not create unique GOT file even after retrying.") //
+    public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_UNIQUE_FILE_CREATE_FAILED = 31;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {

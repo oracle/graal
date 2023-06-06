@@ -40,18 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This visitor computes various properties of {@link RegexAST} and its {@link RegexASTNode}s, in
@@ -167,6 +168,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(BackReference backReference) {
         ast.getProperties().setBackReferences();
+        if (backReference.isNestedBackReference() && ast.getOptions().getFlavor().supportsRecursiveBackreferences()) {
+            ast.getProperties().setRecursiveBackReferences();
+        }
         backReference.setHasBackReferences();
         backReference.getParent().setHasBackReferences();
         if (backReference.hasQuantifier()) {

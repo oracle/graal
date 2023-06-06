@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class HeapHistogram {
     protected static boolean PrintStrings = false;
 
     private final Map<HostedClass, HistogramEntry> data = new HashMap<>();
+    private final PrintWriter out;
 
     static class HistogramEntry {
         protected final HostedClass clazz;
@@ -48,6 +50,14 @@ public class HeapHistogram {
         HistogramEntry(HostedClass clazz) {
             this.clazz = clazz;
         }
+    }
+
+    public HeapHistogram() {
+        this.out = new PrintWriter(System.out);
+    }
+
+    public HeapHistogram(PrintWriter out) {
+        this.out = out;
     }
 
     private static final Comparator<HistogramEntry> SIZE_COMPARATOR = (o1, o2) -> {
@@ -65,7 +75,7 @@ public class HeapHistogram {
     };
 
     public void add(ObjectInfo objectInfo, long size) {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
 
         HistogramEntry entry = data.get(objectInfo.getClazz());
         if (entry == null) {
@@ -77,22 +87,22 @@ public class HeapHistogram {
         entry.size += size;
 
         if (PrintStrings && objectInfo.getObject() instanceof String) {
-            String reason = String.valueOf(objectInfo.reason);
+            String reason = String.valueOf(objectInfo.getMainReason());
             String value = ((String) objectInfo.getObject()).replace("\n", "");
             if (!reason.startsWith("com.oracle.svm.core.hub.DynamicHub")) {
-                System.out.format("%120s ::: %s\n", value, reason);
+                out.format("%120s ::: %s%n", value, reason);
             }
         }
     }
 
     public void printHeadings(final String title) {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
-        System.out.format("\n%s\n", title);
-        System.out.format(headerFormat, "Count", "Size", "Size%", "Cum%", "Class");
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
+        out.format("%s%n", title);
+        out.format(headerFormat, "Count", "Size", "Size%", "Cum%", "Class");
     }
 
     public void print() {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
 
         HistogramEntry[] entries = data.values().toArray(new HistogramEntry[data.size()]);
         Arrays.sort(entries, SIZE_COMPARATOR);
@@ -101,7 +111,7 @@ public class HeapHistogram {
         long printedSize = 0;
         for (HistogramEntry entry : entries) {
             printedSize += entry.size;
-            System.out.format(entryFormat, entry.count, entry.size, entry.size * 100d / totalSize, printedSize * 100d / totalSize, entry.clazz.toJavaName());
+            out.format(entryFormat, entry.count, entry.size, entry.size * 100d / totalSize, printedSize * 100d / totalSize, entry.clazz.toJavaName());
         }
     }
 
@@ -122,6 +132,6 @@ public class HeapHistogram {
     }
 
     // Constants.
-    private final String headerFormat = "%8s %8s  %6s  %6s %s\n";
-    private final String entryFormat = "%8d %8d %6.2f%% %6.2f%% %s\n";
+    private final String headerFormat = "%8s %8s  %6s  %6s %s%n";
+    private final String entryFormat = "%8d %8d %6.2f%% %6.2f%% %s%n";
 }

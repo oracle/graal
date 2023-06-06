@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -210,6 +210,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 20.3
      */
+    @SuppressWarnings("this-escape")
     @TruffleBoundary
     protected AbstractTruffleException(AbstractTruffleException prototype) {
         this(prototype.getMessage(), prototype.getCause(), prototype.getStackTraceElementLimit(), prototype.getLocation());
@@ -288,11 +289,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         return cause;
     }
 
-    Throwable getLazyStackTrace() {
+    final Throwable getLazyStackTrace() {
         return lazyStackTrace;
     }
 
-    void setLazyStackTrace(Throwable stackTrace) {
+    final void setLazyStackTrace(Throwable stackTrace) {
         this.lazyStackTrace = stackTrace;
     }
 }

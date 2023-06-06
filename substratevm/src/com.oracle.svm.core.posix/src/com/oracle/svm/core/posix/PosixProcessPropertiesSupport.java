@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -82,12 +81,30 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
 
     @Override
     public String getObjectFile(String symbol) {
-        return getObjectPathDefiningSymbol(symbol);
+        try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
+            PointerBase symbolAddress = Dlfcn.dlsym(Dlfcn.RTLD_DEFAULT(), symbolHolder.get());
+            if (symbolAddress.isNull()) {
+                return null;
+            }
+            return getObjectFile(symbolAddress);
+        }
     }
 
     @Override
-    public String getObjectFile(CEntryPointLiteral<?> symbol) {
-        return getObjectPathDefiningAddress(symbol.getFunctionPointer());
+    public String getObjectFile(PointerBase symbolAddress) {
+        Dlfcn.Dl_info info = UnsafeStackValue.get(Dlfcn.Dl_info.class);
+        if (Dlfcn.dladdr(symbolAddress, info) == 0) {
+            return null;
+        }
+        CCharPointer realpath = Stdlib.realpath(info.dli_fname(), WordFactory.nullPointer());
+        if (realpath.isNull()) {
+            return null;
+        }
+        try {
+            return CTypeConversion.toJavaString(realpath);
+        } finally {
+            LibC.free(realpath);
+        }
     }
 
     @Override
@@ -130,32 +147,6 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
                 String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " and environment " + envString + " failed");
                 throw new RuntimeException(msg);
             }
-        }
-    }
-
-    static String getObjectPathDefiningSymbol(String symbol) {
-        try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
-            PointerBase symbolAddress = Dlfcn.dlsym(Dlfcn.RTLD_DEFAULT(), symbolHolder.get());
-            if (symbolAddress.isNull()) {
-                return null;
-            }
-            return getObjectPathDefiningAddress(symbolAddress);
-        }
-    }
-
-    static String getObjectPathDefiningAddress(PointerBase symbolAddress) {
-        Dlfcn.Dl_info info = UnsafeStackValue.get(Dlfcn.Dl_info.class);
-        if (Dlfcn.dladdr(symbolAddress, info) == 0) {
-            return null;
-        }
-        CCharPointer realpath = Stdlib.realpath(info.dli_fname(), WordFactory.nullPointer());
-        if (realpath.isNull()) {
-            return null;
-        }
-        try {
-            return CTypeConversion.toJavaString(realpath);
-        } finally {
-            LibC.free(realpath);
         }
     }
 

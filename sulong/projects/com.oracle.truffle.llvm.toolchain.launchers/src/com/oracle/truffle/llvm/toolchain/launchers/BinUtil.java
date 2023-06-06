@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,8 +52,7 @@ public final class BinUtil {
             processName = "llvm-" + processName;
         }
 
-        final Driver driver = new Driver();
-        final String targetName = driver.getLLVMBinDir().resolve(processName).toString();
+        final String targetName = Driver.getLLVMBinDir().resolve(processName).toString();
 
         ArrayList<String> utilArgs = new ArrayList<>(args.length + 1);
         utilArgs.add(targetName);
@@ -68,7 +67,7 @@ public final class BinUtil {
             System.exit(p.exitValue());
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
-            driver.printMissingToolMessage();
+            Driver.printMissingToolMessage();
             System.exit(1);
         } catch (InterruptedException e) {
             if (p != null) {

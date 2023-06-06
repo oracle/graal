@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -84,6 +85,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 
 import org.graalvm.collections.EconomicMap;
@@ -115,7 +117,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
+
+    @CompilationFinal public boolean singleContext = true;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -154,10 +157,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
 
-    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = locals.createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
-
         final String path;
         final WeakReference<BitcodeID> id;
 
@@ -172,7 +174,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
     private final IDGenerater idGenerater = new IDGenerater();
-    private final LLDBSupport lldbSupport = new LLDBSupport(this);
+    private final LLDBSupport lldbSupport = new LLDBSupport();
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
@@ -378,8 +380,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    public static LLDBSupport getLLDBSupport() {
-        return get(null).lldbSupport;
+    public static CallTarget getLLDBLoadFunction(Type type) {
+        LLVMLanguage language = get(null);
+        return language.lldbSupport.getLoadFunction(language, type);
     }
 
     public <C extends LLVMCapability> C getCapability(Class<C> type) {
@@ -810,10 +813,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
-        singleContextAssumption.invalidate();
+        singleContext = false;
     }
 
     public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
         return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
+
+    @Idempotent
+    public static boolean isSingleContext(Node node) {
+        return LLVMLanguage.get(node).singleContext;
+    }
+
 }

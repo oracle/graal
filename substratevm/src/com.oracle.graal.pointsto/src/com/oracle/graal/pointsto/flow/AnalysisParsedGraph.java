@@ -93,11 +93,11 @@ public final class AnalysisParsedGraph {
 
         OptionValues options = bb.getOptions();
         Description description = new Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
+        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
 
-            Object result = bb.getHostVM().parseGraph(bb, method);
+            Object result = bb.getHostVM().parseGraph(bb, debug, method);
             if (result != HostVM.PARSING_UNHANDLED) {
                 if (result instanceof StructuredGraph) {
                     return optimizeAndEncode(bb, method, (StructuredGraph) result, false);
@@ -107,15 +107,15 @@ public final class AnalysisParsedGraph {
                 }
             }
 
-            StructuredGraph graph = method.buildGraph(debug, method, bb.getProviders(), Purpose.ANALYSIS);
+            StructuredGraph graph = method.buildGraph(debug, method, bb.getProviders(method), Purpose.ANALYSIS);
             if (graph != null) {
                 return optimizeAndEncode(bb, method, graph, false);
             }
 
-            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, options);
+            InvocationPlugin plugin = bb.getProviders(method).getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, options);
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
-                graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(method), code).buildGraph(plugin);
                 if (graph != null) {
                     return optimizeAndEncode(bb, method, graph, true);
                 }
@@ -134,7 +134,7 @@ public final class AnalysisParsedGraph {
                 // enable this logging to get log output in compilation passes
                 try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
 
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders().getGraphBuilderPlugins())
+                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders(method).getGraphBuilderPlugins())
                                     .withEagerResolving(true)
                                     .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
                                     .withNodeSourcePosition(true)
@@ -143,7 +143,7 @@ public final class AnalysisParsedGraph {
 
                     config = bb.getHostVM().updateGraphBuilderConfiguration(config, method);
 
-                    bb.getHostVM().createGraphBuilderPhase(bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
+                    bb.getHostVM().createGraphBuilderPhase(bb.getProviders(method), config, OptimisticOptimizations.NONE, null).apply(graph);
                 } catch (PermanentBailoutException ex) {
                     bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                     return EMPTY;

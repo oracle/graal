@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,9 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -63,28 +63,28 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getAddress() {
         return address;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getEntryPoint() {
         return entryPoint;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAlive() {
         return this.address != 0L;
     }
 
     @Override
-    public void setAddress(long address, ResolvedJavaMethod method) {
+    public void setAddress(long address, long entryPoint, ResolvedJavaMethod method) {
         assert VMOperation.isInProgressAtSafepoint();
         this.address = address;
-        this.entryPoint = address;
+        this.entryPoint = entryPoint;
     }
 
     @Override
@@ -107,7 +107,7 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     @Override
     public void invalidateWithoutDeoptimization() {
         assert VMOperation.isInProgressAtSafepoint();
-        throw VMError.unimplemented();
+        throw VMError.unimplemented("cannot invalidate without deoptimization");
     }
 
     @Override

@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -32,7 +31,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -42,26 +40,18 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
 
-    public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, ArrayList<AnalysisObject> objects) {
-        this(bb, canBeNull, properties, type, objects.toArray(AnalysisObject.EMPTY_ARRAY));
-        assert objects.size() > 0 : "Single type state with no objects.";
-    }
-
     /** Creates a new type state from incoming objects. */
-    public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects) {
-        super(bb, canBeNull, properties, type);
+    @SuppressWarnings("this-escape")
+    public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
+        super(bb, canBeNull, type);
         this.objects = objects;
         assert !bb.extendedAsserts() || checkObjects(bb);
-
-        PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
     protected ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, ContextSensitiveSingleTypeState other) {
         super(bb, canBeNull, other);
         this.objects = other.objects;
-
-        PointsToStats.registerTypeState(bb, this);
     }
 
     protected boolean checkObjects(BigBang bb) {

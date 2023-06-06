@@ -1,8 +1,10 @@
 {
-  local common = import "../../ci/ci_common/common.jsonnet",
+  local gate_triggering_suites = ["sdk", "substratevm", "compiler", "truffle"],
+
+  local common     = import "../../ci/ci_common/common.jsonnet",
+  local util       = import "../../ci/ci_common/common-utils.libsonnet",
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
-  local inc        = import "ci_common/include.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
   local exclude    = run_spec.exclude,
 
@@ -15,8 +17,8 @@
   // mx gate build config
   local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm"),
 
-  local eclipse = task_spec(common.eclipse),
-  local jdt = task_spec(common.jdt),
+  local eclipse = task_spec(common.deps.eclipse),
+  local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
   local use_musl = sg.use_musl,
@@ -42,8 +44,6 @@
     },
   }),
 
-  local musl_toolchain = task_spec(inc.musl_dependency),
-
   local mx_build_exploded = task_spec({
     environment+: {
       MX_BUILD_EXPLODED: "true", # test native-image MX_BUILD_EXPLODED compatibility
@@ -54,6 +54,7 @@
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
     "jdk20"+: common.labsjdk20,
+    "jdk21"+: common.labsjdk21,
   },
 
   local default_os_arch = {
@@ -112,7 +113,7 @@
       "linux:amd64:jdk20": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk20": gate + gdb("10.2") + t("55:00"),
+      "linux:amd64:jdk21": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
@@ -128,6 +129,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: [{'defined_in': std.thisFile} + b for b in self.processed_builds.list],
+  builds: [{'defined_in': std.thisFile} + util.add_gate_predicate(b, gate_triggering_suites) for b in self.processed_builds.list],
   assert tools.check_names($.builds),
 }

@@ -39,8 +39,8 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -71,21 +71,12 @@ public abstract class CustomTypeFieldHandler {
             }
         } else {
             UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-            UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
             if (unknownObjectField != null) {
                 assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
                 assert field.getJavaKind() == JavaKind.Object;
 
                 field.setCanBeNull(unknownObjectField.canBeNull());
                 injectFieldTypes(field, extractAnnotationTypes(field, unknownObjectField));
-
-            } else if (unknownPrimitiveField != null) {
-                assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
-                /*
-                 * Register a primitive field as containing unknown values(s), i.e., is usually
-                 * written only in hosted code.
-                 */
-                field.registerAsWritten("@UnknownPrimitiveField annotated field");
             }
         }
         processedFields.add(field);
@@ -102,7 +93,15 @@ public abstract class CustomTypeFieldHandler {
             }
         }
 
-        return transformTypes(field, annotationTypes.toArray(new Class<?>[0]));
+        List<AnalysisType> analysisTypes = transformTypes(field, annotationTypes.toArray(new Class<?>[0]));
+        if (analysisTypes.isEmpty()) {
+            /* If no types are specified fallback to the field declared type. */
+            AnalysisType fieldType = field.getType();
+            AnalysisError.guarantee(isConcreteType(fieldType), "Illegal use of @UnknownObjectField annotation on field %s. " +
+                            "The field type must be concrete or the annotation must declare a concrete type.", field);
+            analysisTypes.add(fieldType);
+        }
+        return analysisTypes;
     }
 
     private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
@@ -129,12 +128,15 @@ public abstract class CustomTypeFieldHandler {
                             " | custom type: " + customType;
             assert declaredType.isAssignableFrom(aCustomType) : "Custom type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
                             " | custom type: " + customType;
-            assert aCustomType.isPrimitive() || aCustomType.isArray() ||
-                            (aCustomType.isInstanceClass() && !Modifier.isAbstract(aCustomType.getModifiers())) : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
+            assert aCustomType.isPrimitive() || isConcreteType(aCustomType) : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
 
             customTypes.add(aCustomType);
         }
         return customTypes;
+    }
+
+    private static boolean isConcreteType(AnalysisType type) {
+        return type.isArray() || (type.isInstanceClass() && !type.isAbstract());
     }
 
     public void cleanupAfterAnalysis() {

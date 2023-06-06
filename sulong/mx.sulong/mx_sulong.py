@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -377,6 +377,7 @@ class ToolchainConfig(object):
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
         "CL": ["graalvm-{name}-clang-cl", "graalvm-clang-cl", "clang-cl", "cl"],
         "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "lld-link", "ld64"],
+        "FC": ["graalvm-{name}-flang", "graalvm-flang", "flang-new", "flang"],
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
@@ -479,6 +480,7 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
                                        "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
                                        "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
                                        "CL": "com.oracle.truffle.llvm.toolchain.launchers.ClangCL",
+                                       "FC": "com.oracle.truffle.llvm.toolchain.launchers.Flang",
                                        "LD": "com.oracle.truffle.llvm.toolchain.launchers.Linker",
                                        "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
@@ -492,7 +494,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
     third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
-    dependencies=['Truffle', 'Truffle NFI'],
+    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
@@ -500,6 +502,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
+    standalone=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=0,  # this is the main component of the llvm installable
 ))
@@ -519,6 +522,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
@@ -546,5 +550,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         ),
     ],
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))

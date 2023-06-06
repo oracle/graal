@@ -48,7 +48,7 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
  * are linked together, using compare-and-set operations for modifications. This data structure
  * never shrinks.
  */
-public class JNIJavaVMList {
+public final class JNIJavaVMList {
     /*-
      *
      * HEAD  -->  +------------------------+
@@ -118,7 +118,7 @@ public class JNIJavaVMList {
     }
 
     /** Gather non-null entries in a buffer and provide the total number of non-null entries. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void gather(JNIJavaVMPointer buffer, int bufferLength, CIntPointer totalCountPointer) {
         int totalCount = 0;
         WordPointer p = HEAD.get().readWord(0);
@@ -135,6 +135,11 @@ public class JNIJavaVMList {
             }
             p = p.read(capacity.add(1)); // next
         }
-        totalCountPointer.write(totalCount);
+        if (totalCountPointer.isNonNull()) {
+            totalCountPointer.write(totalCount);
+        }
+    }
+
+    private JNIJavaVMList() {
     }
 }

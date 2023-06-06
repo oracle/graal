@@ -188,18 +188,18 @@ public class ELFRelocationSection extends ELFSection {
     void addEntry(ELFSection s, long offset, ELFRelocationMethod t, ELFSymtab.Entry sym, long addend) {
         if (ELFObjectFile.useExplicitAddend(addend)) {
             if (!t.canUseExplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with explicit addends");
+                throw new IllegalArgumentException("Cannot use relocation method " + t + " with explicit addends");
             }
             if (!withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation with addend in .rel section");
+                throw new IllegalStateException("Cannot create relocation with addend in .rel section");
             }
         } else {
             // use implicit addend
             if (!t.canUseImplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with implicit addends");
+                throw new IllegalArgumentException("Cannot use relocation method " + t + " with implicit addends");
             }
             if (withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation without addend in .rela section");
+                throw new IllegalStateException("Cannot create relocation without addend in .rela section");
             }
         }
         entries.computeIfAbsent(new Entry(s, offset, t, sym, addend), Function.identity());

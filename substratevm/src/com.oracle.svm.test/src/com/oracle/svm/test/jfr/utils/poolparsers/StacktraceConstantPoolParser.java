@@ -26,12 +26,17 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
-
 import java.io.IOException;
 
-public class StacktraceConstantPoolParser extends ConstantPoolParser {
+import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+
+public class StacktraceConstantPoolParser extends AbstractRepositoryParser {
+    public StacktraceConstantPoolParser(JfrFileParser parser) {
+        /* 0 is the null stack trace. */
+        super(parser, 0L);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {

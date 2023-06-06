@@ -32,6 +32,7 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LogUtils;
 
 public class ProxyRegistry extends ConditionalConfigurationRegistry implements Consumer<ConditionalElement<List<String>>> {
     private final ConfigurationTypeResolver typeResolver;
@@ -94,7 +95,6 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     }
 
     private static void warning(List<String> interfaceNames, String reason) {
-        System.out.println("WARNING: Cannot register dynamic proxy for interface list: " +
-                        String.join(", ", interfaceNames) + ". Reason: " + reason);
+        LogUtils.warning("Cannot register dynamic proxy for interface list: %s. Reason: %s.", String.join(", ", interfaceNames), reason);
     }
 }

@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class IsolateEnterStub {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         // Generated call wrappers need a valid constant pool, so we provide that of our constructor
-        return metaAccess.lookupJavaType(IsolateEnterStub.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(IsolateEnterStub.class).getDeclaredConstructors(false)[0].getConstantPool();
     }
 
     private IsolateEnterStub() {

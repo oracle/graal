@@ -48,9 +48,9 @@ _suite = mx.suite('regex')
 
 
 def _tregex_tests_gate_runner(args, tasks):
-    with Task('UnitTests', tasks, tags=['default', 'all']) as t:
+    with Task('UnitTests', tasks, tags=['default', 'all'], report=True) as t:
         if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
+            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'], test_report_tags={'task': t.title})
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -63,7 +63,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle', 'ICU4J'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
-    installable=False,
+    installable=True,
+    standalone=False,
     stability="supported",
 ))
 

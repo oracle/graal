@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -39,12 +38,13 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-
-import jdk.vm.ci.code.BytecodePosition;
+import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -163,17 +163,22 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             parsingReason = reason;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
-                builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                try {
+                    builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                } catch (UnsupportedFeatureException ex) {
+                    String message = String.format("%s%n%s", ex.getMessage(), ParsingError.message(method));
+                    bb.getUnsupportedFeatures().addMessage("typeflow_" + method.getQualifiedName(), null, message, null, ex);
+                }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.getReturnsAllInstantiatedTypes() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */
                 flowsGraph = builder.flowsGraph;
                 assert flowsGraph != null;
 
-                initFlowsGraph(bb);
+                initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
                 /* Wrap all other errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
@@ -202,8 +207,18 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
     }
 
-    protected void initFlowsGraph(PointsToAnalysis bb) {
-        flowsGraph.init(bb);
+    /**
+     * Run type flow initialization. This will trigger state propagation from source flows, link
+     * static load/store field flows, publish unsafe load/store flows, etc. The flows that need
+     * initialization are collected by {@link TypeFlowGraphBuilder#build()}. Their initialization
+     * needs to be triggered only after the graph is fully materialized such that lazily constructed
+     * type flows (like InovkeTypeFlow.actualReturn) can observe the type state that other flows may
+     * generate on initialization.
+     */
+    protected void initFlowsGraph(PointsToAnalysis bb, List<TypeFlow<?>> postInitFlows) {
+        for (TypeFlow<?> flow : postInitFlows) {
+            flow.initFlow(bb);
+        }
     }
 
     public Collection<MethodFlowsGraph> getFlows() {
@@ -218,10 +233,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public TypeFlow<?> getParameter(int idx) {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
-    }
-
-    public Iterable<TypeFlow<?>> getParameters() {
-        return flowsGraph == null ? Collections.emptyList() : Arrays.asList(flowsGraph.getParameters());
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
@@ -245,8 +256,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public BytecodePosition getParsingReason() {
-        return parsingReason != null ? parsingReason.getSource() : null;
+    public Object getParsingReason() {
+        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
     }
 
     @Override
@@ -276,7 +287,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             throwSealedError();
         }
 
-        forceReparseOnCreation = forceReparse | forceReparseOnCreation;
+        forceReparseOnCreation = forceReparse || forceReparseOnCreation;
 
         assert !(newGraphKind == MethodFlowsGraph.GraphKind.STUB && graphKind == MethodFlowsGraph.GraphKind.FULL) : "creating less strict graph";
         MethodFlowsGraph.GraphKind originalGraphKind = graphKind;
@@ -320,7 +331,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
             flowsGraph.updateInternalState(newGraphKind);
 
-            initFlowsGraph(bb);
+            initFlowsGraph(bb, builder.postInitFlows);
 
             if (registerAsImplementationInvoked) {
                 if (parsingReason == null) {

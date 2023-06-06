@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,7 @@ public final class DebuggerConnection implements Commands {
                 return;
             }
             // only a JDWP resume/resumeAll command can resume this thread
-            controller.suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(job), null, false);
+            controller.suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(job), true);
         }
     }
 
@@ -146,6 +146,10 @@ public final class DebuggerConnection implements Commands {
         };
     }
 
+    boolean isDebuggerThread(Thread thread) {
+        return thread == jdwpTransport || thread == commandProcessor;
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
@@ -192,9 +196,7 @@ public final class DebuggerConnection implements Commands {
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-                Object previous = null;
                 try {
-                    previous = controller.enterTruffleContext();
                     processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
@@ -202,8 +204,6 @@ public final class DebuggerConnection implements Commands {
                     }
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
-                } finally {
-                    controller.leaveTruffleContext(previous);
                 }
             }
         }
@@ -231,7 +231,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.ALL_THREADS.ID:
-                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.ID:
                                     result = JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.createReply(packet, context);
@@ -288,6 +288,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.ALL_MODULES.createReply(packet, context);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -351,6 +352,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.MODULE.ID:
                                     result = JDWP.ReferenceType.MODULE.createReply(packet, context);
                                     break;
+                                default:
+                                    result = unknownCommand(packet);
+                                    break;
                             }
                             break;
                         }
@@ -368,6 +372,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ClassType.NEW_INSTANCE.ID:
                                     result = JDWP.ClassType.NEW_INSTANCE.createReply(packet, controller);
                                     break;
+                                default:
+                                    result = unknownCommand(packet);
+                                    break;
                             }
                             break;
                         }
@@ -376,6 +383,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ArrayType.NEW_INSTANCE.ID:
                                     result = JDWP.ArrayType.NEW_INSTANCE.createReply(packet, context);
                                     break;
+                                default:
+                                    result = unknownCommand(packet);
+                                    break;
                             }
                             break;
                         }
@@ -383,6 +393,9 @@ public final class DebuggerConnection implements Commands {
                             switch (packet.cmd) {
                                 case JDWP.InterfaceType.INVOKE_METHOD.ID:
                                     result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
+                                    break;
+                                default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -403,6 +416,9 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 case JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.ID:
                                     result = JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.createReply(packet, context);
+                                    break;
+                                default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -436,6 +452,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.REFERRING_OBJECTS.ID:
                                     result = JDWP.ObjectReference.REFERRING_OBJECTS.createReply(packet);
                                     break;
+                                default:
+                                    result = unknownCommand(packet);
+                                    break;
                             }
                             break;
                         }
@@ -443,6 +462,9 @@ public final class DebuggerConnection implements Commands {
                             switch (packet.cmd) {
                                 case JDWP.StringReference.VALUE.ID:
                                     result = JDWP.StringReference.VALUE.createReply(packet, context);
+                                    break;
+                                default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -491,6 +513,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
                                     result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
+                                default:
+                                    result = unknownCommand(packet);
+                                    break;
                             }
                             break;
                         case JDWP.ThreadGroupReference.ID:
@@ -502,7 +527,10 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadGroupReference.PARENT.createReply(packet, context);
                                     break;
                                 case JDWP.ThreadGroupReference.CHILDREN.ID:
-                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context);
+                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context, controller);
+                                    break;
+                                default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -518,6 +546,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ArrayReference.SET_VALUES.createReply(packet, context);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -526,6 +555,9 @@ public final class DebuggerConnection implements Commands {
                             switch (packet.cmd) {
                                 case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID:
                                     result = JDWP.ClassLoaderReference.VISIBLE_CLASSES.createReply(packet, context);
+                                    break;
+                                default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -542,6 +574,7 @@ public final class DebuggerConnection implements Commands {
                                     result = requestedJDWPEvents.clearAllRequests(packet);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -561,6 +594,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.StackFrame.POP_FRAMES.createReply(packet, controller);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -571,6 +605,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -584,6 +619,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ModuleReference.CLASSLOADER.createReply(packet, context);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
@@ -594,25 +630,40 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
                                 default:
+                                    result = unknownCommand(packet);
                                     break;
                             }
                             break;
                         }
                         default:
+                            result = unknownCommandSet(packet);
                             break;
                     }
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                // Checkstyle: stop allow error output
-                System.out.println("[internal error]: " + t.getMessage());
-                t.printStackTrace();
-                // Checkstyle: resume allow error output
+                controller.severe("Internal error while processing packet", t);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));
             }
         }
+    }
+
+    private CommandResult unknownCommandSet(Packet packet) {
+        controller.warning(() -> "Unknown command set: " + packet.cmdSet);
+        return notImplemented(packet);
+    }
+
+    private CommandResult unknownCommand(Packet packet) {
+        controller.warning(() -> "Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
+        return notImplemented(packet);
+    }
+
+    private static CommandResult notImplemented(Packet packet) {
+        PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+        reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+        return new CommandResult(reply);
     }
 
     void handleReply(Packet packet, CommandResult result) {

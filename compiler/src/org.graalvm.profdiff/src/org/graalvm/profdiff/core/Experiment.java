@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
@@ -298,15 +299,17 @@ public class Experiment {
      * Creates and adds a compilation unit to this experiment. Creates a {@link Method} (if
      * necessary) and adds the compilation unit to the method.
      *
-     * @param methodName the name of the root method of the compilation unit
+     * @param multiMethodName the name of the root method of the compilation unit (including a
+     *            multi-method key if applicable)
      * @param compilationId compilation ID of the compilation unit
      * @param period the number of cycles spent executing the method (collected by proftool)
      * @param treeLoader a loader of the compilation unit's optimization and inlining tree
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String methodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
+    public CompilationUnit addCompilationUnit(String multiMethodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
         graalPeriod = null;
-        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, period, treeLoader);
+        Pair<String, String> splitName = Method.splitMultiMethodName(multiMethodName);
+        return getMethodOrCreate(splitName.getLeft()).addCompilationUnit(compilationId, period, treeLoader, splitName.getRight());
     }
 
     /**

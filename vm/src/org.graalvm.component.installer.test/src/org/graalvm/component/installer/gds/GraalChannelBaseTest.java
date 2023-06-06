@@ -49,7 +49,7 @@ public class GraalChannelBaseTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        channel = new GraalChannelBase(this, this.withBundle(GraalChannel.class), this.getLocalRegistry()) {
+        channel = new GraalChannelBase(this, this.withBundle(org.graalvm.component.installer.gds.rest.GDSChannel.class), this.getLocalRegistry()) {
             @Override
             public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
                 return dn;

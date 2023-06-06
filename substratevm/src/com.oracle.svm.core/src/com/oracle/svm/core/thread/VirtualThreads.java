@@ -31,6 +31,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.stack.StackFrameVisitor;
+
 /** Operations on virtual threads. */
 public interface VirtualThreads {
     @Fold
@@ -52,23 +54,11 @@ public interface VirtualThreads {
 
     void join(Thread thread, long millis) throws InterruptedException;
 
-    void yield();
-
-    void sleepMillis(long millis) throws InterruptedException;
-
-    boolean isAlive(Thread thread);
-
-    void unpark(Thread thread);
-
-    void park();
-
-    void parkNanos(long nanos);
-
-    void parkUntil(long deadline);
-
     void pinCurrent();
 
     void unpinCurrent();
+
+    boolean isCurrentPinned();
 
     Executor getScheduler(Thread thread);
 
@@ -79,6 +69,8 @@ public interface VirtualThreads {
      * thread, therefore this method is also responsible for taking platform thread stack traces.
      */
     StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP);
+
+    void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor);
 
     StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP);
 }

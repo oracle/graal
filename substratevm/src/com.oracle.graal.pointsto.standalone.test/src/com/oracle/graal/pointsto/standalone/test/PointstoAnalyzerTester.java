@@ -157,7 +157,11 @@ public class PointstoAnalyzerTester {
         try {
             try {
                 int ret = pointstoAnalyzer.run();
-                assertEquals("Analysis return code is expected to 0", 0, ret);
+                if (expectPass) {
+                    assertEquals("Analysis return code is expected to 0", 0, ret);
+                } else {
+                    assertNotEquals("The analysis is expected to fail, but succeeded", 0, ret);
+                }
             } catch (UnsupportedFeatureException e) {
                 unsupportedFeatureException = e;
             }
@@ -302,7 +306,7 @@ public class PointstoAnalyzerTester {
             // Find all the elements that should be reachable but not
             List<T> shouldReachableButNot = expectedReachables.stream().filter(t -> {
                 R element = getAnalysisElement.apply(t);
-                return !element.isReachable();
+                return element != null && !element.isReachable();
             }).collect(Collectors.toList());
 
             if (!shouldReachableButNot.isEmpty()) {

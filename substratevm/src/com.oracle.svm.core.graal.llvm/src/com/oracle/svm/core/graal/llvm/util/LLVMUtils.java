@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.llvm.util;
 
 import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -177,6 +177,23 @@ public class LLVMUtils {
         }
     }
 
+    public static class LLVMPendingPtrToInt extends LLVMVariable implements LLVMValueWrapper {
+        private final LLVMGenerator gen;
+        private final LLVMValueRef val;
+
+        public LLVMPendingPtrToInt(LLVMGenerator gen, LLVMValueRef val) {
+            super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
+            this.gen = gen;
+            this.val = val;
+        }
+
+        @Override
+        public LLVMValueRef get() {
+            LLVMIRBuilder builder = gen.getBuilder();
+            return builder.buildPtrToInt(val);
+        }
+    }
+
     public static class LLVMKindTool implements LIRKindTool {
         private LLVMIRBuilder builder;
 
@@ -197,7 +214,7 @@ public class LLVMUtils {
                 case 64:
                     return LIRKind.value(new LLVMKind(builder.doubleType()));
                 default:
-                    throw shouldNotReachHere("invalid float type");
+                    throw shouldNotReachHere("invalid float type"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -218,7 +235,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -254,7 +271,7 @@ public class LLVMUtils {
 
         @Override
         public Key getKey() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -268,7 +285,7 @@ public class LLVMUtils {
                 case LLVM.LLVMPointerTypeKind:
                     return 8;
                 default:
-                    throw shouldNotReachHere("invalid kind");
+                    throw shouldNotReachHere("invalid kind"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -279,7 +296,7 @@ public class LLVMUtils {
 
         @Override
         public char getTypeChar() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

@@ -405,6 +405,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long min(long a, long b) {
+            return (a <= b) ? a : b;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int max(int a, int b) {
             return (a >= b) ? a : b;
         }
@@ -430,6 +435,14 @@ public class UninterruptibleUtils {
         }
     }
 
+    public static class Byte {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @SuppressWarnings("cast")
+        public static int toUnsignedInt(byte x) {
+            return ((int) x) & 0xff;
+        }
+    }
+
     public static class Long {
         /** Uninterruptible version of {@link java.lang.Long#numberOfLeadingZeros(long)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -451,6 +464,11 @@ public class UninterruptibleUtils {
            // @formatter:on
         }
         // Checkstyle: resume
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int hashCode(long value) {
+            return (int) (value ^ (value >>> 32));
+        }
     }
 
     public static class Integer {
@@ -550,9 +568,17 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
+            return modifiedUTF8Length(string, addNullTerminator, null);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator, CharReplacer replacer) {
             int result = 0;
             for (int index = 0; index < string.length(); index++) {
                 char ch = StringUtil.charAt(string, index);
+                if (replacer != null) {
+                    ch = replacer.replace(ch);
+                }
                 result += modifiedUTF8Length(ch);
             }
 
@@ -568,9 +594,18 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
+            return toModifiedUTF8(string, buffer, bufferEnd, addNullTerminator, null);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
             Pointer pos = buffer;
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
+                char ch = StringUtil.charAt(string, index);
+                if (replacer != null) {
+                    ch = replacer.replace(ch);
+                }
+                pos = writeModifiedUTF8(pos, ch);
             }
 
             if (addNullTerminator) {
@@ -580,5 +615,11 @@ public class UninterruptibleUtils {
             VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
             return pos;
         }
+    }
+
+    @FunctionalInterface
+    public interface CharReplacer {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        char replace(char val);
     }
 }

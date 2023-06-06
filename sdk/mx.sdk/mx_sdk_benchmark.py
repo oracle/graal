@@ -220,7 +220,7 @@ class NativeImageBenchmarkMixin(object):
         """
         return []
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         """Returns all arguments passed to the profiling run.
 
         This includes those passed globally on the `mx benchmark` command line after the last `--`.
@@ -246,13 +246,6 @@ class NativeImageBenchmarkMixin(object):
             return parsed_args[0]
         else:
             return None
-
-    def image_build_stats_file(self, bm_config, args):
-        parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.image-build-stats-file=', args, 'Image build stats file should be specified once')
-        if parsed_arg:
-            return parsed_arg
-        else:
-            return os.path.join(bm_config.output_dir, bm_config.executable_name + '-image-build-stats.json')
 
     def pgo_iteration_num(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.pgo-iteration-num=', args)
@@ -427,7 +420,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         return {}
 
     def inNativeMode(self):
-        return self.jvm(self.bmSuiteArgs) == "native-image"
+        return "native-image" in self.jvm(self.bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
@@ -713,6 +706,32 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return datapoints
         else:
             return super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+
+
+class NativeImageBundleBasedBenchmarkMixin(object):
+    def applicationDist(self):
+        raise NotImplementedError()
+
+    def uses_bundles(self):
+        raise NotImplementedError()
+
+    def _get_single_file_with_extension_from_dist(self, extension):
+        lib = self.applicationDist()
+        matching_files = [filename for filename in os.listdir(lib) if filename.endswith(extension)]
+        assert len(matching_files) == 1, f"When using bundle support, the benchmark must contain a single file with extension {extension} in its mx library"
+        matching_file = os.path.join(lib, matching_files[0])
+        return matching_file
+
+    def create_bundle_command_line_args(self, benchmarks, bmSuiteArgs):
+        assert self.uses_bundles()
+        executable_jar = self._get_single_file_with_extension_from_dist(".jar")
+        return self.vmArgs(bmSuiteArgs) + ["-jar", executable_jar]
+
+    def create_bundle_image_build_arguments(self):
+        if self.uses_bundles():
+            return [f'--bundle-apply={self._get_single_file_with_extension_from_dist(".nib")}']
+        return []
+
 
 class EmptyEnv:
     def __init__(self, env):

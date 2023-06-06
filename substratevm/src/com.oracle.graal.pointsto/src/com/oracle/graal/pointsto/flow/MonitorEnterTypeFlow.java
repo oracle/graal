@@ -30,6 +30,7 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public class MonitorEnterTypeFlow extends TypeFlow<BytecodePosition> {
 
+    @SuppressWarnings("this-escape")
     public MonitorEnterTypeFlow(BytecodePosition position, PointsToAnalysis bb) {
         super(position, null);
         this.addUse(bb, bb.getAllSynchronizedTypeFlow());

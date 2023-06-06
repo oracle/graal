@@ -1,3 +1,4 @@
+package registersymbols;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;

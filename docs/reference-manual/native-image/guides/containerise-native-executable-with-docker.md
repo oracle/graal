@@ -11,8 +11,8 @@ Docker containers provide the flexibility of development environments to match a
 
 To support container-based development, there are several GraalVM container images available, depending on the platform, the architecture, the Java version, and the edition:
 
-- GraalVM Enterprise container images are in [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::)
-- GraalVM Community container images in [GitHub Container Registry](https://github.com/orgs/graalvm/packages)
+- Oracle GraalVM container images can be found in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::)
+- GraalVM Community Edition container images can be found in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages)
 
 This guide shows how to containerise a Java application with Docker on macOS. 
 You will use `ghcr.io/graalvm/jdk:ol8-java17` which is a size compact GraalVM Community container image with the GraalVM JDK pre-installed. 
@@ -26,14 +26,21 @@ The Dockerfile will be provided.
 
 For the demo you will use the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README.md). 
 
-1. Clone the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos) and enter the application directory:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Clone the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos) and enter the application directory:
 
     ```shell
     git clone https://github.com/graalvm/graalvm-demos
+    ```
+    ```shell
     cd spring-native-image
     ```
 
-2. Build a native executable and run the application:
+3. Build a native executable and run the application:
 
     ```shell
     mvn -Pnative native:compile
@@ -42,7 +49,7 @@ For the demo you will use the [Spring Boot 3 Native Image Microservice example](
     
     This will create a binary executable `target/benchmark-jibber`. Start it to see the application running:
 
-    ```
+    ```shell
     ./target/benchmark-jibber &
     curl http://localhost:8080/jibber
     fg
@@ -68,7 +75,6 @@ ENTRYPOINT ["/jibber"]
 For user's convenience, Dockerfiles are provided with the sample application. 
 
 1. From application root folder, run this command to create a native executable within a container and then build a Docker image containing that native executable:
-
     ```shell
     docker build -f Dockerfiles/Dockerfile \
                 --build-arg APP_FILE=./target/jibber \
@@ -83,13 +89,11 @@ For user's convenience, Dockerfiles are provided with the sample application.
     You should see a new image listed.
 
 3. Run the image as follows:
-
     ```shell
     docker run --rm --name native -d -p 8080:8080 localhost/jibber:native.01 
     ```
     
 4. Then call the endpoint using the `curl` command in the same console window:
-
     ```shell
     curl http://localhost:8080/jibber
     ```

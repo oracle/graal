@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
-import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -87,7 +87,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         if (ClassInitializationOptions.UseNewExperimentalClassInitialization.getValue()) {
-            System.out.println("WARNING: using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
+            LogUtils.warning("Using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
             return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
         }
         return new ProvenSafeClassInitializationSupport(metaAccess, loader);
@@ -103,8 +103,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
         if (configurationSealed && ClassInitializationOptions.PrintClassInitialization.getValue()) {
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
             allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
-            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
-            ReportUtils.report("class initialization configuration", path, "class_initialization_configuration", "csv", writer -> {
+            ReportUtils.report("class initialization configuration", SubstrateOptions.reportsPath(), "class_initialization_configuration", "csv", writer -> {
                 writer.println("Class or Package Name, Initialization Kind, Reasons");
                 for (ClassOrPackageConfig config : allConfigs) {
                     writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
@@ -143,7 +142,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      * Returns true if the provided type should be initialized at runtime.
      */
     public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
-        return computeInitKindAndMaybeInitializeClass(getJavaClass(type)) != InitKind.BUILD_TIME;
+        return computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type)) != InitKind.BUILD_TIME;
     }
 
     /**
@@ -158,7 +157,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      * runtime.
      */
     public void maybeInitializeHosted(ResolvedJavaType type) {
-        computeInitKindAndMaybeInitializeClass(getJavaClass(type));
+        computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type));
     }
 
     /**
@@ -167,6 +166,13 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      */
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         try {
+            loader.watchdog.recordActivity();
+            /*
+             * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
+             * loop when there is a bug in the user's code. Our deadlock watchdog detects and
+             * reports such cases. To make that as deterministic as possible, we record watchdog
+             * activity just before and after the initialization.
+             */
             Unsafe.getUnsafe().ensureClassInitialized(clazz);
             loader.watchdog.recordActivity();
             return InitKind.BUILD_TIME;
@@ -206,10 +212,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     private static String instructionsToInitializeAtRuntime(Class<?> clazz) {
         return "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, clazz.getTypeName(), "initialize-at-run-time") +
                         " to explicitly request delayed initialization of this class.";
-    }
-
-    static Class<?> getJavaClass(ResolvedJavaType type) {
-        return OriginalClassProvider.getJavaClass(type);
     }
 
     @Override
