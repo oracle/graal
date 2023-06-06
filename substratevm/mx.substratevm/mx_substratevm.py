@@ -1155,7 +1155,10 @@ libgraal_build_args = [
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
-]
+] + ([
+   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+   '-H:PageSize=64K'
+] if mx.get_arch() == 'aarch64' else [])
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
