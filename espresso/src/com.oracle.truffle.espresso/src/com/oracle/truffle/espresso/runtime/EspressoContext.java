@@ -309,9 +309,11 @@ public final class EspressoContext {
         FinalizationSupport.ensureInitialized();
 
         spawnVM();
-        this.initialized = true;
 
         getEspressoEnv().getPolyglotTypeMappings().resolve(this);
+
+        this.initialized = true;
+
         getEspressoEnv().getReferenceDrainer().startReferenceDrain();
 
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)

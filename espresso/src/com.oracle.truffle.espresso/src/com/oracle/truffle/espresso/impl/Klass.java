@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -107,6 +108,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String ARRAY = "array";
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
+
+    @CompilationFinal public boolean isInterfaceMapped;
+    @CompilationFinal public int typeConversionState = -1;
 
     @ExportMessage
     boolean isMemberReadable(String member,
@@ -1590,6 +1594,15 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         } else {
             return this.getRuntimePackage().equals(other.getRuntimePackage());
         }
+    }
+
+    public final boolean isTypeMapped() {
+        if (typeConversionState == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotInterfaceMappings().mapTypeConversion(this);
+            typeConversionState = converter != null ? 1 : 0;
+        }
+        return typeConversionState == 1;
     }
 
     // region jdwp-specific

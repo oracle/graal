@@ -42,6 +42,7 @@
 package com.oracle.truffle.espresso.polyglot;
 
 import java.nio.ByteOrder;
+import java.util.Iterator;
 
 /**
  * Provides access to the interoperability message protocol between Truffle languages. Every method
@@ -1679,6 +1680,16 @@ public final class Interop {
      * @since 21.1
      */
     public static native Object getIterator(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns a Java-typed iterator for the receiver if any. Invoking this message does not cause
+     * any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 23.1
+     */
+    public static native <T> Iterator<T> getJavaIterator(Object receiver) throws UnsupportedMessageException;
 
     /**
      * Returns {@code true} if the receiver represents an iterator. Invoking this message does not

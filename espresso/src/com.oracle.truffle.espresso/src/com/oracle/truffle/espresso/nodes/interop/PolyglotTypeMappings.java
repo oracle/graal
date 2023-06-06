@@ -22,10 +22,17 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.options.OptionMap;
@@ -47,11 +54,14 @@ public class PolyglotTypeMappings {
     private UnmodifiableEconomicMap<String, ObjectKlass> resolvedKlasses;
     private final OptionMap<String> typeConverters;
     private UnmodifiableEconomicMap<String, TypeConverter> typeConverterFunctions;
+    private UnmodifiableEconomicMap<String, ObjectKlass> espressoForeignCollections;
+    private final boolean builtinCollections;
 
-    public PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters) {
+    public PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters, boolean builtinCollections) {
         this.interfaceMappings = interfaceMappings;
         this.hasInterfaceMappings = !interfaceMappings.isEmpty();
         this.typeConverters = typeConverters;
+        this.builtinCollections = builtinCollections;
     }
 
     @TruffleBoundary
@@ -67,6 +77,7 @@ public class PolyglotTypeMappings {
                 Klass parent = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
                 if (parent != null && parent.isInterface()) {
                     temp.put(mapping, (ObjectKlass) parent);
+                    parent.isInterfaceMapped = true;
                 } else {
                     throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
                 }
@@ -102,23 +113,40 @@ public class PolyglotTypeMappings {
                 }
                 Method conversionMethod = conversionKlass.requireDeclaredMethod(name, desc);
                 StaticObject conversionReceiver = context.getAllocator().createNew(conversionKlass);
-                temp.put(type, new TypeConverter(conversionReceiver, DirectCallNode.create(conversionMethod.getCallTarget())));
+                temp.put(type, new TypeConverterImpl(conversionReceiver, DirectCallNode.create(conversionMethod.getCallTarget())));
             }
+            addInternalConverters(temp);
             typeConverterFunctions = EconomicMap.create(temp);
         }
+        if (builtinCollections) {
+            EconomicMap<String, ObjectKlass> temp = EconomicMap.create(6);
+            addInternalEspressoCollections(temp, context.getMeta());
+            espressoForeignCollections = EconomicMap.create(temp);
+        }
+    }
+
+    private void addInternalEspressoCollections(EconomicMap<String, ObjectKlass> map, Meta meta) {
+        map.put("java.lang.Iterable", meta.polyglot.EspressoForeignIterable);
+        map.put("java.util.List", meta.polyglot.EspressoForeignList);
+        map.put("java.util.Collection", meta.polyglot.EspressoForeignCollection);
+        map.put("java.util.Iterator", meta.polyglot.EspressoForeignIterator);
+        map.put("java.util.Map", meta.polyglot.EspressoForeignMap);
+        map.put("java.util.Set", meta.polyglot.EspressoForeignSet);
+    }
+
+    public ObjectKlass mapEspressoForeignCollection(String metaName) {
+        return espressoForeignCollections.get(metaName);
+    }
+
+    private void addInternalConverters(EconomicMap<String, TypeConverter> converters) {
+        converters.put("java.util.Optional", new OptionalTypeConverter());
+        converters.put("java.math.BigDecimal", new BigDecimalTypeConverter());
     }
 
     @TruffleBoundary
     public ObjectKlass mapInterfaceName(String name) {
         assert resolvedKlasses != null;
         return resolvedKlasses.get(name);
-    }
-
-    @TruffleBoundary
-    public ObjectKlass mapInterfaceName(Klass klass) {
-        assert resolvedKlasses != null;
-        String name = klass.getNameAsString().replace('/', '.');
-        return mapInterfaceName(name);
     }
 
     public boolean hasMappings() {
@@ -137,8 +165,8 @@ public class PolyglotTypeMappings {
         return typeConverterFunctions.get(metaName);
     }
 
-    @TruffleBoundary
     public TypeConverter mapTypeConversion(Klass klass) {
+        CompilerAsserts.neverPartOfCompilation();
         if (typeConverterFunctions == null) {
             return null;
         }
@@ -146,17 +174,105 @@ public class PolyglotTypeMappings {
         return mapTypeConversion(name);
     }
 
-    public final class TypeConverter {
+    public interface TypeConverter {
+        Object convert(StaticObject foreign);
+        boolean isInternal();
+        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso);
+    }
+
+    public class TypeConverterImpl implements TypeConverter {
         private final Object receiver;
         private final DirectCallNode callNode;
 
-        TypeConverter(Object receiver, DirectCallNode callNode) {
+        TypeConverterImpl(Object receiver, DirectCallNode callNode) {
             this.receiver = receiver;
             this.callNode = callNode;
         }
 
         public Object convert(StaticObject foreign) {
             return callNode.call(receiver, foreign);
+        }
+
+        public boolean isInternal() {
+            return false;
+        }
+
+        @SuppressWarnings("unused")
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    public final class OptionalTypeConverter implements TypeConverter {
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+            try {
+                Object result = interop.invokeMember(value, "orElse", StaticObject.NULL);
+                if (interop.isNull(result)) {
+                    return (StaticObject) meta.java_util_Optional_EMPTY.get(meta.java_util_Optional.getStatics());
+                } else {
+                    StaticObject guestOptional = toEspresso.getAllocator().createNew(meta.java_util_Optional);
+                    meta.java_util_Optional_value.setObject(guestOptional, toEspresso.execute(result, meta.java_lang_Object));
+                    return guestOptional;
+                }
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Object convert(StaticObject foreign) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    public final class BigDecimalTypeConverter implements TypeConverter {
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+            try {
+                // state required to reconstruct in guest
+                int scale = interop.asInt(interop.invokeMember(value, "scale"));
+                int precision = interop.asInt(interop.invokeMember(value, "precision"));
+                BigInteger bigInteger = interop.asBigInteger(interop.invokeMember(value, "unscaledValue"));
+
+                // reconstruct on guest side
+                StaticObject guestMathContext = toEspresso.getAllocator().createNew(meta.java_math_MathContext);
+                meta.java_math_MathContext_init.invokeDirect(guestMathContext, precision);
+
+                StaticObject guestBigInteger = toEspresso.getAllocator().createNew(meta.java_math_BigInteger);
+                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, toByteArray(bigInteger, meta));
+
+                StaticObject guestBigDecimal = toEspresso.getAllocator().createNew(meta.java_math_BigDecimal);
+                meta.java_math_BigDecimal_init.invokeDirect(guestBigDecimal, guestBigInteger, scale, guestMathContext);
+                return guestBigDecimal;
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+
+        @TruffleBoundary
+        private StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
+            return StaticObject.wrap(bigInteger.toByteArray(), meta);
+        }
+
+        @Override
+        public Object convert(StaticObject foreign) {
+            throw new UnsupportedOperationException();
         }
     }
 }
