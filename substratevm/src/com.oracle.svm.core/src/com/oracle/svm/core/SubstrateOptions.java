@@ -197,7 +197,7 @@ public class SubstrateOptions {
         private final String description;
         private final int level;
 
-        private OptimizationLevel(String description, int level) {
+        OptimizationLevel(String description, int level) {
             this.description = description;
             this.level = level;
         }
@@ -206,6 +206,9 @@ public class SubstrateOptions {
             return description;
         }
 
+        /**
+         * Determine if this level is at least {@code other}.
+         */
         public boolean isMinimalLevel(OptimizationLevel other) {
             return this.level >= other.level;
         }
@@ -270,6 +273,11 @@ public class SubstrateOptions {
     @Fold
     public static boolean useEconomyCompilerConfig() {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
+
+    @Fold
+    public static boolean isMaximumOptimizationLevel() {
+        return optimizationLevel() == OptimizationLevel.O3;
     }
 
     public interface ValueUpdateHandler<T> {
