@@ -1418,11 +1418,7 @@ public class SharedInterop {
         if (target != null) {
             return callNode.call(target, receiver, allowSideEffects);
         }
-        if (allowSideEffects) {
-            return Objects.toString(receiver);
-        } else {
-            return receiver.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(receiver));
-        }
+        return toDisplayStringBoundary(receiver, allowSideEffects);
     }
 
     @ExportMessage
@@ -1563,5 +1559,16 @@ public class SharedInterop {
             return callNode.call(target, receiver);
         }
         throw unsupported();
+    }
+
+    // region boundary methods
+
+    @TruffleBoundary
+    private static Object toDisplayStringBoundary(Object receiver, boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return Objects.toString(receiver);
+        } else {
+            return receiver.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(receiver));
+        }
     }
 }
