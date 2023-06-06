@@ -61,8 +61,6 @@ Hello, World!
 
 > Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
 
-Larger Java examples can be found in the [GraalVM Demos repository on GitHub](https://github.com/graalvm/graalvm-demos).
-
 ## What to Read Next
 
 ### New Users
