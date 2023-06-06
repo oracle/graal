@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Supplier;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 
 /**
  * Support for an embedder to impose control over logging and dumping during Truffle compilation
@@ -36,5 +36,5 @@ public interface FloodControlHandler extends GraalRuntimeServiceProvider {
     /**
      * Return {@code true} to suppress logging and dumping of a given exception.
      */
-    boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
+    boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException);
 }

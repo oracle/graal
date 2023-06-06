@@ -47,11 +47,12 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id;
 
 /**
  * Native methods linked to libgraal entry points.
@@ -69,6 +70,15 @@ final class TruffleToLibGraalCalls {
     @TruffleToLibGraal(RegisterRuntime)
     static native boolean registerRuntime(long isolateThreadId, Object truffleRuntime);
 
+    @TruffleToLibGraal(Id.ListCompilerOptions)
+    static native byte[] listCompilerOptions(long isolateThreadId);
+
+    @TruffleToLibGraal(Id.ExistsCompilerOption)
+    static native boolean existsCompilerOption(long isolateThreadId, String optionName);
+
+    @TruffleToLibGraal(Id.ValidateCompilerOption)
+    static native String validateCompilerOption(long isolateThreadId, String optionName, String optionValue);
+
     @TruffleToLibGraal(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);
 
@@ -76,7 +86,7 @@ final class TruffleToLibGraalCalls {
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
 
     @TruffleToLibGraal(InitializeCompiler)
-    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options, CompilableTruffleAST compilable, boolean firstInitialization);
+    static native void initializeCompiler(long isolateThreadId, long compilerHandle, TruffleCompilable compilable, boolean firstInitialization);
 
     @TruffleToLibGraal(GetCompilerConfigurationName)
     static native String getCompilerConfigurationName(long isolateThreadId, long handle);
@@ -85,8 +95,7 @@ final class TruffleToLibGraalCalls {
     static native void doCompile(long isolateThreadId,
                     long compilerHandle,
                     TruffleCompilationTask task,
-                    CompilableTruffleAST compilable,
-                    byte[] options,
+                    TruffleCompilable compilable,
                     TruffleCompilerListener listener);
 
     @TruffleToLibGraal(InstallTruffleCallBoundaryMethod)
@@ -96,7 +105,7 @@ final class TruffleToLibGraalCalls {
     static native void installTruffleReservedOopMethod(long isolateThreadId, long handle, long methodHandle);
 
     @TruffleToLibGraal(PendingTransferToInterpreterOffset)
-    static native int pendingTransferToInterpreterOffset(long isolateThreadId, long handle, CompilableTruffleAST compilable);
+    static native int pendingTransferToInterpreterOffset(long isolateThreadId, long handle, TruffleCompilable compilable);
 
     @TruffleToLibGraal(Shutdown)
     static native void shutdown(long isolateThreadId, long handle);

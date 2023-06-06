@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.common;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -34,7 +35,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * A Truffle AST that can be compiled by a {@link TruffleCompiler}.
  */
-public interface CompilableTruffleAST {
+public interface TruffleCompilable {
     /**
      * Gets this AST as a compiler constant.
      */
@@ -54,8 +55,8 @@ public interface CompilableTruffleAST {
      *            representing the reason for compilation failure. See
      *            {@link #serializeException(Throwable)}.
      * @param suppressed specifies whether the failure was suppressed and should be silent. Use the
-     *            {@link TruffleCompilerRuntime#isSuppressedFailure(CompilableTruffleAST, Supplier)}
-     *            to determine if the failure should be suppressed.
+     *            {@link TruffleCompilerRuntime#isSuppressedFailure(TruffleCompilable, Supplier)} to
+     *            determine if the failure should be suppressed.
      * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
      *            bailout means the compiler aborted the compilation based on some of property of
      *            the AST (e.g., too big). A non-bailout means an unexpected error in the compiler
@@ -106,7 +107,7 @@ public interface CompilableTruffleAST {
      * @return true if this ast and the argument are the same, one is a split of the other or they
      *         are both splits of the same ast. False otherwise.
      */
-    boolean isSameOrSplit(CompilableTruffleAST ast);
+    boolean isSameOrSplit(TruffleCompilable ast);
 
     /**
      * @return How many direct callers is this ast known to have.
@@ -153,5 +154,18 @@ public interface CompilableTruffleAST {
      *         otherwise.
      */
     boolean isTrivial();
+
+    /**
+     * Returns a process-unique id for the underlying engine. This may be used to cache the
+     * {@link #getCompilerOptions() compiler options} as they are guaranteed to be the same per
+     * engine.
+     */
+    long engineId();
+
+    /**
+     * Returns a set of compiler options that where specified by the user. The compiler options are
+     * immutable for each {@link #engineId() engine}.
+     */
+    Map<String, String> getCompilerOptions();
 
 }

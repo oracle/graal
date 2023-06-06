@@ -33,12 +33,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
@@ -214,7 +213,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+    public TruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         if (truffleCompiler == null) {
             initializeTruffleCompiler(compilable);
@@ -288,18 +287,24 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         truffleCompilerInitializationException = null;
     }
 
-    private synchronized void initializeTruffleCompiler(CompilableTruffleAST compilable) {
+    private synchronized void initializeTruffleCompiler(TruffleCompilable compilable) {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();
             try {
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
-
                 EngineData engine = callTarget.engine;
+
+                /*
+                 * The init call target deliberately only saves the engine data and does not keep a
+                 * strong reference to the root node to avoid memory leaks.
+                 */
+                OptimizedCallTarget initCallTarget = createInitializationCallTarget(engine);
+
                 profilingEnabled = engine.profilingEnabled;
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
-                Map<String, Object> options = getOptionsForCompiler(callTarget);
-                compiler.initialize(options, callTarget, true);
+                compiler.initialize(initCallTarget, true);
+                this.initializeCallTarget = initCallTarget;
 
                 installCallBoundaryMethods(compiler);
                 if (jvmciReservedReference0Offset != -1) {
@@ -334,7 +339,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode) {
+    protected OptimizedCallTarget createInitializationCallTarget(EngineData engine) {
+        return new HotSpotOptimizedCallTarget(engine);
+    }
+
+    @Override
+    public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         HotSpotOptimizedCallTarget callTarget = (HotSpotOptimizedCallTarget) compilable;
         callTarget.setInstalledCode(installedCode);
     }
@@ -524,12 +534,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return true;
     }
 
-    private static void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
+    private void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
         ResolvedJavaType type = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
                 if (compiler != null) {
-                    compiler.installTruffleCallBoundaryMethod(method);
+                    OptimizedCallTarget initCallTarget = initializeCallTarget;
+                    Objects.requireNonNull(initCallTarget);
+                    compiler.installTruffleCallBoundaryMethod(method, initCallTarget);
                 } else {
                     setNotInlinableOrCompilable(method);
                 }
@@ -537,7 +549,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
     }
 
-    private static void installReservedOopMethods(HotSpotTruffleCompiler compiler) {
+    private void installReservedOopMethods(HotSpotTruffleCompiler compiler) {
         ResolvedJavaType local = getMetaAccess().lookupJavaType(HotSpotFastThreadLocal.class);
         for (ResolvedJavaMethod method : local.getDeclaredMethods(false)) {
             String name = method.getName();
@@ -545,7 +557,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 case "set":
                 case "get":
                     if (compiler != null) {
-                        compiler.installTruffleReservedOopMethod(method);
+                        OptimizedCallTarget initCallTarget = initializeCallTarget;
+                        Objects.requireNonNull(initCallTarget);
+                        compiler.installTruffleReservedOopMethod(method, initCallTarget);
                     } else {
                         setNotInlinableOrCompilable(method);
                     }

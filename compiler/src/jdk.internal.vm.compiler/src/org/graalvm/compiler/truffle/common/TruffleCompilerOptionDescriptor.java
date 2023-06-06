@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,45 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import org.graalvm.compiler.options.OptionDescriptor;
+
 /**
- * Represents some machine code whose validity depends on an assumption. Valid machine code can
- * still be executed.
+ * Represents the description of a Truffle compiler options.
  */
-public interface OptimizedAssumptionDependency {
+public record TruffleCompilerOptionDescriptor(String name, Type type, boolean deprecated, String help, String deprecationMessage) {
 
-    /**
-     * Called when a depended-on assumption is invalidated, with the intention to invalidate the
-     * machine code referenced by this object.
-     */
-    void onAssumptionInvalidated(Object source, CharSequence reason);
+    public TruffleCompilerOptionDescriptor(OptionDescriptor d) {
+        this(d.getName(), matchGraalOptionType(d), d.isDeprecated(), d.getHelp(), d.getDeprecationMessage());
+    }
 
-    /**
-     * Determines if the machine code referenced by this object is valid.
-     */
-    boolean isAlive();
+    static Type matchGraalOptionType(OptionDescriptor d) {
+        switch (d.getOptionType()) {
+            case User:
+                return Type.USER;
+            case Expert:
+                return Type.EXPERT;
+            case Debug:
+                return Type.DEBUG;
+            default:
+                return Type.DEBUG;
+        }
+    }
 
-    /**
-     * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
-     */
-    default TruffleCompilable getCompilable() {
-        return null;
+    public enum Type {
+        /**
+         * An option common for users to apply.
+         */
+        USER,
+
+        /**
+         * An option only relevant in corner cases and for fine-tuning.
+         */
+        EXPERT,
+
+        /**
+         * An option only relevant when debugging the compiler.
+         */
+        DEBUG
     }
 
 }

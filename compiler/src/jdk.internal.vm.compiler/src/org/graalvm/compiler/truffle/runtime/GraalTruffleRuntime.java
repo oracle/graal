@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -35,12 +35,14 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -51,16 +53,16 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.JFRListener;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
@@ -69,9 +71,12 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismLi
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.ArrayUtils;
@@ -156,6 +161,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final GraalTruffleRuntimeListenerDispatcher listeners = new GraalTruffleRuntimeListenerDispatcher();
 
     protected volatile TruffleCompiler truffleCompiler;
+    protected volatile OptimizedCallTarget initializeCallTarget;
 
     protected KnownMethods knownMethods;
 
@@ -182,7 +188,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
-        options.add(PolyglotCompilerOptions.getDescriptors());
+        options.add(OptimizedRuntimeOptions.getDescriptors());
+        options.add(new CompilerOptionsDescriptors());
         this.runtimeOptionDescriptors = options.toArray(new OptionDescriptors[options.size()]);
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
@@ -215,13 +222,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * This method allows retrieval of the compiler configuration without requiring to initialize
-     * the {@link TruffleCompiler} with {@link #getTruffleCompiler(CompilableTruffleAST)
+     * the {@link TruffleCompiler} with {@link #getTruffleCompiler(TruffleCompilable)
      * getTruffleCompiler}. The result of this method should always match
      * {@link TruffleCompiler#getCompilerConfigurationName()}.
      */
     protected abstract String getCompilerConfigurationName();
 
-    public abstract TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
+    public abstract TruffleCompiler getTruffleCompiler(TruffleCompilable compilable);
+
+    public abstract TruffleCompilerOptionDescriptor[] listCompilerOptions();
+
+    public abstract boolean existsCompilerOption(String key);
+
+    public abstract String validateCompilerOption(String key, String value);
 
     protected GraalTVMCI getTvmci() {
         return tvmci;
@@ -239,7 +252,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         return asObject(OptimizedCallTarget.class, constant);
     }
 
@@ -783,6 +796,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 
+    protected abstract OptimizedCallTarget createInitializationCallTarget(EngineData engine);
+
     public void addListener(GraalTruffleRuntimeListener listener) {
         listeners.add(listener);
     }
@@ -810,7 +825,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
                 listeners.onCompilationQueued(blockTarget, task.tier());
                 int nodeCount = blockTarget.getNonTrivialNodeCount();
-                if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
+                if (nodeCount > callTarget.engine.getEngineOptions().get(OptimizedRuntimeOptions.PartialBlockMaximumSize)) {
                     listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.", task.tier());
                     continue;
                 }
@@ -832,10 +847,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         boolean compilationStarted = false;
         try {
             TruffleCompiler compiler = getTruffleCompiler(callTarget);
-            final Map<String, Object> optionsMap = getOptionsForCompiler(callTarget);
             listeners.onCompilationStarted(callTarget, task);
             compilationStarted = true;
-            compiler.doCompile(task, callTarget, optionsMap, listeners.isEmpty() ? null : listeners);
+            compiler.doCompile(task, callTarget, listeners.isEmpty() ? null : listeners);
             task.dequeueTargets();
         } catch (OptimizationFailedException e) {
             // Listeners already notified
@@ -857,7 +871,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()), tier);
             }
         } finally {
-            Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
+            Supplier<String> serializedException = () -> TruffleCompilable.serializeException(t);
             callTarget.onCompilationFailed(serializedException, isSuppressedTruffleRuntimeException(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
@@ -868,7 +882,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
         return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
-
     }
 
     @SuppressWarnings("all")
@@ -879,13 +892,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CompilationTask task, boolean mayBeAsynchronous) {
-
         if (!mayBeAsynchronous) {
             try {
                 uninterruptibleWaitForCompilation(task);
             } catch (ExecutionException e) {
                 if (optimizedCallTarget.engine.compilationFailureAction == ExceptionAction.Throw) {
-                    throw new RuntimeException(e.getCause());
+                    throw new OptimizationFailedException(e.getCause(), optimizedCallTarget);
                 } else {
                     if (assertionsEnabled()) {
                         e.printStackTrace();
@@ -1030,20 +1042,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+    public void log(String loggerId, TruffleCompilable compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
     }
 
     @Override
-    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+    public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
     }
 
     /**
      * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
-     * thrown during VM exit. Unlike {@link #isSuppressedFailure(CompilableTruffleAST, Supplier)}
-     * this method is called only for exceptions thrown on the Truffle runtime side, so it does not
-     * need to stringify the passed exception.
+     * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)} this
+     * method is called only for exceptions thrown on the Truffle runtime side, so it does not need
+     * to stringify the passed exception.
      */
     @SuppressWarnings("unused")
     protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
@@ -1095,19 +1107,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * for a task and thus never terminate.
      */
     protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
-        OptionValues options = callTarget.engine.getEngineOptions();
-        /*
-         * Compiler idle time is set to 0 to avoid that the compiler thread is shut down. We are
-         * collecting statistics if any of the flags are used.
-         */
-        if (!options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() || !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty() ||
-                        options.get(PolyglotCompilerOptions.InstrumentBranches) || options.get(PolyglotCompilerOptions.InstrumentBoundaries)) {
-            return 0L;
-        }
         return callTarget.getOptionValue(CompilerIdleDelay);
     }
 
-    final OptionDescriptors getEngineOptionDescriptors() {
+    final OptionDescriptors getOptionDescriptors() {
         // The engineOptions field needs to be initialized lazily because the GraalRuntimeAccessor
         // cannot be used in the GraalTruffleRuntime constructor. The GraalTruffleRuntime must be
         // fully initialized before using the accessor otherwise a NullPointerException will be
@@ -1119,42 +1122,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             engineOptions = res;
         }
         return res;
-    }
-
-    /**
-     * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
-     * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
-     */
-    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
-        Map<String, Object> map = new HashMap<>();
-        OptionValues values = target.engine.getEngineOptions();
-
-        for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
-            final OptionKey<?> key = desc.getKey();
-            if (values.hasBeenSet(key)) {
-                Object value = values.get(key);
-                if (!isPrimitiveType(value)) {
-                    value = GraalRuntimeAccessor.ENGINE.getUnparsedOptionValue(values, key);
-                }
-                if (value != null) {
-                    map.put(desc.getName(), value);
-                }
-            }
-        }
-        return map;
-    }
-
-    private static boolean isPrimitiveType(Object value) {
-        Class<?> valueClass = value.getClass();
-        return valueClass == Boolean.class ||
-                        valueClass == Byte.class ||
-                        valueClass == Short.class ||
-                        valueClass == Character.class ||
-                        valueClass == Integer.class ||
-                        valueClass == Long.class ||
-                        valueClass == Float.class ||
-                        valueClass == Double.class ||
-                        valueClass == String.class;
     }
 
     protected int getObjectAlignment() {
@@ -1189,7 +1156,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
-            final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
+            final int limit = callTarget.getOptionValue(OptimizedRuntimeOptions.TraceStackTraceLimit);
             final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");
@@ -1273,6 +1240,190 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
             }
             return sourceSection.getSource().getName();
+        }
+    }
+
+    static final class CompilerOptionsDescriptors implements OptionDescriptors {
+
+        /*
+         * We do not need real keys for compiler options as they are never read on the runtime side.
+         */
+
+        TruffleCompilerOptionDescriptor[] options;
+
+        /*
+         * Used to validate options by name. e.g. for validation requests.
+         */
+        private static final Map<String, OptionKey<String>> KEYS = new ConcurrentHashMap<>();
+
+        /*
+         * Used to extract option values from OptionValues. Since we do not have a generated
+         * descriptor option on the runtime side we enumerate all options that were used globally.
+         */
+        private static final Map<OptionKey<String>, String> NAMES = new ConcurrentHashMap<>();
+
+        CompilerOptionsDescriptors() {
+        }
+
+        @Override
+        public OptionDescriptor get(String optionName) {
+            String newOptionName = null;
+            if (optionName.startsWith("compiler.")) {
+                newOptionName = optionName;
+            } else if (isLegacyOption(optionName)) {
+                newOptionName = convertFromLegacyOptionName(optionName);
+            }
+
+            if (newOptionName != null && GraalTruffleRuntime.getRuntime().existsCompilerOption(newOptionName)) {
+                OptionDescriptor.Builder b = OptionDescriptor.newBuilder(getOrCreateOptionKey(optionName), optionName);
+                if (isLegacyOption(optionName)) {
+                    b.deprecated(true).deprecationMessage(
+                                    String.format("The option %s is now deprecated. Please use the new option name '%s' instead to resolve this.", optionName, newOptionName));
+                }
+                return b.build();
+            }
+
+            return null;
+        }
+
+        static OptionKey<String> getOrCreateOptionKey(String name) {
+            return KEYS.computeIfAbsent(name, (k) -> {
+                OptionType<String> type = new OptionType<>("compilerOption", (s) -> s, (v) -> {
+                    String optionName = name;
+                    if (isLegacyOption(optionName)) {
+                        optionName = convertFromLegacyOptionName(optionName);
+                    }
+                    String result = GraalTruffleRuntime.getRuntime().validateCompilerOption(optionName, v);
+                    if (result != null) {
+                        throw new IllegalArgumentException(result);
+                    }
+                });
+                var key = new OptionKey<>("", type);
+                NAMES.put(key, name);
+                return key;
+            });
+
+        }
+
+        static boolean isLegacyOption(String optionName) {
+            switch (optionName) {
+                case "engine.EncodedGraphCache":
+                case "engine.ExcludeAssertions":
+                case "engine.FirstTierInliningPolicy":
+                case "engine.FirstTierUseEconomy":
+                case "engine.InlineAcrossTruffleBoundary":
+                case "engine.InlineOnly":
+                case "engine.Inlining":
+                case "engine.InliningExpansionBudget":
+                case "engine.InliningInliningBudget":
+                case "engine.InliningPolicy":
+                case "engine.InliningRecursionDepth":
+                case "engine.InliningUseSize":
+                case "engine.InstrumentBoundaries":
+                case "engine.InstrumentBoundariesPerInlineSite":
+                case "engine.InstrumentBranches":
+                case "engine.InstrumentBranchesPerInlineSite":
+                case "engine.InstrumentFilter":
+                case "engine.InstrumentationTableSize":
+                case "engine.IterativePartialEscape":
+                case "engine.MaximumGraalGraphSize":
+                case "engine.MethodExpansionStatistics":
+                case "engine.NodeExpansionStatistics":
+                case "engine.NodeSourcePositions":
+                case "engine.ParsePEGraphsWithAssumptions":
+                case "engine.TraceInlining":
+                case "engine.TraceInliningDetails":
+                case "engine.TraceMethodExpansion":
+                case "engine.TraceNodeExpansion":
+                case "engine.TracePerformanceWarnings":
+                case "engine.TraceStackTraceLimit":
+                case "engine.TreatPerformanceWarningsAsErrors":
+                    return true;
+            }
+            return false;
+        }
+
+        static String convertFromLegacyOptionName(String optionName) {
+            return optionName.replaceFirst("engine", "compiler");
+        }
+
+        static String convertToLegacyOptionName(String optionName) {
+            return optionName.replaceFirst("compiler", "engine");
+        }
+
+        @Override
+        public Iterator<OptionDescriptor> iterator() {
+            TruffleCompilerOptionDescriptor[] optionsArray = this.options;
+            if (optionsArray == null) {
+                /*
+                 * Compiler options descriptor never change so it is save to cache them per runtime.
+                 */
+                options = optionsArray = GraalTruffleRuntime.getRuntime().listCompilerOptions();
+            }
+            List<OptionDescriptor> descriptors = new ArrayList<>();
+            for (TruffleCompilerOptionDescriptor descriptor : optionsArray) {
+                descriptors.add(convertDescriptor(descriptor));
+            }
+            for (TruffleCompilerOptionDescriptor descriptor : optionsArray) {
+                descriptors.add(convertDescriptorLegacy(descriptor));
+            }
+            return descriptors.iterator();
+        }
+
+        static OptionDescriptor convertDescriptorLegacy(TruffleCompilerOptionDescriptor d) {
+            String name = convertToLegacyOptionName(d.name());
+            return OptionDescriptor.newBuilder(getOrCreateOptionKey(name), name) //
+                            .help(d.help()) //
+                            // we do not have stable compiler options yet.
+                            // maybe this needs to be extended in the future.
+                            .stability(OptionStability.EXPERIMENTAL) //
+                            .category(matchCategory(d)) //
+                            .deprecated(true) //
+                            .deprecationMessage(String.format("The option %s is now deprecated. Please use the new option name '%s' instead to resolve this.", name, d.name())).build();
+        }
+
+        static OptionDescriptor convertDescriptor(TruffleCompilerOptionDescriptor d) {
+            String name = d.name();
+            return OptionDescriptor.newBuilder(getOrCreateOptionKey(name), name) //
+                            .help(d.help()) //
+                            // we do not have stable compiler options yet.
+                            // maybe this needs to be extended in the future.
+                            .stability(OptionStability.EXPERIMENTAL) //
+                            .category(matchCategory(d)) //
+                            .deprecated(d.deprecated()) //
+                            .deprecationMessage(d.deprecationMessage()).build();
+        }
+
+        static Map<String, String> extractOptions(OptionValues values) {
+            Map<String, String> options = null;
+            for (var entry : NAMES.entrySet()) {
+                if (options == null) {
+                    options = new LinkedHashMap<>();
+                }
+                String optionName = entry.getValue();
+                if (!values.hasBeenSet(entry.getKey())) {
+                    continue;
+                }
+                String optionValue = values.get(entry.getKey());
+                if (isLegacyOption(optionName)) {
+                    optionName = convertFromLegacyOptionName(optionName);
+                }
+                options.put(optionName, optionValue);
+            }
+            return options == null ? new LinkedHashMap<>() : options;
+        }
+
+        static OptionCategory matchCategory(TruffleCompilerOptionDescriptor d) {
+            switch (d.type()) {
+                case USER:
+                    return OptionCategory.USER;
+                case EXPERT:
+                    return OptionCategory.EXPERT;
+                case DEBUG:
+                    return OptionCategory.INTERNAL;
+                default:
+                    return OptionCategory.INTERNAL;
+            }
         }
     }
 

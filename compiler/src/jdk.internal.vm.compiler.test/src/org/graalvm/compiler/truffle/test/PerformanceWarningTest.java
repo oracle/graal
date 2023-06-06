@@ -65,8 +65,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @Before
     public void setUp() {
         outContent = new ByteArrayOutputStream();
-        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
-                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
+        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("compiler.TracePerformanceWarnings", "all").option(
+                        "compiler.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
     }
 
     @Test
@@ -133,7 +133,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
                 TruffleCompilerImpl compiler = getTruffleCompiler(target);
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-                    compiler.compileAST(compilable.getOptionValues(), debug, compilable, compilation.getCompilationId(), task, null);
+                    compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);
                 }
 
                 assertTrue(compilable.isValid());

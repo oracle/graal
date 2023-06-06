@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
@@ -66,6 +67,11 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
+        this.installedCode = INVALID_CODE;
+    }
+
+    public HotSpotOptimizedCallTarget(EngineData engine) {
+        super(engine);
         this.installedCode = INVALID_CODE;
     }
 

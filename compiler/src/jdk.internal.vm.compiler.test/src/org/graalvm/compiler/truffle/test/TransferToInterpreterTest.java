@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.Map;
-
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -54,9 +52,8 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
-        Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         TestTruffleCompilationTask task = new TestTruffleCompilationTask();
-        compiler.doCompile(task, compilable, options, null);
+        compiler.doCompile(task, compilable, null);
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());

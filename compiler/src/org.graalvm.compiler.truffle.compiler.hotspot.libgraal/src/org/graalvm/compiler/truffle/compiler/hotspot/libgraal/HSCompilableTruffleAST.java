@@ -53,20 +53,24 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.nativebridge.BinaryInput;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -74,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
  */
-final class HSCompilableTruffleAST extends HSObject implements CompilableTruffleAST {
+final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable {
 
     private volatile String cachedName;
 
@@ -103,6 +107,31 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
             cachedFailedSpeculationsAddress = res;
         }
         return HotSpotGraalServices.newHotSpotSpeculationLog(cachedFailedSpeculationsAddress);
+    }
+
+    @Override
+    @TruffleFromLibGraal(Id.GetCompilerOptions)
+    public Map<String, String> getCompilerOptions() {
+        JNIEnv env = env();
+        JNI.JByteArray res = HSCompilableTruffleASTGen.callGetCompilerOptions(env, getHandle());
+        byte[] realArray = JNIUtil.createArray(env, res);
+        return readDebugMap(BinaryInput.create(realArray));
+    }
+
+    private static Map<String, String> readDebugMap(BinaryInput in) {
+        int size = in.readInt();
+        Map<String, String> map = new LinkedHashMap<>();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            map.put(key, in.readUTF());
+        }
+        return map;
+    }
+
+    @Override
+    @TruffleFromLibGraal(Id.EngineId)
+    public long engineId() {
+        return HSCompilableTruffleASTGen.callEngineId(env(), getHandle());
     }
 
     @Override
@@ -197,7 +226,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
 
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
-    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public boolean isSameOrSplit(TruffleCompilable ast) {
         JObject astHandle = ((HSCompilableTruffleAST) ast).getHandle();
         return callIsSameOrSplit(env(), getHandle(), astHandle);
     }

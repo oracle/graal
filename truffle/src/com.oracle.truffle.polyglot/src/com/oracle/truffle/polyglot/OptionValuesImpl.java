@@ -41,6 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,16 +67,19 @@ final class OptionValuesImpl implements OptionValues {
     private final OptionDescriptors descriptors;
     private final SandboxPolicy sandboxPolicy;
     private final Map<OptionKey<?>, Object> values;
+    private List<OptionDescriptor> usedDeprecatedDescriptors;
     private final Map<OptionKey<?>, String> unparsedValues;
     private volatile Set<OptionKey<?>> validAssertKeys;
+    private final boolean trackDeprecatedOptions;
 
-    OptionValuesImpl(OptionDescriptors descriptors, SandboxPolicy sandboxPolicy, boolean preserveUnparsedValues) {
+    OptionValuesImpl(OptionDescriptors descriptors, SandboxPolicy sandboxPolicy, boolean preserveUnparsedValues, boolean trackDeprecatedOptions) {
         Objects.requireNonNull(descriptors);
         Objects.requireNonNull(sandboxPolicy);
         this.descriptors = descriptors;
         this.sandboxPolicy = sandboxPolicy;
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
+        this.trackDeprecatedOptions = trackDeprecatedOptions;
     }
 
     @Override
@@ -119,6 +123,16 @@ final class OptionValuesImpl implements OptionValues {
         }
     }
 
+    Collection<OptionDescriptor> getUsedDeprecatedDescriptors() {
+        if (!trackDeprecatedOptions) {
+            throw new UnsupportedOperationException("Deprecated options not tracked.");
+        }
+        if (usedDeprecatedDescriptors == null) {
+            return List.of();
+        }
+        return usedDeprecatedDescriptors;
+    }
+
     private boolean slowCompareKey(OptionKey<?> key, OptionValues other) {
         boolean set = hasBeenSet(key);
         if (set != other.hasBeenSet(key)) {
@@ -136,7 +150,7 @@ final class OptionValuesImpl implements OptionValues {
         }
     }
 
-    public void put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
+    public OptionDescriptor put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
         if (sandboxPolicy != SandboxPolicy.TRUSTED) {
             SandboxPolicy optionSandboxPolicy = descriptors instanceof TruffleOptionDescriptors ? ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key) : SandboxPolicy.TRUSTED;
@@ -168,10 +182,18 @@ final class OptionValuesImpl implements OptionValues {
         } catch (IllegalArgumentException e) {
             throw PolyglotEngineException.illegalArgument(e);
         }
+        if (trackDeprecatedOptions && descriptor.isDeprecated()) {
+            if (usedDeprecatedDescriptors == null) {
+                usedDeprecatedDescriptors = new ArrayList<>();
+            }
+            usedDeprecatedDescriptors.add(descriptor);
+        }
         values.put(descriptor.getKey(), convertedValue);
+
         if (unparsedValues != null) {
             unparsedValues.put(descriptor.getKey(), value);
         }
+        return descriptor;
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
@@ -179,6 +201,8 @@ final class OptionValuesImpl implements OptionValues {
         this.descriptors = copy.descriptors;
         this.sandboxPolicy = copy.sandboxPolicy;
         this.unparsedValues = copy.unparsedValues;
+        this.usedDeprecatedDescriptors = copy.usedDeprecatedDescriptors;
+        this.trackDeprecatedOptions = copy.trackDeprecatedOptions;
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {

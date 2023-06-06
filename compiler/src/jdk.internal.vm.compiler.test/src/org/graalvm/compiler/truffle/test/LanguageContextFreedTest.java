@@ -34,8 +34,8 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -62,11 +62,13 @@ public class LanguageContextFreedTest {
 
     private static void testLanguageContextFreedNoSharingImpl() {
         doTest(() -> {
-            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).//
-            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
-            option("engine.MultiTier", Boolean.FALSE.toString()).//
-            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
-            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            Context.Builder b = Context.newBuilder().allowAllAccess(true);
+            b.allowExperimentalOptions(true);
+            b.option("engine.BackgroundCompilation", Boolean.FALSE.toString());
+            b.option("engine.MultiTier", Boolean.FALSE.toString());
+            b.option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD));
+            b.option("engine.CompileImmediately", Boolean.FALSE.toString());
+            return b.build();
         });
     }
 
@@ -77,12 +79,13 @@ public class LanguageContextFreedTest {
 
     private static void testLanguageContextFreedSharedEngineImpl() {
         doTest(() -> {
-            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).//
-            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
-            option("engine.MultiTier", Boolean.FALSE.toString()).//
-            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
-            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
-            return Context.newBuilder().engine(engine).allowAllAccess(true).build();
+            Engine.Builder b = Engine.newBuilder();
+            b.allowExperimentalOptions(true);
+            b.option("engine.BackgroundCompilation", Boolean.FALSE.toString());
+            b.option("engine.MultiTier", Boolean.FALSE.toString());
+            b.option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD));
+            b.option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            return Context.newBuilder().engine(b.build()).allowAllAccess(true).build();
         });
     }
 
@@ -173,7 +176,7 @@ public class LanguageContextFreedTest {
             }.getCallTarget();
             getContextReference0().get(null).currentTarget = target;
 
-            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
+            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold));
             return target;
         }
 

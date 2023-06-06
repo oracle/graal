@@ -70,6 +70,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static final String OPTION_CLASS_NAME = "org.graalvm.compiler.options.Option";
     private static final String OPTION_KEY_CLASS_NAME = "org.graalvm.compiler.options.OptionKey";
     private static final String OPTION_TYPE_CLASS_NAME = "org.graalvm.compiler.options.OptionType";
+    private static final String OPTION_TYPE_GROUP_NAME = "org.graalvm.compiler.options.OptionGroup";
     private static final String OPTION_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptor";
     private static final String OPTION_DESCRIPTORS_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptors";
 
@@ -120,6 +121,8 @@ public class OptionProcessor extends AbstractProcessor {
             return;
         }
 
+        String prefix = resolveOptionPrefix(element.getEnclosingElement());
+
         String optionName = getAnnotationValue(annotation, "name", String.class);
         if (optionName.equals("")) {
             optionName = fieldName;
@@ -128,6 +131,10 @@ public class OptionProcessor extends AbstractProcessor {
         if (!Character.isUpperCase(optionName.charAt(0))) {
             processingEnv.getMessager().printMessage(Kind.ERROR, "Option name must start with an upper case letter", element);
             return;
+        }
+
+        if (!prefix.isEmpty()) {
+            optionName = prefix + optionName;
         }
 
         DeclaredType declaredOptionKeyType = declaredFieldType;
@@ -235,10 +242,31 @@ public class OptionProcessor extends AbstractProcessor {
         info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), deprecated, deprecationMessage));
     }
 
+    private String resolveOptionPrefix(Element optionType) {
+        TypeMirror optionGroupType = processingEnv.getElementUtils().getTypeElement(OPTION_TYPE_GROUP_NAME).asType();
+        AnnotationMirror optionGroup = getAnnotation(optionType, optionGroupType);
+        String prefix;
+        if (optionGroup == null) {
+            prefix = "";
+        } else {
+            prefix = getAnnotationValue(optionGroup, "prefix", String.class);
+        }
+        return prefix;
+    }
+
     public static void createOptionsDescriptorsFile(ProcessingEnvironment processingEnv, OptionsInfo info) {
         Element[] originatingElements = info.originatingElements.toArray(new Element[info.originatingElements.size()]);
-        String optionsDescriptorsClassName = info.className + "_" + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME);
-
+        String optionsDescriptorsClassName;
+        if (info.registerAsService) {
+            optionsDescriptorsClassName = info.className + "_" + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME);
+        } else {
+            /*
+             * To ensure mx does not lookup the option class by name we remove the "_" in the
+             * generated class name.
+             */
+            // TODO GR-46195 after this is implemented, we can remove this branch
+            optionsDescriptorsClassName = info.className + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME);
+        }
         Filer filer = processingEnv.getFiler();
         try (PrintWriter out = createSourceFile(info.packageName, optionsDescriptorsClassName, filer, originatingElements)) {
 
@@ -252,13 +280,32 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("import " + getPackageName(OPTION_DESCRIPTORS_CLASS_NAME) + ".*;");
             out.println("import " + OPTION_TYPE_CLASS_NAME + ";");
             out.println("");
-            out.println("public class " + optionsDescriptorsClassName + " implements " + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME) + " {");
+            String implementsClause = info.registerAsService ? " implements " + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME) : "";
+            if (info.registerAsService) {
+                implementsClause = " implements " + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME);
+            } else {
+                // TODO GR-46195 after this is implemented, we can remove this branch
+                implementsClause = " implements Iterable<" + getSimpleName(OPTION_DESCRIPTOR_CLASS_NAME) + ">";
+            }
+
+            out.println("public class " + optionsDescriptorsClassName + implementsClause + " {");
 
             String desc = getSimpleName(OPTION_DESCRIPTOR_CLASS_NAME);
 
             Collections.sort(info.options);
 
-            out.println("    @Override");
+            if (info.registerAsService) {
+                out.println("    @Override");
+            } else {
+                out.println("    static {");
+                out.println("        for (" + getSimpleName(OPTION_DESCRIPTOR_CLASS_NAME) + " d : new " + optionsDescriptorsClassName + "()) {");
+                out.println("            // consume all options once to ensure that option key descriptors are set");
+                out.println("            // this is necessary if the option descriptors are not consumed as services");
+                out.println("            assert d.getOptionKey().getDescriptor() != null;");
+                out.println("        }");
+                out.println("    }");
+            }
+
             out.println("    public OptionDescriptor get(String value) {");
             out.println("        switch (value) {");
             out.println("        // CheckStyle: stop line length check");
@@ -298,6 +345,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        return null;");
             out.println("    }");
             out.println();
+
             out.println("    @Override");
             out.println("    public Iterator<" + desc + "> iterator() {");
             out.println("        return new Iterator<" + (processingEnv.getSourceVersion().compareTo(SourceVersion.RELEASE_8) <= 0 ? desc : "") + ">() {");
@@ -363,10 +411,12 @@ public class OptionProcessor extends AbstractProcessor {
         public final String className;
         public final List<OptionInfo> options = new ArrayList<>();
         public final Set<Element> originatingElements = new HashSet<>();
+        public final boolean registerAsService;
 
-        public OptionsInfo(String packageName, String className) {
+        public OptionsInfo(String packageName, String className, boolean registerAsService) {
             this.packageName = packageName;
             this.className = className;
+            this.registerAsService = registerAsService;
         }
     }
 
@@ -398,7 +448,7 @@ public class OptionProcessor extends AbstractProcessor {
                 if (options == null) {
                     String pkg = ((PackageElement) topDeclaringType.getEnclosingElement()).getQualifiedName().toString();
                     String topDeclaringClass = topDeclaringType.getSimpleName().toString();
-                    options = new OptionsInfo(pkg, topDeclaringClass);
+                    options = new OptionsInfo(pkg, topDeclaringClass, isRegisterAsService(topDeclaringType));
                     map.put(topDeclaringType, options);
                 }
                 if (!element.getEnclosingElement().getSimpleName().toString().endsWith("Options")) {
@@ -428,5 +478,15 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         return true;
+    }
+
+    private boolean isRegisterAsService(Element declaringOptionType) {
+        TypeMirror optionGroupType = processingEnv.getElementUtils().getTypeElement(OPTION_TYPE_GROUP_NAME).asType();
+        AnnotationMirror group = getAnnotation(declaringOptionType, optionGroupType);
+        if (group == null) {
+            return true;
+        }
+        return getAnnotationValue(group, "registerAsService", Boolean.class);
+
     }
 }

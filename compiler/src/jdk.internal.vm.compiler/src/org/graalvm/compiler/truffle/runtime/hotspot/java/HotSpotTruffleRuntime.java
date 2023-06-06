@@ -28,6 +28,8 @@ import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -61,4 +63,20 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     public synchronized TruffleCompiler newTruffleCompiler() {
         return HotSpotTruffleCompilerImpl.create(this);
     }
+
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return TruffleCompilerOptions.listOptions();
+    }
+
+    @Override
+    public boolean existsCompilerOption(String key) {
+        return TruffleCompilerOptions.existsOption(key);
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        return TruffleCompilerOptions.validateOption(key, value);
+    }
+
 }

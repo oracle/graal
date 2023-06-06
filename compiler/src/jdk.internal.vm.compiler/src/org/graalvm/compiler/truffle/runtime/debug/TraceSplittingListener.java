@@ -26,11 +26,11 @@ package org.graalvm.compiler.truffle.runtime.debug;
 
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -50,7 +50,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     @Override
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
-        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+        if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraceSplitting)) {
             String label = String.format("split %3s-%08x-%-4s ", splitCount++, 0xFFFF_FFFFL & callNode.getCurrentCallTarget().hashCode(), callNode.getCallCount());
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
@@ -61,7 +61,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     @Override
     public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
-        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+        if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraceSplitting)) {
             String label = String.format("split failed " + reason);
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));

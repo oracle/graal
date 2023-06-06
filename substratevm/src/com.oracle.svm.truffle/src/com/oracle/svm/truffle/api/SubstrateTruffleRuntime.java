@@ -36,18 +36,21 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -63,7 +66,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -142,7 +144,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
+        truffleCompiler.initialize(callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
@@ -212,7 +214,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public SubstrateTruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+    public SubstrateTruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         ensureInitializedAtRuntime((OptimizedCallTarget) compilable);
         return (SubstrateTruffleCompiler) truffleCompiler;
@@ -250,6 +252,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return callTarget;
     }
 
+    @Override
+    protected OptimizedCallTarget createInitializationCallTarget(EngineData engine) {
+        return TruffleSupport.singleton().createOptimizedCallTarget(engine);
+    }
+
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
             synchronized (this) {
@@ -272,6 +279,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
          * Nothing to do here. We print the stack trace in the Deoptimizer when the actual
          * deoptimization happened.
          */
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        return TruffleCompilerOptions.validateOption(key, value);
+    }
+
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return TruffleCompilerOptions.listOptions();
+    }
+
+    @Override
+    public boolean existsCompilerOption(String key) {
+        return TruffleCompilerOptions.existsOption(key);
     }
 
     @Override
@@ -313,10 +335,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         try {
             doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(optimizedCallTarget, lastTierCompilation));
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
-            if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
-                Log.log().string(printStackTraceToString(e));
-            }
-            if (SubstrateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
+            if (optimizedCallTarget.engine.compilationFailureAction == ExceptionAction.Throw) {
+                throw e;
+            } else if (SubstrateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
                 throw e;
             }
         }
@@ -380,19 +401,19 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         return TruffleSupport.singleton().asCompilableTruffleAST(constant);
     }
 
     @Override
-    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+    public void log(String loggerId, TruffleCompilable compilable, String message) {
         if (!TruffleSupport.singleton().tryLog(this, loggerId, compilable, message)) {
             super.log(loggerId, compilable, message);
         }
     }
 
     @Override
-    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+    public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
             case TRUE:

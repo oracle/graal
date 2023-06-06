@@ -89,12 +89,16 @@ public @interface TruffleFromLibGraal {
         CreateStringSupplier,
         @Signature({int.class, Object.class})
         CountDirectCallNodes,
+        @Signature({long.class, Object.class})
+        EngineId,
         @Signature({long.class, Object.class, long.class})
         GetCallTargetForCallNode,
         @Signature({int.class, Object.class})
         GetCompilableCallCount,
         @Signature({String.class, Object.class})
         GetCompilableName,
+        @Signature({byte[].class, Object.class})
+        GetCompilerOptions,
         @Signature({int.class, Object.class, long.class, boolean.class, int.class})
         GetConstantFieldInfo,
         @Signature({String.class, Object.class})

@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.compiler.host;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -107,7 +107,7 @@ public abstract class TruffleHostEnvironment {
      * @throws UnsupportedOperationException if the truffle compiler cannot be obtained (e.g. on
      *             SVM)
      */
-    public final TruffleCompilerImpl getTruffleCompiler(CompilableTruffleAST compilable) throws UnsupportedOperationException {
+    public final TruffleCompilerImpl getTruffleCompiler(TruffleCompilable compilable) throws UnsupportedOperationException {
         TruffleCompilerImpl c = compiler;
         if (c == null) {
             c = initializeCompiler(compilable);
@@ -115,7 +115,7 @@ public abstract class TruffleHostEnvironment {
         return c;
     }
 
-    private synchronized TruffleCompilerImpl initializeCompiler(CompilableTruffleAST compilable) {
+    private synchronized TruffleCompilerImpl initializeCompiler(TruffleCompilable compilable) {
         if (this.compiler != null) {
             return compiler;
         }
@@ -123,7 +123,7 @@ public abstract class TruffleHostEnvironment {
         return compiler;
     }
 
-    protected abstract TruffleCompilerImpl createCompiler(CompilableTruffleAST compilable);
+    protected abstract TruffleCompilerImpl createCompiler(TruffleCompilable compilable);
 
     /**
      * Looks up a Truffle host environment relative to a Java method. This method forwards to

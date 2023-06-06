@@ -36,12 +36,12 @@ import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleElementCache;
-import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

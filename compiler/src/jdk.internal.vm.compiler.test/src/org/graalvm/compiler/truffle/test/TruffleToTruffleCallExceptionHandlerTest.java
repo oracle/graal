@@ -110,7 +110,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", "false").build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.Inlining", "false").build());
         Compilables compilables = new Compilables();
         StructuredGraph graph = partialEval(compilables.callerNoException, new Object[0]);
         Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
@@ -124,7 +124,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             /*
              * We disable truffle AST inlining to not inline the callee
              */
-            setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", "false").build());
+            setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.Inlining", "false").build());
             Compilables compilables = new Compilables();
 
             /*

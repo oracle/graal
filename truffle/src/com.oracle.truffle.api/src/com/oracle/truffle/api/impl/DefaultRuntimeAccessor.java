@@ -84,6 +84,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public boolean isLegacyCompilerOption(String key) {
+            return false;
+        }
+
+        @Override
         public boolean isLoaded(CallTarget callTarget) {
             return ((DefaultCallTarget) callTarget).isLoaded();
         }
@@ -137,7 +142,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public OptionDescriptors getEngineOptionDescriptors() {
+        public OptionDescriptors getRuntimeOptionDescriptors() {
             return OptionDescriptors.EMPTY;
         }
 
@@ -203,7 +208,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        public Object createRuntimeData(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
             return null;
         }
 
@@ -223,7 +228,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
 
         }
 

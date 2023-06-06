@@ -29,15 +29,14 @@ import java.util.Collections;
 import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleInliningScope;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
 
@@ -72,7 +71,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
 
     private static InliningPolicyProvider getInliningPolicyProvider(TruffleTierContext context) {
         boolean firstTier = context.isFirstTier();
-        final String policy = context.options.get(firstTier ? PolyglotCompilerOptions.FirstTierInliningPolicy : PolyglotCompilerOptions.InliningPolicy);
+        final String policy = (firstTier ? TruffleCompilerOptions.FirstTierInliningPolicy : TruffleCompilerOptions.InliningPolicy).getValue(context.compilerOptions);
         if (Objects.equals(policy, "")) {
             return POLICY_PROVIDERS.get(firstTier ? POLICY_PROVIDERS.size() - 1 : 0);
         } else {
@@ -82,7 +81,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        final InliningPolicy policy = getInliningPolicyProvider(context).get(context.config().runtime().getGraalOptions(OptionValues.class), context.options, context);
+        final InliningPolicy policy = getInliningPolicyProvider(context).get(context.compilerOptions, context);
         final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
         TruffleInliningScope scope = TruffleInliningScope.getCurrent(context.debug);
         if (scope != null) {
@@ -90,7 +89,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
         }
 
         tree.dumpBasic("Before Inline");
-        if (optionsAllowInlining(context)) {
+        if (TruffleCompilerOptions.Inlining.getValue(context.compilerOptions)) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
             tree.collectTargetsToDequeue(context.task);
@@ -110,10 +109,6 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
 
         graph.maybeCompress();
         assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
-    }
-
-    private static boolean optionsAllowInlining(TruffleTierContext context) {
-        return context.options.get(PolyglotCompilerOptions.Inlining);
     }
 
     @Override

@@ -55,7 +55,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -139,7 +139,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
     @Override
-    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         JNIMethodScope scope = JNIMethodScope.scopeOrNull();
         if (scope == null) {
             return null;
@@ -155,7 +155,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(OnCodeInstallation)
     @Override
-    public void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode) {
+    public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         long installedCodeHandle = LibGraal.translate(installedCode);
         JNIEnv env = env();
         callOnCodeInstallation(env, getHandle(), ((HSCompilableTruffleAST) compilable).getHandle(), installedCodeHandle);
@@ -243,7 +243,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(Log)
     @Override
-    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+    public void log(String loggerId, TruffleCompilable compilable, String message) {
         JNIEnv env = env();
         JString jniLoggerId = JNIUtil.createHSString(env, loggerId);
         JString jniMessage = JNIUtil.createHSString(env, message);
@@ -261,7 +261,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(CreateStringSupplier)
     @TruffleFromLibGraal(IsSuppressedFailure)
     @Override
-    public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
+    public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         long serializedExceptionHandle = LibGraalObjectHandles.create(serializedException);
         boolean success = false;
         JNIEnv env = env();
@@ -293,7 +293,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
                 compilable = WordFactory.nullPointer();
                 installedCode = 0;
             } else {
-                CompilableTruffleAST ast = dependency.getCompilable();
+                TruffleCompilable ast = dependency.getCompilable();
                 if (ast == null) {
                     /*
                      * Compilable may be null if the compilation was triggered by a libgraal host
