@@ -1,6 +1,6 @@
 ---
 layout: ohc
-permalink: /overview/
+permalink: /solutions-overview/
 ---
 
 # Oracle GraalVM
@@ -15,7 +15,7 @@ innovative approaches to running a business either on premises or on the cloud.
 Speed, dexterity, and leanness are key, then, to commanding the modern
 online marketplace.
 
-## Faster, Leaner Applications
+## Faster, Smaller, Leaner Applications
 
 Oracle GraalVM is a foundation for innovation and improvement for both large
 enterprise applications and microservices alike.
@@ -30,59 +30,8 @@ additional hardware. Thus Oracle GraalVM's reduction of required compute
 resources can lower capital cost expenditures on premise and lower operation
 costs on cloud.
 
-GraalVM's key advantages:
-* Innovative compiler
-* Native Image technology
-* Language interoperability
-* Built on Oracle Java SE
-* Trusted Oracle support and updates
+## Trusted Oracle Support and Updates
 
-### Innovative Compiler
-GraalVM’s just-in-time (JIT) compiler accelerates the performance of any Java
-or JVM-based application - out of the box and without any code changes.
-
-Across the board, applications running on Oracle GraalVM exhibit lower
-latency. Request response times are reduced. Applications run faster, freeing up
-CPU and memory sooner, allowing them to handle other requests or other
-applications running on the same server.
-
-### Native Image Technology
-Oracle GraalVM also incorporates its optimizing compiler into an
-advanced ahead-of-time (AOT) compilation technology: Native Image. The industry-leading native
-image builder translates Java and JVM-based applications into native platform
-executables that enjoy incredibly fast startup times since the program initialization
-is done at build time so, when tasked, the application is already compiled.
-
-Utilizing Native Image, Java applications consume a fraction of the resources
-they would if running on a JVM, making Oracle GraalVM ideal for cloud
-deployments large and small.
-
-### Language Interoperability
-Oracle GraalVM breaks the barriers between programming languages.
-
-Java is the most popular language for building enterprise applications but
-JavaScript, Python, Ruby, R, and other programming languages have carved out niches
-in specific areas, e.g., machine learning. Many have accompanying libraries that provide
-unique and valuable features. Hence, developers often use different languages
-for specialized applications.
-
-Oracle GraalVM provides high-performance runtime support for a number of
-languages beyond Java, allowing different languages and
-libraries to interoperate with no performance penalty. This improves developer
-productivity by letting them use the right language or library for a given task.
-
-Key to Oracle GraalVM’s polyglot support is language compliance. For each of
-the supported languages, Oracle GraalVM strictly adheres to the
-specification for each language and runs their compliance test suites to ensure
-compatibility.
-
-Oracle GraalVM also tracks changes through Oracle’s participation in a
-number of standards bodies like Ecma International. GraalVM innovations are in
-turn influencing specifications, like the recent announcement of the OpenJDK’s
-Project Leyden, which seeks to provide a standard specification for Java binary
-executables pioneered by the Native Image technology.
-
-### Trusted Oracle Support and Updates
 Oracle GraalVM customers take advantage of 24/7 access to the experienced Oracle GraalVM
 support team who work closely with the Oracle Java support team.
 
@@ -90,9 +39,9 @@ Oracle GraalVM releases include all Oracle Java critical patch updates
 (CPUs) which are released on a regular schedule to remedy defects and known
 vulnerabilities.
 
-### Get Started with Oracle GraalVM
+### Summary
 
-[Get started with Oracle GraalVM](../getting-started/graalvm-enterprise/get-started-graalvm-enterprise.md) and:
+Start using Oracle GraalVM and:
 * reduce IT and storage costs
 * provide customers with quicker response time
 * employ fewer resources, freeing up CPU
