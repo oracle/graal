@@ -1056,7 +1056,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=driver_build_args,
+            build_args=driver_build_args + [
+                '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
+            ],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
