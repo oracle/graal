@@ -29,12 +29,12 @@ import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 import java.net.URI;
 import java.util.Map;
 
-public class EnvironmentParser extends BundleConfigurationParser {
+public class BundleEnvironmentParser extends BundleConfigurationParser {
     private static final String environmentKeyField = "key";
     private static final String environmentValueField = "val";
     private final Map<String, String> environment;
 
-    public EnvironmentParser(Map<String, String> environment) {
+    public BundleEnvironmentParser(Map<String, String> environment) {
         environment.clear();
         this.environment = environment;
     }
