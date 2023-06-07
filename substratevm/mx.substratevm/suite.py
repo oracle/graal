@@ -283,6 +283,10 @@ suite = {
                     "jdk.internal.vm",
                     "jdk.internal.util",
                 ],
+                "java.desktop": [
+                    "sun.java2d",
+                    "sun.java2d.pipe",
+                ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
@@ -613,6 +617,7 @@ suite = {
                 "com.oracle.graal.reachability"
             ],
             "requires" : [
+                "java.desktop",
                 "java.instrument",
                 "java.security.sasl",
                 "java.smartcardio",
@@ -1361,6 +1366,7 @@ suite = {
                     "jdk.management",
                     "java.xml.crypto",
                     "java.security.sasl",
+                    "java.desktop",
                     "java.smartcardio",
                     "java.net.http",
                     "jdk.sctp",
