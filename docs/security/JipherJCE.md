@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: security-guide
 link_title: Jipher JCE with Native Image
 permalink: /security-guide/native-image/Jipher/
