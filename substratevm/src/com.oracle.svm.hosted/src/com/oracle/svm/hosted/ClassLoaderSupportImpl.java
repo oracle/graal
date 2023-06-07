@@ -308,4 +308,9 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     public LinkageError getLinkageError(String className) {
         return classLoaderSupport.getLinkageError(className);
     }
+
+    @Override
+    public LinkageError addLinkageError(String className, LinkageError error) {
+        return classLoaderSupport.addLinkageError(className, error);
+    }
 }

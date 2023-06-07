@@ -222,6 +222,12 @@ public class NativeImageClassLoaderSupport {
         return linkageErrors.get(className);
     }
 
+    public LinkageError addLinkageError(String className, LinkageError error) {
+        synchronized (linkageErrors) {
+            return linkageErrors.put(className, error);
+        }
+    }
+
     public boolean noEntryForURI(EconomicSet<String> set) {
         return set == emptySet;
     }
