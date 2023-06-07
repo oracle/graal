@@ -21,7 +21,7 @@ There is a separate command for each use cae:
 - `mx profdiff jit-vs-jit`: compare two profiled JIT experiments,
 - `mx profdiff jit-vs-aot`: compare a profiled JIT experiment with an (optionally profiled) AOT experiment,
 - `mx profdiff aot-vs-aot`: compare two profiled AOT experiments,
-- `mx profdiff aot-vs-aot-ext-prof`: compare two AOT experiments using an external profile from a JIT experiment.
+- `mx profdiff aot-vs-aot-jit-profile`: compare two AOT experiments using an external profile from a JIT experiment.
 
 Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND` to show help for a command.
 

@@ -39,7 +39,7 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
  * is used to identify hot methods. All methods that are hot in JIT or inlined in a hot JIT method
  * are marked as hot in both AOT experiments.
  */
-public class AOTAOTExternalProfileCommand implements Command {
+public class AOTAOTWithJITProfileCommand implements Command {
     private final ArgumentParser argumentParser;
 
     private final StringArgument jitOptimizationLogArgument;
@@ -50,7 +50,7 @@ public class AOTAOTExternalProfileCommand implements Command {
 
     private final StringArgument aotOptimizationLogArgument2;
 
-    public AOTAOTExternalProfileCommand() {
+    public AOTAOTWithJITProfileCommand() {
         argumentParser = new ArgumentParser();
         jitOptimizationLogArgument = argumentParser.addStringArgument(
                         "jit_optimization_log", "directory with optimization logs for each compilation unit in the JIT experiment");
@@ -64,12 +64,12 @@ public class AOTAOTExternalProfileCommand implements Command {
 
     @Override
     public String getName() {
-        return "aot-vs-aot-ext-prof";
+        return "aot-vs-aot-jit-profile";
     }
 
     @Override
     public String getDescription() {
-        return "compare two AOT experiments using an execution profile from JIT";
+        return "compare two AOT experiments using a profile from a JIT experiment";
     }
 
     @Override
