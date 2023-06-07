@@ -394,14 +394,14 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
     In experiment 1
         3 compilations (1 of which are hot)
         Compilations
-            9068 consumed 19.74% of Graal execution, 11.64% of total *hot*
-            7878 consumed 0.00% of Graal execution, 0.00% of total
-            9003 consumed 0.00% of Graal execution, 0.00% of total
+             9068 consumed 19.74% of Graal execution, 11.64% of total *hot*
+             7878 consumed  0.00% of Graal execution,  0.00% of total
+             9003 consumed  0.00% of Graal execution,  0.00% of total
     In experiment 2
         2 compilations (1 of which are hot)
         Compilations
-            12622 consumed 16.24% of Graal execution, 9.74% of total *hot*
-            9215 consumed 0.06% of Graal execution, 0.04% of total
+            12622 consumed 16.24% of Graal execution,  9.74% of total *hot*
+             9215 consumed  0.06% of Graal execution,  0.04% of total
 ```
 
 We can see that the root method `java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)`
@@ -430,8 +430,8 @@ Consider the following example:
 ```
 Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)
     ...
-    Compilation unit 9068 consumed 19.74% of Graal execution, 11.64% of total in experiment 1 vs
-    Compilation unit 12622 consumed 16.24% of Graal execution, 9.74% of total in experiment 2
+    Compilation unit  9068 consumed 19.74% of Graal execution, 11.64% of total in experiment 1 vs
+    Compilation unit 12622 consumed 16.24% of Graal execution,  9.74% of total in experiment 2
         . RootPhase
             . Parsing
                 . GraphBuilderPhase

@@ -189,7 +189,7 @@ public class Method {
         writer.increaseIndent();
         Iterable<CompilationUnit> sortedCompilationUnits = () -> compilationUnits.stream().sorted(Comparator.comparingLong(compilationUnit -> -compilationUnit.getPeriod())).iterator();
         for (CompilationUnit compilationUnit : sortedCompilationUnits) {
-            writer.write(compilationUnit.getCompilationId());
+            writer.write(String.format("%5s", compilationUnit.getCompilationId()));
             if (compilationUnit.getMultiMethodKey() != null) {
                 writer.write(" of multi-method ");
                 writer.write(compilationUnit.getMultiMethodKey());
