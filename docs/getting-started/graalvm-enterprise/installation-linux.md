@@ -9,7 +9,7 @@ Oracle GraalVM is available for Linux on x64 and AArch64 architectures.
 You can install Oracle GraalVM on Linux from an archive (_.tar.gz_) for the current user into any location, without affecting other JDK installations.
 
 ### Note on AArch64 Distribution
-This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(RHEL) systems for the AArch64 architecture.
+This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux (RHEL) systems for the AArch64 architecture.
 
 Follow these steps to install Oracle GraalVM:
 
@@ -23,7 +23,7 @@ Select the preferred Oracle GraalVM version, **17** or **20** for the Java versi
     tar -xzf graalvm-jdk-<version>_linux-<architecture>.tar.gz
     ```
 4. There can be multiple JDKs installed on your machine. The next step is to configure your runtime environment:
-  - Point the `PATH` environment variable to the Oracle GraalVM _bin_ directory:
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     export PATH=/path/to/<graalvm>/bin:$PATH
     ```

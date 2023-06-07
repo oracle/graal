@@ -14,7 +14,7 @@ Oracle GraalVM is available for Linux, macOS, and Windows platforms on x64 syste
 
 ## Certified Platforms
 
-The following are the certified platforms for Oracle GraalVM:
+The following platforms are certified for Oracle GraalVM:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
@@ -25,11 +25,11 @@ The following are the certified platforms for Oracle GraalVM:
 
 ## Features Support
 
-Oracle GraalVM features are distributed as fully supported and experimental.
+Oracle GraalVM features are distributed as _fully supported_ or _experimental_.
 
-Experimental features are being considered for future versions of Oracle GraalVM.
-They are not meant to be used in production and are not supported by Oracle.
-The development team welcomes feedback on experimental features, but users should be aware that experimental features might never be included in a final version, or might change significantly before being considered production-ready.
+_Experimental_ features are being considered for future versions of Oracle GraalVM.
+They are not meant for use in production and are **not** supported by Oracle.
+The development team welcomes feedback on experimental features, but users should be aware that experimental features may not be included in a final version, or may change significantly before being considered production-ready.
 
 For more information, check the [Graal Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 

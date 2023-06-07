@@ -87,4 +87,4 @@ Version: truffleruby 22.3.1, like ruby 3.0.3, GraalVM CE Native [x86_64-darwin]
 
 Check what other configuration types of container images are available [here](https://github.com/graalvm/container). 
 
-If you look for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::).
+If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::).

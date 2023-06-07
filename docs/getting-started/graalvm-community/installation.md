@@ -6,7 +6,7 @@ permalink: /docs/installation/
 redirect_from: /docs/getting-started/
 ---
 
-# GraalVM Installation
+# Getting Started with GraalVM
 
 GraalVM compiles your Java applications ahead of time into standalone binaries that start instantly, provide peak performance with no warmup, and use fewer resources.
 
@@ -36,7 +36,7 @@ $JAVA_HOME/bin/java -version
 
 Using [GraalVM Native Image](../../reference-manual/native-image/README.md) you can compile Java bytecode into a platform-specific, self-contained native executable to achieve faster startup and a smaller footprint for your application.
 
-Compile this simplest _HelloWorld.java_ application to bytecode and then build a native executable:
+Compile this simple _HelloWorld.java_ application to bytecode and then build a native executable:
 ```java
 public class HelloWorld {
   public static void main(String[] args) {
@@ -65,7 +65,7 @@ Hello, World!
 
 ### New Users
 
-Continue to [Native Image basics](../../reference-manual/native-image/NativeImageBasics.md) to gradually educate yourself about the technology.
+Continue to [Native Image basics](../../reference-manual/native-image/NativeImageBasics.md) for more information about the technology.
 For users who are familiar with GraalVM Native Image but may have little experience using it, proceed to [User Guides](../../reference-manual/native-image/guides/guides.md).
 
 For more information on the Graal compiler, see the [compiler documentation](../../reference-manual/java/compiler.md). 

@@ -37,4 +37,4 @@ Start with installing Oracle GraalVM by following the [installation guide](../ge
 
 Whether you are new to Oracle GraalVM and Native Image or have little experience using it, continue to [Getting Started](../reference-manual/native-image/README.md).
 
-Developers, who have Oracle GraalVM already installed or have experience using it in the past, can proceed to the [Reference Manuals](../reference-manual/reference-manuals.md) for in-depth coverage.
+Developers who already have Oracle GraalVM installed, or have experience using it, should proceed to the [Reference Manuals](../reference-manual/reference-manuals.md) for in-depth coverage.
