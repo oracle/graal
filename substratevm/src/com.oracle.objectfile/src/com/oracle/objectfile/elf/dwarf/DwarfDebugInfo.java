@@ -616,7 +616,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setLayoutIndex(ClassEntry classEntry, int idx) {
-        assert idx >= 0;
+        assert idx >= 0 || idx == -1;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
         assert classProperties.layoutIndex == -1 || classProperties.layoutIndex == idx;
@@ -632,7 +632,19 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setIndirectLayoutIndex(ClassEntry classEntry, int idx) {
-        assert idx >= 0;
+        // The layout index of a POINTER type is set to the type index of its referent.
+        // If the pointer type is generated before its referent that means it can be set
+        // with value -1 (unset) on the first sizing pass. The indirect layout will
+        // be reset to a positive offset on the second pass before it is used to write
+        // the referent of the pointer type. Hence the condition in the following assert.
+        assert idx >= 0 || idx == -1;
+        // Note however, that this possibility needs to be finessed when writing
+        // a foreign struct ADDRESS field of POINTER type (i.e. an embedded field).
+        // If the struct is generated before the POINTER type then the layout index will
+        // still be -1 during the second write pass when the field type needs to be
+        // written. This possibility is handled by typing the field using the typeIdx
+        // of the referent. the latter is guaranteed to have been set during the first pass.
+
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
         assert classProperties.indirectLayoutIndex == -1 || classProperties.indirectLayoutIndex == idx;
