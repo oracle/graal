@@ -12,7 +12,7 @@ You can install it on Windows from an archive file (_zip_).
 
 Follow these steps to install GraalVM:
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download. It will download Oracle GraalVM.
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download.
 
 2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
 
