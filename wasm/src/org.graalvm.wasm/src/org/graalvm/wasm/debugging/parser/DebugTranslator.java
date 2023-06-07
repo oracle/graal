@@ -42,14 +42,12 @@
 package org.graalvm.wasm.debugging.parser;
 
 import java.nio.file.Path;
-import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.DebugLineMap;
-import org.graalvm.wasm.debugging.WasmDebugException;
 import org.graalvm.wasm.debugging.data.DebugDataUtil;
-import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugFunction;
+import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.encoding.Attributes;
 import org.graalvm.wasm.debugging.languages.DebugLanguageSupport;
 
@@ -78,16 +76,14 @@ public class DebugTranslator {
         DebugParseUnit entryUnit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
         while (entryUnit != null) {
             // Only read compilation units for which sources are available
-            try {
-                if (parseCompilationUnit(entryUnit, customData, debugInfoOffset) != null) {
-                    final DebugParseUnit unit = parser.readEntries(debugInfoOffset, unitOffset);
+            if (parseCompilationUnit(entryUnit, customData, debugInfoOffset) != null) {
+                final DebugParseUnit unit = parser.readEntries(debugInfoOffset, unitOffset);
+                if (unit != null) {
                     final DebugParserContext context = parseCompilationUnit(unit, customData, debugInfoOffset);
                     if (context != null) {
                         debugFunctions.putAll(context.functions());
                     }
                 }
-            } catch (WasmDebugException e) {
-                System.out.println("Cannot read debug information: " + e.getMessage());
             }
             unitOffset = parser.getNextCompilationUnitOffset(debugInfoOffset, unitOffset);
             if (unitOffset != -1) {
@@ -101,21 +97,30 @@ public class DebugTranslator {
         final DebugData data = parseUnit.rootData();
         final EconomicMap<Integer, DebugData> entries = parseUnit.entries();
 
-        final int languageId = data.asI32(Attributes.LANGUAGE);
+        final int languageId = data.asI32OrDefault(Attributes.LANGUAGE, -1);
         final DebugObjectFactory objectFactory = DebugLanguageSupport.getObjectFactory(languageId);
         if (objectFactory == null) {
             return null;
         }
         final String languageName = objectFactory.languageName();
-        final Optional<Integer> stmtList = data.tryAsI32(Attributes.STMT_LIST);
-        DebugLineMap[] fileLineMaps;
-        if (stmtList.isPresent()) {
-            String compDir = data.asString(Attributes.COMP_DIR);
-            if (!testCompDir.isEmpty()) {
-                compDir = testCompDir;
-            }
-            fileLineMaps = parser.readLineSection(DebugUtil.lineOffset(customData, debugInfoOffset) + stmtList.get(), compDir);
-        } else {
+        final int stmtList = data.asI32OrDefault(Attributes.STMT_LIST, -1);
+        if (stmtList == -1) {
+            return null;
+        }
+        String compDir = data.asStringOrNull(Attributes.COMP_DIR);
+        if (compDir == null) {
+            return null;
+        }
+        if (!testCompDir.isEmpty()) {
+            compDir = testCompDir;
+        }
+        final int lineOffset = DebugUtil.getLineOffsetOrUndefined(customData, debugInfoOffset);
+        final int lineLength = DebugUtil.getLineLengthOrUndefined(customData, debugInfoOffset);
+        if (lineOffset == DebugUtil.UNDEFINED || lineLength == DebugUtil.UNDEFINED) {
+            return null;
+        }
+        final DebugLineMap[] fileLineMaps = parser.readLineSectionOrNull(lineOffset + stmtList, lineLength, compDir);
+        if (fileLineMaps == null) {
             return null;
         }
         int nullSources = 0;
@@ -134,7 +139,10 @@ public class DebugTranslator {
             return null;
         }
         final DebugParserContext context = new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, fileSources);
-        final int[] pcs = DebugDataUtil.readPcs(data, context);
+        final int[] pcs = DebugDataUtil.readPcsOrNull(data, context);
+        if (pcs == null) {
+            return null;
+        }
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
         final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);

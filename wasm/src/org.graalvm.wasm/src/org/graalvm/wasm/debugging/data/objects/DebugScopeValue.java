@@ -55,6 +55,7 @@ public class DebugScopeValue extends DebugObject {
     private final List<DebugObject> values;
 
     public DebugScopeValue(String name, List<DebugObject> values) {
+        assert values != null;
         this.name = name;
         this.values = values;
     }

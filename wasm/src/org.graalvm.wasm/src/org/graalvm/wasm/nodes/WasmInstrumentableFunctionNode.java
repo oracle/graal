@@ -229,6 +229,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return DebugObjectDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, !instance.context().getContextOptions().debugCompDirectory().equals(""));
     }
 
+    @Override
+    public boolean isValidStackIndex(MaterializedFrame frame, int index) {
+        return index >= 0 && localCount() + index < frame.getFrameDescriptor().getNumberOfSlots();
+    }
+
     @TruffleBoundary
     public int loadI32FromStack(MaterializedFrame frame, int index) {
         return frame.getIntStatic(localCount() + index);
@@ -247,6 +252,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public double loadF64FromStack(MaterializedFrame frame, int index) {
         return frame.getDoubleStatic(localCount() + index);
+    }
+
+    @Override
+    public boolean isValidLocalIndex(MaterializedFrame frame, int index) {
+        return index >= 0 && index < localCount();
     }
 
     @TruffleBoundary
@@ -269,6 +279,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return frame.getDoubleStatic(index);
     }
 
+    @Override
+    public boolean isValidGlobalIndex(int index) {
+        return index >= 0 && index < instance.globalCount();
+    }
+
     @TruffleBoundary
     public int loadI32FromGlobals(int index) {
         final int address = instance.globalAddress(index);
@@ -289,6 +304,12 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     public double loadF64FromGlobals(int index) {
         return Double.doubleToRawLongBits(loadI64FromGlobals(index));
+    }
+
+    @Override
+    public boolean isValidMemoryAddress(long address, int length) {
+        final WasmMemory memory = instance.memory();
+        return address >= 0 && address + length < memory.byteSize();
     }
 
     @TruffleBoundary

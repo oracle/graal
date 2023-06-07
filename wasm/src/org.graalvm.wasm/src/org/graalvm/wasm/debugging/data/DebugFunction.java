@@ -63,6 +63,7 @@ public class DebugFunction extends DebugType {
     private final List<DebugObject> globals;
 
     public DebugFunction(String name, DebugLineMap lineMap, SourceSection sourceSection, byte[] frameBaseExpression, List<DebugObject> variables, List<DebugObject> globals) {
+        assert lineMap != null && frameBaseExpression != null && variables != null && globals != null;
         this.name = name;
         this.lineMap = lineMap;
         this.sourceSection = sourceSection;
@@ -105,10 +106,11 @@ public class DebugFunction extends DebugType {
     /**
      * @param frame the frame
      * @param dataAccess the data access
-     * @return The frame base location of the function.
+     * @return The frame base location of the function, or null if the frame base expression is
+     *         malformed.
      */
-    public DebugLocation frameBase(MaterializedFrame frame, WasmDataAccess dataAccess) {
-        return DebugLocation.createFrameBase(frame, dataAccess, frameBaseExpression);
+    public DebugLocation frameBaseOrNull(MaterializedFrame frame, WasmDataAccess dataAccess) {
+        return DebugLocation.createFrameBaseOrNull(frame, dataAccess, frameBaseExpression);
     }
 
     /**

@@ -56,6 +56,7 @@ public class DebugEnumType extends DebugType {
     private final EconomicMap<Long, String> values;
 
     public DebugEnumType(String typeName, DebugType baseType, EconomicMap<Long, String> values) {
+        assert baseType != null && values != null;
         this.typeName = typeName;
         this.baseType = baseType;
         this.values = values;

@@ -55,6 +55,7 @@ public abstract class DebugBinding extends DebugObject {
     private final DebugType type;
 
     protected DebugBinding(DebugType type) {
+        assert type != null;
         this.type = type;
     }
 

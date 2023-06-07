@@ -60,6 +60,7 @@ public class RustString extends DebugType {
     private final DebugObject dataMember;
 
     public RustString(String name, DebugObject[] members) {
+        assert members != null;
         this.name = name;
         DebugObject lengthObject = null;
         DebugObject dataObject = null;
