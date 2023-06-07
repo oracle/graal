@@ -26,9 +26,9 @@ Choose your operating system and proceed to the installation steps for your spec
   * [Cloud Shell](oci/cloud-shell.md)
   * [Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
   * [DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
-* [Linux](installation-linux.md)
-* [macOS](installation-macos.md)
-* [Windows](installation-windows.md)
+* [Linux](linux.md)
+* [macOS](macos.md)
+* [Windows](windows.md)
 * [Container Images](container-images/graalvm-ee-container-images.md)
 
 ## Start Running Applications
