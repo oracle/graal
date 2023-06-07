@@ -244,7 +244,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 System.gc();
             }
         } else {
-            languageCache.freezeCapabilities();
             context.initializeContext();
         }
     }
