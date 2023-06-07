@@ -27,14 +27,17 @@ package com.oracle.svm.driver;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.file.CopyOption;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -927,28 +930,26 @@ final class BundleSupport {
             nativeImage.deleteAllFiles(metaInfDir);
         }
 
-        Path launcherPackagePath = rootDir.resolve(BundleLauncher.class.getPackageName().replace(".", "/"));
-        String driverJarPath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-
-        try (JarFile archive = new JarFile(driverJarPath)) {
-            Enumeration<JarEntry> jarEntries = archive.entries();
-            while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
-                JarEntry jarEntry = jarEntries.nextElement();
-                Path bundleEntry = rootDir.resolve(jarEntry.getName());
-                if (bundleEntry.startsWith(launcherPackagePath)) {
-                    try {
-                        Path bundleFileParent = bundleEntry.getParent();
-                        if (bundleFileParent != null) {
-                            Files.createDirectories(bundleFileParent);
+        Path bundleLauncherFile = Paths.get("/").resolve(BundleLauncher.class.getName().replace(".", "/") + ".class");
+        try (FileSystem fs = FileSystems.newFileSystem(BundleSupport.class.getResource(bundleLauncherFile.toString()).toURI(), new HashMap<>());
+                 Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherFile.getParent().toString()))
+        ) {
+            walk.filter(Predicate.not(Files::isDirectory))
+                    .map(Path::toString)
+                    .forEach(sourcePath -> {
+                        Path target = rootDir.resolve(Paths.get("/").relativize(Paths.get(sourcePath)));
+                        try (InputStream source = BundleSupport.class.getResourceAsStream(sourcePath)) {
+                            Path bundleFileParent = target.getParent();
+                            if (bundleFileParent != null) {
+                                Files.createDirectories(bundleFileParent);
+                            }
+                            Files.copy(source, target);
+                        } catch (Exception e) {
+                            throw NativeImage.showError("Failed to write bundle-file " + target, e);
                         }
-                        Files.copy(archive.getInputStream(jarEntry), bundleEntry);
-                    } catch (IOException e) {
-                        throw new RuntimeException("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-files for bundle launcher " + launcherPackagePath, e);
+                    });
+        } catch (Exception e) {
+            throw NativeImage.showError("Failed to read bundle launcher resources '" + bundleLauncherFile.getParent() + "'", e);
         }
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
