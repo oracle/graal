@@ -56,7 +56,7 @@ Follow these steps to download and install GraalVM.
 
 The installation starts immediately.
 
-> Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/installation.md).
+> Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/getting-started.md).
 
 Once the installation completes, the **Install Optional GraalVM Components** window pops up prompting you to install additional language runtimes and utilities (Java on Truffle, JavaScript, Node.js, LLVM toolchain, Python, etc.):
 

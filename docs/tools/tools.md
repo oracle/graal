@@ -19,6 +19,7 @@ Learn more about each of the tools:
 * [GraalVM Insight](insight/README.md)
 * [Profiling Command Line Tools](profiling.md)
 * [Code Coverage Command Line Tool](code-coverage.md)
+* [Ideal Graph Visualizer](ideal-graph-visualizer.md)
 * [Chrome Debugger](chrome-debugger.md)
 * [Language Server Protocol](lsp.md)
 * [Debug Adapter Protocol](dap.md)

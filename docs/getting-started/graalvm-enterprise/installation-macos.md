@@ -11,7 +11,7 @@ Note that in macOS, the JDK installation path is: _/Library/Java/JavaVirtualMach
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/uk/java/technologies/downloads/). 
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). 
 Select the preferred Oracle GraalVM version, **17** or **20** for the Java version, **macOS** for the operating system, and the architecture. Start downloading.
 
 2. Unzip the archive:

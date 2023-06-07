@@ -10,7 +10,7 @@ permalink: /docs/getting-started/windows/
 GraalVM Community Edition is available for Windows on the x64 architecture. 
 You can install it on Windows from an archive file (_zip_).
 
-Follow these steps to install GraalVM: 
+Follow these steps to install GraalVM:
 
 1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download. It will download Oracle GraalVM.
 

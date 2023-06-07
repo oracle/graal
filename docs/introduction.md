@@ -33,7 +33,7 @@ GraalVM is available as **Oracle GraalVM** and **GraalVM Community Edition**.
 Oracle GraalVM is based on Oracle JDK while GraalVM Community Edition is based on OpenJDK.
 
 GraalVM is available for Linux and macOS on x64 and AArch64 architectures, and for Windows on the x64 architecture. 
-See the [installation guide](getting-started/graalvm-community/installation.md) for installation instructions.
+See the [installation guide](getting-started/graalvm-community/getting-started.md) for installation instructions.
 
 ## Features Support
 
@@ -70,7 +70,7 @@ GraalVM Community Edition is free to use for any purpose and comes with no strin
 
 ## What to Read Next
 
-Start with installing GraalVM by following the [installation guide](getting-started/graalvm-community/installation.md).
+Start with installing GraalVM by following the [installation guide](getting-started/graalvm-community/getting-started.md).
 
 Whether you are new to GraalVM Native Image or have little experience using it, continue to [Getting Started](reference-manual/native-image/README.md).
 
