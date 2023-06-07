@@ -1,6 +1,6 @@
 ---
 layout: ohc
-permalink: /installation/
+permalink: /getting-started/
 ---
 
 # Oracle GraalVM Installation
