@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
@@ -1043,7 +1044,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public void log(String loggerId, TruffleCompilable compilable, String message) {
-        ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
+        TruffleLogger logger = ((OptimizedCallTarget) compilable).engine.getLogger(loggerId);
+        // The logger can be null if the engine is closed.
+        if (logger != null) {
+            logger.log(Level.INFO, message);
+        }
     }
 
     @Override

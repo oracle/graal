@@ -2782,7 +2782,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (!this.config.logLevels.isEmpty()) {
                     EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers());
                 }
-                if (this.config.logHandler != null && !PolyglotLoggers.hasSameStream(this.config.logHandler, engine.logHandler)) {
+                if (this.config.logHandler != null && !PolyglotLoggers.haveSameTarget(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
                 }
             }

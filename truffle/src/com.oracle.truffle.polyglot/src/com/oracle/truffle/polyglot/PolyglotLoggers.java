@@ -98,12 +98,15 @@ final class PolyglotLoggers {
         return EngineImpl.getOuterContext(PolyglotFastThreadLocals.getContext(null));
     }
 
-    static boolean hasSameStream(LogHandler h1, LogHandler h2) {
+    static boolean haveSameTarget(LogHandler h1, LogHandler h2) {
         if (h1 == h2) {
             return true;
         }
         if (h1 instanceof StreamLogHandler && h2 instanceof StreamLogHandler) {
             return ((StreamLogHandler) h1).stream == ((StreamLogHandler) h2).stream;
+        }
+        if (h1 instanceof JavaLogHandler && h2 instanceof JavaLogHandler) {
+            return ((JavaLogHandler) h1).handler == ((JavaLogHandler) h2).handler;
         }
         return false;
     }
@@ -278,7 +281,38 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class JavaLogHandler extends LogHandler {
+    private abstract static class AbstractLogHandler extends LogHandler {
+
+        volatile boolean closed;
+        private ErrorManager errorManager;
+
+        AbstractLogHandler(AbstractPolyglotImpl polyglot) {
+            super(polyglot);
+        }
+
+        final void checkClosed() {
+            if (closed) {
+                throw new AssertionError("The log handler is closed.");
+            }
+        }
+
+        final synchronized void reportHandlerError(int errorKind, Throwable t) {
+            if (errorManager == null) {
+                errorManager = new ErrorManager();
+            }
+            Exception exception;
+            if (t instanceof Exception) {
+                exception = (Exception) t;
+            } else {
+                exception = new RuntimeException(String.format("%s: %s", t.getClass().getName(), t.getMessage()));
+                exception.setStackTrace(t.getStackTrace());
+            }
+            errorManager.error("", exception, errorKind);
+        }
+
+    }
+
+    private static final class JavaLogHandler extends AbstractLogHandler {
 
         private final Handler handler;
 
@@ -290,24 +324,33 @@ final class PolyglotLoggers {
         @Override
         public void publish(LogRecord logRecord) {
             try {
+                checkClosed();
                 handler.publish(logRecord);
             } catch (Throwable t) {
                 // Called by a compiler thread, never propagate exceptions to the compiler.
+                reportHandlerError(ErrorManager.GENERIC_FAILURE, t);
             }
         }
 
         @Override
         public void flush() {
-            handler.flush();
+            try {
+                checkClosed();
+                handler.flush();
+            } catch (Throwable t) {
+                // Called by a compiler thread, never propagate exceptions to the compiler.
+                reportHandlerError(ErrorManager.FLUSH_FAILURE, t);
+            }
         }
 
         @Override
         public void close() {
+            this.closed = true;
             handler.close();
         }
     }
 
-    private static class StreamLogHandler extends LogHandler {
+    private static class StreamLogHandler extends AbstractLogHandler {
 
         private static final String REDIRECT_FORMAT = "[To redirect Truffle log output to a file use one of the following options:%n" +
                         "* '--log.file=<path>' if the option is passed using a guest language launcher.%n" +
@@ -325,8 +368,6 @@ final class PolyglotLoggers {
         private final boolean flushOnPublish;
         private final boolean isDefault;
         private final SandboxPolicy disabledForActiveSandboxPolicy;
-
-        private ErrorManager errorManager;
         private boolean notificationPrinted;
 
         StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish,
@@ -345,6 +386,7 @@ final class PolyglotLoggers {
         @Override
         public synchronized void publish(LogRecord logRecord) {
             try {
+                checkClosed();
                 if (disabledForActiveSandboxPolicy != null) {
                     assert isDefault : "Only default handler can be disabled";
                     if (!notificationPrinted) {
@@ -375,20 +417,24 @@ final class PolyglotLoggers {
                 }
             } catch (Throwable t) {
                 // Called by a compiler thread, never propagate exceptions to the compiler.
+                reportHandlerError(ErrorManager.GENERIC_FAILURE, t);
             }
         }
 
         @Override
         public synchronized void flush() {
             try {
+                checkClosed();
                 writer.flush();
-            } catch (Exception ex) {
-                reportHandlerError(ErrorManager.FLUSH_FAILURE, ex);
+            } catch (Throwable t) {
+                // Called by a compiler thread, never propagate exceptions to the compiler.
+                reportHandlerError(ErrorManager.FLUSH_FAILURE, t);
             }
         }
 
         @Override
         public synchronized void close() {
+            closed = true;
             try {
                 writer.flush();
                 if (closeStream) {
@@ -397,14 +443,6 @@ final class PolyglotLoggers {
             } catch (Exception ex) {
                 reportHandlerError(ErrorManager.CLOSE_FAILURE, ex);
             }
-        }
-
-        private void reportHandlerError(int errorKind, Exception exception) {
-            assert Thread.holdsLock(this);
-            if (errorManager == null) {
-                errorManager = new ErrorManager();
-            }
-            errorManager.error("", exception, errorKind);
         }
 
         private static final class FormatterImpl extends Formatter {
