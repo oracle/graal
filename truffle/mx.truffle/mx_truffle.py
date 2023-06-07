@@ -949,7 +949,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI LIBFFI',
     short_name='nfi-libffi',
-    dir_name='nfi-libffi',
+    dir_name='nfi',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
