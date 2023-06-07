@@ -190,6 +190,18 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     },
 
     #
+    # Update the `stable` mx branch with the currently imported revision
+    #
+    vm_common.postmerge_vm_linux_amd64 + {
+      run: [
+        ['set-export', 'BRANCH_NAME', ['git', 'rev-parse', '--abbrev-ref', 'HEAD']],
+        ['bash', '-c', 'if [[ ${BRANCH_NAME} == master ]] || [[ ${BRANCH_NAME} == release/* ]] || [[ ${BRANCH_NAME} == cpu/* ]]; then git -C ${MX_HOME} push origin +HEAD:refs/heads/graal/${BRANCH_NAME}; fi']
+      ],
+        name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+    },
+
+
+    #
     # Deploy GraalVM Base and Installables
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
