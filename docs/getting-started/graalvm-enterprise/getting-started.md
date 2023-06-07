@@ -3,7 +3,7 @@ layout: ohc
 permalink: /getting-started/
 ---
 
-# Oracle GraalVM Installation
+# Getting Started with Oracle GraalVM
 
 Oracle GraalVM compiles your Java applications ahead of time into standalone binaries that start instantly, provide peak performance with no warmup, and use fewer resources.
 
