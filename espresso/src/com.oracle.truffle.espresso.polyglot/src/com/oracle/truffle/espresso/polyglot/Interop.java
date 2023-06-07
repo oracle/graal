@@ -42,7 +42,6 @@
 package com.oracle.truffle.espresso.polyglot;
 
 import java.nio.ByteOrder;
-import java.util.Iterator;
 
 /**
  * Provides access to the interoperability message protocol between Truffle languages. Every method
