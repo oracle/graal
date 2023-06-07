@@ -851,7 +851,9 @@ public class NativeImageClassLoaderSupport {
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
             } catch (LinkageError le) {
-                linkageErrors.put(className, le);
+                synchronized (linkageErrors) {
+                    linkageErrors.put(className, le);
+                }
             } catch (Throwable t) {
                 ImageClassLoader.handleClassLoadingError(t);
             }
