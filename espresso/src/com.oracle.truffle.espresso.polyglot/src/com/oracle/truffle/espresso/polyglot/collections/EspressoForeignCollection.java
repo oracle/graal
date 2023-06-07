@@ -43,6 +43,7 @@ package com.oracle.truffle.espresso.polyglot.collections;
 import java.util.AbstractCollection;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
@@ -51,6 +52,7 @@ import java.util.stream.Stream;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
+import com.oracle.truffle.espresso.polyglot.StopIterationException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignCollection<T> extends AbstractCollection<T> implements Collection<T> {
@@ -60,9 +62,37 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     public Iterator<T> iterator() {
         assert Interop.hasIterator(this);
         try {
-            return Interop.getJavaIterator(this);
+            return new Itr(Interop.getIterator(this));
         } catch (Exception e) {
             return (Iterator<T>) EspressoForeignIterable.EMPTY_ITERATOR;
+        }
+    }
+
+    private static final class Itr<T> implements Iterator<T> {
+
+        private final Object foreignIterator;
+
+        private Itr(Object foreignIterator) {
+            this.foreignIterator = foreignIterator;
+        }
+
+        @Override
+        public boolean hasNext() {
+            try {
+                return Interop.hasIteratorNextElement(foreignIterator);
+            } catch (UnsupportedMessageException e) {
+                return false;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public T next() {
+            try {
+                return (T) Interop.getIteratorNextElement(foreignIterator);
+            } catch (UnsupportedMessageException | StopIterationException e) {
+                throw new NoSuchElementException();
+            }
         }
     }
 

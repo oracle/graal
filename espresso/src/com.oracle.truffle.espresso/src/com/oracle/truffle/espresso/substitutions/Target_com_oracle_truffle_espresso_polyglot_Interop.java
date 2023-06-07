@@ -3273,32 +3273,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
     }
 
-    @Substitution
-    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    abstract static class GetJavaIterator extends SubstitutionNode {
-        static final int LIMIT = 2;
-
-        abstract @JavaType(Iterator.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
-
-        @Specialization
-        @JavaType(Iterator.class)
-        StaticObject doCached(
-                @JavaType(Object.class) StaticObject receiver,
-                @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                @Cached ToReference.ToIterator toIterator,
-                @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                @Cached BranchProfile exceptionProfile) {
-            try {
-                Object iterator = interop.getIterator(InteropUtils.unwrapForeign(getLanguage(), receiver));
-                assert InteropLibrary.getUncached().isIterator(iterator);
-                return toIterator.execute(iterator);
-            } catch (InteropException e) {
-                exceptionProfile.enter();
-                throw throwInteropExceptionAsGuest.execute(e);
-            }
-        }
-    }
-
     /**
      * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
      * cause any observable side-effects. Returns {@code false} by default.
