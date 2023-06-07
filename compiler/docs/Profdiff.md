@@ -6,8 +6,8 @@ by [proftool](https://github.com/graalvm/mx/blob/master/README-proftool.md). Pro
 the hottest compilation units.
 
 The tool can compare optimization decisions between two runs of one application. It finds differences between the
-hottest  compilations by utilizing tree-diffing algorithms. A compilation unit consists of an inlining tree and
-optimization  tree. Read `OptimizationLog.md` first to understand the trees. It is possible to compare two JIT
+hottest compilations by utilizing tree-diffing algorithms. A compilation unit consists of an inlining tree and
+optimization tree. Read `OptimizationLog.md` first to understand the trees. It is possible to compare two JIT
 compilations, a JIT compilation with an AOT compilation, or two AOT compilations.
 
 The tool reads data from the optimization log, which is enabled using the flag `-Dgraal.OptimizationLog`
@@ -17,7 +17,7 @@ The tool reads data from the optimization log, which is enabled using the flag `
 
 There is a separate command for each use cae:
 
-- `mx profdiff report`: display the optimization log of a single JIT/AOT experiment (optionally providing a profile),
+- `mx profdiff report`: display the optimization log of a single JIT or AOT experiment (optionally providing a profile),
 - `mx profdiff jit-vs-jit`: compare two profiled JIT experiments,
 - `mx profdiff jit-vs-aot`: compare a profiled JIT experiment with an (optionally profiled) AOT experiment,
 - `mx profdiff aot-vs-aot`: compare two profiled AOT experiments,
