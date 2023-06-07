@@ -45,6 +45,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -171,6 +172,11 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     @Override
     public void clear() {
         super.clear();
+    }
+
+    @Override
+    public <T1> T1[] toArray(IntFunction<T1[]> generator) {
+        return super.toArray(generator);
     }
 
     @Override

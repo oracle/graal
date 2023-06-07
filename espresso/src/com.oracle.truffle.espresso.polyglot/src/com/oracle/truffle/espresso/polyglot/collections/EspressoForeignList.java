@@ -46,6 +46,7 @@ import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 import java.util.AbstractList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
@@ -54,6 +55,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -357,5 +359,15 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public boolean retainAll(Collection<?> c) {
         return super.retainAll(c);
+    }
+
+    @Override
+    public void sort(Comparator<? super T> c) {
+        super.sort(c);
+    }
+
+    @Override
+    public <T1> T1[] toArray(IntFunction<T1[]> generator) {
+        return super.toArray(generator);
     }
 }
