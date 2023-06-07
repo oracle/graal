@@ -31,7 +31,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.net.URI;
 import java.nio.file.CopyOption;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -69,19 +68,29 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.launcher.BundleLauncher;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.util.json.JSONParser;
-import org.graalvm.util.json.JSONParserException;
+import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
+import com.oracle.svm.driver.launcher.configuration.BundleContainerSettingsParser;
+import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
+import com.oracle.svm.driver.launcher.configuration.BundlePathMapParser;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
+
+import static com.oracle.svm.driver.launcher.BundleLauncher.AUXILIARY_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.AUXILIARY_OUTPUT_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.CLASSES_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.CLASSPATH_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.IMAGE_PATH_OUTPUT_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.INPUT_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.MODULE_PATH_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.OUTPUT_DIR_NAME;
+import static com.oracle.svm.driver.launcher.BundleLauncher.STAGE_DIR_NAME;
 
 final class BundleSupport {
 
@@ -111,7 +120,7 @@ final class BundleSupport {
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
     private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
-    private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
+    private static final String BUNDLE_TEMP_DIR_PREFIX = BundleLauncher.BUNDLE_TEMP_DIR_PREFIX;
     private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
     private Path bundlePath;
@@ -120,7 +129,7 @@ final class BundleSupport {
     private final BundleProperties bundleProperties;
 
     static final String BUNDLE_OPTION = "--bundle";
-    static final String BUNDLE_FILE_EXTENSION = ".nib";
+    static final String BUNDLE_FILE_EXTENSION = BundleLauncher.BUNDLE_FILE_EXTENSION;
 
     static final Path CONTAINER_GRAAL_VM_HOME = Path.of("/graalvm");
     boolean useContainer;
@@ -491,15 +500,15 @@ final class BundleSupport {
             bundleProperties = new BundleProperties();
             bundleProperties.properties.put(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID, UUID.randomUUID().toString());
 
-            inputDir = rootDir.resolve("input");
-            stageDir = Files.createDirectories(inputDir.resolve("stage"));
-            auxiliaryDir = Files.createDirectories(inputDir.resolve("auxiliary"));
-            Path classesDir = inputDir.resolve("classes");
-            classPathDir = Files.createDirectories(classesDir.resolve("cp"));
-            modulePathDir = Files.createDirectories(classesDir.resolve("p"));
-            outputDir = rootDir.resolve("output");
-            imagePathOutputDir = Files.createDirectories(outputDir.resolve("default"));
-            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve("other"));
+            inputDir = rootDir.resolve(INPUT_DIR_NAME);
+            stageDir = Files.createDirectories(inputDir.resolve(STAGE_DIR_NAME));
+            auxiliaryDir = Files.createDirectories(inputDir.resolve(AUXILIARY_DIR_NAME));
+            Path classesDir = inputDir.resolve(CLASSES_DIR_NAME);
+            classPathDir = Files.createDirectories(classesDir.resolve(CLASSPATH_DIR_NAME));
+            modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
+            outputDir = rootDir.resolve(OUTPUT_DIR_NAME);
+            imagePathOutputDir = Files.createDirectories(outputDir.resolve(IMAGE_PATH_OUTPUT_DIR_NAME));
+            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve(AUXILIARY_OUTPUT_DIR_NAME));
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
@@ -522,7 +531,7 @@ final class BundleSupport {
             bundleProperties = new BundleProperties();
             bundleProperties.properties.put(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID, UUID.randomUUID().toString());
 
-            outputDir = rootDir.resolve("output");
+            outputDir = rootDir.resolve(OUTPUT_DIR_NAME);
             String originalOutputDirName = outputDir.getFileName().toString() + ORIGINAL_DIR_EXTENSION;
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
@@ -560,34 +569,34 @@ final class BundleSupport {
         nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
 
         try {
-            inputDir = rootDir.resolve("input");
-            stageDir = Files.createDirectories(inputDir.resolve("stage"));
-            auxiliaryDir = Files.createDirectories(inputDir.resolve("auxiliary"));
-            Path classesDir = inputDir.resolve("classes");
-            classPathDir = Files.createDirectories(classesDir.resolve("cp"));
-            modulePathDir = Files.createDirectories(classesDir.resolve("p"));
-            imagePathOutputDir = Files.createDirectories(outputDir.resolve("default"));
-            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve("other"));
+            inputDir = rootDir.resolve(INPUT_DIR_NAME);
+            stageDir = Files.createDirectories(inputDir.resolve(STAGE_DIR_NAME));
+            auxiliaryDir = Files.createDirectories(inputDir.resolve(AUXILIARY_DIR_NAME));
+            Path classesDir = inputDir.resolve(CLASSES_DIR_NAME);
+            classPathDir = Files.createDirectories(classesDir.resolve(CLASSPATH_DIR_NAME));
+            modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
+            imagePathOutputDir = Files.createDirectories(outputDir.resolve(IMAGE_PATH_OUTPUT_DIR_NAME));
+            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve(AUXILIARY_OUTPUT_DIR_NAME));
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (Reader reader = Files.newBufferedReader(pathCanonicalizationsFile)) {
-            new PathMapParser(pathCanonicalizations).parseAndRegister(reader);
+            new BundlePathMapParser(pathCanonicalizations).parseAndRegister(reader);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathCanonicalizationsFile, e);
         }
         Path pathSubstitutionsFile = stageDir.resolve("path_substitutions.json");
         try (Reader reader = Files.newBufferedReader(pathSubstitutionsFile)) {
-            new PathMapParser(pathSubstitutions).parseAndRegister(reader);
+            new BundlePathMapParser(pathSubstitutions).parseAndRegister(reader);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
         Path environmentFile = stageDir.resolve("environment.json");
         if (Files.isReadable(environmentFile)) {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
-                new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
+                new BundleEnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
             }
@@ -596,16 +605,11 @@ final class BundleSupport {
         Path containerFile = stageDir.resolve("container.json");
         if (Files.exists(containerFile)) {
             try (Reader reader = Files.newBufferedReader(containerFile)) {
-                EconomicMap<String, Object> json = JSONParser.parseDict(reader);
-                if (json.get(CONTAINER_IMAGE_JSON_KEY) != null) {
-                    bundleContainerImage = json.get(CONTAINER_IMAGE_JSON_KEY).toString();
-                }
-                if (json.get(CONTAINER_TOOL_JSON_KEY) != null) {
-                    bundleContainerTool = json.get(CONTAINER_TOOL_JSON_KEY).toString();
-                }
-                if (json.get(CONTAINER_TOOL_VERSION_JSON_KEY) != null) {
-                    bundleContainerToolVersion = json.get(CONTAINER_TOOL_VERSION_JSON_KEY).toString();
-                }
+                Map<String, String> containerSettings = new HashMap<>();
+                new BundleContainerSettingsParser(containerSettings).parseAndRegister(reader);
+                bundleContainerImage = containerSettings.getOrDefault(CONTAINER_IMAGE_JSON_KEY, bundleContainerImage);
+                bundleContainerTool = containerSettings.getOrDefault(CONTAINER_TOOL_JSON_KEY, bundleContainerTool);
+                bundleContainerToolVersion = containerSettings.getOrDefault(CONTAINER_TOOL_VERSION_JSON_KEY, bundleContainerToolVersion);
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
@@ -627,7 +631,7 @@ final class BundleSupport {
         Path buildArgsFile = stageDir.resolve("build.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
             List<String> buildArgsFromFile = new ArrayList<>();
-            new BuildArgsParser(buildArgsFromFile).parseAndRegister(reader);
+            new BundleArgsParser(buildArgsFromFile).parseAndRegister(reader);
             nativeImageArgs = Collections.unmodifiableList(buildArgsFromFile);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
@@ -1079,7 +1083,6 @@ final class BundleSupport {
         Manifest mf = new Manifest();
         Attributes attributes = mf.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
-        /* If we add run-bundle-as-java-application a launcher mainclass would be added here */
         attributes.put(Attributes.Name.MAIN_CLASS, BundleLauncher.class.getName());
         return mf;
     }
@@ -1107,76 +1110,6 @@ final class BundleSupport {
         w.append('{').quote(environmentKeyField).append(':').quote(entry.getKey());
         w.append(',').quote(environmentValueField).append(':').quote(entry.getValue());
         w.append('}');
-    }
-
-    private static final class PathMapParser extends ConfigurationParser {
-
-        private final Map<Path, Path> pathMap;
-
-        private PathMapParser(Map<Path, Path> pathMap) {
-            super(true);
-            this.pathMap = pathMap;
-        }
-
-        @Override
-        public void parseAndRegister(Object json, URI origin) {
-            for (var rawEntry : asList(json, "Expected a list of path substitution objects")) {
-                var entry = asMap(rawEntry, "Expected a substitution object");
-                Object srcPathString = entry.get(substitutionMapSrcField);
-                if (srcPathString == null) {
-                    throw new JSONParserException("Expected " + substitutionMapSrcField + "-field in substitution object");
-                }
-                Object dstPathString = entry.get(substitutionMapDstField);
-                if (dstPathString == null) {
-                    throw new JSONParserException("Expected " + substitutionMapDstField + "-field in substitution object");
-                }
-                pathMap.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
-            }
-        }
-    }
-
-    private static final class EnvironmentParser extends ConfigurationParser {
-
-        private final Map<String, String> environment;
-
-        private EnvironmentParser(Map<String, String> environment) {
-            super(true);
-            environment.clear();
-            this.environment = environment;
-        }
-
-        @Override
-        public void parseAndRegister(Object json, URI origin) {
-            for (var rawEntry : asList(json, "Expected a list of environment variable objects")) {
-                var entry = asMap(rawEntry, "Expected a environment variable object");
-                Object envVarKeyString = entry.get(environmentKeyField);
-                if (envVarKeyString == null) {
-                    throw new JSONParserException("Expected " + environmentKeyField + "-field in environment variable object");
-                }
-                Object envVarValueString = entry.get(environmentValueField);
-                if (envVarValueString == null) {
-                    throw new JSONParserException("Expected " + environmentValueField + "-field in environment variable object");
-                }
-                environment.put(envVarKeyString.toString(), envVarValueString.toString());
-            }
-        }
-    }
-
-    private static final class BuildArgsParser extends ConfigurationParser {
-
-        private final List<String> args;
-
-        private BuildArgsParser(List<String> args) {
-            super(true);
-            this.args = args;
-        }
-
-        @Override
-        public void parseAndRegister(Object json, URI origin) {
-            for (var arg : asList(json, "Expected a list of arguments")) {
-                args.add(arg.toString());
-            }
-        }
     }
 
     private static final Path bundlePropertiesFileName = Path.of("META-INF/nibundle.properties");

@@ -24,21 +24,36 @@
  */
 package com.oracle.svm.driver.launcher.configuration;
 
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
+
 import java.net.URI;
-import java.util.List;
+import java.nio.file.Path;
+import java.util.Map;
 
-public class ArgsParser extends BundleConfigurationParser {
+public class BundlePathMapParser extends BundleConfigurationParser {
 
-    private final List<String> args;
+    private static final String substitutionMapSrcField = "src";
+    private static final String substitutionMapDstField = "dst";
 
-    public ArgsParser(List<String> args) {
-        this.args = args;
+    private final Map<Path, Path> pathMap;
+
+    public BundlePathMapParser(Map<Path, Path> pathMap) {
+        this.pathMap = pathMap;
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        for (var arg : asList(json, "Expected a list of arguments")) {
-            args.add(arg.toString());
+        for (var rawEntry : asList(json, "Expected a list of path substitution objects")) {
+            var entry = asMap(rawEntry, "Expected a substitution object");
+            Object srcPathString = entry.get(substitutionMapSrcField);
+            if (srcPathString == null) {
+                throw new BundleJSONParserException("Expected " + substitutionMapSrcField + "-field in substitution object");
+            }
+            Object dstPathString = entry.get(substitutionMapDstField);
+            if (dstPathString == null) {
+                throw new BundleJSONParserException("Expected " + substitutionMapDstField + "-field in substitution object");
+            }
+            pathMap.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
         }
     }
 }

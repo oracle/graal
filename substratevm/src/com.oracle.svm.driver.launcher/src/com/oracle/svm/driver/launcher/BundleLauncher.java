@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.driver.launcher;
 
-import com.oracle.svm.driver.launcher.configuration.ArgsParser;
-import com.oracle.svm.driver.launcher.configuration.EnvironmentParser;
+import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
+import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -50,10 +49,19 @@ import java.util.stream.Stream;
 
 
 public class BundleLauncher {
-    private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
-    static final String BUNDLE_FILE_EXTENSION = ".nib";
-    private static final String AUXILIARY_OUTPUT_DIR_NAME = "other";
-    private static final String OUTPUT_DIR_NAME = "output";
+
+    public static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
+    public static final String BUNDLE_FILE_EXTENSION = ".nib";
+
+    public static final String INPUT_DIR_NAME = "input";
+    public static final String STAGE_DIR_NAME = "stage";
+    public static final String AUXILIARY_DIR_NAME = "auxiliary";
+    public static final String CLASSES_DIR_NAME = "classes";
+    public static final String CLASSPATH_DIR_NAME = "cp";
+    public static final String MODULE_PATH_DIR_NAME = "p";
+    public static final String OUTPUT_DIR_NAME = "output";
+    public static final String IMAGE_PATH_OUTPUT_DIR_NAME = "default";
+    public static final String AUXILIARY_OUTPUT_DIR_NAME = "other";
 
     private static Path stageDir;
     private static Path classPathDir;
@@ -106,13 +114,13 @@ public class BundleLauncher {
             }
         }
 
-        Path buildArgsFile = stageDir.resolve("run.json");
-        try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
+        Path argsFile = stageDir.resolve("run.json");
+        try (Reader reader = Files.newBufferedReader(argsFile)) {
             List<String> argsFromFile = new ArrayList<>();
-            new ArgsParser(argsFromFile).parseAndRegister(reader);
+            new BundleArgsParser(argsFromFile).parseAndRegister(reader);
             command.addAll(argsFromFile);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read bundle-file " + buildArgsFile, e);
+            throw new RuntimeException("Failed to read bundle-file " + argsFile, e);
         }
 
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -121,7 +129,7 @@ public class BundleLauncher {
         if (Files.isReadable(environmentFile)) {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
                 Map<String, String> launcherEnvironment = new HashMap<>();
-                new EnvironmentParser(launcherEnvironment).parseAndRegister(reader);
+                new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
                 pb.environment().putAll(launcherEnvironment);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
@@ -187,30 +195,22 @@ public class BundleLauncher {
 
     private static Path getJavaExecutable() {
         Path binJava = Paths.get("bin", System.getProperty("os.name").contains("Windows") ? "java.exe" : "java");
-
-        Path javaCandidate = buildTimeJavaHome.resolve(binJava);
-        if (Files.isExecutable(javaCandidate)) {
-            return javaCandidate;
-        }
-
-        javaCandidate = Paths.get(".").resolve(binJava);
-        if (Files.isExecutable(javaCandidate)) {
-            return javaCandidate;
+        if (Files.isExecutable(buildTimeJavaHome.resolve(binJava))) {
+            return buildTimeJavaHome.resolve(binJava);
         }
 
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
-            throw new RuntimeException("No " + binJava + " and no environment variable JAVA_HOME");
+            throw new RuntimeException("Environment variable JAVA_HOME is not set");
         }
-        try {
-            javaCandidate = Paths.get(javaHome).resolve(binJava);
-            if (Files.isExecutable(javaCandidate)) {
-                return javaCandidate;
-            }
-        } catch (InvalidPathException e) {
-            /* fallthrough */
+        Path javaHomeDir = Paths.get(javaHome);
+        if (!Files.isDirectory(javaHomeDir)) {
+            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory");
         }
-        throw new RuntimeException("No " + binJava + " and invalid JAVA_HOME=" + javaHome);
+        if (!Files.isExecutable(javaHomeDir.resolve(binJava))) {
+            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
+        }
+        return javaHomeDir.resolve(binJava);
     }
 
     private static final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
@@ -223,12 +223,10 @@ public class BundleLauncher {
         return bundleRoot;
     }
 
-
     private static final String deletedFileSuffix = ".deleted";
     private static boolean isDeletedPath(Path toDelete) {
         return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
     }
-
     private static void deleteAllFiles(Path toDelete) {
         try {
             Path deletedPath = toDelete;
@@ -245,13 +243,12 @@ public class BundleLauncher {
         }
     }
 
-
     private static void unpackBundle(Path bundleFilePath) {
         Path rootDir;
         Path inputDir;
         try {
             rootDir = createBundleRootDir();
-            inputDir = rootDir.resolve("input");
+            inputDir = rootDir.resolve(INPUT_DIR_NAME);
 
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
                 Enumeration<JarEntry> jarEntries = archive.entries();
@@ -276,16 +273,15 @@ public class BundleLauncher {
         }
 
         if (deleteBundleRoot.get()) {
-            /* Abort image build request without error message and exit with 0 */
-            throw new RuntimeException("");
+            /* Abort bundle run request without error message and exit with 0 */
+            throw new Error(null, null);
         }
 
         try {
-            inputDir = rootDir.resolve("input");
-            stageDir = Files.createDirectories(inputDir.resolve("stage"));
-            Path classesDir = inputDir.resolve("classes");
-            classPathDir = Files.createDirectories(classesDir.resolve("cp"));
-            modulePathDir = Files.createDirectories(classesDir.resolve("p"));
+            stageDir = Files.createDirectories(inputDir.resolve(STAGE_DIR_NAME));
+            Path classesDir = inputDir.resolve(CLASSES_DIR_NAME);
+            classPathDir = Files.createDirectories(classesDir.resolve(CLASSPATH_DIR_NAME));
+            modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
         } catch (IOException e) {
             throw new RuntimeException("Unable to create bundle directory layout", e);
         }
