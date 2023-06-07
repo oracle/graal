@@ -30,7 +30,6 @@ import static org.graalvm.compiler.options.OptionType.User;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.util.StringUtil;
 
 public class NativeImageOptions {
 
@@ -171,14 +171,14 @@ public class NativeImageOptions {
         }
     }
 
-    @Option(help = "C standard to use in header files. Possible values are: [C89, C99, C11]", type = User)//
+    @Option(help = "C standard to use in header files. Possible values are 'C89', 'C99', and 'C11'.", type = User)//
     public static final HostedOptionKey<String> CStandard = new HostedOptionKey<>("C89");
 
     public static CStandards getCStandard() {
         try {
             return CStandards.valueOf(CStandard.getValue());
         } catch (IllegalArgumentException e) {
-            throw UserError.abort("C standard %s is not supported. Supported standards are: %s", CStandard.getValue(), Arrays.toString(CStandards.values()));
+            throw UserError.abort("C standard '%s' is not supported. Supported standards are %s.", CStandard.getValue(), StringUtil.joinSingleQuoted(CStandards.values()));
         }
     }
 

@@ -67,6 +67,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -184,7 +185,7 @@ public enum CPUTypeAMD64 implements CPUType {
             throw UserError.abort("Unsupported architecture '%s'. Please adjust '%s'. On AMD64, only %s are available.",
                             marchValue,
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, marchValue),
-                            List.of(values()).stream().map(v -> v.name).collect(Collectors.joining(", ")));
+                            StringUtil.joinSingleQuoted(values()));
         }
         return value.getFeatures();
     }
