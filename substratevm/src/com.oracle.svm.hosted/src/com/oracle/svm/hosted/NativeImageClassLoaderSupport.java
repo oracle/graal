@@ -107,13 +107,13 @@ public class NativeImageClassLoaderSupport {
     private final List<Path> imagemp;
     private final List<Path> buildmp;
 
-    private final EconomicMap<URI, EconomicSet<String>> classes;
-    private final EconomicMap<URI, EconomicSet<String>> packages;
+    private final EconomicMap<URI, EconomicSet<String>> classes = EconomicMap.create();
+    private final EconomicMap<URI, EconomicSet<String>> packages = EconomicMap.create();
     private final EconomicMap<String, LinkageError> linkageErrors = EconomicMap.create();
-    private final EconomicSet<String> emptySet;
-    private final EconomicSet<URI> builderURILocations;
+    private final EconomicSet<String> emptySet = EconomicSet.create();
+    private final EconomicSet<URI> builderURILocations = EconomicSet.create();
 
-    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders = new ConcurrentHashMap<>();
 
     private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
@@ -127,11 +127,6 @@ public class NativeImageClassLoaderSupport {
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
-        classes = EconomicMap.create();
-        packages = EconomicMap.create();
-        emptySet = EconomicSet.create();
-        builderURILocations = EconomicSet.create();
-        serviceProviders = new ConcurrentHashMap<>();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
