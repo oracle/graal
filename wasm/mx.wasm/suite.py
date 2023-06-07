@@ -236,11 +236,6 @@ suite = {
     "WASM" : {
       "moduleInfo" : {
         "name" : "org.graalvm.wasm",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
-          ],
-        },
       },
       "subDir" : "src",
       "dependencies" : [
