@@ -37,9 +37,9 @@ See the [installation guide](getting-started/graalvm-community/installation.md) 
 
 ## Features Support
 
-GraalVM technologies are distributed as supported and experimental.
+GraalVM technologies are distributed as _supported_ or _experimental_.
 
-Experimental features are being considered for future versions of GraalVM and are not meant to be used in production.
+_Experimental_ features are being considered for future versions of GraalVM and are **not** meant to be used in production.
 The development team welcomes feedback on experimental features, but users should be aware that experimental features might never be included in a final version, or might change significantly before being considered stable.
 
 The following table lists stable and experimental features in GraalVM Community Edition by platform.

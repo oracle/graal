@@ -32,7 +32,7 @@ Select the preferred Oracle GraalVM version, **17** or **20** for the Java versi
 To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
-  - Point the `PATH` environment variable to the Oracle GraalVM _bin_ directory:
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
     ```

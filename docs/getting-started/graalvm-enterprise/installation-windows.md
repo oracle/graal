@@ -17,7 +17,7 @@ Select the preferred Oracle GraalVM version, **17** or **20** for the Java versi
 3. Unzip the archive to your file system.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Point the `PATH` environment variable to the Oracle GraalVM _bin_ directory:
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```

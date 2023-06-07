@@ -12,15 +12,14 @@ You can install it on Windows from an archive file (_zip_).
 
 Follow these steps to install GraalVM: 
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download. It will download Oracle GraalVM. 
-To download GraalVM Community Edition, go to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases).
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download. It will download Oracle GraalVM.
 
-2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
+2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
 
 3. Unzip the archive to your file system.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Point the `PATH` environment variable to the GraalVM _bin_ directory:
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```
@@ -39,11 +38,11 @@ To download GraalVM Community Edition, go to the [GraalVM Releases repository on
 Alternatively, you can set up environment variables through a Windows GUI:
 
 1. Go to Windows Start Menu - Settings - ... - Advanced.
-2. Click **Environment Variables**. In the section System Variables find the `JAVA_HOME` variable and select it.
+2. Click **Environment Variables**. In the section "System Variables" find the `JAVA_HOME` variable and select it.
 3. Click **Edit**.
 4. Click **New**.
 5. Click **Browse** to find the directory to add. Confirm by clicking **OK**.
-6. Restart Command Prompt to reload the environment variables.
+6. Restart the Command Prompt to reload the environment variables.
 
 Repeat the same for the `PATH` environment variable.
 

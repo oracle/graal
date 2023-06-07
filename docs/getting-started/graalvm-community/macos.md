@@ -13,8 +13,7 @@ Note that on macOS the JDK installation path is: _/Library/Java/JavaVirtualMachi
 
 Follow these steps to install GraalVM: 
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **macOS** for the operating system, **x64** or **aarch64** for the architecture, and download. It will download Oracle GraalVM. 
-To download GraalVM Community Edition, go to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases).
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **macOS** for the operating system, **x64** or **aarch64** for the architecture, and download. It will download Oracle GraalVM.
 
 2. Unzip the archive.
     ```shell
@@ -34,7 +33,7 @@ To download GraalVM Community Edition, go to the [GraalVM Releases repository on
   To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
-  - Point the `PATH` environment variable to the GraalVM _bin_ directory:
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
     ```
