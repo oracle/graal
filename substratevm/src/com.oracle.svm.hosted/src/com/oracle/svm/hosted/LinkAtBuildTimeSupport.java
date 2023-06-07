@@ -114,6 +114,10 @@ public final class LinkAtBuildTimeSupport {
         return classLoaderSupport.getLinkageError(className);
     }
 
+    public LinkageError addLinkageError(String className, LinkageError error) {
+        return classLoaderSupport.addLinkageError(className, error);
+    }
+
     @SuppressWarnings("unchecked")
     private String linkAtBuildTimeReason(Class<?> clazz) {
         Object reason = isIncluded(clazz);
