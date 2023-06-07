@@ -165,9 +165,13 @@ public abstract class NativeImageCodeCache {
         return orderedCompilations.get(orderedCompilations.size() - 1);
     }
 
+    protected static Comparator<Pair<HostedMethod, CompilationResult>> compilationsComparator() {
+        Comparator<Pair<HostedMethod, CompilationResult>> nameComparator = Comparator.comparing(o -> AnalysisMethod.comparingMethodNames(o.getLeft().wrapped));
+        return nameComparator.thenComparing(o -> o.getRight().getTargetCodeSize());
+    }
+
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R")))
-                        .collect(Collectors.toList());
+        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(compilationsComparator()).collect(Collectors.toList());
     }
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
