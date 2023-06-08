@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.snippets;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
@@ -89,8 +90,11 @@ public class IntrinsificationPluginRegistry {
         /*
          * New elements can only be added when the intrinsification is executed during the analysis.
          * If an intrinsified element was already registered that's an error.
+         *
+         * The only exception to this is deoptimization target methods; as these methods can be
+         * reparsed during analysis, the same element may be registered multiple times.
          */
-        VMError.guarantee(previous == null, "Detected previously intrinsified element");
+        VMError.guarantee(previous == null || MultiMethod.isDeoptTarget(method), "Detected previously intrinsified element");
     }
 
     @SuppressWarnings("unchecked")

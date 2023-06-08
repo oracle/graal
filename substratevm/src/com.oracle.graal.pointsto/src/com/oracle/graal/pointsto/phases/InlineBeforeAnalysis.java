@@ -72,7 +72,7 @@ public class InlineBeforeAnalysis {
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
             if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
-                InlineBeforeAnalysisGraphDecoder<?> decoder = bb.getHostVM().createInlineBeforeAnalysisGraphDecoder(bb, method, result);
+                InlineBeforeAnalysisGraphDecoder decoder = bb.getHostVM().createInlineBeforeAnalysisGraphDecoder(bb, method, result);
                 decoder.decode(method);
             } else {
                 /*

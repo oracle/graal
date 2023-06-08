@@ -96,10 +96,15 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
+    // For GR-45916 this should be unconditionally true when parseOnce is enabled.
+    private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
+        return forceTrackNodeSourcePosition || (SubstrateOptions.parseOnce() && !SubstrateOptions.ParseOnceJIT.getValue());
+    }
+
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
                     GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, forceTrackNodeSourcePosition || SubstrateOptions.parseOnce(), false);
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), false);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();

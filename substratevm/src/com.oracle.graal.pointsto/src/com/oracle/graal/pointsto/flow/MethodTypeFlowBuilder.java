@@ -1432,7 +1432,7 @@ public class MethodTypeFlowBuilder {
     protected void processMacroInvokable(TypeFlowsOfNodes state, MacroInvokable macro, boolean installResult) {
         ValueNode macroNode = macro.asNode();
         BytecodePosition invokePosition = getInvokePosition(macro, macroNode);
-        processMethodInvocation(state, macroNode, macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult, invokePosition);
+        processMethodInvocation(state, macroNode, macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult, invokePosition, false);
     }
 
     /* Reconstruct the macro node invoke position, avoiding cycles in the parsing backtrace. */
@@ -1457,7 +1457,7 @@ public class MethodTypeFlowBuilder {
     protected void processMethodInvocation(TypeFlowsOfNodes state, Invoke invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
         FixedNode invokeNode = invoke.asFixedNode();
         BytecodePosition invokePosition = getInvokePosition(invokeNode);
-        processMethodInvocation(state, invokeNode, invokeKind, targetMethod, arguments, true, invokePosition);
+        processMethodInvocation(state, invokeNode, invokeKind, targetMethod, arguments, true, invokePosition, false);
     }
 
     /* Get a reasonable position for inlined invokes, avoiding cycles in the parsing backtrace. */
@@ -1487,8 +1487,9 @@ public class MethodTypeFlowBuilder {
         return invokePosition;
     }
 
-    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
-                    boolean installResult, BytecodePosition invokeLocation) {
+    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod,
+                    NodeInputList<ValueNode> arguments,
+                    boolean installResult, BytecodePosition invokeLocation, boolean createDeoptInvokeTypeFlow) {
         // check if the call is allowed
         bb.isCallAllowed(bb, method, targetMethod, invokeLocation);
 
@@ -1496,7 +1497,6 @@ public class MethodTypeFlowBuilder {
          * Collect the parameters builders into an array so that we don't capture the `state`
          * reference in the closure.
          */
-        boolean targetIsStatic = Modifier.isStatic(targetMethod.getModifiers());
 
         TypeFlowBuilder<?>[] actualParametersBuilders = new TypeFlowBuilder<?>[arguments.size()];
         for (int i = 0; i < actualParametersBuilders.length; i++) {
@@ -1533,19 +1533,23 @@ public class MethodTypeFlowBuilder {
 
             MultiMethod.MultiMethodKey multiMethodKey = method.getMultiMethodKey();
             InvokeTypeFlow invokeFlow;
-            switch (invokeKind) {
-                case Static:
-                    invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
-                    break;
-                case Special:
-                    invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
-                    break;
-                case Virtual:
-                case Interface:
-                    invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
-                    break;
-                default:
-                    throw shouldNotReachHere();
+            if (createDeoptInvokeTypeFlow) {
+                invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+            } else {
+                switch (invokeKind) {
+                    case Static:
+                        invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        break;
+                    case Special:
+                        invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        break;
+                    case Virtual:
+                    case Interface:
+                        invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        break;
+                    default:
+                        throw shouldNotReachHere();
+                }
             }
 
             flowsGraph.addInvoke(StaticAnalysisResultsBuilder.uniqueKey(invoke), invokeFlow);
@@ -1566,7 +1570,7 @@ public class MethodTypeFlowBuilder {
             return invokeFlow;
         });
 
-        if (invoke.asNode().getStackKind() == JavaKind.Object) {
+        if (!createDeoptInvokeTypeFlow && invoke.asNode().getStackKind() == JavaKind.Object) {
             /* Create the actual return builder. */
             AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
             TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
@@ -1577,7 +1581,7 @@ public class MethodTypeFlowBuilder {
                  * Only set the actual return in the invoke when it is materialized, i.e., it is
                  * used by other flows.
                  */
-                invokeFlow.setActualReturn(bb, targetIsStatic, actualReturn);
+                invokeFlow.setActualReturn(bb, targetMethod.isStatic(), actualReturn);
                 actualReturn.setInvokeFlow(invokeFlow);
                 return actualReturn;
             });

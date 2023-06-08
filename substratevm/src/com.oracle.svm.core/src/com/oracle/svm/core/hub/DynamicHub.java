@@ -137,7 +137,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * The name of the class this hub is representing, as defined in {@link Class#getName()}.
      *
-     * Even though the field is only assinged in the constructor, it cannot be final: The
+     * Even though the field is only assigned in the constructor, it cannot be final: The
      * substitution system does not allow a final field when the target class has a field with the
      * same name. And using a different field name fails for various other reasons that are too
      * complicated to fix. Therefore, we ensure early constant folding using an invocation plugin
