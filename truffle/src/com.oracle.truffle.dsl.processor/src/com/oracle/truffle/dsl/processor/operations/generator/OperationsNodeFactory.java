@@ -311,7 +311,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             NodeConstants nodeConsts = new NodeConstants();
-            OperationNodeGeneratorPlugs plugs = new OperationNodeGeneratorPlugs(context, operationNodeGen.asType(), instr);
+            OperationNodeGeneratorPlugs plugs = new OperationNodeGeneratorPlugs(context, operationNodeGen.asType(), model, instr);
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
@@ -560,7 +560,18 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(Object.class), "continueAt");
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         if (model.enableYield) {
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "generatorFrame"));
+            /**
+             * When an OperationRootNode is suspended, its frame gets materialized. Resuming
+             * execution with this materialized frame would provide unsatisfactory performance.
+             *
+             * Instead, on entry, we copy stack state from the materialized frame into the new frame
+             * so that stack accesses can be virtualized. We do not copy local state since there can
+             * be many temporary locals and they may not be used.
+             *
+             * In regular calls, localFrame is the same as frame, but when a node is suspended and
+             * resumed, it will be the materialized frame used for local accesses.
+             */
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
         }
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
@@ -570,8 +581,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.statement("Throwable throwable = null");
         b.statement("Object returnValue = null");
+        String localFrame = localFrame();
 
-        b.statement("this.executeProlog(frame)");
+        b.statement("this.executeProlog(" + localFrame + ")");
 
         b.startTryBlock();
 
@@ -596,7 +608,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startAssign("state").startCall(tier.interpreterClassName() + ".continueAt");
             b.string("this, frame");
             if (model.enableYield) {
-                b.string("generatorFrame");
+                b.string("localFrame");
             }
             b.string("bc");
             b.string("constants");
@@ -624,7 +636,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end().startCatchBlock(context.getType(Throwable.class), "th");
         b.statement("throw sneakyThrow(throwable = th)");
         b.end().startFinallyBlock();
-        b.statement("this.executeEpilog(frame, returnValue, throwable)");
+        b.statement("this.executeEpilog(" + localFrame + ", returnValue, throwable)");
         b.end();
 
         return ex;
@@ -3601,7 +3613,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
-                ex.addParameter(new CodeVariableElement(types.VirtualFrame, "generatorFrame"));
+                ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             }
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "constants"));
@@ -3729,8 +3741,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL: {
-                        String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement(setFrameObject("sp", getFrameObject(localFrame, readBc("bci + 1"))));
+                        b.statement(setFrameObject("sp", getFrameObject(localFrame(), readBc("bci + 1"))));
                         b.statement("sp += 1");
                         break;
                     }
@@ -3754,8 +3765,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
                     case STORE_LOCAL: {
-                        String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement(setFrameObject(localFrame, readBc("bci + 1"), getFrameObject("sp - 1")));
+                        b.statement(setFrameObject(localFrame(), readBc("bci + 1"), getFrameObject("sp - 1")));
                         b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
                         break;
@@ -3771,8 +3781,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case YIELD:
                         b.statement("int numLocals = $this.numLocals");
-                        b.statement(copyFrameTo("frame", "numLocals", "generatorFrame", "numLocals", "(sp - 1 - numLocals)"));
-                        b.statement(setFrameObject("sp - 1", "((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(generatorFrame, " + getFrameObject("sp - 1") + ")"));
+                        b.statement(copyFrameTo("frame", "numLocals", "localFrame", "numLocals", "(sp - 1 - numLocals)"));
+                        b.statement(setFrameObject("sp - 1", "((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(localFrame, " + getFrameObject("sp - 1") + ")"));
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
                         break;
                     case SUPERINSTRUCTION:
@@ -3885,11 +3895,20 @@ public class OperationsNodeFactory implements ElementHelpers {
                 }
             }
 
-            List<CodeVariableElement> extraParams = List.of(
+            /**
+             * These additional parameters mirror the parameters declared in
+             * {@link OperationNodeGeneratorPlugs#additionalArguments()}. When one is updated, the
+             * other should be kept in sync.
+             */
+            List<CodeVariableElement> extraParams = new ArrayList<>();
+            if (model.enableYield) {
+                extraParams.add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
+            extraParams.addAll(List.of(
                             new CodeVariableElement(operationNodeGen.asType(), "$this"),
                             new CodeVariableElement(context.getType(short[].class), "bc"),
                             new CodeVariableElement(context.getType(int.class), "bci"),
-                            new CodeVariableElement(context.getType(int.class), "sp"));
+                            new CodeVariableElement(context.getType(int.class), "sp")));
 
             helper.getParameters().addAll(extraParams);
 
@@ -4416,6 +4435,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
+    }
+
+    private String localFrame() {
+        return model.enableYield ? "localFrame" : "frame";
     }
 
     // Helpers to generate common strings

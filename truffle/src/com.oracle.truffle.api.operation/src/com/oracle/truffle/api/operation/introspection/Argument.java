@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.operation.introspection;
 
+import java.util.Arrays;
+
 public final class Argument {
 
     private final Object[] data;
@@ -66,11 +68,7 @@ public final class Argument {
                 case BOXING:
                     return String.format("boxing(%s)", value);
                 case CONSTANT:
-                    if (value == null) {
-                        return "const(null)";
-                    } else {
-                        return String.format("const(%s %s)", value.getClass().getSimpleName(), value);
-                    }
+                    return String.format("const(%s)", printConstant(value));
                 case CHILD_OFFSET:
                     return String.format("child(-%d)", (short) value);
                 case VARIADIC:
@@ -80,6 +78,38 @@ public final class Argument {
                 default:
                     throw new UnsupportedOperationException("Unexpected value: " + this);
             }
+        }
+
+        private static String printConstant(Object value) {
+            if (value == null) {
+                return "null";
+            }
+            String typeString = value.getClass().getSimpleName();
+            String valueString = value.getClass().isArray() ? printArray(value) : value.toString();
+            return String.format("%s %s", typeString, valueString);
+        }
+
+        private static String printArray(Object array) {
+            if (array instanceof Object[] objArr) {
+                return Arrays.toString(objArr);
+            } else if (array instanceof long[] longArr) {
+                return Arrays.toString(longArr);
+            } else if (array instanceof int[] intArr) {
+                return Arrays.toString(intArr);
+            } else if (array instanceof short[] shortArr) {
+                return Arrays.toString(shortArr);
+            } else if (array instanceof char[] charArr) {
+                return Arrays.toString(charArr);
+            } else if (array instanceof byte[] byteArr) {
+                return Arrays.toString(byteArr);
+            } else if (array instanceof double[] doubleArr) {
+                return Arrays.toString(doubleArr);
+            } else if (array instanceof float[] floatArr) {
+                return Arrays.toString(floatArr);
+            } else if (array instanceof boolean[] boolArr) {
+                return Arrays.toString(boolArr);
+            }
+            throw new AssertionError(String.format("Unhandled array type %s", array));
         }
     }
 
