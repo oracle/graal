@@ -32,7 +32,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.AbstractTruffleCompilationSupport;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleHostEnvironmentLookup;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 

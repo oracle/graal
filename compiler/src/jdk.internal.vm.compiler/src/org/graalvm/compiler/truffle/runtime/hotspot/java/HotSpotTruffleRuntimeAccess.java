@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
@@ -37,7 +37,12 @@ public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRun
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new HotSpotTruffleRuntime(new HotSpotTruffleCompilationSupport());
+        try {
+            Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
+            return new HotSpotTruffleRuntime((TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Override
