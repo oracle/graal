@@ -57,7 +57,7 @@ The following table lists stable and experimental features in GraalVM Community 
 | WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
 
 
-For Oracle GraalVM, check the features support list [here](enterprise-overview/support.md#features-support).
+For Oracle GraalVM, check the features support list [here](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#features-support).
 
 ## Licensing and Support
 
