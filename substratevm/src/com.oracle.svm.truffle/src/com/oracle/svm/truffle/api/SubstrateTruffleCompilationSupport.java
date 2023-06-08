@@ -40,10 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  */
 public final class SubstrateTruffleCompilationSupport extends AbstractTruffleCompilationSupport {
 
-    private final String compilerConfigurationName;
-
     SubstrateTruffleCompilationSupport() {
-        this.compilerConfigurationName = GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
     @Override
@@ -59,7 +56,7 @@ public final class SubstrateTruffleCompilationSupport extends AbstractTruffleCom
 
     @Override
     public String getCompilerConfigurationName(TruffleCompilerRuntime runtime) {
-        return compilerConfigurationName;
+        return GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
 }

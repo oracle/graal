@@ -63,6 +63,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
         return compilerConfiguration;
     }
 
+    @SuppressWarnings("try")
     private static String getCompilerConfigurationNameImpl(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             return TruffleToLibGraalCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle(runtime));
@@ -74,6 +75,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
         return new LibGraalHotSpotTruffleCompiler((HotSpotTruffleRuntime) runtime);
     }
 
+    @SuppressWarnings("try")
     @Override
     public void registerRuntime(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
@@ -140,6 +142,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
         return throwable instanceof DestroyedIsolateException && ((DestroyedIsolateException) throwable).isVmExit();
     }
 
+    @SuppressWarnings("try")
     static long handle(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope()) {
             return scope.getIsolate().getSingleton(Handle.class, () -> {

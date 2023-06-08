@@ -253,9 +253,4 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         return delegate.getTruffleTier();
     }
 
-    @Override
-    public void purgePartialEvaluationCaches() {
-        delegate.purgePartialEvaluationCaches();
-    }
-
 }

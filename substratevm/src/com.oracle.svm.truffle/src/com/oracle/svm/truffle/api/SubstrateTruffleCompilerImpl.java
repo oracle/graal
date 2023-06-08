@@ -130,10 +130,4 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
         return ((SubstrateCompilableTruffleAST) compilable).createPreliminaryInstalledCode();
     }
 
-    @Override
-    public void purgePartialEvaluationCaches() {
-        /*
-         * No caches on SVM.
-         */
-    }
 }
