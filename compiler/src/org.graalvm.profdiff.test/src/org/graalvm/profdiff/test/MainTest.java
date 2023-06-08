@@ -24,8 +24,10 @@
  */
 package org.graalvm.profdiff.test;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -36,10 +38,21 @@ import java.util.List;
 
 import org.graalvm.profdiff.Profdiff;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class MainTest {
+
+    /**
+     * The stream that replaces {@link System#out}.
+     */
+    private ByteArrayOutputStream outputStream;
+
+    /**
+     * The stream that replaces {@link System#err}.
+     */
+    private ByteArrayOutputStream errorStream;
 
     /**
      * The saved value of {@link System#out}.
@@ -54,16 +67,20 @@ public class MainTest {
     @Before
     public void replaceSystemStreams() {
         savedSystemOut = System.out;
-        System.setOut(new PrintStream(new ByteArrayOutputStream()));
+        outputStream = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outputStream));
         savedSystemErr = System.err;
-        System.setErr(new PrintStream(new ByteArrayOutputStream()));
+        errorStream = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errorStream));
     }
 
     @After
     public void restoreSystemStreams() {
+        outputStream = null;
         System.out.close();
         System.setOut(savedSystemOut);
         savedSystemOut = null;
+        errorStream = null;
         System.err.close();
         System.setErr(savedSystemErr);
         savedSystemErr = null;
@@ -72,9 +89,11 @@ public class MainTest {
     @Test
     public void testHelp() {
         Profdiff.main(new String[]{"help"});
-        for (String command : List.of("report", "jit-vs-jit", "jit-vs-aot", "aot-vs-aot", "aot-vs-aot-ext-prof", "unknown")) {
-            Profdiff.main(new String[]{"help", command});
-        }
+        Assert.assertTrue(errorStream.toString().isEmpty());
+        Profdiff.main(new String[]{"help", "report"});
+        Assert.assertTrue(errorStream.toString().isEmpty());
+        Profdiff.main(new String[]{"help", "unknown"});
+        Assert.assertFalse(errorStream.toString().isEmpty());
     }
 
     @Test
@@ -83,17 +102,69 @@ public class MainTest {
                         "--sort-inlining-tree", "true", "--sort-unordered-phases", "true", "--remove-detailed-phases", "true", "--prune-identities", "true", "--create-fragments", "true",
                         "--inliner-reasoning", "true", "help"};
         Profdiff.main(args);
+        Assert.assertTrue(errorStream.toString().isEmpty());
     }
 
     @Test
-    public void testReport() throws IOException {
-        Path tmpDir = Files.createTempDirectory(Paths.get("."), "profdiffReport");
+    public void reportEmptyDirectory() throws IOException {
+        Path tmpDir = Files.createTempDirectory(Paths.get("."), "profdiff_report_empty");
         try {
             String[] args = {"report", tmpDir.toAbsolutePath().toString()};
             Profdiff.main(args);
         } finally {
             deleteTree(tmpDir);
         }
+        Assert.assertTrue(errorStream.toString().isEmpty());
+    }
+
+    @Test
+    public void reportOptimizationLogs() throws IOException {
+        List<String> methodNames = List.of("test.foo()", "test.bar()", "test.baz()");
+        Path tmpDir = Files.createTempDirectory(Paths.get("."), "profdiff_report_logs");
+        File optLogFile1 = new File(tmpDir.toString(), "opt_log_1");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(optLogFile1))) {
+            writer.append(mockCompilationUnit(methodNames.get(0), "10"));
+        }
+        File optLogFile2 = new File(tmpDir.toString(), "opt_log_2");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(optLogFile2))) {
+            writer.append(mockCompilationUnit(methodNames.get(1), "20"));
+            writer.append('\n');
+            writer.append(mockCompilationUnit(methodNames.get(2), "30"));
+        }
+        try {
+            String[] args = {"report", tmpDir.toAbsolutePath().toString()};
+            Profdiff.main(args);
+        } finally {
+            deleteTree(tmpDir);
+        }
+        String output = outputStream.toString();
+        for (String methodName : methodNames) {
+            Assert.assertTrue(output.contains(methodName));
+        }
+        Assert.assertTrue(errorStream.toString().isEmpty());
+    }
+
+    private static String mockCompilationUnit(String methodName, String compilationId) {
+        return """
+                        {
+                            "methodName": "METHOD_NAME",
+                            "localMethodName": "local_METHOD_NAME",
+                            "compilationId": "COMPILATION_ID",
+                            "inliningTree": {
+                                "methodName": "METHOD_NAME",
+                                "callsiteBci": -1,
+                                "inlined": true,
+                                "indirect": false,
+                                "alive": false,
+                                "reason": null,
+                                "invokes": []
+                            },
+                            "optimizationTree": {
+                                "phaseName": "RootPhase",
+                                "optimizations": []
+                            }
+                        }
+                        """.replace("\n", "").replace("METHOD_NAME", methodName).replace("COMPILATION_ID", compilationId);
     }
 
     private static void deleteTree(Path root) throws IOException {
