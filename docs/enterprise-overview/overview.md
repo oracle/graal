@@ -33,7 +33,7 @@ Oracle GraalVM's key benefits are:
 
 ## What to Read Next
 
-Start with installing Oracle GraalVM by following the [installation guide](../getting-started/graalvm-enterprise/getting-started.md).
+Start with installing Oracle GraalVM by following the [installation guide](../getting-started/graalvm-enterprise/get-started-graalvm-enterprise.md).
 
 Whether you are new to Oracle GraalVM and Native Image or have little experience using it, continue to [Getting Started](../reference-manual/native-image/README.md).
 
