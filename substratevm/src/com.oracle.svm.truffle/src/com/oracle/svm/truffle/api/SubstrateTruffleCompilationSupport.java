@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.truffle.TruffleSupport;
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs
@@ -47,9 +48,7 @@ public final class SubstrateTruffleCompilationSupport extends AbstractTruffleCom
 
     @Override
     public void registerRuntime(TruffleCompilerRuntime runtime) {
-        /*
-         * Nothing to do currently.
-         */
+        throw CompilerDirectives.shouldNotReachHere("Should not be called. Not necessary to be called on SVM.");
     }
 
     @Override

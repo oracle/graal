@@ -26,6 +26,9 @@ package org.graalvm.compiler.truffle.common;
 
 public interface TruffleCompilationSupport {
 
+    /**
+     * Registers a runtime instance after it was fully initialized.
+     */
     void registerRuntime(TruffleCompilerRuntime runtime);
 
     TruffleCompiler createCompiler(TruffleCompilerRuntime runtime);

@@ -192,9 +192,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
         }
         this.setJVMCIReservedReference0 = setReservedReference0;
         this.getJVMCIReservedReference0 = getReservedReference0;
-
-        // expected this escape - keep this at the end of the constructor
-        compilationSupport.registerRuntime(this);
     }
 
     public int getJVMCIReservedLongOffset0() {

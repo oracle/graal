@@ -37,7 +37,10 @@ public final class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRu
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new HotSpotTruffleRuntime(new LibGraalTruffleCompilationSupport());
+        LibGraalTruffleCompilationSupport compilationSupport = new LibGraalTruffleCompilationSupport();
+        HotSpotTruffleRuntime runtime = new HotSpotTruffleRuntime(compilationSupport);
+        compilationSupport.registerRuntime(runtime);
+        return runtime;
     }
 
     @Override

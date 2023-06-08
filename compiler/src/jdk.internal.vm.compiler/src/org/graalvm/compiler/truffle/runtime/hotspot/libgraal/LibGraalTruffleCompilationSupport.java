@@ -78,7 +78,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     public void registerRuntime(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
-            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), this)) {
+            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime)) {
                 throw new IllegalStateException("Truffle with libgraal cannot be loaded in multiple class loaders. Make sure Truffle is loaded with the system class loader.");
             }
         }

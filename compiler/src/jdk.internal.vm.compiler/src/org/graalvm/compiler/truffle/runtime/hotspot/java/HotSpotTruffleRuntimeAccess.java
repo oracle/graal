@@ -39,7 +39,10 @@ public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRun
     protected TruffleRuntime createRuntime() {
         try {
             Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
-            return new HotSpotTruffleRuntime((TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance());
+            TruffleCompilationSupport compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
+            HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
+            compilationSupport.registerRuntime(rt);
+            return rt;
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
