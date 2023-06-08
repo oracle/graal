@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.operation;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,7 +53,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class ContinuationResult {
 
     final ContinuationLocation location;
-    final MaterializedFrame frame;
+    public final MaterializedFrame frame;
     private final Object result;
 
     ContinuationResult(ContinuationLocation location, MaterializedFrame frame, Object result) {
@@ -62,7 +63,11 @@ public final class ContinuationResult {
     }
 
     public Object continueWith(Object value) {
-        return location.getRootNode().getCallTarget().call(frame, value);
+        return getContinuationCallTarget().call(frame, value);
+    }
+
+    public RootCallTarget getContinuationCallTarget() {
+        return location.getRootNode().getCallTarget();
     }
 
     public Object getResult() {

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.lang.model.element.VariableElement;
@@ -61,17 +62,20 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
 public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     private final ProcessorContext context;
     private final TypeMirror nodeType;
+    private final OperationsModel model;
     private final InstructionModel instr;
     private final boolean isBoxingOperations;
 
-    public OperationNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, InstructionModel instr) {
+    public OperationNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, OperationsModel model, InstructionModel instr) {
         this.context = context;
         this.nodeType = nodeType;
+        this.model = model;
         this.instr = instr;
 
         this.isBoxingOperations = nodeType.toString().endsWith("BoxingOperationsGen");
@@ -79,11 +83,16 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     @Override
     public List<? extends VariableElement> additionalArguments() {
-        return List.of(
+        List<CodeVariableElement> result = new ArrayList<>();
+        if (model.enableYield) {
+            result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$localFrame"));
+        }
+        result.addAll(List.of(
                         new CodeVariableElement(nodeType, "$root"),
                         new CodeVariableElement(context.getType(short[].class), "$bc"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
-                        new CodeVariableElement(context.getType(int.class), "$sp"));
+                        new CodeVariableElement(context.getType(int.class), "$sp")));
+        return result;
     }
 
     @Override
@@ -153,5 +162,12 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
             return b.build();
         }
         return NodeGeneratorPlugs.super.createTransferToInterpreterAndInvalidate();
+    }
+
+    public String overrideParameterName(String original) {
+        if (original.equals(FlatNodeGenFactory.FRAME_VALUE)) {
+            return "$localFrame";
+        }
+        return original;
     }
 }
