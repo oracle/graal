@@ -62,7 +62,7 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     public Iterator<T> iterator() {
         assert Interop.hasIterator(this);
         try {
-            return new Itr(Interop.getIterator(this));
+            return new Itr<>(Interop.getIterator(this));
         } catch (Exception e) {
             return (Iterator<T>) EspressoForeignIterable.EMPTY_ITERATOR;
         }
