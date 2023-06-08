@@ -70,4 +70,18 @@ public class CEntryPointListenerSupport {
             CEntryPointListener.singleton().beforeThreadDetach();
         }
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void afterThreadDetach() {
+        if (isInstalled()) {
+            CEntryPointListener.singleton().afterThreadDetach();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void errorThreadDetach(int error) {
+        if (isInstalled()) {
+            CEntryPointListener.singleton().errorThreadDetach(error);
+        }
+    }
 }

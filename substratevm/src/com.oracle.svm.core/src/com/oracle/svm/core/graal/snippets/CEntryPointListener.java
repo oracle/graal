@@ -45,10 +45,18 @@ public interface CEntryPointListener {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default void errorThreadAttach(int error) {
+    default void errorThreadAttach(@SuppressWarnings("unused") int error) {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default void beforeThreadDetach() {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default void afterThreadDetach() {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default void errorThreadDetach(@SuppressWarnings("unused") int error) {
     }
 }

@@ -482,10 +482,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Thread state going away.")
     private static int detachThreadMT(IsolateThread currentThread) {
+        CEntryPointListenerSupport.singleton().beforeThreadDetach();
         try {
-            CEntryPointListenerSupport.singleton().beforeThreadDetach();
             VMThreads.singleton().detachThread(currentThread);
+            CEntryPointListenerSupport.singleton().afterThreadDetach();
         } catch (Throwable t) {
+            CEntryPointListenerSupport.singleton().errorThreadDetach(CEntryPointErrors.UNCAUGHT_EXCEPTION);
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
         return CEntryPointErrors.NO_ERROR;
