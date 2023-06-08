@@ -22,20 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+public interface TruffleCompilationSupport {
 
-import com.oracle.truffle.api.TruffleRuntime;
+    void registerRuntime(TruffleCompilerRuntime runtime);
 
-/**
- * A {@link TruffleRuntime} that uses libgraal for compilation.
- */
-final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
+    TruffleCompiler createCompiler(TruffleCompilerRuntime runtime);
 
-    @SuppressWarnings("try")
-    LibGraalTruffleRuntime() {
-        super(new LibGraalTruffleCompilationSupport());
+    TruffleCompilerOptionDescriptor[] listCompilerOptions();
+
+    boolean existsCompilerOption(String key);
+
+    String validateCompilerOption(String key, String value);
+
+    String getCompilerConfigurationName(TruffleCompilerRuntime runtime);
+
+    default AutoCloseable openCompilerThreadScope() {
+        return null;
+    }
+
+    default boolean isSuppressedCompilationFailure(@SuppressWarnings("unused") Throwable throwable) {
+        return false;
     }
 
 }

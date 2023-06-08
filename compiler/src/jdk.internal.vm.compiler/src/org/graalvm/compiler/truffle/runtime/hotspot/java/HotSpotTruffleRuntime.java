@@ -24,59 +24,13 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
-import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
-import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
-
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     HotSpotTruffleRuntime() {
-        HotSpotTruffleHostEnvironmentLookup.registerRuntime(this);
-    }
-
-    @Override
-    public <T> T getGraalOptions(Class<T> optionValuesType) {
-        if (optionValuesType == OptionValues.class) {
-            return optionValuesType.cast(HotSpotGraalOptionValues.defaultOptions());
-        }
-        return super.getGraalOptions(optionValuesType);
-    }
-
-    @Override
-    protected String initLazyCompilerConfigurationName() {
-        final OptionValues options = getGraalOptions(OptionValues.class);
-        String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
-        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options, runtime);
-        return compilerConfigurationFactory.getName();
-    }
-
-    @Override
-    public synchronized TruffleCompiler newTruffleCompiler() {
-        return HotSpotTruffleCompilerImpl.create(this);
-    }
-
-    @Override
-    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
-        return TruffleCompilerOptions.listOptions();
-    }
-
-    @Override
-    public boolean existsCompilerOption(String key) {
-        return TruffleCompilerOptions.existsOption(key);
-    }
-
-    @Override
-    public String validateCompilerOption(String key, String value) {
-        return TruffleCompilerOptions.validateOption(key, value);
+        super(new HotSpotTruffleCompilationSupport());
     }
 
 }

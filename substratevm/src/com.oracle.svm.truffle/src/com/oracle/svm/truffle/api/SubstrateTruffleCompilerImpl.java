@@ -49,7 +49,6 @@ import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.GraalSupport;
@@ -61,12 +60,9 @@ import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements SubstrateTruffleCompiler {
 
-    private final String compilerConfigurationName;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompilerImpl(TruffleCompilerConfiguration config) {
         super(config);
-        compilerConfigurationName = GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -87,7 +83,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     protected TruffleTier newTruffleTier(OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new SubstratePostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
+                        new SubstratePostPartialEvaluationSuite(getGraalOptions(), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
 
     @Override
@@ -98,11 +94,6 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Override
     protected OptionValues getGraalOptions() {
         return RuntimeOptionValues.singleton();
-    }
-
-    @Override
-    public String getCompilerConfigurationName() {
-        return compilerConfigurationName;
     }
 
     @Override

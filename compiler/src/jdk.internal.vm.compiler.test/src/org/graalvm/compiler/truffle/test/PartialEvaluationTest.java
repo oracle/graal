@@ -320,7 +320,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptionValues getGraalOptions() {
-        OptionValues options = getTruffleCompiler().getConfig().runtime().getGraalOptions(OptionValues.class);
+        OptionValues options = getTruffleCompiler().getOrCreateCompilerOptions(getInitCallTarget());
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }

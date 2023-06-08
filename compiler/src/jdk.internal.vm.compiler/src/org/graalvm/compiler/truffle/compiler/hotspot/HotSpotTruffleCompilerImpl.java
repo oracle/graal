@@ -259,9 +259,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return factories;
     }
 
-    @Override
-    public String getCompilerConfigurationName() {
-        return hotspotGraalRuntime.getCompilerConfigurationName();
+    public HotSpotGraalRuntimeProvider getHotspotGraalRuntime() {
+        return hotspotGraalRuntime;
     }
 
     @Override
@@ -326,9 +325,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             // nothing to do
             return;
         }
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
         HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.lastTier().backend().getCompilationIdentifier(method);
-        OptionValues options = runtime.getGraalOptions(OptionValues.class);
+        OptionValues options = getGraalOptions();
         try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                         ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
                         : DebugContext.disabled(options);

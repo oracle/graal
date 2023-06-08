@@ -25,10 +25,10 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 
 @ServiceProvider(TruffleRuntimeAccess.class)
 public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {

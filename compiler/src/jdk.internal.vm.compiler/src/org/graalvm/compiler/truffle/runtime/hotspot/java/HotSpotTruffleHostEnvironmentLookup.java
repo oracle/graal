@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -40,12 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @ServiceProvider(TruffleHostEnvironment.Lookup.class)
 public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 
-    private static final AtomicReference<HotSpotTruffleRuntime> RUNTIME = new AtomicReference<>();
+    private static final AtomicReference<AbstractHotSpotTruffleRuntime> RUNTIME = new AtomicReference<>();
     private TruffleHostEnvironment environment;
 
     @Override
     public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
-        HotSpotTruffleRuntime runtime = RUNTIME.get();
+        AbstractHotSpotTruffleRuntime runtime = RUNTIME.get();
         if (runtime == null) {
             // fast-path non truffle
             return null;
@@ -64,10 +65,11 @@ public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnv
             }
             this.environment = env = new HotSpotTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         }
+
         return env;
     }
 
-    static boolean registerRuntime(HotSpotTruffleRuntime runtime) {
+    public static boolean registerRuntime(AbstractHotSpotTruffleRuntime runtime) {
         return RUNTIME.compareAndSet(null, runtime);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
-
-import com.oracle.truffle.api.TruffleRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 
 /**
- * A {@link TruffleRuntime} that uses libgraal for compilation.
+ * Represents a truffle compilation bundling compilable and task into a single object. Also installs
+ * the TTY filter to forward log messages to the truffle runtime.
  */
-final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
+public abstract class AbstractTruffleCompilationSupport implements TruffleCompilationSupport {
 
-    @SuppressWarnings("try")
-    LibGraalTruffleRuntime() {
-        super(new LibGraalTruffleCompilationSupport());
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return TruffleCompilerOptions.listOptions();
+    }
+
+    @Override
+    public boolean existsCompilerOption(String key) {
+        return TruffleCompilerOptions.existsOption(key);
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        return TruffleCompilerOptions.validateOption(key, value);
     }
 
 }

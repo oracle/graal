@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
@@ -128,7 +129,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
-    private volatile String lazyConfigurationName;
 
     private Lazy lazy() {
         if (lazy == null) {
@@ -151,8 +151,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private final MethodHandle setJVMCIReservedReference0;
     private final MethodHandle getJVMCIReservedReference0;
 
-    public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, AbstractHotSpotTruffleRuntime.class));
+    public AbstractHotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
+        super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, AbstractHotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
@@ -192,6 +192,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
         this.setJVMCIReservedReference0 = setReservedReference0;
         this.getJVMCIReservedReference0 = getReservedReference0;
+
+        // expected this escape - keep this at the end of the constructor
+        compilationSupport.registerRuntime(this);
     }
 
     public final int getJVMCIReservedLongOffset0() {
@@ -413,47 +416,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return lazy();
     }
 
-    @Override
-    protected String getCompilerConfigurationName() {
-        TruffleCompiler compiler = truffleCompiler;
-        String compilerConfig;
-        if (compiler != null) {
-            compilerConfig = compiler.getCompilerConfigurationName();
-            // disabled GR-10618
-            // assert verifyCompilerConfiguration(compilerConfig);
-        } else {
-            compilerConfig = getLazyCompilerConfigurationName();
-        }
-        return compilerConfig;
-    }
-
     @SuppressWarnings("unused")
     private boolean verifyCompilerConfiguration(String name) {
-        String lazyName = getLazyCompilerConfigurationName();
+        String lazyName = getCompilerConfigurationName();
         if (!name.equals(lazyName)) {
             throw new AssertionError("Expected compiler configuration name " + name + " but was " + lazyName + ".");
         }
         return true;
     }
-
-    private String getLazyCompilerConfigurationName() {
-        String compilerConfig = this.lazyConfigurationName;
-        if (compilerConfig == null) {
-            synchronized (this) {
-                compilerConfig = this.lazyConfigurationName;
-                if (compilerConfig == null) {
-                    compilerConfig = initLazyCompilerConfigurationName();
-                    this.lazyConfigurationName = compilerConfig;
-                }
-            }
-        }
-        return compilerConfig;
-    }
-
-    /**
-     * Gets the compiler configuration name without requiring a compiler to be created.
-     */
-    protected abstract String initLazyCompilerConfigurationName();
 
     @SuppressWarnings("try")
     @Override

@@ -32,6 +32,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
+import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
@@ -51,12 +52,12 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    private final LibGraalTruffleRuntime runtime;
+    private final AbstractHotSpotTruffleRuntime runtime;
 
     private long getOrCreateIsolate(TruffleCompilable compilable, boolean firstInitialization) {
         return resolveIsolateHandleImpl(() -> {
             long isolateThread = getIsolateThread();
-            long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, runtime.handle());
+            long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, LibGraalTruffleCompilationSupport.handle(runtime));
             TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, compilable, firstInitialization);
             return new Handle(compilerHandle);
         });
@@ -68,7 +69,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    LibGraalHotSpotTruffleCompiler(LibGraalTruffleRuntime runtime) {
+    LibGraalHotSpotTruffleCompiler(AbstractHotSpotTruffleRuntime runtime) {
         this.runtime = runtime;
     }
 
@@ -87,12 +88,6 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             TruffleToLibGraalCalls.doCompile(getIsolateThread(), getOrCreateIsolate(compilable, false), task, compilable, listener);
         }
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    public String getCompilerConfigurationName() {
-        return runtime.initLazyCompilerConfigurationName();
     }
 
     @SuppressWarnings("try")
