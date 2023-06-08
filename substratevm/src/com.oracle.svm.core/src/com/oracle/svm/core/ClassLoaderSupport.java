@@ -29,7 +29,9 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -66,4 +68,6 @@ public abstract class ClassLoaderSupport {
     public abstract void collectResources(ResourceCollector resourceCollector);
 
     public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
+
+    public abstract Map<String, Set<Module>> getPackageToModules();
 }

@@ -221,7 +221,7 @@ public final class ResourcesFeature implements InternalFeature {
             boolean fromJar = false;
             boolean isDirectory = false;
 
-            if (module.isNamed()) {
+            if (module != null && module.isNamed()) {
                 try {
                     String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
                     if (!resourcePackage.isEmpty()) {

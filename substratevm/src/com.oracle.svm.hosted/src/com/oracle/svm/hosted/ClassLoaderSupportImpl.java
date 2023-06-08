@@ -283,6 +283,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return resourceBundles;
     }
 
+    @Override
+    public Map<String, Set<Module>> getPackageToModules() {
+        return packageToModules;
+    }
+
     private static String packageName(String bundleName) {
         int classSep = bundleName.lastIndexOf('.');
         if (classSep == -1) {

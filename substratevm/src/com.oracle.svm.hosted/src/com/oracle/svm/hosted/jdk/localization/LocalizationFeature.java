@@ -89,6 +89,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -161,6 +162,10 @@ public class LocalizationFeature implements InternalFeature {
     private Field localeObjectCacheMapField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
+
+    @Platforms(Platform.HOSTED_ONLY.class) private ClassLoader classLoader;
+
+    @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
@@ -264,7 +269,7 @@ public class LocalizationFeature implements InternalFeature {
             throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
         allLocales.add(defaultLocale);
-        support = selectLocalizationSupport(access.getApplicationClassLoader());
+        support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
 
         addCharsets();
@@ -292,6 +297,9 @@ public class LocalizationFeature implements InternalFeature {
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
+
+        this.classLoader = access.getApplicationClassLoader();
+        this.imageClassLoader = access.getImageClassLoader();
     }
 
     /**
@@ -322,14 +330,14 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private LocalizationSupport selectLocalizationSupport(ClassLoader appClassLoader) {
+    private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
-            return new OptimizedLocalizationSupport(defaultLocale, allLocales, defaultCharset, appClassLoader);
+            return new OptimizedLocalizationSupport(defaultLocale, allLocales, defaultCharset);
         } else if (substituteLoadLookup) {
             List<String> requestedPatterns = Options.LocalizationCompressBundles.getValue().values();
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, defaultCharset, requestedPatterns, compressionPool, appClassLoader);
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, defaultCharset, requestedPatterns, compressionPool);
         }
-        return new LocalizationSupport(defaultLocale, allLocales, defaultCharset, appClassLoader);
+        return new LocalizationSupport(defaultLocale, allLocales, defaultCharset);
     }
 
     @Override
@@ -639,14 +647,14 @@ public class LocalizationFeature implements InternalFeature {
          */
         for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
-            support.prepareBundle(bundleName, cur, cur.getLocale());
+            support.prepareBundle(bundleName, cur, locale, this.imageClassLoader::findModule);
         }
 
         /*
          * Finally, register the requested bundle with requested locale (Requested might be more
          * specific than the actual bundle locale
          */
-        support.prepareBundle(bundleName, bundle, locale);
+        support.prepareBundle(bundleName, bundle, locale, this.imageClassLoader::findModule);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

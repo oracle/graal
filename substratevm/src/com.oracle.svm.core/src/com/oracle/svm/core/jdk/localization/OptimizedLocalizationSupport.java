@@ -30,8 +30,10 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.spi.LocaleServiceProvider;
 
 import org.graalvm.collections.Pair;
@@ -50,8 +52,8 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, ClassLoader appClassLoader) {
-        super(defaultLocale, locales, defaultCharset, appClassLoader);
+    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
+        super(defaultLocale, locales, defaultCharset);
     }
 
     @Override
@@ -89,7 +91,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             /*- Set the basename and locale to be consistent with JVM lookup process */
             bundleNameField.set(bundle, basename);
             bundleLocaleField.set(bundle, locale);
-            prepareBundle(basename, bundle, locale);
+            prepareBundle(basename, bundle, locale, null);
         } catch (ReflectionUtil.ReflectionUtilError | ReflectiveOperationException e) {
             throw UserError.abort(e, "Failed to instantiated bundle from class %s, reason %s", bundleClass, e.getCause().getMessage());
         }
@@ -106,7 +108,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale, Function<String, Optional<Module>> findModule) {
         bundle.keySet();
         this.resourceBundles.put(Pair.create(bundleName, locale), bundle);
     }

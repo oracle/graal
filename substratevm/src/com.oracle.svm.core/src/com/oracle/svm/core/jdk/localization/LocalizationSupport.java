@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -46,6 +47,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
@@ -70,14 +72,11 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final ClassLoader appClassLoader;
-
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, ClassLoader appClassLoader) {
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
         this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
-        this.appClassLoader = appClassLoader;
     }
 
     public boolean optimizedMode() {
@@ -102,25 +101,26 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        if (bundle instanceof PropertyResourceBundle) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale, Function<String, Optional<Module>> findModule) {
+        if (bundle instanceof PropertyResourceBundle prb) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
             if (bundleNameWithModule.length < 2) {
-                resourceName = control.toBundleName(bundleName, locale).replace('.', '/').concat(".properties");
-                if (appClassLoader.getResource(resourceName) != null) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(appClassLoader.getUnnamedModule(), resourceName);
-                } else {
-                    for (Module m : ModuleLayer.boot().modules()) {
-                        if (m.getClassLoader() != null && m.getClassLoader().getResource(resourceName) != null) {
-                            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
-                        }
-                    }
+                // find module based on package name
+                Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
+                Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
+
+                // there should be only one module but we will check all modules where given package
+                // is found
+                for (Module m : modules) {
+                    resourceName = control.toBundleName(bundleName, prb.getLocale()).replace('.', '/').concat(".properties");
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
                 }
             } else {
-                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
-                Optional<Module> module = ModuleLayer.boot().findModule(bundleNameWithModule[0]);
-                module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName));
+                resourceName = control.toBundleName(bundleNameWithModule[1], prb.getLocale()).replace('.', '/').concat(".properties");
+                Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
+                String finalResourceName = resourceName;
+                module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
             }
         } else {
             registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
@@ -128,6 +128,14 @@ public class LocalizationSupport {
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
         }
+    }
+
+    private static String packageName(String bundleName) {
+        int classSep = bundleName.lastIndexOf('.');
+        if (classSep == -1) {
+            return ""; /* unnamed package */
+        }
+        return bundleName.substring(0, classSep);
     }
 
     public String getResultingPattern(String bundleName, Locale locale) {
