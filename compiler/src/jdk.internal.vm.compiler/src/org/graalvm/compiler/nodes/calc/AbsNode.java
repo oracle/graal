@@ -31,13 +31,14 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmetic
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
@@ -66,6 +67,10 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
             return synonym;
         }
         if (forValue instanceof AbsNode) {
+            return forValue;
+        }
+        if (forValue.stamp(view) instanceof IntegerStamp && ((IntegerStamp) forValue.stamp(view)).isPositive()) {
+            // The value always positive so nothing to do
             return forValue;
         }
         // abs(-x) => abs(x)
