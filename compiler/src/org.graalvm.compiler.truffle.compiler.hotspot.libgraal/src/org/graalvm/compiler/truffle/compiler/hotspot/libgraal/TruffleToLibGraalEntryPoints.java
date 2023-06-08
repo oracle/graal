@@ -51,7 +51,6 @@ import static org.graalvm.jniutils.JNIUtil.createHSString;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.hotspot.CompilationContext;
-import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -112,7 +111,7 @@ final class TruffleToLibGraalEntryPoints {
                     JObject truffleRuntime, JClass hsClassLoaderDelegate) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = LibGraal.asResolvedJavaType(hsClassLoaderDelegate);
-            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
+            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate);
             long truffleRuntimeHandle = LibGraalObjectHandles.create(hsTruffleRuntime);
             return truffleRuntimeHandle;
         } catch (Throwable t) {

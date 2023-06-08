@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -127,11 +126,11 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         boolean seenException = false;
         try {
             OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-            DebugContext debug = new Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
+            TruffleCompilerImpl compiler = getTruffleCompiler(target);
+            DebugContext debug = new Builder(compiler.getOrCreateCompilerOptions(target)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
-                TruffleCompilerImpl compiler = getTruffleCompiler(target);
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
                     compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);
                 }

@@ -322,15 +322,6 @@ public interface TruffleCompilerRuntime {
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
 
     /**
-     * Gets the Graal option values for this runtime in an instance of {@code type}.
-     *
-     * @throws IllegalArgumentException if this runtime does not support {@code type}
-     */
-    default <T> T getGraalOptions(Class<T> type) {
-        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
-    }
-
-    /**
      * Determines if {@code type} is a value type. Reference comparisons (==) between value type
      * instances have undefined semantics and can either return true or false.
      */

@@ -50,13 +50,11 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
@@ -92,15 +90,13 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleCompilerRuntime {
 
     private final ResolvedJavaType classLoaderDelegate;
-    private final OptionValues initialOptions;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate) {
         /*
          * Note global duplicates may happen if the compiler is initialized by a host compilation.
          */
         super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
-        this.initialOptions = options;
     }
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
@@ -233,14 +229,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         JString jniLoggerId = JNIUtil.createHSString(env, loggerId);
         JString jniMessage = JNIUtil.createHSString(env, message);
         callLog(env, getHandle(), jniLoggerId, ((HSCompilableTruffleAST) compilable).getHandle(), jniMessage);
-    }
-
-    @Override
-    public <T> T getGraalOptions(Class<T> optionValuesType) {
-        if (optionValuesType == OptionValues.class) {
-            return optionValuesType.cast(initialOptions);
-        }
-        return HotSpotTruffleCompilerRuntime.super.getGraalOptions(optionValuesType);
     }
 
     @TruffleFromLibGraal(CreateStringSupplier)
