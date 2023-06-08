@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
+import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 import org.graalvm.libgraal.LibGraal;
 
@@ -36,7 +37,7 @@ public final class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRu
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
+        return new AbstractHotSpotTruffleRuntime(new LibGraalTruffleCompilationSupport());
     }
 
     @Override

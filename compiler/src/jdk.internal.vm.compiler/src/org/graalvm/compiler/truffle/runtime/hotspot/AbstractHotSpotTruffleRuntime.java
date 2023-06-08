@@ -83,7 +83,7 @@ import sun.misc.Unsafe;
  * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
  * native-image shared library).
  */
-public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
