@@ -216,7 +216,7 @@ public class ExperimentMatcher {
      * @param root2 the root of the second tree
      * @return {@code true} if the trees are too big to be compared
      */
-    private <T extends TreeNode<T>> boolean tooBigToCompare(TreeNode<T> root1, TreeNode<T> root2) {
+    private static <T extends TreeNode<T>> boolean tooBigToCompare(TreeNode<T> root1, TreeNode<T> root2) {
         long[] size = new long[2];
         root1.forEach((node) -> ++size[0]);
         root2.forEach((node) -> ++size[1]);
