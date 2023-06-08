@@ -31,7 +31,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.AbstractTruffleCompilationSupport;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleHostEnvironmentLookup;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -74,7 +74,7 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
 
     @Override
     public void registerRuntime(TruffleCompilerRuntime runtime) {
-        HotSpotTruffleHostEnvironmentLookup.registerRuntime((AbstractHotSpotTruffleRuntime) runtime);
+        HotSpotTruffleHostEnvironmentLookup.registerRuntime((HotSpotTruffleRuntime) runtime);
     }
 
 }

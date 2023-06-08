@@ -32,7 +32,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
@@ -71,7 +71,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
 
     @Override
     public TruffleCompiler createCompiler(TruffleCompilerRuntime runtime) {
-        return new LibGraalHotSpotTruffleCompiler((AbstractHotSpotTruffleRuntime) runtime);
+        return new LibGraalHotSpotTruffleCompiler((HotSpotTruffleRuntime) runtime);
     }
 
     @Override

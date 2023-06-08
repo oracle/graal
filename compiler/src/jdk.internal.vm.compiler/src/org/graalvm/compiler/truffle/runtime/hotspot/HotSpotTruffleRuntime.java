@@ -83,7 +83,7 @@ import sun.misc.Unsafe;
  * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
  * native-image shared library).
  */
-public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
@@ -109,14 +109,14 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     static final class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
-        Lazy(AbstractHotSpotTruffleRuntime runtime) {
+        Lazy(HotSpotTruffleRuntime runtime) {
             super(runtime);
             runtime.installDefaultListeners();
         }
 
         @Override
         protected void notifyIdleCompilerThread() {
-            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
+            TruffleCompiler compiler = ((HotSpotTruffleRuntime) runtime).truffleCompiler;
             // truffleCompiler should never be null outside unit-tests, this check avoids transient
             // failures.
             if (compiler != null) {
@@ -151,8 +151,8 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     private final MethodHandle setJVMCIReservedReference0;
     private final MethodHandle getJVMCIReservedReference0;
 
-    public AbstractHotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
-        super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, AbstractHotSpotTruffleRuntime.class));
+    public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
+        super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
@@ -197,12 +197,12 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
         compilationSupport.registerRuntime(this);
     }
 
-    public final int getJVMCIReservedLongOffset0() {
+    public int getJVMCIReservedLongOffset0() {
         return jvmciReservedLongOffset0;
     }
 
     @Override
-    public final ThreadLocalHandshake getThreadLocalHandshake() {
+    public ThreadLocalHandshake getThreadLocalHandshake() {
         return HotSpotThreadLocalHandshake.SINGLETON;
     }
 
@@ -284,7 +284,7 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     /*
      * Used reflectively in CompilerInitializationTest.
      */
-    public final void resetCompiler() {
+    public void resetCompiler() {
         truffleCompiler = null;
         truffleCompilerInitialized = false;
         truffleCompilerInitializationException = null;
@@ -335,7 +335,7 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     }
 
     @Override
-    public final OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+    public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         OptimizedCallTarget target = new HotSpotOptimizedCallTarget(source, rootNode);
         ensureInitialized(target);
         return target;
@@ -547,7 +547,7 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     }
 
     @Override
-    public final void notifyTransferToInterpreter() {
+    public void notifyTransferToInterpreter() {
         if (CompilerDirectives.inInterpreter() && traceTransferToInterpreter) {
             traceTransferToInterpreter();
         }
@@ -560,7 +560,7 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
     }
 
     @Override
-    public final boolean isProfilingEnabled() {
+    public boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
             return true;
         }
@@ -690,7 +690,7 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
             }
         }
 
-        static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
+        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
             OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
             if (callTarget == null) {
                 return;
@@ -705,8 +705,8 @@ public class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implement
         }
     }
 
-    public static AbstractHotSpotTruffleRuntime getRuntime() {
-        return (AbstractHotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
+    public static HotSpotTruffleRuntime getRuntime() {
+        return (HotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
     }
 
 }

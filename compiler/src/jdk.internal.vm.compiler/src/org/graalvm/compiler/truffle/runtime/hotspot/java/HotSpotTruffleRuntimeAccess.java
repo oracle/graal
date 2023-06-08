@@ -26,8 +26,8 @@ package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
@@ -37,7 +37,7 @@ public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRun
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new AbstractHotSpotTruffleRuntime(new HotSpotTruffleCompilationSupport());
+        return new HotSpotTruffleRuntime(new HotSpotTruffleCompilationSupport());
     }
 
     @Override

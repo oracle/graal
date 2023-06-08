@@ -32,7 +32,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
@@ -52,7 +52,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    private final AbstractHotSpotTruffleRuntime runtime;
+    private final HotSpotTruffleRuntime runtime;
 
     private long getOrCreateIsolate(TruffleCompilable compilable, boolean firstInitialization) {
         return resolveIsolateHandleImpl(() -> {
@@ -69,7 +69,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    LibGraalHotSpotTruffleCompiler(AbstractHotSpotTruffleRuntime runtime) {
+    LibGraalHotSpotTruffleCompiler(HotSpotTruffleRuntime runtime) {
         this.runtime = runtime;
     }
 
