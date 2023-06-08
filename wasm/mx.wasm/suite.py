@@ -234,6 +234,9 @@ suite = {
 
   "distributions" : {
     "WASM" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm",
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm",
