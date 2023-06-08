@@ -892,7 +892,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_math_MathContext = StaticSymbols.putType("Ljava/math/MathContext;");
         public static final Symbol<Type> java_math_RoundingMode = StaticSymbols.putType("Ljava/math/RoundingMode;");
 
-
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ArityException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ArityException;");
@@ -908,12 +907,18 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_VMHelper = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/VMHelper;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterable;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignList;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignCollection;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterator;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignMap;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignSet;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterable;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignList;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignCollection;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterator;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignMap;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignSet;");
     }
 
     /**
@@ -1011,7 +1016,6 @@ public final class Symbol<T> extends ByteSequence {
                         Type._int);
 
         public static final Symbol<Signature> _void_BigInteger_int_MathContext = StaticSymbols.putSignature(Type._void, Type.java_math_BigInteger, Type._int, Type.java_math_MathContext);
-
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

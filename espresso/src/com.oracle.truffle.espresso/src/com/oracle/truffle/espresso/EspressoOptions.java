@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -42,6 +41,7 @@ import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -473,9 +473,9 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
 
     @Option(help = "Enable built in polyglot collection support in Espresso.", //
-            category = OptionCategory.EXPERT, //
-            stability = OptionStability.EXPERIMENTAL, //
-            usageSyntax = "false|true") //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
     public static final OptionKey<Boolean> BuiltInPolyglotCollections = new OptionKey<>(false);
 
     @Option(help = "Enable hotspot extension API.", //

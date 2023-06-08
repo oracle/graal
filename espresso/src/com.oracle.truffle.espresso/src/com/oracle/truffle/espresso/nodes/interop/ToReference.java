@@ -364,7 +364,7 @@ public abstract class ToReference extends ToEspressoNode {
                 ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     targetType.safeInitialize();
-                   return proxyKlass.createProxyInstance(value, getLanguage(), interop);
+                    return proxyKlass.createProxyInstance(value, getLanguage(), interop);
                 }
                 throw new ClassCastException();
             } catch (ClassCastException e) {

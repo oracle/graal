@@ -1533,7 +1533,6 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_math_MathContext;
     public final Method java_math_MathContext_init;
 
-
     public final ObjectKlass java_util_NoSuchElementException;
 
     public final ObjectKlass jdk_internal_misc_UnsafeConstants;
@@ -1613,7 +1612,6 @@ public final class Meta extends ContextAccessImpl {
         public final ObjectKlass EspressoForeignIterator;
         public final ObjectKlass EspressoForeignMap;
         public final ObjectKlass EspressoForeignSet;
-
 
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);

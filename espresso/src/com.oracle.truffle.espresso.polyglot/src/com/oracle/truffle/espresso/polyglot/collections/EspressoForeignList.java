@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.espresso.polyglot.collections;
 
-import com.oracle.truffle.espresso.polyglot.Interop;
-import com.oracle.truffle.espresso.polyglot.InteropException;
-import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
-
 import java.util.AbstractList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -59,6 +55,10 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+
+import com.oracle.truffle.espresso.polyglot.Interop;
+import com.oracle.truffle.espresso.polyglot.InteropException;
+import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
 
@@ -241,7 +241,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
 
     @Override
     public Object[] toArray() {
-       return super.toArray();
+        return super.toArray();
     }
 
     @Override
@@ -263,16 +263,14 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
         int cursor = 0;
 
         /**
-         * Index of element returned by most recent call to next or
-         * previous.  Reset to -1 if this element is deleted by a call
-         * to remove.
+         * Index of element returned by most recent call to next or previous. Reset to -1 if this
+         * element is deleted by a call to remove.
          */
         int lastRet = -1;
 
         /**
-         * The modCount value that the iterator believes that the backing
-         * List should have.  If this expectation is violated, the iterator
-         * has detected concurrent modification.
+         * The modCount value that the iterator believes that the backing List should have. If this
+         * expectation is violated, the iterator has detected concurrent modification.
          */
         int expectedModCount = modCount;
 

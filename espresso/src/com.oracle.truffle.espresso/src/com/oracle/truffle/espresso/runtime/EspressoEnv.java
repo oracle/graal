@@ -165,7 +165,7 @@ public final class EspressoEnv {
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.BuiltInPolyglotCollections = env.getOptions().get(EspressoOptions.BuiltInPolyglotCollections);
         this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters),
-                BuiltInPolyglotCollections);
+                        BuiltInPolyglotCollections);
         this.proxyCache = polyglotTypeMappings.hasMappings() ? new HashMap<>() : null;
         this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
 

@@ -110,7 +110,7 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
 
     @Override
     public boolean add(T t) {
-        //This assumes the presence of a member "add". Known to work for host collections.
+        // This assumes the presence of a member "add". Known to work for host collections.
         try {
             return Interop.asBoolean(Interop.invokeMember(this, "add", t));
         } catch (InteropException e) {
@@ -120,7 +120,7 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
 
     @Override
     public boolean remove(Object o) {
-        //This assumes the presence of a member "remove". Known to work for host collections.
+        // This assumes the presence of a member "remove". Known to work for host collections.
         try {
             return Interop.asBoolean(Interop.invokeMember(this, "remove", o));
         } catch (InteropException e) {

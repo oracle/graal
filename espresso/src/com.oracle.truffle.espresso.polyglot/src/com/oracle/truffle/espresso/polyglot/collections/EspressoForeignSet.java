@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.espresso.polyglot.collections;
 
-import com.oracle.truffle.espresso.polyglot.Interop;
-import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
-
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -51,6 +48,9 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import com.oracle.truffle.espresso.polyglot.Interop;
+import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignSet<T> extends EspressoForeignCollection<T> implements Set<T> {
     @Override
@@ -130,7 +130,7 @@ public class EspressoForeignSet<T> extends EspressoForeignCollection<T> implemen
 
     @Override
     public boolean removeAll(Collection<?> c) {
-       return super.removeAll(c);
+        return super.removeAll(c);
     }
 
     @Override
