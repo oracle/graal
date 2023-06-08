@@ -68,11 +68,13 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -126,6 +128,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void resetHosted() {
         truffleCompiler = null;
+    }
+
+    @Override
+    public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
+        throw CompilerDirectives.shouldNotReachHere("onCodeInstallation is not implement for SubstrateVMRuntime. ");
     }
 
     @Override

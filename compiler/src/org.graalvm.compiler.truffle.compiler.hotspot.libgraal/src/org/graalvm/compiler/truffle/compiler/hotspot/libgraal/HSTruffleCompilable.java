@@ -36,20 +36,20 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callAsJavaConstant;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCancelCompilation;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCompilableToString;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCountDirectCallNodes;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCreateStringSupplier;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetFailedSpeculationsAddress;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetKnownCallSiteCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetNonTrivialNodeCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsSameOrSplit;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsTrivial;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callPrepareForCompilation;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callAsJavaConstant;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCancelCompilation;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCompilableToString;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCountDirectCallNodes;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCreateStringSupplier;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetCompilableCallCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetCompilableName;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetFailedSpeculationsAddress;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetKnownCallSiteCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetNonTrivialNodeCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callIsSameOrSplit;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callIsTrivial;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callOnCompilationFailed;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callPrepareForCompilation;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
  */
-final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable {
+final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
 
     private volatile String cachedName;
 
@@ -88,13 +88,13 @@ final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable
     private Long cachedFailedSpeculationsAddress;
 
     /**
-     * Creates a new {@link HSCompilableTruffleAST} holding the JNI {@code JObject} by a local
+     * Creates a new {@link HSTruffleCompilable} holding the JNI {@code JObject} by a local
      * reference.
      *
      * @param scope the owning scope
      * @param handle the JNI object reference
      */
-    HSCompilableTruffleAST(JNIMethodScope scope, JObject handle) {
+    HSTruffleCompilable(JNIMethodScope scope, JObject handle) {
         super(scope, handle);
     }
 
@@ -113,7 +113,7 @@ final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable
     @TruffleFromLibGraal(Id.GetCompilerOptions)
     public Map<String, String> getCompilerOptions() {
         JNIEnv env = env();
-        JNI.JByteArray res = HSCompilableTruffleASTGen.callGetCompilerOptions(env, getHandle());
+        JNI.JByteArray res = HSTruffleCompilableGen.callGetCompilerOptions(env, getHandle());
         byte[] realArray = JNIUtil.createArray(env, res);
         return readDebugMap(BinaryInput.create(realArray));
     }
@@ -131,7 +131,7 @@ final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable
     @Override
     @TruffleFromLibGraal(Id.EngineId)
     public long engineId() {
-        return HSCompilableTruffleASTGen.callEngineId(env(), getHandle());
+        return HSTruffleCompilableGen.callEngineId(env(), getHandle());
     }
 
     @Override
@@ -227,7 +227,7 @@ final class HSCompilableTruffleAST extends HSObject implements TruffleCompilable
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        JObject astHandle = ((HSCompilableTruffleAST) ast).getHandle();
+        JObject astHandle = ((HSTruffleCompilable) ast).getHandle();
         return callIsSameOrSplit(env(), getHandle(), astHandle);
     }
 

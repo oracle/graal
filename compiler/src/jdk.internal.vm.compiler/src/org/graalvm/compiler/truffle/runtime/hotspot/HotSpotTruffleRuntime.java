@@ -41,7 +41,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.EngineData;
@@ -83,7 +82,7 @@ import sun.misc.Unsafe;
  * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
  * native-image shared library).
  */
-public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();

@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -137,6 +138,15 @@ public interface TruffleCompilerRuntime {
             return allowsInlining;
         }
     }
+
+    /**
+     * Notifies this runtime once {@code installedCode} has been installed in the code cache. On
+     * SubstrateVM this callback is currently unused.
+     *
+     * @param compilable the {@link TruffleCompilable compilable} to install code into
+     * @param installedCode code that has just been installed in the code cache
+     */
+    void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
 
     /**
      * Returns Truffle related method information during host compilation. Do not call this method

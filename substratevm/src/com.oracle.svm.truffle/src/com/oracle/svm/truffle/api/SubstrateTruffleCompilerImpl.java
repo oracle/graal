@@ -129,4 +129,11 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     protected InstalledCode createInstalledCode(TruffleCompilable compilable) {
         return ((SubstrateCompilableTruffleAST) compilable).createPreliminaryInstalledCode();
     }
+
+    @Override
+    public void purgePartialEvaluationCaches() {
+        /*
+         * No caches on SVM.
+         */
+    }
 }

@@ -81,17 +81,16 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -164,7 +163,7 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(IsSuppressedFailure)
     static boolean isSuppressedFailure(Object truffleRuntime, Object compilable, Supplier<String> serializedException) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).isSuppressedFailure((TruffleCompilable) compilable, serializedException);
+        return ((TruffleCompilerRuntime) truffleRuntime).isSuppressedFailure((TruffleCompilable) compilable, serializedException);
     }
 
     @TruffleFromLibGraal(GetPosition)
@@ -232,7 +231,7 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(OnCodeInstallation)
     static void onCodeInstallation(Object truffleRuntime, Object compilable, long installedCodeHandle) {
         InstalledCode installedCode = LibGraal.unhand(InstalledCode.class, installedCodeHandle);
-        ((HotSpotTruffleCompilerRuntime) truffleRuntime).onCodeInstallation((TruffleCompilable) compilable, installedCode);
+        ((TruffleCompilerRuntime) truffleRuntime).onCodeInstallation((TruffleCompilable) compilable, installedCode);
     }
 
     @TruffleFromLibGraal(GetFailedSpeculationsAddress)

@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+/**
+ * Represeents entry points to Truffle runtime implementations for Truffle compilation.
+ */
 public interface TruffleCompilationSupport {
 
     /**
@@ -37,10 +40,20 @@ public interface TruffleCompilationSupport {
 
     boolean existsCompilerOption(String key);
 
+    /**
+     * Validates a compiler option and returns <code>null</code> if the option is null. An error
+     * message otherwise.
+     */
     String validateCompilerOption(String key, String value);
 
+    /**
+     * Returns a compiler configuration name that will be used.
+     */
     String getCompilerConfigurationName(TruffleCompilerRuntime runtime);
 
+    /**
+     * Opens a compiler thread scope for compilation threads. Use with try-with-resourcce.
+     */
     default AutoCloseable openCompilerThreadScope() {
         return null;
     }

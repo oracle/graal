@@ -84,7 +84,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -434,8 +433,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
         if (result instanceof HotSpotTruffleCompilationResult) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
-            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
+            config.runtime().onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
         }
     }
 
