@@ -125,7 +125,7 @@ public class PolyglotTypeMappings {
         }
     }
 
-    private void addInternalEspressoCollections(EconomicMap<String, ObjectKlass> map, Meta meta) {
+    private static void addInternalEspressoCollections(EconomicMap<String, ObjectKlass> map, Meta meta) {
         map.put("java.lang.Iterable", meta.polyglot.EspressoForeignIterable);
         map.put("java.util.List", meta.polyglot.EspressoForeignList);
         map.put("java.util.Collection", meta.polyglot.EspressoForeignCollection);
