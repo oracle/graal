@@ -135,6 +135,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class IsMemberReadable {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -176,6 +177,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class ReadMember {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -235,6 +237,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class IsMemberModifiable {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -258,6 +261,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class WriteMember {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static void doShared(Klass receiver, String member, Object value,
                         @Shared("error") @Cached BranchProfile error,
@@ -285,6 +289,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class IsMemberInvocable {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -301,6 +306,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class InvokeMember {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member, Object[] arguments,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -424,6 +430,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class Instantiate {
+        // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, Object[] args,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
