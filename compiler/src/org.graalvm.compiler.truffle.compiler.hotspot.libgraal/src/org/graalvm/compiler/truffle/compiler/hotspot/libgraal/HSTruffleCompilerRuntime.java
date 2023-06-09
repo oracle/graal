@@ -25,10 +25,8 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
@@ -36,10 +34,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callAsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callCreateStringSupplier;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsValueType;
@@ -54,6 +50,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
@@ -137,20 +134,17 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         return new HostMethodInfo(truffleBoundary, bytecodeInterpreterSwitch, bytecodeInterpreterSwitchBoundary, callIsInliningCutoff);
     }
 
-    @TruffleFromLibGraal(AsCompilableTruffleAST)
     @Override
     public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
+        if (constant.isNull()) {
+            return null;
+        }
         JNIMethodScope scope = JNIMethodScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
-        long constantHandle = LibGraal.translate(constant);
-        JObject hsCompilable = callAsCompilableTruffleAST(scope.getEnv(), getHandle(), constantHandle);
-        if (hsCompilable.isNull()) {
-            return null;
-        } else {
-            return new HSCompilableTruffleAST(scope, hsCompilable);
-        }
+        JObject hsCompilable = JNIUtil.NewLocalRef(scope.getEnv(), LibGraal.getJObjectValue((HotSpotObjectConstant) constant));
+        return new HSCompilableTruffleAST(scope, hsCompilable);
     }
 
     @TruffleFromLibGraal(OnCodeInstallation)
@@ -168,15 +162,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         JNIEnv env = env();
         JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(env, getHandle(), optimizedAssumptionHandle);
         return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer);
-    }
-
-    @TruffleFromLibGraal(GetCallTargetForCallNode)
-    @Override
-    public JavaConstant getCallTargetForCallNode(JavaConstant callNode) {
-        long callNodeHandle = LibGraal.translate(callNode);
-        JNIEnv env = env();
-        long callTargetHandle = callGetCallTargetForCallNode(env, getHandle(), callNodeHandle);
-        return LibGraal.unhand(JavaConstant.class, callTargetHandle);
     }
 
     @TruffleFromLibGraal(IsValueType)

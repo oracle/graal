@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
@@ -60,7 +59,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id
 final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(InitializeRuntime)
-    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
+    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate);
 
     /**
      * Registers a Truffle runtime. Returns <code>true</code> if this was the first runtime
@@ -87,9 +86,6 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(InitializeCompiler)
     static native void initializeCompiler(long isolateThreadId, long compilerHandle, TruffleCompilable compilable, boolean firstInitialization);
-
-    @TruffleToLibGraal(GetCompilerConfigurationName)
-    static native String getCompilerConfigurationName(long isolateThreadId, long handle);
 
     @TruffleToLibGraal(DoCompile)
     static native void doCompile(long isolateThreadId,

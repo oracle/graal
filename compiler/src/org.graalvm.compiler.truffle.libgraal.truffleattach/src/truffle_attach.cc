@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.libgraal.LibGraal;
+#include<jni.h>
 
-import com.oracle.truffle.api.TruffleRuntime;
-
-/**
- * Access to a {@link TruffleRuntime} that uses libgraal for compilation.
- */
-public final class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
-
-    @Override
-    protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
-    }
-
-    @Override
-    protected int calculatePriority() {
-        if (LibGraal.isAvailable()) {
-            return Integer.MAX_VALUE;
-        }
-        return Integer.MIN_VALUE;
-    }
+#define EXCEPTION_CHECK_VOID(env) if (env->ExceptionCheck()) { \
+return;                                                        \
 }
+
+
+static void openJVMCITo(JNIEnv* jniEnv, jobject callerModule)  {
+    jclass servicesClz = jniEnv->FindClass("jdk/vm/ci/services/Services");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jmethodID openJVMCIMethod = jniEnv->GetStaticMethodID(servicesClz, "openJVMCITo", "(Ljava/lang/Module;)V");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jvalue args[2] {};
+    args[0].l = callerModule;
+    jniEnv->CallStaticVoidMethodA(servicesClz, openJVMCIMethod, args);
+}
+
+// Library entry points
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_hotspot_JVMCIOpenSupport_openJVMCITo0(JNIEnv *env, jclass clz, jobject callerModule) {
+    openJVMCITo(env, callerModule);
+}
+
+#ifdef __cplusplus
+}
+#endif
+

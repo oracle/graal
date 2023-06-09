@@ -1179,6 +1179,8 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             headers=False,
         ),
     ],
+    # GR-46611 Temporary solution. When the optimized runtime is moved to the TRUFFLE_API distribution, truffleattach should be moved as well.
+    support_libraries_distributions=['compiler:TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT'],
     stability="supported",
     jlink=False,
 )

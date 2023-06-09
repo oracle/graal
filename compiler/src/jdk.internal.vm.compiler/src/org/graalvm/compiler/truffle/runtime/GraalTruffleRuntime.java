@@ -257,12 +257,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
-        OptimizedDirectCallNode callNode = asObject(OptimizedDirectCallNode.class, callNodeConstant);
-        return forObject(callNode.getCallTarget());
-    }
-
-    @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
         final OptimizedAssumption optimizedAssumption = asObject(OptimizedAssumption.class, optimizedAssumptionConstant);
         return optimizedAssumption.registerDependency();

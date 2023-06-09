@@ -29,13 +29,11 @@ import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
@@ -129,13 +127,6 @@ final class TruffleFromLibGraalEntryPoints {
         consumer.accept(dependency);
     }
 
-    @TruffleFromLibGraal(GetCallTargetForCallNode)
-    static long getCallTargetForCallNode(Object truffleRuntime, long callNodeHandle) {
-        JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
-        JavaConstant callTarget = ((TruffleCompilerRuntime) truffleRuntime).getCallTargetForCallNode(callNode);
-        return LibGraal.translate(callTarget);
-    }
-
     @TruffleFromLibGraal(IsValueType)
     static boolean isValueType(Object truffleRuntime, long typeHandle) {
         ResolvedJavaType type = LibGraal.unhand(ResolvedJavaType.class, typeHandle);
@@ -169,12 +160,6 @@ final class TruffleFromLibGraalEntryPoints {
     static Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(Object truffleRuntime, long optimizedAssumptionHandle) {
         JavaConstant optimizedAssumption = LibGraal.unhand(JavaConstant.class, optimizedAssumptionHandle);
         return ((TruffleCompilerRuntime) truffleRuntime).registerOptimizedAssumptionDependency(optimizedAssumption);
-    }
-
-    @TruffleFromLibGraal(AsCompilableTruffleAST)
-    static Object asCompilableTruffleAST(Object truffleRuntime, long constantHandle) {
-        JavaConstant constant = LibGraal.unhand(JavaConstant.class, constantHandle);
-        return ((TruffleCompilerRuntime) truffleRuntime).asCompilableTruffleAST(constant);
     }
 
     @TruffleFromLibGraal(IsSuppressedFailure)

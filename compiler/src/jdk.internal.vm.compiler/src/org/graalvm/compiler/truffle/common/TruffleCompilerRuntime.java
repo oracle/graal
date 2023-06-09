@@ -181,11 +181,6 @@ public interface TruffleCompilerRuntime {
     TruffleCompilable asCompilableTruffleAST(JavaConstant constant);
 
     /**
-     * Gets the compiler constant representing the target of {@code callNode}.
-     */
-    JavaConstant getCallTargetForCallNode(JavaConstant callNode);
-
-    /**
      * Registers some dependent code on an assumption.
      *
      * As the dependent code may not yet be available, a {@link Consumer} is returned that must be

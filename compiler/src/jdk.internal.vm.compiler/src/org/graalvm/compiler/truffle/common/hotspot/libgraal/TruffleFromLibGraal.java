@@ -75,8 +75,6 @@ public @interface TruffleFromLibGraal {
         AddTargetToDequeue,
         @Signature({void.class, Object.class, Object.class})
         AddInlinedTarget,
-        @Signature({Object.class, Object.class, long.class})
-        AsCompilableTruffleAST,
         @Signature({long.class, Object.class})
         AsJavaConstant,
         @Signature({boolean.class, Object.class, String.class})
@@ -91,8 +89,6 @@ public @interface TruffleFromLibGraal {
         CountDirectCallNodes,
         @Signature({long.class, Object.class})
         EngineId,
-        @Signature({long.class, Object.class, long.class})
-        GetCallTargetForCallNode,
         @Signature({int.class, Object.class})
         GetCompilableCallCount,
         @Signature({String.class, Object.class})
