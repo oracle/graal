@@ -35,9 +35,9 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
-public final class AMD64HotSpotHelper {
+public final class AMD64LIRHelper {
 
-    private AMD64HotSpotHelper() {
+    private AMD64LIRHelper() {
     }
 
     protected static Value[] registersToValues(Register[] registers) {
