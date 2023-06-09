@@ -57,7 +57,8 @@ public class Experiment {
 
     /**
      * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
-     * ahead-of-time. {@code null} if unknown.
+     * ahead-of-time. The field is {@code null} when it is unknown whether it is JIT or AOT. This
+     * information is unknown when we are reporting a single experiment without profiles.
      */
     private final CompilationKind compilationKind;
 
