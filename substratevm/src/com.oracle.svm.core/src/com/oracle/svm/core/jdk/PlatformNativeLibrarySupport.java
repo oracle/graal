@@ -68,6 +68,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "jdk_internal_jimage",
                     "jdk_internal_misc",
                     "jdk_internal_org",
+                    "jdk_internal_platform",
                     "jdk_internal_util",
                     "jdk_internal_vm",
                     "jdk_net",
@@ -98,12 +99,6 @@ public abstract class PlatformNativeLibrarySupport {
         builtInPkgNatives = new ArrayList<>();
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             builtInPkgNatives.addAll(Arrays.asList(defaultBuiltInPkgNatives));
-            /*
-             * Support builtin methods for Containers and Metrics internal API which is Linux only
-             */
-            if (Platform.includedIn(Platform.LINUX.class)) {
-                builtInPkgNatives.add("jdk_internal_platform");
-            }
         }
     }
 
