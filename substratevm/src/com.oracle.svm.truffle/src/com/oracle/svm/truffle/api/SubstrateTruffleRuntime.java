@@ -191,6 +191,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler preinitializeTruffleCompiler() {
         assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
+        ((SubstrateTruffleCompilationSupport) compilationSupport).preinitialize();
         SubstrateTruffleCompiler compiler = (SubstrateTruffleCompiler) newTruffleCompiler();
         truffleCompiler = compiler;
         return compiler;
