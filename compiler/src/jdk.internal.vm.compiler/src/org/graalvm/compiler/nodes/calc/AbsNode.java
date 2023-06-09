@@ -41,6 +41,8 @@ import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.code.CodeUtil;
+
 /**
  * Absolute value.
  */
@@ -97,6 +99,21 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
             return synonym;
         }
         return this;
+    }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        if (NarrowableArithmeticNode.super.isNarrowable(resultBits)) {
+            /*
+             * Abs(Narrow(x)) is only equivalent to Narrow(Abs(x)) if the cut off bits are all equal
+             * to the sign bit of the input. That's equivalent to the condition that the input is in
+             * the signed range of the narrow type.
+             */
+            IntegerStamp inputStamp = (IntegerStamp) getValue().stamp(NodeView.DEFAULT);
+            return CodeUtil.minValue(resultBits) <= inputStamp.lowerBound() && inputStamp.upperBound() <= CodeUtil.maxValue(resultBits);
+        } else {
+            return false;
+        }
     }
 
     @Override
