@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -708,6 +709,8 @@ public class SVMHost extends HostVM {
             } else {
                 classInitializerSideEffect.put(method, true);
             }
+        } else if (n instanceof AccessMonitorNode) {
+            classInitializerSideEffect.put(method, true);
         }
     }
 
