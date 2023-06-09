@@ -338,21 +338,21 @@ public class SVMHost extends HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass())).withFullInfopoints(
-                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        GraphBuilderConfiguration updatedConfig = config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
+                        .withFullInfopoints(
+                                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        if (parsingSupport != null) {
+            return parsingSupport.updateGraphBuilderConfiguration(updatedConfig, method);
+        }
+        return updatedConfig;
     }
 
     private boolean retainLocalVariables() {
         if (parseOnce) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
-             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
-             * reused by javac, local variables can still get illegal values. Since we cannot
-             * "restore" such illegal values during deoptimization, we cannot disable liveness
-             * analysis for deoptimization target methods.
-             *
-             * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
-             * later.
+             * bytecode-liveness. This greatly helps debugging. Note that when local variable
+             * numbers are reused by javac, local variables can still be assigned to illegal values.
              */
             return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
 

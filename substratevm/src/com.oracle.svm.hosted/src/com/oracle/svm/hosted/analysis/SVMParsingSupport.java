@@ -28,6 +28,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -48,6 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public interface SVMParsingSupport {
 
     Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
+
+    GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method);
 
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 

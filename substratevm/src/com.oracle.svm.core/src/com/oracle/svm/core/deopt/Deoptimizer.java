@@ -1310,13 +1310,13 @@ public final class Deoptimizer {
         String message = String.format("%s%nencodedBci: %s (bci %s)%nMethod info: %s", originalMessage, encodedBci, FrameInfoDecoder.readableBci(encodedBci), frameInfo.getSourceReference());
         StringBuilder sb = new StringBuilder(message);
         if (fullStack) {
-            sb.append("%nFull Deoptimized Stack%n");
+            sb.append(System.lineSeparator()).append("Full Deoptimized Stack").append(System.lineSeparator());
         } else {
-            sb.append("%nPartial Deoptimized Stack%n");
+            sb.append(System.lineSeparator()).append("Partial Deoptimized Stack").append(System.lineSeparator());
         }
         FrameInfoQueryResult current = topFrame;
         while (current != null) {
-            sb.append(current.getSourceReference()).append("%n");
+            sb.append(current.getSourceReference()).append(System.lineSeparator());
             current = current.getCaller();
         }
         throw VMError.shouldNotReachHere(sb.toString());
