@@ -106,8 +106,8 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
              * i = Short.MAX_VALUE + Short.MAX_VALUE;
              * sum = 0;
              * while (i > 0) {
-             *     sum = sun + 42;
              *     i--;
+             *     sum = sum + 42;
              * }
              * return sum;
              * </pre>
@@ -140,13 +140,42 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                             BytecodeNode.BOUNDARY,
                             /* 34 */ BytecodeNode.RETURN, 0,
             };
+            short[] regOps = new short[]{
+                            // variables/registers: 0:i, 1:sum, 2:tmp, 3:tmp
+                            // CONST a b => vars[a] <- b
+                            // ADD a b c => vars[c] <- vars[a] + vars[b]
+                            // etc.
+
+                            // i = Short.MAX_VALUE + Short.MAX_VALUE;
+                            /* 00 */ BytecodeNode.CONST, 2, Short.MAX_VALUE,
+                            /* 03 */ BytecodeNode.CONST, 3, Short.MAX_VALUE,
+                            /* 06 */ BytecodeNode.ADD, 2, 3, 0,
+
+                            /* 10 */ BytecodeNode.CONST, 1, 0, // sum = 0
+
+                            /* 13 */ BytecodeNode.JUMP_IF_ZERO, 0, 32, // i == 0
+
+                            // i--;
+                            /* 16 */ BytecodeNode.CONST, 2, -1,
+                            /* 19 */ BytecodeNode.ADD, 0, 2, 0,
+
+                            // sum = sum + 42;
+                            /* 23 */ BytecodeNode.CONST, 2, 42,
+                            /* 26 */ BytecodeNode.ADD, 1, 2, 1,
+
+                            /* 30 */ BytecodeNode.JUMP, 13,
+
+                            // return
+                            /* 32 */ BytecodeNode.BOUNDARY,
+                            /* 33 */ BytecodeNode.RETURN, 1,
+            };
 
             var b = FrameDescriptor.newBuilder();
             b.addSlots(locals, FrameSlotKind.Int);
             b.addSlots(stack, FrameSlotKind.Illegal);
             dynamicDescriptor = b.build();
             dynamicTestFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], dynamicDescriptor);
-            bytecodeNode = new BytecodeNode(ops, locals, stack);
+            bytecodeNode = new BytecodeNode(ops, regOps, locals, stack);
 
             b = FrameDescriptor.newBuilder();
             b.addSlots(locals, FrameSlotKind.Static);
@@ -160,10 +189,33 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
         }
     }
 
+    // This should show HotSpot JVM bytecode interpreter performance on an equivalent Java program
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void baseline(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeBaseline(null);
+    }
+
     @Benchmark
     @BytecodeInterpreterSwitch
     public void unsafe(BenchmarkState state) throws Throwable {
         state.bytecodeNode.executeUnsafe(null);
+    }
+
+    // This shows theoretical lower limit for any bytecode dispatch optimizations using the "unsafe"
+    // bytecode interpretation approach
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void dispatchBaselineUnsafe(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeDisptachBaselineUnsafe(null);
+    }
+
+    // This shows theoretical lower limit for any bytecode dispatch optimizations using the
+    // "virtualFrame" bytecode interpretation approach
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void dispatchBaselineVirtualFrame(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeDispatchBaselineVirtualFrame(state.dynamicTestFrame, state.dynamicDescriptor);
     }
 
     @Benchmark
@@ -182,6 +234,20 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
     @BytecodeInterpreterSwitch
     public void readStatic(BenchmarkState state) throws Throwable {
         state.bytecodeNode.executeReadStatic(state.staticTestFrame);
+    }
+
+    // Approach using 2 bytecode loops: generic and integer top-of-stack
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void readStaticTOS(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeReadStaticTOS(state.staticTestFrame);
+    }
+
+    // Approach that uses internal temporary variables and no operand stack
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void readStaticRegisters(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeReadStaticRegisters(state.staticTestFrame);
     }
 
     static short unsafeRead(short[] array, int index) {
@@ -233,11 +299,13 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
         static final short BOUNDARY = 12;
 
         @CompilationFinal(dimensions = 1) final short[] ops;
+        @CompilationFinal(dimensions = 1) final short[] regOps;
         final int locals;
         final int stackSize;
 
-        BytecodeNode(short[] ops, int locals, int stack) {
+        BytecodeNode(short[] ops, short[] regOps, int locals, int stack) {
             this.ops = ops;
+            this.regOps = regOps;
             this.locals = locals;
             this.stackSize = stack;
         }
@@ -325,6 +393,262 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             }
+        }
+
+        @BytecodeInterpreterSwitch
+        public int executeDisptachBaselineUnsafe(@SuppressWarnings("unused") VirtualFrame f) {
+            final int maxLocals = locals + 2;
+            int[] stack = new int[maxLocals];
+            short[] bc = this.ops;
+            int sp = locals;
+            int bci = 0;
+            if (sp > maxLocals) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+
+            // 00 BytecodeNode.CONST, Short.MAX_VALUE,
+            unsafeWrite(stack, sp, unsafeRead(bc, bci + 1));
+            sp += 1;
+            bci += 2;
+
+            // 02 BytecodeNode.CONST, Short.MAX_VALUE,
+            unsafeWrite(stack, sp, unsafeRead(bc, bci + 1));
+            sp += 1;
+            bci += 2;
+
+            // 04 BytecodeNode.ADD
+            unsafeWrite(stack, sp - 2, unsafeRead(stack, sp - 1) + unsafeRead(stack, sp - 2));
+            sp -= 1;
+            bci += 1;
+
+            // 05 BytecodeNode.LOCAL_WRITE0, 0, // i = MAX
+            short localIndex = unsafeRead(bc, bci + 1);
+            unsafeWrite(stack, localIndex, unsafeRead(stack, sp - 1));
+            sp -= 1;
+            bci += 2;
+
+            // 07 BytecodeNode.CONST, 0,
+            unsafeWrite(stack, sp, unsafeRead(bc, bci + 1));
+            sp += 1;
+            bci += 2;
+
+            // 09 BytecodeNode.LOCAL_WRITE1, 1, // sum = 0
+            localIndex = unsafeRead(bc, bci + 1);
+            unsafeWrite(stack, localIndex, unsafeRead(stack, sp - 1));
+            sp -= 1;
+            bci += 2;
+
+            while (true) {
+                // 11 BytecodeNode.LOCAL_READ0, 0, // i
+                localIndex = unsafeRead(bc, bci + 1);
+                unsafeWrite(stack, sp, unsafeRead(stack, localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 13 BytecodeNode.JUMP_IF_ZERO, 31, // i == 0
+                if (unsafeRead(stack, sp - 1) == 0) {
+                    bci = unsafeRead(bc, bci + 1);
+                    break;
+                } else {
+                    bci += 2;
+                }
+                sp -= 1;
+
+                // 15 BytecodeNode.LOCAL_READ0, 0,
+                localIndex = unsafeRead(bc, bci + 1);
+                unsafeWrite(stack, sp, unsafeRead(stack, localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 17 BytecodeNode.CONST, -1,
+                unsafeWrite(stack, sp, unsafeRead(bc, bci + 1));
+                sp += 1;
+                bci += 2;
+
+                // 19 BytecodeNode.ADD,
+                unsafeWrite(stack, sp - 2, unsafeRead(stack, sp - 1) + unsafeRead(stack, sp - 2));
+                sp -= 1;
+                bci += 1;
+
+                // 20 BytecodeNode.LOCAL_WRITE0, 0, // i = i - 1
+                localIndex = unsafeRead(bc, bci + 1);
+                unsafeWrite(stack, localIndex, unsafeRead(stack, sp - 1));
+                sp -= 1;
+                bci += 2;
+
+                // 22 BytecodeNode.LOCAL_READ1, 1,
+                localIndex = unsafeRead(bc, bci + 1);
+                unsafeWrite(stack, sp, unsafeRead(stack, localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 24 BytecodeNode.CONST, 42,
+                unsafeWrite(stack, sp, unsafeRead(bc, bci + 1));
+                sp += 1;
+                bci += 2;
+
+                // 26 BytecodeNode.ADD,
+                unsafeWrite(stack, sp - 2, unsafeRead(stack, sp - 1) + unsafeRead(stack, sp - 2));
+                sp -= 1;
+                bci += 1;
+
+                // 27 BytecodeNode.LOCAL_WRITE1, 1, // sum = sum + 42
+                localIndex = unsafeRead(bc, bci + 1);
+                unsafeWrite(stack, localIndex, unsafeRead(stack, sp - 1));
+                sp -= 1;
+                bci += 2;
+
+                // 29 BytecodeNode.JUMP, 11,
+                bci = 11;
+            }
+
+            // return
+            // 31 BytecodeNode.LOCAL_READ1, 1, // sum
+            localIndex = unsafeRead(bc, bci + 1);
+            unsafeWrite(stack, sp, unsafeRead(stack, localIndex));
+            sp += 1;
+            bci += 2;
+
+            // BytecodeNode.BOUNDARY,
+            boundary(null);
+            bci += 1;
+
+            // 34 BytecodeNode.RETURN, 0,
+            return unsafeRead(stack, sp - 1);
+        }
+
+        // Execute with
+        // -X:CompileCommand=exclude,com/oracle/truffle/api/benchmark/BytecodeInterpreterBenchmark$BytecodeNode,executeBaseline
+        // to get HostSpot interpreter as the baseline
+        @CompilerControl(Mode.EXCLUDE)
+        public int executeBaseline(@SuppressWarnings("unused") VirtualFrame f) {
+            int i = Short.MAX_VALUE + Short.MAX_VALUE;
+            int sum = 0;
+            while (i > 0) {
+                i--;
+                sum = sum + 42;
+                i--;
+            }
+            boundary(null);
+            return sum;
+        }
+
+        @BytecodeInterpreterSwitch
+        public int executeDispatchBaselineVirtualFrame(VirtualFrame f, FrameDescriptor dynamicDescriptor) {
+            VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], dynamicDescriptor);
+            short[] bc = this.ops;
+            int sp = locals;
+            int bci = 0;
+
+            // 00 BytecodeNode.CONST, Short.MAX_VALUE,
+            frame.setInt(sp, bc[bci + 1]);
+            sp += 1;
+            bci += 2;
+
+            // 02 BytecodeNode.CONST, Short.MAX_VALUE,
+            frame.setInt(sp, bc[bci + 1]);
+            sp += 1;
+            bci += 2;
+
+            // 04 BytecodeNode.ADD,
+            frame.setInt(sp - 2, frame.getInt(sp - 1) + frame.getInt(sp - 2));
+            sp -= 1;
+            bci += 1;
+
+            // 05 BytecodeNode.LOCAL_WRITE0, 0, // i = MAX
+            short localIndex = bc[bci + 1];
+            frame.setInt(localIndex, frame.getInt(sp - 1));
+            sp -= 1;
+            bci += 2;
+
+            // 07 BytecodeNode.CONST, 0,
+            frame.setInt(sp, bc[bci + 1]);
+            sp += 1;
+            bci += 2;
+
+            // 09 BytecodeNode.LOCAL_WRITE1, 1, // sum = 0
+            localIndex = bc[bci + 1];
+            frame.setInt(localIndex, frame.getInt(sp - 1));
+            sp -= 1;
+            bci += 2;
+
+            while (true) {
+                // 11 BytecodeNode.LOCAL_READ0, 0, // i
+                localIndex = bc[bci + 1];
+                frame.setInt(sp, frame.getInt(localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 13 BytecodeNode.JUMP_IF_ZERO, 31, // i == 0
+                if (frame.getInt(sp - 1) == 0) {
+                    bci = bc[bci + 1];
+                    break;
+                } else {
+                    bci += 2;
+                }
+                sp -= 1;
+
+                // 15 BytecodeNode.LOCAL_READ0, 0,
+                localIndex = bc[bci + 1];
+                frame.setInt(sp, frame.getInt(localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 17 BytecodeNode.CONST, -1,
+                frame.setInt(sp, bc[bci + 1]);
+                sp += 1;
+                bci += 2;
+
+                // 19 BytecodeNode.ADD,
+                frame.setInt(sp - 2, frame.getInt(sp - 1) + frame.getInt(sp - 2));
+                sp -= 1;
+                bci += 1;
+
+                // 20 BytecodeNode.LOCAL_WRITE0, 0, // i = i - 1
+                localIndex = bc[bci + 1];
+                frame.setInt(localIndex, frame.getInt(sp - 1));
+                sp -= 1;
+                bci += 2;
+
+                // 22 BytecodeNode.LOCAL_READ1, 1,
+                localIndex = bc[bci + 1];
+                frame.setInt(sp, frame.getInt(localIndex));
+                sp += 1;
+                bci += 2;
+
+                // 24 BytecodeNode.CONST, 42,
+                frame.setInt(sp, bc[bci + 1]);
+                sp += 1;
+                bci += 2;
+
+                // 26 BytecodeNode.ADD,
+                frame.setInt(sp - 2, frame.getInt(sp - 1) + frame.getInt(sp - 2));
+                sp -= 1;
+                bci += 1;
+
+                // 27 BytecodeNode.LOCAL_WRITE1, 1, // sum = sum + 42
+                localIndex = bc[bci + 1];
+                frame.setInt(localIndex, frame.getInt(sp - 1));
+                sp -= 1;
+                bci += 2;
+
+                // 29 BytecodeNode.JUMP, 11,
+                bci = 11;
+            }
+
+            // return
+            // 31 BytecodeNode.LOCAL_READ1, 1, // sum
+            localIndex = bc[bci + 1];
+            frame.setInt(sp, frame.getInt(localIndex));
+            sp += 1;
+            bci += 2;
+
+            // BytecodeNode.BOUNDARY,
+            boundary(f.materialize());
+            bci += 1;
+
+            // 34 BytecodeNode.RETURN, 0,
+            return frame.getInt(sp - 1);
         }
 
         @BytecodeInterpreterSwitch
@@ -508,6 +832,183 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                         break;
                     case RETURN:
                         return frame.getIntStatic(sp - 1);
+                    default:
+                        // propagates transferToInterpeter from within the call
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+
+        }
+
+        @BytecodeInterpreterSwitch
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        public int executeReadStaticTOS(VirtualFrame f) {
+            VirtualFrame frame = f;
+            short[] bc = this.ops;
+            int sp = locals;
+            int bci = 0;
+            int tos = 0;
+
+            int localIndex;
+            while (true) {
+                // This loops switches between generic bytecode loop and integer TOS bytecode loop
+
+                // NO TOS
+                bciLoop: while (true) {
+                    switch (bc[bci]) {
+                        case BOUNDARY:
+                            boundary(f.materialize());
+                            bci += 1;
+                            break;
+                        case LOCAL_READ:
+                        case LOCAL_READ0:
+                        case LOCAL_READ1:
+                            localIndex = bc[bci + 1];
+                            tos = frame.getIntStatic(localIndex);
+                            bci += 2;
+                            break bciLoop; // goto int TOS
+                        case LOCAL_WRITE:
+                        case LOCAL_WRITE0:
+                        case LOCAL_WRITE1:
+                            localIndex = bc[bci + 1];
+                            frame.setIntStatic(localIndex, frame.getIntStatic(sp - 1));
+                            sp -= 1;
+                            bci += 2;
+                            break;
+                        case ADD:
+                            tos = frame.getIntStatic(sp - 1) + frame.getIntStatic(sp - 2);
+                            sp -= 2;
+                            bci += 1;
+                            break bciLoop; // goto int TOS
+                        case CONST:
+                            tos = bc[bci + 1];
+                            bci += 2;
+                            break bciLoop; // goto int TOS
+                        case JUMP:
+                            bci = bc[bci + 1];
+                            break;
+                        case JUMP_IF_ZERO:
+                            if (frame.getIntStatic(sp - 1) == 0) {
+                                bci = bc[bci + 1];
+                            } else {
+                                bci += 2;
+                            }
+                            sp -= 1;
+                            break;
+                        case RETURN:
+                            return frame.getIntStatic(sp - 1);
+                        default:
+                            // propagates transferToInterpeter from within the call
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                }
+
+                // integer TOS
+                itosLoop: while (true) {
+                    switch (bc[bci]) {
+                        case BOUNDARY:
+                            boundary(f.materialize());
+                            bci += 1;
+                            break;
+                        case LOCAL_READ:
+                        case LOCAL_READ0:
+                        case LOCAL_READ1:
+                            localIndex = bc[bci + 1];
+                            frame.setIntStatic(sp, tos);
+                            tos = frame.getIntStatic(localIndex);
+                            sp += 1;
+                            bci += 2;
+                            break;
+                        case LOCAL_WRITE:
+                        case LOCAL_WRITE0:
+                        case LOCAL_WRITE1:
+                            localIndex = bc[bci + 1];
+                            frame.setIntStatic(localIndex, tos);
+                            bci += 2;
+                            break itosLoop;
+                        case ADD:
+                            tos = tos + frame.getIntStatic(sp - 1);
+                            sp -= 1;
+                            bci += 1;
+                            break;
+                        case CONST:
+                            frame.setIntStatic(sp, tos);
+                            tos = bc[bci + 1];
+                            sp += 1;
+                            bci += 2;
+                            break;
+                        case JUMP:
+                            bci = bc[bci + 1];
+                            break;
+                        case JUMP_IF_ZERO:
+                            if (tos == 0) {
+                                bci = bc[bci + 1];
+                            } else {
+                                bci += 2;
+                            }
+                            break itosLoop;
+                        case RETURN:
+                            return tos;
+                        default:
+                            // propagates transferToInterpeter from within the call
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                }
+            }
+        }
+
+        @BytecodeInterpreterSwitch
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        public int executeReadStaticRegisters(VirtualFrame f) {
+            VirtualFrame frame = f;
+            short[] bc = this.regOps;
+            int bci = 0;
+
+            int localIndex;
+            int localIndex2;
+            int resultIndex;
+            int value;
+            while (true) {
+                switch (bc[bci]) {
+                    case BOUNDARY:
+                        boundary(f.materialize());
+                        bci += 1;
+                        break;
+                    case LOCAL_WRITE:
+                    case LOCAL_WRITE0:
+                    case LOCAL_WRITE1:
+                        // Not used in the benchmark, but for completeness
+                        localIndex = bc[bci + 1];
+                        value = bc[bci + 1];
+                        frame.setIntStatic(localIndex, value);
+                        bci += 3;
+                        break;
+                    case ADD:
+                        localIndex = bc[bci + 1];
+                        localIndex2 = bc[bci + 2];
+                        resultIndex = bc[bci + 3];
+                        frame.setIntStatic(resultIndex, frame.getIntStatic(localIndex) + frame.getIntStatic(localIndex2));
+                        bci += 4;
+                        break;
+                    case CONST:
+                        localIndex = bc[bci + 1];
+                        value = bc[bci + 2];
+                        frame.setIntStatic(localIndex, value);
+                        bci += 3;
+                        break;
+                    case JUMP:
+                        bci = bc[bci + 1];
+                        break;
+                    case JUMP_IF_ZERO:
+                        value = bc[bci + 1];
+                        if (frame.getIntStatic(value) == 0) {
+                            bci = bc[bci + 2];
+                        } else {
+                            bci += 3;
+                        }
+                        break;
+                    case RETURN:
+                        return frame.getIntStatic(bc[bci + 1]);
                     default:
                         // propagates transferToInterpeter from within the call
                         throw CompilerDirectives.shouldNotReachHere();
