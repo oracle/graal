@@ -34,7 +34,6 @@ import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 
@@ -61,7 +60,7 @@ public abstract class BacktraceDecoder {
             int backtraceIndex = 0;
             while (backtraceIndex < trace.length && trace[backtraceIndex] != 0) {
                 long entry = trace[backtraceIndex];
-                if (DeoptimizationSupport.enabled() && BacktraceVisitor.isSourceReference(entry)) {
+                if (BacktraceVisitor.isSourceReference(entry)) {
                     /* Entry is an encoded source reference. */
                     VMError.guarantee(backtraceIndex + BacktraceVisitor.entriesPerSourceReference() <= trace.length, "Truncated backtrace array");
                     visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
@@ -69,7 +68,6 @@ public abstract class BacktraceDecoder {
                     framesDecoded++;
                     backtraceIndex += BacktraceVisitor.entriesPerSourceReference();
                 } else {
-                    VMError.guarantee(!BacktraceVisitor.isSourceReference(entry), "Unexpected source reference");
                     /* Entry is a raw code pointer. */
                     CodePointer ip = WordFactory.pointer(entry);
                     /* Arbitrary number of Java frames for a single native frame (inlining). */
