@@ -48,6 +48,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
+import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -703,6 +704,10 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     public static HotSpotTruffleRuntime getRuntime() {
         return (HotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
+    }
+
+    public boolean isLibGraalCompilationEnabled() {
+        return compilationSupport instanceof LibGraalTruffleCompilationSupport;
     }
 
 }
