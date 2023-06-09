@@ -95,16 +95,16 @@ final class FileSystems {
         throw new IllegalStateException("No instance allowed");
     }
 
-    static FileSystem newDefaultFileSystem() {
-        return new NIOFileSystem(findDefaultFileSystem(), true);
+    static FileSystem newDefaultFileSystem(String hostTmpDirPath) {
+        return new NIOFileSystem(findDefaultFileSystem(), hostTmpDirPath, true);
     }
 
     static FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
-        return new NIOFileSystem(fileSystem, false);
+        return new NIOFileSystem(fileSystem, null, false);
     }
 
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return new LanguageHomeFileSystem(newDefaultFileSystem(), fileSystem);
+        return new LanguageHomeFileSystem(newDefaultFileSystem(null), fileSystem);
     }
 
     static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
@@ -115,8 +115,8 @@ final class FileSystems {
         return new DeniedIOFileSystem();
     }
 
-    static FileSystem newLanguageHomeFileSystem() {
-        FileSystem defaultFS = newDefaultFileSystem();
+    static FileSystem newLanguageHomeFileSystem(String hostTmpDir) {
+        FileSystem defaultFS = newDefaultFileSystem(hostTmpDir);
         return new LanguageHomeFileSystem(new ReadOnlyFileSystem(defaultFS), new PathOperationsOnlyFileSystem(defaultFS));
     }
 
@@ -217,8 +217,8 @@ final class FileSystems {
         private FileSystem delegate; // effectively final after patch context
         private Function<Path, PreInitializePath> factory;
 
-        PreInitializeContextFileSystem() {
-            this.delegate = newDefaultFileSystem();
+        PreInitializeContextFileSystem(String tmpDir) {
+            this.delegate = newDefaultFileSystem(tmpDir);
             this.factory = new ImageBuildTimeFactory();
         }
 
@@ -245,7 +245,7 @@ final class FileSystems {
                 return path.toString();
             }
             verifyImageState();
-            return ((PreInitializePath) path).resolve(newDefaultFileSystem()).toString();
+            return ((PreInitializePath) path).resolve(newDefaultFileSystem(null)).toString();
         }
 
         URI absolutePathtoURI(Path path) {
@@ -253,7 +253,7 @@ final class FileSystems {
                 return path.toUri();
             }
             verifyImageState();
-            Path resolved = ((PreInitializePath) path).resolve(newDefaultFileSystem());
+            Path resolved = ((PreInitializePath) path).resolve(newDefaultFileSystem(null));
             if (!resolved.isAbsolute()) {
                 throw new IllegalArgumentException("Path must be absolute.");
             }
@@ -720,14 +720,16 @@ final class FileSystems {
         private final FileSystemProvider fileSystemProvider;
 
         private final boolean isDefault;
+        private final String hostTmpDirPath;
 
         private volatile Path userDir;
         private volatile Path tmpDir;
 
-        NIOFileSystem(java.nio.file.FileSystem fileSystem, boolean isDefault) {
+        NIOFileSystem(java.nio.file.FileSystem fileSystem, String hostTmpDirPath, boolean isDefault) {
             Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             this.fileSystem = fileSystem;
             this.fileSystemProvider = fileSystem.provider();
+            this.hostTmpDirPath = hostTmpDirPath;
             this.isDefault = isDefault;
         }
 
@@ -921,26 +923,14 @@ final class FileSystems {
         public Path getTempDirectory() {
             Path result = tmpDir;
             if (result == null) {
-                String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
-                if (tmpDirPath == null) {
-                    throw new IllegalStateException("The java.io.tmpdir is not set.");
-                }
-                result = parsePath(tmpDirPath);
-                if (isDefault || isDirectory(result)) {
+                if (hostTmpDirPath != null) {
+                    result = parsePath(hostTmpDirPath);
                     tmpDir = result;
                 } else {
                     throw new UnsupportedOperationException("Temporary directories not supported");
                 }
             }
             return result;
-        }
-
-        private boolean isDirectory(Path path) {
-            try {
-                return (boolean) readAttributes(path, "isDirectory").get("isDirectory");
-            } catch (IOException ioe) {
-                return false;
-            }
         }
 
         @Override

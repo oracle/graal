@@ -1178,8 +1178,6 @@ public abstract class Accessor {
 
         public abstract Assumption createAlwaysValidAssumption();
 
-        public abstract String getSavedProperty(String key);
-
         public abstract void reportPolymorphicSpecialize(Node source);
 
         public abstract Object callInlined(Node callNode, CallTarget target, Object... arguments);

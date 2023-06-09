@@ -173,11 +173,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public String getSavedProperty(String key) {
-            return System.getProperty(key);
-        }
-
-        @Override
         public Object callInlined(Node callNode, CallTarget target, Object... arguments) {
             return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
         }

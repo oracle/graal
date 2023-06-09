@@ -49,8 +49,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import jdk.vm.ci.services.Services;
-
 final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
@@ -212,11 +210,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public Assumption createAlwaysValidAssumption() {
         return OptimizedAssumption.createAlwaysValid();
-    }
-
-    @Override
-    public String getSavedProperty(String key) {
-        return Services.getSavedProperties().get(key);
     }
 
     @Override
