@@ -583,7 +583,6 @@ public class TruffleFeature implements InternalFeature {
         blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
         // Implementations which don't call Throwable.fillInStackTrace are allowed
         implementationOnlyBlocklist(metaAccess, Throwable.class, "fillInStackTrace");
-        blocklistMethod(metaAccess, Throwable.class, "getOurStackTrace");
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
         blocklistMethod(metaAccess, System.class, "getProperty", String.class);
