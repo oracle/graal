@@ -912,7 +912,13 @@ class NativeImageVM(GraalVm):
             else:
                 print(f"Profile file {config.latest_profile_path} not dumped. Instrument run failed with exit code {s.exit_code}")
 
-    def run_stage_image(self, config, stages):
+    def _print_binary_size(self, config, out):
+        # The image size for benchmarks is tracked by printing on stdout and matching the rule.
+        image_path = os.path.join(config.output_dir, config.final_image_name)
+        image_size = os.stat(image_path).st_size
+        out(f'The executed image size for benchmark {config.benchmark_suite_name}:{config.benchmark_name} is {image_size} B')
+
+    def run_stage_image(self, config, stages, out):
         executable_name_args = ['-H:Name=' + config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
@@ -945,6 +951,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(config)
+            self._print_binary_size(config, out)
             if self.use_upx:
                 image_path = os.path.join(config.output_dir, config.final_image_name)
                 upx_directory = mx.library("UPX", True).get_path(True)
@@ -960,9 +967,7 @@ class NativeImageVM(GraalVm):
         with stages.set_command([image_path] + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
-                # The image size for benchmarks is tracked by printing on stdout and matching the rule.
-                image_size = os.stat(image_path).st_size
-                out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
+                self._print_binary_size(config, out)
                 image_sections_command = "objdump -h " + image_path
                 out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
                 for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
@@ -1016,7 +1021,7 @@ class NativeImageVM(GraalVm):
 
         # Build the final image
         if stages.change_stage('image'):
-            self.run_stage_image(config, stages)
+            self.run_stage_image(config, stages, out)
 
         # Execute the benchmark
         if stages.change_stage('run'):
