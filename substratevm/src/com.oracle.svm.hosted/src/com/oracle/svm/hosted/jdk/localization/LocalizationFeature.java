@@ -647,14 +647,14 @@ public class LocalizationFeature implements InternalFeature {
          */
         for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
-            support.prepareBundle(bundleName, cur, locale, this.imageClassLoader::findModule);
+            support.prepareBundle(bundleName, cur, this.imageClassLoader::findModule);
         }
 
         /*
          * Finally, register the requested bundle with requested locale (Requested might be more
          * specific than the actual bundle locale
          */
-        support.prepareBundle(bundleName, bundle, locale, this.imageClassLoader::findModule);
+        support.prepareBundle(bundleName, bundle, this.imageClassLoader::findModule);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

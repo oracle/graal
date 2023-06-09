@@ -101,11 +101,13 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale, Function<String, Optional<Module>> findModule) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule) {
         if (bundle instanceof PropertyResourceBundle prb) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
             if (bundleNameWithModule.length < 2) {
+                resourceName = control.toBundleName(bundleName, prb.getLocale()).replace('.', '/').concat(".properties");
+
                 // find module based on package name
                 Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
@@ -113,8 +115,12 @@ public class LocalizationSupport {
                 // there should be only one module but we will check all modules where given package
                 // is found
                 for (Module m : modules) {
-                    resourceName = control.toBundleName(bundleName, prb.getLocale()).replace('.', '/').concat(".properties");
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
+                }
+
+                // if didn't find resource in any module, we will try with unnamed module
+                if (modules.isEmpty()) {
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
                 }
             } else {
                 resourceName = control.toBundleName(bundleNameWithModule[1], prb.getLocale()).replace('.', '/').concat(".properties");
