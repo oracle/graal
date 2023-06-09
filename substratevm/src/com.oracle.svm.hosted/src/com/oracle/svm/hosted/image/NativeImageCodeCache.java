@@ -87,7 +87,6 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -648,10 +647,6 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
-            if (ImageSingletons.contains(ProfilingSampler.class)) {
-                return true;
-            }
-
             if (isDeoptEntry || ((HostedMethod) method).compilationInfo.canDeoptForTesting()) {
                 /*
                  * Need to restore locals from deoptimization source.

@@ -482,8 +482,8 @@ public class SubstrateOptions {
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
     public static final HostedOptionKey<Integer> MaxUnrolledObjectZeroingStores = new HostedOptionKey<>(8);
 
-    @Option(help = "Provide method names for stack traces.")//
-    public static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated, has no effect.", deprecated = true)//
+    static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
     @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
@@ -517,9 +517,6 @@ public class SubstrateOptions {
 
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
-
-    @Option(help = "Use compressed frame encoding for frames without local values.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
