@@ -136,12 +136,12 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();
-        assertEquals(0L, r1.getResult());
+        assertEquals(1L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
-        assertEquals(1L, r2.getResult());
+        assertEquals(2L, r2.getResult());
 
-        assertEquals(2L, r2.continueWith(null));
+        assertEquals(3L, r2.continueWith(null));
     }
 
     @Test

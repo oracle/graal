@@ -3887,6 +3887,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), returnType, helperName);
 
             helper.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                helper.getParameters().add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
 
             if (!tier.isUncached) {
                 helper.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
@@ -3900,10 +3903,8 @@ public class OperationsNodeFactory implements ElementHelpers {
              * {@link OperationNodeGeneratorPlugs#additionalArguments()}. When one is updated, the
              * other should be kept in sync.
              */
+            // we forward parameters with the same name when we call the helper, so save them here.
             List<CodeVariableElement> extraParams = new ArrayList<>();
-            if (model.enableYield) {
-                extraParams.add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
-            }
             extraParams.addAll(List.of(
                             new CodeVariableElement(operationNodeGen.asType(), "$this"),
                             new CodeVariableElement(context.getType(short[].class), "bc"),
@@ -3969,7 +3970,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.string("node").startCall(".executeObject");
             }
 
-            b.string("frame");
+            // If we support yield, the frame forwarded to specializations should be the local frame
+            // and not the stack frame.
+            b.string(localFrame());
 
             // The tier 0 version takes all of its parameters. Other versions compute them.
             if (tier.isUncached) {
@@ -3997,6 +4000,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                 }
             }
 
+            if (model.enableYield) {
+                b.string("frame"); // passed for $stackFrame
+            }
             b.variables(extraParams);
             b.end(2);
 
@@ -4112,7 +4118,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationLocalImpl.setSuperClass(generic(types.OperationLocal, model.templateType.asType()));
             operationLocalImpl.setEnclosingElement(operationNodeGen);
 
-            operationLocalImpl.add(new CodeVariableElement(context.getType(int.class), "index"));
+            operationLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "index"));
 
             operationLocalImpl.add(createConstructorUsingFields(Set.of(), operationLocalImpl, null));
 
