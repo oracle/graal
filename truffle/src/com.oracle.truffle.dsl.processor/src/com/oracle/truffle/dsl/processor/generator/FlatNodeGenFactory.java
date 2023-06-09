@@ -171,7 +171,7 @@ public class FlatNodeGenFactory {
      */
     public static final int DEFAULT_MAX_BIT_WIDTH = 32;
 
-    public static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
+    private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
     private static final String NAME_SUFFIX = "_";
 
     public static final int INLINED_NODE_INDEX = 0;
@@ -7076,7 +7076,7 @@ public class FlatNodeGenFactory {
                     localVariable = frameState.getValue(execution);
                 }
             } else {
-                localVariable = frameState.get(plugs.overrideParameterName(resolvedParameter.getLocalName()));
+                localVariable = frameState.get(resolvedParameter.getLocalName());
             }
         }
         return localVariable;
@@ -7997,8 +7997,6 @@ public class FlatNodeGenFactory {
                 removeValue(FRAME_VALUE);
             } else {
                 set(FRAME_VALUE, new LocalVariable(frame, FRAME_VALUE, null));
-                // TODO: use plug method
-                set("$localFrame", new LocalVariable(frame, "$localFrame", null));
             }
             for (NodeFieldData field : factory.node.getFields()) {
                 String fieldName = fieldValueName(field);

@@ -516,7 +516,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
             // variables, and names used in expressions should be visible from the package of the
             // generated OperationRootNode.
             globalMembers.add(new CodeVariableElement(types.Node, "$root"));
-            accessingType = new CodeTypeElement(Set.of(), ElementKind.CLASS, ElementUtils.findPackageElement(operationRootNodeType), "PlaceholderOperationNode");
+            globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
+            accessingType = operationRootNodeType;
         }
         return new DSLExpressionResolver(context, accessingType, globalMembers);
     }

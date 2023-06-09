@@ -159,7 +159,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         @Specialization
         public static Object perform(long value,
                         // TODO: decide how/whether to handle $bci
-                        // @Bind("$bci") int bci,
+                        @Bind("$bci") int bci,
                         @Bind("$root") Node node) {
             throw new TestException("fail", node, -1, value);
         }

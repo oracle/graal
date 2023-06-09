@@ -85,7 +85,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
     public List<? extends VariableElement> additionalArguments() {
         List<CodeVariableElement> result = new ArrayList<>();
         if (model.enableYield) {
-            result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$localFrame"));
+            result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$stackFrame"));
         }
         result.addAll(List.of(
                         new CodeVariableElement(nodeType, "$root"),
@@ -100,18 +100,17 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     LocalVariable targetValue) {
 
         CodeTreeBuilder b = builder.create();
-        CodeTree frame = frameState.get(TemplateMethod.FRAME_NAME).createReference();
 
         b.string(targetValue.getName(), " = ");
 
         int index = execution.getIndex();
 
-        boolean throwsUnexpectedResult = buildChildExecution(b, frame, index, targetValue.getTypeMirror());
+        boolean throwsUnexpectedResult = buildChildExecution(b, stackFrame(), index, targetValue.getTypeMirror());
 
         return new ChildExecutionResult(b.build(), throwsUnexpectedResult);
     }
 
-    private boolean buildChildExecution(CodeTreeBuilder b, CodeTree frame, int idx, TypeMirror resultType) {
+    private boolean buildChildExecution(CodeTreeBuilder b, String frame, int idx, TypeMirror resultType) {
         int index = idx;
 
         if (index < instr.signature.valueCount) {
@@ -119,7 +118,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
             if (!ElementUtils.isObject(targetType)) {
                 b.cast(targetType);
             }
-            b.string("ACCESS.uncheckedGetObject(" + frame.toString() + ", $sp - " + (instr.signature.valueCount - index) + ")");
+            b.string("ACCESS.uncheckedGetObject(" + frame + ", $sp - " + (instr.signature.valueCount - index) + ")");
             return false;
         }
 
@@ -164,10 +163,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
         return NodeGeneratorPlugs.super.createTransferToInterpreterAndInvalidate();
     }
 
-    public String overrideParameterName(String original) {
-        if (original.equals(FlatNodeGenFactory.FRAME_VALUE)) {
-            return "$localFrame";
-        }
-        return original;
+    private String stackFrame() {
+        return model.enableYield ? "$stackFrame" : TemplateMethod.FRAME_NAME;
     }
 }

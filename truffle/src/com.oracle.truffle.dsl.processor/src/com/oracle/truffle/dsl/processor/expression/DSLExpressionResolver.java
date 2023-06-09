@@ -300,10 +300,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
                 }
 
-                if (name.equals("$bci")) {
-                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
-                }
-
                 return null;
         }
     }
