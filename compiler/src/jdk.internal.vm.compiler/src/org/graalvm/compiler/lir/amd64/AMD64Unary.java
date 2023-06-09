@@ -150,8 +150,8 @@ public class AMD64Unary {
     public static class MemoryOp extends AMD64LIRInstruction implements ImplicitNullCheck {
         public static final LIRInstructionClass<MemoryOp> TYPE = LIRInstructionClass.create(MemoryOp.class);
 
-        @Opcode private final AMD64RMOp opcode;
-        private final OperandSize size;
+        @Opcode protected final AMD64RMOp opcode;
+        protected final OperandSize size;
 
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE}) protected AMD64AddressValue input;
