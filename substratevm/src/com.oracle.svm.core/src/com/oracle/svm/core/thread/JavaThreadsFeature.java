@@ -65,9 +65,10 @@ class JavaThreadsFeature implements InternalFeature {
 
         /*
          * This currently only means that we don't support setting custom values for
-         * jdk.incubator.concurrent.ScopedValue.cacheSize at runtime.
+         * java.lang.ScopedValue.cacheSize at runtime.
          */
-        RuntimeClassInitialization.initializeAtBuildTime("jdk.incubator.concurrent");
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue");
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue$Cache");
     }
 
     private Object collectReachableObjects(Object original) {

@@ -681,19 +681,19 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
     static Object[] scopedValueCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
     static void setScopedValueCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Alias
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
     static native Object scopedValueBindings();
 
     /**
@@ -713,11 +713,11 @@ public final class Target_java_lang_Thread {
      * {@code ScopedValue.Carrier} calls this method through the implementation of
      * {@code JavaLangAccess}, which is an anonymous class that we cannot substitute, so we also
      * substitute the calling class to invoke this method directly in
-     * {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
+     * {@link Target_java_lang_ScopedValue_Carrier}.
      */
     @Substitute
     @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", callerMustBe = true)
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
     static void setScopedValueBindings(Object bindings) {
         Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
         if (LoomSupport.isEnabled() && thread.vthread != null) {
@@ -733,8 +733,8 @@ public final class Target_java_lang_Thread {
      * could result in bindings leaking to another scope, during which {@link #scopedValueBindings}
      * is cleared as a precaution. We don't have the means to extract the bindings object from the
      * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows
-     * and substitute {@link Target_jdk_incubator_concurrent_ScopedValue#scopedValueBindings} to
-     * never call this method.
+     * and substitute {@link Target_java_lang_ScopedValue#scopedValueBindings} to never call this
+     * method.
      */
     @Delete
     @TargetElement(onlyWith = JDK20OrLater.class)

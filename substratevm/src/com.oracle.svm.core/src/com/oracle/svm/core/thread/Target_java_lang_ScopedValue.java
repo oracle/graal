@@ -25,38 +25,23 @@
 package com.oracle.svm.core.thread;
 
 import java.util.concurrent.Callable;
-import java.util.function.BooleanSupplier;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK20OrLater;
-import com.oracle.svm.core.jdk.ModuleUtil;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-final class IncubatorConcurrentModule implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC >= 20 && ModuleUtil.bootLayerContainsModule("jdk.incubator.concurrent");
-    }
-}
-
-@TargetClass(className = "jdk.incubator.concurrent.ScopedValue", onlyWith = IncubatorConcurrentModule.class)
-final class Target_jdk_incubator_concurrent_ScopedValue {
+@TargetClass(className = "java.lang.ScopedValue", onlyWith = JDK21OrLater.class)
+final class Target_java_lang_ScopedValue {
     @Substitute
-    static Target_jdk_incubator_concurrent_ScopedValue_Snapshot scopedValueBindings() {
+    static Target_java_lang_ScopedValue_Snapshot scopedValueBindings() {
         Object bindings = Target_java_lang_Thread.scopedValueBindings();
         if (bindings == Target_java_lang_Thread.NEW_THREAD_BINDINGS) {
-            return Target_jdk_incubator_concurrent_ScopedValue_Snapshot.EMPTY_SNAPSHOT;
+            return Target_java_lang_ScopedValue_Snapshot.EMPTY_SNAPSHOT;
         }
         assert bindings != null;
-        return (Target_jdk_incubator_concurrent_ScopedValue_Snapshot) bindings;
+        return (Target_java_lang_ScopedValue_Snapshot) bindings;
     }
 }
 
@@ -64,36 +49,36 @@ final class Target_jdk_incubator_concurrent_ScopedValue {
  * Substituted to directly call {@link Target_java_lang_Thread#setScopedValueBindings} for forced
  * inlining.
  */
-@TargetClass(className = "jdk.incubator.concurrent.ScopedValue", innerClass = "Carrier", onlyWith = IncubatorConcurrentModule.class)
-final class Target_jdk_incubator_concurrent_ScopedValue_Carrier {
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Carrier", onlyWith = JDK21OrLater.class)
+final class Target_java_lang_ScopedValue_Carrier {
     @Alias int bitmask;
 
     @Substitute
     @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
-    private <R> R runWith(Target_jdk_incubator_concurrent_ScopedValue_Snapshot newSnapshot, Callable<R> op) throws Exception {
+    private <R> R runWith(Target_java_lang_ScopedValue_Snapshot newSnapshot, Callable<R> op) throws Exception {
         Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
         try {
             return Target_jdk_internal_vm_ScopedValueContainer.call(op);
         } finally {
             Target_java_lang_Thread.setScopedValueBindings(newSnapshot.prev);
-            Target_jdk_incubator_concurrent_ScopedValue_Cache.invalidate(bitmask);
+            Target_java_lang_ScopedValue_Cache.invalidate(bitmask);
         }
     }
 
     @Substitute
     @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
-    private void runWith(Target_jdk_incubator_concurrent_ScopedValue_Snapshot newSnapshot, Runnable op) {
+    private void runWith(Target_java_lang_ScopedValue_Snapshot newSnapshot, Runnable op) {
         Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
         try {
             Target_jdk_internal_vm_ScopedValueContainer.run(op);
         } finally {
             Target_java_lang_Thread.setScopedValueBindings(newSnapshot.prev);
-            Target_jdk_incubator_concurrent_ScopedValue_Cache.invalidate(bitmask);
+            Target_java_lang_ScopedValue_Cache.invalidate(bitmask);
         }
     }
 }
 
-@TargetClass(className = "jdk.internal.vm.ScopedValueContainer", onlyWith = IncubatorConcurrentModule.class)
+@TargetClass(className = "jdk.internal.vm.ScopedValueContainer", onlyWith = JDK21OrLater.class)
 final class Target_jdk_internal_vm_ScopedValueContainer {
     @Alias
     static native <V> V call(Callable<V> op) throws Exception;
@@ -102,19 +87,19 @@ final class Target_jdk_internal_vm_ScopedValueContainer {
     static native void run(Runnable op);
 }
 
-@TargetClass(className = "jdk.incubator.concurrent.ScopedValue", innerClass = "Snapshot", onlyWith = IncubatorConcurrentModule.class)
-final class Target_jdk_incubator_concurrent_ScopedValue_Snapshot {
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Snapshot", onlyWith = JDK21OrLater.class)
+final class Target_java_lang_ScopedValue_Snapshot {
     // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
-    static Target_jdk_incubator_concurrent_ScopedValue_Snapshot EMPTY_SNAPSHOT;
+    @Alias //
+    static Target_java_lang_ScopedValue_Snapshot EMPTY_SNAPSHOT;
     // Checkstyle: resume
 
     @Alias //
-    Target_jdk_incubator_concurrent_ScopedValue_Snapshot prev;
+    Target_java_lang_ScopedValue_Snapshot prev;
 }
 
-@TargetClass(className = "jdk.incubator.concurrent.ScopedValue", innerClass = "Cache", onlyWith = IncubatorConcurrentModule.class)
-final class Target_jdk_incubator_concurrent_ScopedValue_Cache {
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Cache", onlyWith = JDK21OrLater.class)
+final class Target_java_lang_ScopedValue_Cache {
     @Alias
     static native void invalidate(int toClearBits);
 }
