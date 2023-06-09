@@ -365,7 +365,6 @@ suite = {
         "jdk.internal.vm.compiler.test",
       ],
       "requires" : [
-        "jdk.incubator.concurrent",
         "jdk.jfr",
       ],
       "requiresConcealed" : {
