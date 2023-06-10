@@ -53,7 +53,7 @@ public final class CEntryPointActions {
      * context before returning.
      *
      * @param params initialization parameters.
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int enterCreateIsolate(CEntryPointCreateIsolateParameters params);
 
@@ -69,7 +69,7 @@ public final class CEntryPointActions {
      *            for the newly attached thread is created. If the parameter is set to false, a
      *            later call to one of the {@link PlatformThreads#ensureCurrentAssigned} methods
      *            early after the prologue must be used to do the initialization manually.
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int enterAttachThread(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread);
 
@@ -81,7 +81,7 @@ public final class CEntryPointActions {
      * {@link #enterAttachThread}).
      *
      * @param thread existing context for the current thread.
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int enter(IsolateThread thread);
 
@@ -90,7 +90,7 @@ public final class CEntryPointActions {
      * isolate.
      *
      * @param isolate isolate in which a context for the current thread exists.
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int enterByIsolate(Isolate isolate);
 
@@ -101,21 +101,21 @@ public final class CEntryPointActions {
      * segfault handler, execution must not resume normally.
      *
      * @param isolate isolate in which a context for the current thread exists.
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int enterAttachThreadFromCrashHandler(Isolate isolate);
 
     /**
      * Leaves the current thread's current context.
      *
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int leave();
 
     /**
      * Leaves the current thread's current context, then discards that context.
      *
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int leaveDetachThread();
 
@@ -123,7 +123,7 @@ public final class CEntryPointActions {
      * Leaves the current thread's current context, then waits for all attached threads in the
      * context's isolate to detach and discards that isolate entirely.
      *
-     * @return 0 on success, otherwise non-zero.
+     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
      */
     public static native int leaveTearDownIsolate();
 
