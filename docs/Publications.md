@@ -306,6 +306,10 @@ In _Proceedings of the <Programming> 2023 Journal and Conference_
 
 ### 2022
 
+- Felix Berlakovich, Matthias Neugschwandtner, Gergö Barany
+[**Look Ma, no constants: practical constant blinding in GraalVM**](https://dl.acm.org/doi/10.1145/3517208.3523751)
+In _Proceedings of the 15th European Workshop on Systems Security (EuroSec '22)_
+
 - Gergo Barany, David Leopoldseder, Hanspeter Moessenboeck, Raphael Mosaner
 [**Improving Vectorization Heuristics in a Dynamic Compiler with Learned Models**](https://doi.org/10.1145/3563838.3567679)
 In _Proceedings of the Virtual Machines and Language Implementations Workshop Co-located with SPLASH 2022_
@@ -321,10 +325,6 @@ In _Proceedings of the 19th International Conference on Managed Programming Lang
 - David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck, Raphael Mosaner, Wolfgang Kisling
 [**Machine-Learning-Based Self-Optimizing Compiler Heuristics**](https://doi.org/10.1145/3546918.3546921)
 In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
-
-- Matthias Neugschwandtner, Gergo Barany, Felix Berlakovich
-[**Constant Blinding on GraalVM**](https://dl.acm.org/doi/abs/10.1145/3517208.3523751)
-In _Proceedings of the 15th EUROPEAN WORKSHOP ON SYSTEMS SECURITY_
 
 - Stefan Reschke, Toni Mattis, Fabio Niephaus, Robert Hirschfeld
 [**Toward Just-in-time and Language-agnostic Mutation Testing**](https://doi.org/10.1145/3532512.3532514)
