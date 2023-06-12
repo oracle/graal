@@ -44,7 +44,7 @@ public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRun
             compilationSupport.registerRuntime(rt);
             return rt;
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError(e);
+            throw new InternalError(e);
         }
     }
 
