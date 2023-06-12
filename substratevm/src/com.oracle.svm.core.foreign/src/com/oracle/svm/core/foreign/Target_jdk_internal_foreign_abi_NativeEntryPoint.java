@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodType;
 
@@ -35,7 +35,6 @@ import jdk.internal.foreign.abi.VMStorage;
 
 @TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint")
 @Substitute
-@SuppressWarnings("unused")
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 
     @Alias private final MethodType methodType;

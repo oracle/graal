@@ -362,11 +362,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
                     Register reg = storage.register();
-                    /*
-                     * Windows ABI requests that variadic floating point arguments passed in a (XMM)
-                     * register be passed in a CPU register as well.
-                     */
-                    VMError.guarantee(Platform.includedIn(Platform.WINDOWS.class) || target.arch.canStoreValue(reg.getRegisterCategory(),
+                    VMError.guarantee(target.arch.canStoreValue(reg.getRegisterCategory(),
                                     paramValueKind.getPlatformKind()), "Cannot assign value to register.");
                     locations[i] = reg.asValue(paramValueKind);
                     VMError.guarantee(!usedRegisters.contains(reg),

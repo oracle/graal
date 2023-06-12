@@ -55,6 +55,10 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  * Part of the prologue/epilogue are emitted by the lowering of these nodes using snippets, see
  * class CFunctionSnippets. Other parts are emitted in the backend when the call instruction is
  * emitted.
+ *
+ * It is also possible to capture the call state (i.e. some global variables, e.g. errno) in a
+ * provided buffer right after the call, as to prevent the VM from changing it before it could be
+ * queried by another downcall.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
 public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {

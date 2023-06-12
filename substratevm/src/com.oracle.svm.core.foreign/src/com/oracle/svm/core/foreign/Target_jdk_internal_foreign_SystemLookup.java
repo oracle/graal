@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
@@ -45,7 +45,6 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup")
 @Substitute
-@SuppressWarnings("unused")
 public final class Target_jdk_internal_foreign_SystemLookup {
     @Substitute
     public static Target_jdk_internal_foreign_SystemLookup getInstance() {
@@ -55,6 +54,5 @@ public final class Target_jdk_internal_foreign_SystemLookup {
 
 @TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols")
 @Delete
-@SuppressWarnings("unused")
 final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
 }

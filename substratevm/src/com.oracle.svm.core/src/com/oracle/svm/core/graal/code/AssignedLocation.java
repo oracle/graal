@@ -30,24 +30,20 @@ import jdk.vm.ci.code.Register;
 
 /**
  * Represent a register or a stack offset.
- *
- * The interpretation of index depends on the kind and architecture, e.g. on AMD64, the designated
- * register is either AMD64.cpuRegisters[index] or AMD64.xmmRegistersAVX512[index].
  */
 public final class AssignedLocation {
     private static final int NONE = -1;
 
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean isValidOffset(int i) {
         return i >= 0 || i == NONE;
     }
 
-    private void checkInvariant() {
+    private void checkClassInvariant() {
         if (!isValidOffset(this.stackOffset)) {
-            throw new IllegalArgumentException("Stack offset cannot be < 0 (and not NONE).");
+            throw new IllegalStateException("Stack offset cannot be < 0 (and not NONE).");
         }
         if ((this.register == null) == (this.stackOffset == NONE)) {
-            throw new IllegalArgumentException("Must assign to either a register or stack (but not both).");
+            throw new IllegalStateException("Must assign to either a register or stack (but not both).");
         }
     }
 
@@ -57,14 +53,14 @@ public final class AssignedLocation {
     private AssignedLocation(Register register, int stackOffset) {
         this.register = register;
         this.stackOffset = stackOffset;
-        checkInvariant();
+        checkClassInvariant();
     }
 
-    public static AssignedLocation toRegister(Register register) {
+    public static AssignedLocation forRegister(Register register) {
         return new AssignedLocation(register, NONE);
     }
 
-    public static AssignedLocation toStack(int offset) {
+    public static AssignedLocation forStack(int offset) {
         if (offset < 0) {
             throw new IllegalArgumentException("Stack offset must be >= 0");
         }

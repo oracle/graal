@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.InternalVMMethod;

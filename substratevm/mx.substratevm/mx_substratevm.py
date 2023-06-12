@@ -1157,14 +1157,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
 if mx.get_jdk(tag='default').javaCompliance >= '21':
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
-        name='SubstrateVM Preview Panama Feature',
+        name='SubstrateVM Foreign API Preview Feature',
         short_name='panama',
         dir_name='svm-preview',
         installable_id='native-image',
         license_files=[],
         third_party_license_files=[],
         dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_PREVIEW_PANAMA'],
+        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
         installable=False,
         jlink=False,
     ))

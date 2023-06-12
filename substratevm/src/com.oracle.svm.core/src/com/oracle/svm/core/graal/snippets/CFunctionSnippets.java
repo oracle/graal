@@ -150,19 +150,26 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          * not supported (e.g. GET_LAST_ERROR on Linux). We simply ignore such capture requests and
          * push the responsibility of checking that this won't happen to the caller (similarly to
          * what is done in DowncallLinker::capture_state in HotSpot).
+         *
+         * Finally, in order for this implementation to correctly mimic the JDK's behavior, the
+         * following assumptions are made: 1. WindowsAPI is supported <=> the OS is windows 2. LibC
+         * is always supported
          */
         int i = 0;
-        if ((statesToCapture & CapturableState.GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
-            captureBuffer.write(i, WindowsAPIs.getLastError());
+        if (WindowsAPIs.isSupported()) {
+            if ((statesToCapture & CapturableState.GET_LAST_ERROR.mask()) != 0) {
+                captureBuffer.write(i, WindowsAPIs.getLastError());
+            }
+            ++i;
+            if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0) {
+                captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
+            }
             ++i;
         }
-        if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
-            captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
-            ++i;
-        }
-        if ((statesToCapture & CapturableState.ERRNO.mask()) != 0 && LibC.isSupported()) {
-            // Despite the appearances, getting errno is NOT a function call.
-            captureBuffer.write(i, LibC.errno());
+        if (LibC.isSupported()) {
+            if ((statesToCapture & CapturableState.ERRNO.mask()) != 0) {
+                captureBuffer.write(i, LibC.errno());
+            }
             ++i;
         }
     }
