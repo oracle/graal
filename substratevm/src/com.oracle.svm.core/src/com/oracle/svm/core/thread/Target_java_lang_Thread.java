@@ -681,19 +681,19 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static Object[] scopedValueCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Alias
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static native Object scopedValueBindings();
 
     /**
@@ -717,7 +717,7 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", callerMustBe = true)
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueBindings(Object bindings) {
         Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
         if (LoomSupport.isEnabled() && thread.vthread != null) {
