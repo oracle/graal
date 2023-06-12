@@ -22,9 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.hosted;
-
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+package com.oracle.svm.hosted.foreign;
 
 import java.lang.invoke.MethodType;
 import java.util.HashSet;
@@ -42,18 +40,20 @@ import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.foreign.AbiUtils;
+import com.oracle.svm.core.foreign.DowncallStubsHolder;
+import com.oracle.svm.core.foreign.NativeEntryPointInfo;
+import com.oracle.svm.core.foreign.Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.preview.panama.core.DowncallStubsHolder;
-import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
-import com.oracle.svm.preview.panama.core.Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -72,15 +72,16 @@ import jdk.vm.ci.meta.Signature;
  * <li>If (part of) the call state must be captured, perform the necessary calls to get said call
  * state and store the result in the appropriate place</li>
  * </ul>
- * In particular, this latest point means that not safepoint can be placed between the requested
+ * In particular, this latest point means that not safepoint must be placed between the requested
  * call and the subsequent calls/memory accesses done to capture the call state. This is done by
  * doing said capture in {@link com.oracle.svm.core.nodes.CFunctionEpilogueNode}, which follows the
  * method invocation without interruption. See the associated lowering
  * {@link CFunctionSnippets.CFunctionEpilogueLowering#lower(CFunctionEpilogueNode, LoweringTool)}.
  * <p>
- * Note that the stub *does not* perform argument preprocessing, e.g. if the first argument to the
- * native function is a memory segment which must be split across 3 int registers according to the
- * ABI, this function expects to receive this argument as three integers, not as a memory segment.
+ * Note that the stub *does not* perform most of the argument preprocessing, e.g. if the first
+ * argument to the native function is a memory segment which must be split across 3 int registers
+ * according to the ABI, this function expects to receive this argument as three integers, not as a
+ * memory segment.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 class DowncallStub extends NonBytecodeMethod {
@@ -98,7 +99,6 @@ class DowncallStub extends NonBytecodeMethod {
                         createSignature(metaAccess),
                         DowncallStubsHolder.getConstantPool(metaAccess));
         this.nep = nep;
-        checkSignature(nep.linkMethodType());
     }
 
     /**
@@ -111,11 +111,17 @@ class DowncallStub extends NonBytecodeMethod {
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
         List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
+        AbiUtils.Adaptation[] adaptations = AbiUtils.singleton().adaptArguments(nep);
 
         assert arguments.size() == 1;
-        arguments = convertArguments(kit, nep.linkMethodType(), arguments.get(0));
+        arguments = adaptArguments(kit, nep.linkMethodType(), arguments.get(0), adaptations);
+        MethodType callType = adaptMethodType(nep, adaptations);
+        assert callType.parameterCount() == arguments.size();
 
-        ValueNode callAddress = arguments.remove(nep.callAddressIndex());
+        int callAddressIndex = nep.callAddressIndex();
+        ValueNode callAddress = arguments.remove(callAddressIndex);
+        callType = callType.dropParameterTypes(callAddressIndex, callAddressIndex + 1);
+
         ValueNode captureAddress = null;
         if (nep.capturesCallState()) {
             assert nep.captureAddressIndex() > nep.callAddressIndex();
@@ -123,8 +129,11 @@ class DowncallStub extends NonBytecodeMethod {
              * We already removed 1 element from the list, so we must offset the index by one as
              * well
              */
-            captureAddress = arguments.remove(nep.captureAddressIndex() - 1);
+            int captureAddressIndex = nep.captureAddressIndex() - 1;
+            captureAddress = arguments.remove(captureAddressIndex);
+            callType = callType.dropParameterTypes(captureAddressIndex, captureAddressIndex + 1);
         }
+        assert callType.parameterCount() == arguments.size();
 
         state.clearLocals();
         SubstrateCallingConventionType cc = SubstrateCallingConventionKind.Native.toType(true)
@@ -137,7 +146,7 @@ class DowncallStub extends NonBytecodeMethod {
         ValueNode returnValue = kit.createCFunctionCallWithCapture(
                         callAddress,
                         arguments,
-                        SimpleSignature.fromMethodType(nep.stubMethodType(), kit.getMetaAccess()),
+                        SimpleSignature.fromMethodType(callType, kit.getMetaAccess()),
                         VMThreads.StatusSupport.getNewThreadStatus(transition),
                         deoptimizationTarget,
                         cc,
@@ -151,24 +160,41 @@ class DowncallStub extends NonBytecodeMethod {
         return kit.finalizeGraph();
     }
 
-    private static void checkIsPrimitiveType(Class<?> clazz, String id) {
-        assert clazz.isPrimitive() : "Only primitive types are supported; got " + clazz + "@" + id;
-    }
-
-    private static void checkSignature(MethodType signature) {
-        checkIsPrimitiveType(signature.returnType(), "ret");
-        for (int i = 0; i < signature.parameterCount(); ++i) {
-            checkIsPrimitiveType(signature.parameterType(i), "param" + i);
+    private static ValueNode adaptArgument(HostedGraphKit kit, ValueNode argument, Class<?> type, AbiUtils.Adaptation adaptation) {
+        argument = kit.createUnboxing(argument, JavaKind.fromJavaClass(type));
+        if (adaptation != null) {
+            argument = adaptation.apply(argument);
         }
+        return argument;
     }
 
-    private static List<ValueNode> convertArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray) {
+    private static MethodType adaptMethodType(NativeEntryPointInfo nep, AbiUtils.Adaptation[] adaptations) {
+        MethodType mt = nep.linkMethodType();
+
+        Class<?>[] parameters = new Class<?>[mt.parameterCount()];
+        for (int i = 0; i < mt.parameterCount(); ++i) {
+            Class<?> parameterType = mt.parameterType(i);
+            assert parameterType.isPrimitive() : parameterType;
+
+            AbiUtils.Adaptation adaptation = adaptations[i];
+            if (adaptation != null) {
+                parameterType = adaptation.apply(parameterType);
+            }
+
+            parameters[i] = parameterType;
+        }
+
+        return MethodType.methodType(mt.returnType(), parameters);
+    }
+
+    private static List<ValueNode> adaptArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray, AbiUtils.Adaptation[] adaptations) {
         var args = kit.liftArray(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);
-        assert args.size() == signature.parameterCount() + 1;
+        assert adaptations.length == signature.parameterCount() : adaptations.length + " " + signature.parameterCount();
+        assert args.size() == signature.parameterCount() + 1 : args.size() + " " + (signature.parameterCount() + 1);
         // We have to drop the NEP, which is the last argument
         args.remove(args.size() - 1);
         for (int i = 0; i < args.size(); ++i) {
-            args.set(i, kit.createUnboxing(args.get(i), JavaKind.fromJavaClass(signature.parameterType(i))));
+            args.set(i, adaptArgument(kit, args.get(i), signature.parameterType(i), adaptations[i]));
         }
         return args;
     }
@@ -186,19 +212,25 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     /**
-     * Transform JDK/Panama capturable states into substrate capturable states.
+     * Transform HotSpot capturable states into substrate capturable states.
      */
     private static Set<CapturableState> capturedStates(NativeEntryPointInfo nep) {
         Set<CapturableState> states = new HashSet<>();
 
         for (var state : jdk.internal.foreign.abi.CapturableState.values()) {
             if (nep.requiresCapture(state)) {
-                try {
-                    var mappedState = CapturableState.valueOf(state.name());
-                    states.add(mappedState);
-                } catch (IllegalArgumentException e) {
-                    throw unsupportedFeature("Capturing " + state + " after a foreign downcall is not supported.");
-                }
+                /* This error should have been caught earlier... */
+                VMError.guarantee(
+                                AbiUtils.singleton().captureIsSupported(state),
+                                "%s does not support capture of %s when performing a foreign call.",
+                                AbiUtils.singleton().name(),
+                                state.stateName());
+                var mappedState = switch (state) {
+                    case GET_LAST_ERROR -> CapturableState.GET_LAST_ERROR;
+                    case WSA_GET_LAST_ERROR -> CapturableState.WSA_GET_LAST_ERROR;
+                    case ERRNO -> CapturableState.ERRNO;
+                };
+                states.add(mappedState);
             }
         }
 

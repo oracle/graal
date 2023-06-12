@@ -47,9 +47,11 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 
 /**
  * See comments in {@link CFunctionPrologueNode} for details.
@@ -96,6 +98,12 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
 
     private final int oldThreadStatus;
     private final Set<CapturableState> statesToCapture;
+    /**
+     * Call state capture is currently implemented to always be performed by
+     * {@link CFunctionSnippets#captureCallState(int, CIntPointer)}, but we could instead add a call
+     * parameter as parameter/member to this class to have different capture logics, if the need for
+     * multiple ones ever arises.
+     */
     @OptionalInput ValueNode captureBuffer;
     /**
      * See comment in {@link CFunctionPrologueNode}.

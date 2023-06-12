@@ -654,25 +654,49 @@ suite = {
             ],
         },
 
-        "com.oracle.svm.preview.panama": {
+        "com.oracle.svm.core.foreign": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-            	"SVM"
+                "com.oracle.svm.core"
             ],
             "requiresConcealed": {
-            	"java.base": [
+                "java.base": [
                     "jdk.internal.loader",
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64",
                     "jdk.internal.foreign.abi.x64.sysv",
                     "jdk.internal.foreign.abi.x64.windows",
-            	],
+                ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.amd64",
+                ],
+            },
+            "javaCompliance" : "21+",
+            "javaPreviewNeeded": "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javac.lint.overrides": "-preview",
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "jacoco" : "include",
+        },
+
+        "com.oracle.svm.hosted.foreign": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+                "com.oracle.svm.core.foreign"
+            ],
+            "requiresConcealed": {
+                "java.base": [
+                    "jdk.internal.foreign.abi",
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code"
                 ],
             },
             "javaCompliance" : "21+",
@@ -1343,7 +1367,7 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.nativeimage.panama",
+                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.nativeimage.foreign",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1670,9 +1694,9 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.panama",
-                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.panama",
-                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.panama",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign",
+                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.foreign",
+                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign",
                 ],
             }
         },
@@ -1903,18 +1927,18 @@ suite = {
             },
         },
 
-        "SVM_PREVIEW_PANAMA": {
+        "SVM_FOREIGN": {
             "subDir": "src",
-            "description" : "SubstrateVM support for project Panama",
+            "description" : "SubstrateVM support for the Foreign API",
             "dependencies": [
-                "com.oracle.svm.preview.panama",
+                "com.oracle.svm.hosted.foreign",
             ],
             "distDependencies": [
                 "compiler:GRAAL",
                 "SVM"
             ],
             "moduleInfo" : {
-                "name" : "org.graalvm.nativeimage.panama",
+                "name" : "org.graalvm.nativeimage.foreign",
                 "requires" : [
                     "org.graalvm.nativeimage.builder"
                 ],

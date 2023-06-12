@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodType;
 
@@ -39,13 +39,13 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
  * precise - thus the ridiculously long name),
  * {@link com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle#linkToNative(Object...)}.
  *
- * Once panama is out of preview, this should just be the implementation of the substituted method.
+ * TODO Once panama is out of preview, this should just be the implementation of the substituted
+ * method.
  */
 @TargetClass(className = "com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle")
-@SuppressWarnings("unused")
 public final class Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle {
     /**
-     * Arguments follow the same structure as describe in
+     * Arguments follow the same structure as described in
      * {@link NativeEntryPointInfo#NativeEntryPointInfo(MethodType, AssignedLocation[], AssignedLocation[], int, boolean)},
      * with an additional {@link Target_jdk_internal_foreign_abi_NativeEntryPoint} (NEP) as the last
      * argument, i.e.
@@ -56,7 +56,7 @@ public final class Target_com_oracle_svm_core_methodhandles_Util_java_lang_invok
      * }
      * </pre>
      *
-     * where <actual arg i>s are the arguments which end up passed to the C native function
+     * where <actual arg i>s are the arguments which end up being passed to the C native function
      */
     @Substitute
     private static Object linkToNative(Object... args) throws Throwable {

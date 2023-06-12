@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.hosted;
+package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -49,6 +49,9 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.foreign.AbiUtils;
+import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
+import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -56,9 +59,6 @@ import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.preview.panama.core.AbiUtils;
-import com.oracle.svm.preview.panama.core.ForeignFunctionsRuntime;
-import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -107,7 +107,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> stubsToRegister.add(AbiUtils.getInstance().makeEntrypoint(desc, options)));
+            registerConditionalConfiguration(condition, () -> stubsToRegister.add(AbiUtils.singleton().makeEntrypoint(desc, options)));
         }
     }
 
@@ -129,6 +129,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         boolean supportForeignFunctions = !SubstrateOptions.useLLVMBackend();
 
         if (supportForeignFunctions) {
+            ImageSingletons.add(AbiUtils.class, AbiUtils.create());
             ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
             ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         } else {

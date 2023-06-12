@@ -52,12 +52,12 @@ public final class RuntimeForeignAccess {
     /**
      * Registers the provided descriptor and options pair for foreign downcalls at runtime. Needed
      * in order to get a method handle using <a href=
-     * "https://download.java.net/java/early_access/jdk20/docs/api/java.base/java/lang/foreign/Linker.html#downcallHandle(java.lang.foreign.FunctionDescriptor,java.lang.foreign.Linker.Option...)">downcallHandle</a>
+     * "https://download.java.net/java/early_access/jdk21/docs/api/java.base/java/lang/foreign/Linker.html#downcallHandle(java.lang.foreign.FunctionDescriptor,java.lang.foreign.Linker.Option...)">downcallHandle</a>
      * <p>
      * Since the foreign functions feature is currently a preview of the Java platform (as part of
      * <a href="https://openjdk.org/projects/panama/">Project Panama</a>), this API is itself a
      * preview subject to changes following changes in the feature itself. This also means that this
-     * feature must be manually enabled, using
+     * feature must be manually enabled, using (on a JDK greater or equal to 21)
      * 
      * <pre>
      * {@code

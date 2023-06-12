@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.hosted;
+package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +37,8 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.foreign.AbiUtils;
+import com.oracle.svm.core.util.UserError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
@@ -87,8 +90,16 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         }
         if (map.containsKey(DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
             var ccs = asList(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, ""), DOWNCALL_OPTION_CAPTURE_CALL_STATE).stream()
-                            .map(cc -> asString(cc, DOWNCALL_OPTION_CAPTURE_CALL_STATE + " element")).toList();
-            res.add(Linker.Option.captureCallState(ccs.toArray(new String[0])));
+                            .map(cc -> asString(cc, DOWNCALL_OPTION_CAPTURE_CALL_STATE + " element")).toList().toArray(new String[0]);
+            try {
+                res.add(Linker.Option.captureCallState(ccs));
+            } catch (IllegalArgumentException e) {
+                UserError.abort(
+                                e,
+                                "%s does not support capture of %s when performing a foreign call.",
+                                AbiUtils.singleton().name(),
+                                Arrays.toString(ccs));
+            }
         }
         if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
             if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {

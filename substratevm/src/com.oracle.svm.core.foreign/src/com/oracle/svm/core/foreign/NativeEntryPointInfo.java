@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodType;
 import java.util.Arrays;
@@ -74,9 +74,8 @@ public final class NativeEntryPointInfo {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
 
-        var parametersAssignment = AbiUtils.getInstance().toMemoryAssignment(argMoves, false);
-        var returnBuffering = needsReturnBuffer ? AbiUtils.getInstance().toMemoryAssignment(returnMoves, true) : null;
-        capturedStateMask = capturedStateMask & AbiUtils.getInstance().supportedCaptureMask();
+        var parametersAssignment = AbiUtils.singleton().toMemoryAssignment(argMoves, false);
+        var returnBuffering = needsReturnBuffer ? AbiUtils.singleton().toMemoryAssignment(returnMoves, true) : null;
         return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask, needsTransition);
     }
 
@@ -100,20 +99,6 @@ public final class NativeEntryPointInfo {
         } else {
             return this.methodType.dropParameterTypes(0, callAddressIndex() + 1);
         }
-    }
-
-    /**
-     * Native method type, with a potential (pointer to) return buffer as prefix argument. Put
-     * differently: method type without the call address and the (pointer to) capture buffer (if
-     * present).
-     */
-    public MethodType stubMethodType() {
-        int start = callAddressIndex();
-        int end = start + 1;
-        if (capturesCallState()) {
-            end += 1;
-        }
-        return this.methodType.dropParameterTypes(start, end);
     }
 
     /**

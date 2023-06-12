@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
@@ -37,7 +37,6 @@ import jdk.internal.loader.NativeLibrary;
 import jdk.internal.loader.RawNativeLibraries;
 
 @TargetClass(className = "java.lang.foreign.SymbolLookup")
-@SuppressWarnings("unused")
 public final class Target_java_lang_foreign_SymbolLookup {
     /**
      * Note that {@link java.lang.foreign.SymbolLookup#loaderLookup} will have a behavior which is

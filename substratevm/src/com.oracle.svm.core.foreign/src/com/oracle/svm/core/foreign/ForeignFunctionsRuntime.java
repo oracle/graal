@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -32,8 +32,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.util.VMError;
 
 public class ForeignFunctionsRuntime {
     @Fold
@@ -48,7 +48,7 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        AnalysisError.UserError.guarantee(!stubs.containsKey(nepi), "Seems like multiple stubs were generated for " + nepi);
+        VMError.guarantee(!stubs.containsKey(nepi), "Seems like multiple stubs were generated for " + nepi);
         stubs.put(nepi, new FunctionPointerHolder(ptr));
     }
 

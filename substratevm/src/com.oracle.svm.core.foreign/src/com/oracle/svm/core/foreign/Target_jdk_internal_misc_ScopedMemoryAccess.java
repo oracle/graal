@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.preview.panama.core;
+package com.oracle.svm.core.foreign;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
@@ -61,9 +61,11 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * sets <code>_found</code> to true.
      * <p>
      * See scopedMemoryAccess.cpp in HotSpot.
+     * <p>
+     * As one might notice, what is not supported is not creating shared arenas, but closing them.
      */
     @Substitute
     boolean closeScope0(MemorySessionImpl session) {
-        throw unsupportedFeature("Arena.ofSharedis not supported.");
+        throw unsupportedFeature("Arena.ofShared is not supported.");
     }
 }
