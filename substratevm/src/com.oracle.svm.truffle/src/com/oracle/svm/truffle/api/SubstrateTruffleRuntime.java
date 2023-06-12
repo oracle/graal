@@ -132,7 +132,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
-        throw CompilerDirectives.shouldNotReachHere("onCodeInstallation is not implement for SubstrateVMRuntime. ");
+        throw CompilerDirectives.shouldNotReachHere("onCodeInstallation is not implemented by " + getClass().getName());
     }
 
     @Override
