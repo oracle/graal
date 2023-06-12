@@ -1477,7 +1477,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                                 mx.logv('Pick symbol: ' + symbol_candiate)
                                 symbols.add(symbol_candiate[len(platform_prefix):])
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             if mx.is_windows():
@@ -1523,7 +1523,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                             mx.logv('Found matching implementation: ' + impl_name)
                             impls.add(impl_name)
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             with open(self.jvm_funcs_path) as f:
