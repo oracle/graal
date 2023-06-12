@@ -67,13 +67,9 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 - Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck, Jacob Kreindl
 [**TruffleTaint: Polyglot Dynamic Taint Analysis on GraalVM**](https://apexapps.oracle.com/pls/apex/f?p=94065:10:116444111260916:8758)
-In _Proceedings of the 19th International Conference on Managed Programming Languages & Runtimes (MPLR'22)_
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
 
 ### 2021 
-
-- Josef Haider, Benoit Daloze
-[**Just-in-Time Compiling Ruby Regexps on TruffleRuby**](https://www.youtube.com/watch?v=JuVklIz1gts)
-In _Proceedings of the VLDB Endowment RubyKaigi 2021_
 
 - David Justo, Shaoqing Yi, Lukas Stadler, Nadia Polikarpova, Arun Kumar
 [**Towards a polyglot framework for factorized ML**](https://dl.acm.org/doi/abs/10.14778/3476311.3476372)
@@ -320,11 +316,11 @@ In _Proceedings of the 18th Dynamic Languages Symposium (DLS) at SPLASH 2022_
 
 - David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Moessenboeck, Lukas Makor, Sebastian Kloibhofer
 [**Automatic Array Transformation to Columnar Storage at Run Time**](https://doi.org/10.1145/3546918.3546919)
-In _Proceedings of the 19th International Conference on Managed Programming Languages & Runtimes (MPLR'22)_
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
 
 - David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck, Raphael Mosaner, Wolfgang Kisling
 [**Machine-Learning-Based Self-Optimizing Compiler Heuristics**](https://doi.org/10.1145/3546918.3546921)
-In _Proceedings of the 19th International Conference on Managed Programming Languages & Runtimes (MPLR'22)_
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
 
 - Matthias Neugschwandtner, Gergo Barany, Felix Berlakovich
 [**Constant Blinding on GraalVM**](https://dl.acm.org/doi/abs/10.1145/3517208.3523751)
