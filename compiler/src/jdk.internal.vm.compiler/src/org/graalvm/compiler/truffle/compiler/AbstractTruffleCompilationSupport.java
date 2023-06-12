@@ -27,10 +27,6 @@ package org.graalvm.compiler.truffle.compiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 
-/**
- * Represents a truffle compilation bundling compilable and task into a single object. Also installs
- * the TTY filter to forward log messages to the truffle runtime.
- */
 public abstract class AbstractTruffleCompilationSupport implements TruffleCompilationSupport {
 
     @Override

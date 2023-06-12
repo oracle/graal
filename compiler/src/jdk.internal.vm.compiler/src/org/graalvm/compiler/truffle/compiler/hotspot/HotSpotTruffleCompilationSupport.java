@@ -35,10 +35,6 @@ import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
-/**
- * Represents a truffle compilation bundling compilable and task into a single object. Also installs
- * the TTY filter to forward log messages to the truffle runtime.
- */
 public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompilationSupport {
 
     private volatile String compilerConfigurationName;

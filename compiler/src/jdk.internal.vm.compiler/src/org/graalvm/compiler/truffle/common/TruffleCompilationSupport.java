@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.common;
 
 /**
- * Represeents entry points to Truffle runtime implementations for Truffle compilation.
+ * Represents entry points for Truffle runtime implementations to Truffle compilation.
  */
 public interface TruffleCompilationSupport {
 
@@ -34,10 +34,21 @@ public interface TruffleCompilationSupport {
      */
     void registerRuntime(TruffleCompilerRuntime runtime);
 
+    /**
+     * Creates a new compiler handle for compilation. A runtime must be
+     * {@link #registerRuntime(TruffleCompilerRuntime) registered} prior to calling this method.
+     * Only one compiler instance should be created per Truffle runtime instance.
+     */
     TruffleCompiler createCompiler(TruffleCompilerRuntime runtime);
 
+    /**
+     * Lists all compiler options available, including deprecated options.
+     */
     TruffleCompilerOptionDescriptor[] listCompilerOptions();
 
+    /**
+     * Returns <code>true</code> if a compilation key exists, else <code>false</code>.
+     */
     boolean compilerOptionExists(String key);
 
     /**
