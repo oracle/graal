@@ -1454,6 +1454,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_symbols_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     try:
                         mx.logvv('Processing line: ' + line.rstrip())
                         line_tokens = line.split()
@@ -1512,6 +1514,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_impls_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     mx.logvv('Processing line: ' + line.rstrip())
                     # JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version
                     tokens = line.split()
