@@ -1719,8 +1719,9 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # Currently JDK 20 and JDK 19 have the same flags
         graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
-        # Currently JDK 21 and JDK 20 have the same flags
+        # Currently JDK 22, JDK 21 and JDK 20 have the same flags
         graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
+        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo
