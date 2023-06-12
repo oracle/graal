@@ -26,7 +26,7 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.registersToValues;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.registersToValues;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
