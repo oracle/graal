@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: getting-started
-link_title: GraalVM Installation
+link_title: Getting Started
 permalink: /docs/getting-started/
 ---
 
