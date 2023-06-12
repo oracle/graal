@@ -397,13 +397,13 @@ final class TruffleToLibGraalEntryPoints {
         return scope.getObjectResult();
     }
 
-    @TruffleToLibGraal(Id.ExistsCompilerOption)
+    @TruffleToLibGraal(Id.CompilerOptionExists)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_existsCompilerOption")
     @SuppressWarnings({"unused", "try"})
     public static boolean existsCompilerOption(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString optionName) {
-        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ExistsCompilerOption, env);
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.CompilerOptionExists, env);
         try (JNIMethodScope s = scope) {
-            return TruffleCompilerOptions.existsOption(JNIUtil.createString(env, optionName));
+            return TruffleCompilerOptions.optionExists(JNIUtil.createString(env, optionName));
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return false;

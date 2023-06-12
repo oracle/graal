@@ -38,7 +38,7 @@ public interface TruffleCompilationSupport {
 
     TruffleCompilerOptionDescriptor[] listCompilerOptions();
 
-    boolean existsCompilerOption(String key);
+    boolean compilerOptionExists(String key);
 
     /**
      * Validates a compiler option and returns <code>null</code> if the option is null. An error

@@ -117,9 +117,9 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
 
     @SuppressWarnings("try")
     @Override
-    public boolean existsCompilerOption(String key) {
+    public boolean compilerOptionExists(String key) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            return TruffleToLibGraalCalls.existsCompilerOption(getIsolateThread(), key);
+            return TruffleToLibGraalCalls.compilerOptionExists(getIsolateThread(), key);
         }
     }
 

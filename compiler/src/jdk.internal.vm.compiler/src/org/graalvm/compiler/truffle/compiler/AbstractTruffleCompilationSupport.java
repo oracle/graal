@@ -39,8 +39,8 @@ public abstract class AbstractTruffleCompilationSupport implements TruffleCompil
     }
 
     @Override
-    public boolean existsCompilerOption(String key) {
-        return TruffleCompilerOptions.existsOption(key);
+    public boolean compilerOptionExists(String key) {
+        return TruffleCompilerOptions.optionExists(key);
     }
 
     @Override

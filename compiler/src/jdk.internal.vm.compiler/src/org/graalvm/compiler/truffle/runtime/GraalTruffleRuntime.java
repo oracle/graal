@@ -241,7 +241,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public final boolean existsCompilerOption(String key) {
-        return compilationSupport.existsCompilerOption(key);
+        return compilationSupport.compilerOptionExists(key);
     }
 
     public final String validateCompilerOption(String key, String value) {
