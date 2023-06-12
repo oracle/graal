@@ -2,8 +2,7 @@
 layout: docs
 toc_group: getting-started
 link_title: GraalVM Installation
-permalink: /docs/installation/
-redirect_from: /docs/getting-started/
+permalink: /docs/getting-started/
 ---
 
 # Getting Started with GraalVM

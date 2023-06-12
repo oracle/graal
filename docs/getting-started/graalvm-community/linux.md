@@ -19,7 +19,7 @@ Follow these steps to install GraalVM:
 
 3. Unzip the archive:
     ```shell
-    tar -xzf graalvm-ce-jdk-<version>_linux-<architecture>.tar.gz
+    tar -xzf graalvm-jdk-<version>_linux-<architecture>.tar.gz
     ```
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
