@@ -169,13 +169,43 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                             /* 32 */ BytecodeNode.BOUNDARY,
                             /* 33 */ BytecodeNode.RETURN, 1,
             };
+            short[] regOps2 = new short[]{
+                            // Extreme case: no registers spilling to the locals array
+                            // Optimized the loop to be only 3 bytecodes
+                            // registers mapping: 0:i, 1:sum, 2:tmp, 3:tmp
+
+                            // i = Short.MAX_VALUE + Short.MAX_VALUE;
+                            /* 00 */ BytecodeNode.CONST, 0, Short.MAX_VALUE,
+                            /* 03 */ BytecodeNode.CONST, 1, Short.MAX_VALUE,
+                            /* 06 */ BytecodeNode.ADD, 0, 0, 1,
+
+                            /* 10 */ BytecodeNode.CONST, 1, 0, // sum = 0
+
+                            // put the constants -1 and 42 to temp registers
+                            /* 13 */ BytecodeNode.CONST, 2, -1,
+                            /* 16 */ BytecodeNode.CONST, 3, 42,
+
+                            /* 19 */ BytecodeNode.JUMP, 29,
+
+                            // i--;,
+                            /* 21 */ BytecodeNode.ADD, 0, 0, 2,
+
+                            // sum = sum + 42;
+                            /* 25 */ BytecodeNode.ADD, 1, 1, 3,
+
+                            /* 29 */ BytecodeNode.JUMP_IF_NOT_ZERO, 0, 21, // while (i < 0)
+
+                            // return
+                            /* 32 */ BytecodeNode.BOUNDARY,
+                            /* 33 */ BytecodeNode.RETURN, 1,
+            };
 
             var b = FrameDescriptor.newBuilder();
             b.addSlots(locals, FrameSlotKind.Int);
             b.addSlots(stack, FrameSlotKind.Illegal);
             dynamicDescriptor = b.build();
             dynamicTestFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], dynamicDescriptor);
-            bytecodeNode = new BytecodeNode(ops, regOps, locals, stack);
+            bytecodeNode = new BytecodeNode(ops, regOps, regOps2, locals, stack);
 
             b = FrameDescriptor.newBuilder();
             b.addSlots(locals, FrameSlotKind.Static);
@@ -250,6 +280,12 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
         state.bytecodeNode.executeReadStaticRegisters(state.staticTestFrame);
     }
 
+    @Benchmark
+    @BytecodeInterpreterSwitch
+    public void readStaticRealRegisters(BenchmarkState state) throws Throwable {
+        state.bytecodeNode.executeReadStaticRealRegisters(state.staticTestFrame);
+    }
+
     static short unsafeRead(short[] array, int index) {
         return UNSAFE.getShort(array, ARRAY_SHORT_BASE_OFFSET + (index * ARRAY_SHORT_INDEX_SCALE));
     }
@@ -297,15 +333,18 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
         static final short JUMP_IF_ZERO = 10;
         static final short RETURN = 11;
         static final short BOUNDARY = 12;
+        static final short JUMP_IF_NOT_ZERO = 13;
 
         @CompilationFinal(dimensions = 1) final short[] ops;
         @CompilationFinal(dimensions = 1) final short[] regOps;
+        @CompilationFinal(dimensions = 1) final short[] regOps2;
         final int locals;
         final int stackSize;
 
-        BytecodeNode(short[] ops, short[] regOps, int locals, int stack) {
+        BytecodeNode(short[] ops, short[] regOps, short[] regOps2, int locals, int stack) {
             this.ops = ops;
             this.regOps = regOps;
+            this.regOps2 = regOps2;
             this.locals = locals;
             this.stackSize = stack;
         }
@@ -1015,6 +1054,135 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
                 }
             }
 
+        }
+
+        @BytecodeInterpreterSwitch
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        public int executeReadStaticRealRegisters(VirtualFrame f) {
+            // Assumption: there are 4 registers, indexed from 0 to 3
+
+            VirtualFrame frame = f;
+            short[] bc = this.regOps2;
+            int bci = 0;
+
+            int reg0 = 0;
+            int reg1 = 0;
+            int reg2 = 0;
+            int reg3 = 0;
+
+            int localIndex;
+            int value;
+            int value2;
+            int regIndex;
+            int regIndex1;
+            int regIndex2;
+            while (true) {
+                switch (bc[bci]) {
+                    case BOUNDARY:
+                        boundary(f.materialize());
+                        bci += 1;
+                        break;
+                    case LOCAL_WRITE:
+                    case LOCAL_WRITE0:
+                    case LOCAL_WRITE1:
+                        // Not used in the benchmark, but for completeness
+                        localIndex = bc[bci + 1];
+                        regIndex = bc[bci + 1];
+                        value = switch (regIndex) {
+                            case 0 -> reg0;
+                            case 1 -> reg1;
+                            case 2 -> reg2;
+                            case 3 -> reg3;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        };
+                        frame.setIntStatic(localIndex, value);
+                        bci += 3;
+                        break;
+                    case LOCAL_READ:
+                    case LOCAL_READ0:
+                    case LOCAL_READ1:
+                        // Not used in the benchmark, but for completeness
+                        localIndex = bc[bci + 1];
+                        regIndex = bc[bci + 1];
+                        switch (regIndex) {
+                            case 0 -> reg0 = frame.getIntStatic(localIndex);
+                            case 1 -> reg1 = frame.getIntStatic(localIndex);
+                            case 2 -> reg2 = frame.getIntStatic(localIndex);
+                            case 3 -> reg3 = frame.getIntStatic(localIndex);
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        }
+                        ;
+                        bci += 3;
+                        break;
+                    case ADD:
+                        regIndex = bc[bci + 1];
+                        regIndex1 = bc[bci + 2];
+                        regIndex2 = bc[bci + 3];
+                        value = switch (regIndex1) {
+                            case 0 -> reg0;
+                            case 1 -> reg1;
+                            case 2 -> reg2;
+                            case 3 -> reg3;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        };
+                        value2 = switch (regIndex2) {
+                            case 0 -> reg0;
+                            case 1 -> reg1;
+                            case 2 -> reg2;
+                            case 3 -> reg3;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        };
+                        switch (regIndex) {
+                            case 0 -> reg0 = value + value2;
+                            case 1 -> reg1 = value + value2;
+                            case 2 -> reg2 = value + value2;
+                            case 3 -> reg3 = value + value2;
+                        }
+                        bci += 4;
+                        break;
+                    case CONST:
+                        regIndex = bc[bci + 1];
+                        value = bc[bci + 2];
+                        switch (regIndex) {
+                            case 0 -> reg0 = value;
+                            case 1 -> reg1 = value;
+                            case 2 -> reg2 = value;
+                            case 3 -> reg3 = value;
+                        }
+                        bci += 3;
+                        break;
+                    case JUMP:
+                        bci = bc[bci + 1];
+                        break;
+                    case JUMP_IF_NOT_ZERO:
+                        regIndex = bc[bci + 1];
+                        value = switch (regIndex) {
+                            case 0 -> reg0;
+                            case 1 -> reg1;
+                            case 2 -> reg2;
+                            case 3 -> reg3;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        };
+                        if (value != 0) {
+                            bci = bc[bci + 2];
+                        } else {
+                            bci += 3;
+                        }
+                        break;
+                    case RETURN:
+                        regIndex = bc[bci + 1];
+                        return switch (regIndex) {
+                            case 0 -> reg0;
+                            case 1 -> reg1;
+                            case 2 -> reg2;
+                            case 3 -> reg3;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        };
+                    default:
+                        // propagates transferToInterpeter from within the call
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
         }
 
     }
