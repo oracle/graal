@@ -79,8 +79,9 @@ public class BundleLauncher {
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
 
-        List<String> programArgs = parseBundleLauncherOptions(args);
-        command.addAll(programArgs);
+        List<String> applicationArgs = new ArrayList<>();
+        List<String> launchArgs = parseBundleLauncherArgs(args, applicationArgs);
+        command.addAll(launchArgs);
 
         List<String> classpath = new ArrayList<>();
         if (Files.isDirectory(classPathDir)) {
@@ -123,6 +124,8 @@ public class BundleLauncher {
             throw new RuntimeException("Failed to read bundle-file " + argsFile, e);
         }
 
+        command.addAll(applicationArgs);
+
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Path environmentFile = stageDir.resolve("environment.json");
@@ -162,9 +165,9 @@ public class BundleLauncher {
         }
     }
 
-    private static List<String> parseBundleLauncherOptions(String[] args) {
+    private static List<String> parseBundleLauncherArgs(String[] args, List<String> applicationArgs) {
         Deque<String> argQueue = new ArrayDeque<>(Arrays.asList(args));
-        List<String> programArgs = new ArrayList<>();
+        List<String> launchArgs = new ArrayList<>();
 
         while (!argQueue.isEmpty()) {
             String arg = argQueue.removeFirst();
@@ -176,19 +179,19 @@ public class BundleLauncher {
                 try {
                     Files.createDirectories(externalAuxiliaryOutputDir);
                     System.out.println("Native image agent output written to " + externalAuxiliaryOutputDir);
-                    programArgs.add("-agentlib:native-image-agent=config-output-dir=" + externalAuxiliaryOutputDir);
+                    launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + externalAuxiliaryOutputDir);
                 } catch (IOException e) {
                     System.out.println("Failed to create native image agent output dir");
                 }
             } else if (arg.equals("--")) {
-                programArgs.addAll(argQueue);
+                applicationArgs.addAll(argQueue);
                 argQueue.clear();
             } else {
-                programArgs.add(arg);
+                applicationArgs.add(arg);
             }
         }
 
-        return programArgs;
+        return launchArgs;
     }
 
     private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
@@ -244,10 +247,9 @@ public class BundleLauncher {
     }
 
     private static void unpackBundle(Path bundleFilePath) {
-        Path rootDir;
         Path inputDir;
         try {
-            rootDir = createBundleRootDir();
+            Path rootDir = createBundleRootDir();
             inputDir = rootDir.resolve(INPUT_DIR_NAME);
 
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {

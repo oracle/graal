@@ -1035,7 +1035,7 @@ final class BundleSupport {
 
         Path runArgsFile = stageDir.resolve("run.json");
         try (JsonWriter writer = new JsonWriter(runArgsFile)) {
-            List<String> equalsRunArg = List.of("-jar", "-m", "--module");
+            List<String> equalsRunArg = List.of("-m", "--module");
             List<String> runArgs = new ArrayList<>();
             ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
             while (bundleArgsIterator.hasNext()) {
