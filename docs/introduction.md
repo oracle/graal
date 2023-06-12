@@ -22,11 +22,6 @@ With profile-guided optimization and the G1 (Garbage-First) garbage collector, y
 
 You can use the GraalVM JDK just like any other Java Development Kit in your IDE.
 
-* [Available Distributions](#available-distributions)
-* [Features Support](#features-support)
-* [Licensing and Support](#licensing-and-support)
-* [What to Read Next](#what-to-read-next)
-
 ## Available Distributions
 
 GraalVM is available as **Oracle GraalVM** and **GraalVM Community Edition**.
@@ -35,33 +30,9 @@ Oracle GraalVM is based on Oracle JDK while GraalVM Community Edition is based o
 GraalVM is available for Linux and macOS on x64 and AArch64 architectures, and for Windows on the x64 architecture. 
 See the [installation guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
-## Features Support
-
-GraalVM technologies are distributed as _supported_ or _experimental_.
-
-_Experimental_ features are being considered for future versions of GraalVM and are **not** meant to be used in production.
-The development team welcomes feedback on experimental features, but users should be aware that experimental features might never be included in a final version, or might change significantly before being considered stable.
-
-The following table lists stable and experimental features in GraalVM Community Edition by platform.
-
-| Feature         | Linux AMD64  | Linux AArch64 | macOS AMD64  | macOS AArch64 | Windows AMD64 |
-|-----------------|--------------|---------------|--------------|---------------|---------------|
-| Native Image    | stable       | stable        | stable       | stable        | stable        |
-| LLVM runtime    | stable       | stable        | stable       | stable        | not available |
-| LLVM toolchain  | stable       | stable        | stable       | stable        | not available |
-| JavaScript      | stable       | stable        | stable       | stable        | stable        |
-| Node.js         | stable       | stable        | stable       | stable        | stable        |
-| Java on Truffle | stable       | experimental  | experimental | experimental  | experimental  |
-| Python          | experimental | experimental  | experimental | experimental  | not available |
-| Ruby            | experimental | experimental  | experimental | experimental  | not available |
-| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
-
-
-For Oracle GraalVM, check the features support list [here](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#features-support).
-
 ## Licensing and Support
 
-Oracle GraalVM is licensed under [Graal Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
+Oracle GraalVM is licensed under [Graal Free Terms and Conditions including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 Oracle GraalVM is free to use on Oracle Cloud Infrastructure. For more information about Oracle GraalVM licensing, see the [Oracle Java SE Licensing FAQ](https://www.oracle.com/java/technologies/javase/jdk-faqs.html).
 
 GraalVM Community Edition is open-source software built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.

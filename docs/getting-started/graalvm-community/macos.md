@@ -17,7 +17,7 @@ Follow these steps to install GraalVM:
 
 2. Unzip the archive.
     ```shell
-    tar -xzf graalvm-ce-jdk-<version>_macos-<architecture>.tar.gz
+    tar -xzf graalvm-jdk-<version>_macos-<architecture>.tar.gz
     ```
     Alternatively, open the file in Finder.
     > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
@@ -29,8 +29,7 @@ Follow these steps to install GraalVM:
     ```shell
     sudo mv graalvm-ce-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
     ```
-
-  To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
+    To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
