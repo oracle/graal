@@ -22,14 +22,6 @@ With profile-guided optimization and the G1 (Garbage-First) garbage collector, y
 
 You can use the GraalVM JDK just like any other Java Development Kit in your IDE.
 
-## Available Distributions
-
-GraalVM is available as **Oracle GraalVM** and **GraalVM Community Edition**.
-Oracle GraalVM is based on Oracle JDK while GraalVM Community Edition is based on OpenJDK.
-
-GraalVM is available for Linux and macOS on x64 and AArch64 architectures, and for Windows on the x64 architecture. 
-See the [installation guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
-
 ## Licensing and Support
 
 Oracle GraalVM is licensed under [Graal Free Terms and Conditions including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).

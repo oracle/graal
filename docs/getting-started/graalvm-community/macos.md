@@ -27,7 +27,7 @@ Follow these steps to install GraalVM:
 
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
     ```shell
-    sudo mv graalvm-ce-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
+    sudo mv graalvm-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
     ```
     To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
