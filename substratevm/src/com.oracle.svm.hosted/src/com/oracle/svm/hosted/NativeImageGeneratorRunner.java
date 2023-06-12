@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -456,12 +457,44 @@ public class NativeImageGeneratorRunner {
                         mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ignored2) {
                         Method javaMainMethod;
-                        try {
                             /*
                              * If no C-level main method was found, look for a Java-level main
                              * method and use our wrapper to invoke it.
                              */
-                            javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
+                        if ("main".equals(mainEntryPointName) && JavaMainWrapper.instanceMainMethodSupported()) {
+                            // Instance main method only supported for "main" method name
+                            try {
+                                /*
+                                 * JDK-8306112: Implementation of JEP 445: Unnamed Classes and
+                                 * Instance Main Methods (Preview)
+                                 *
+                                 * MainMethodFinder will perform all the necessary checks
+                                 */
+                                Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, "jdk.internal.misc.MainMethodFinder");
+                                Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
+                                javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);
+                            } catch (InvocationTargetException ex) {
+                                assert ex.getTargetException() instanceof NoSuchMethodException;
+                                throw UserError.abort(ex.getCause(),
+                                                "Method '%s.%s' is declared as the main entry point but it can not be found. " +
+                                                                "Make sure that class '%s' is on the classpath and that non-private " +
+                                                                "method '%s()' or '%s(String[])' exists in that class.",
+                                                mainClass.getName(),
+                                                mainEntryPointName,
+                                                mainClass.getName(),
+                                                mainEntryPointName,
+                                                mainEntryPointName);
+                            }
+                        } else {
+                            try {
+                                javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
+                                final int mainMethodModifiers = javaMainMethod.getModifiers();
+                                if (!Modifier.isStatic(mainMethodModifiers)) {
+                                    throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
+                                }
+                                if (!Modifier.isPublic(mainMethodModifiers)) {
+                                    throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
+                                }
                         } catch (ReflectionUtilError ex) {
                             throw UserError.abort(ex.getCause(),
                                             "Method '%s.%s' is declared as the main entry point but it can not be found. " +
@@ -471,16 +504,11 @@ public class NativeImageGeneratorRunner {
                                             mainClass.getName(),
                                             mainEntryPointName);
                         }
+                        }
 
                         if (javaMainMethod.getReturnType() != void.class) {
-                            throw UserError.abort("Java main method '%s.%s(String[])' does not have the return type 'void'.", mainClass.getName(), mainEntryPointName);
-                        }
-                        final int mainMethodModifiers = javaMainMethod.getModifiers();
-                        if (!Modifier.isStatic(mainMethodModifiers)) {
-                            throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
-                        }
-                        if (!Modifier.isPublic(mainMethodModifiers)) {
-                            throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
+                            throw UserError.abort("Java main method '%s.%s(%s)' does not have the return type 'void'.", mainClass.getName(), mainEntryPointName,
+                                            javaMainMethod.getParameterCount() == 1 ? "String[]" : "");
                         }
                         javaMainSupport = createJavaMainSupport(javaMainMethod, classLoader);
                         mainEntryPoint = getMainEntryMethod(classLoader);
