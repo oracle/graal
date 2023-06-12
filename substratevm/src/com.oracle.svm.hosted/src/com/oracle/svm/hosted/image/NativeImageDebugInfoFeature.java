@@ -52,6 +52,7 @@ import com.oracle.svm.hosted.util.DiagnosticUtils;
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class NativeImageDebugInfoFeature implements InternalFeature {
+    private NativeImageBFDNameProvider bfdNameProvider;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -80,7 +81,8 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 assert imageLoaderParent == appLoader.getParent();
                 // ensure the mangle ignores prefix generation for Graal loaders
                 List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
-                ImageSingletons.add(UniqueShortNameProvider.class, new NativeImageBFDNameProvider(ignored));
+                bfdNameProvider =  new NativeImageBFDNameProvider(ignored);
+                ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
             }
         }
     }
@@ -90,14 +92,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         /*
          * Make the name provider aware of the native libs
          */
-        if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
-            if (ImageSingletons.contains(UniqueShortNameProvider.class)) {
-                UniqueShortNameProvider provider = ImageSingletons.lookup(UniqueShortNameProvider.class);
-                if (provider instanceof NativeImageBFDNameProvider) {
-                    var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-                    ((NativeImageBFDNameProvider) provider).setNativeLibs(accessImpl.getNativeLibraries());
-                }
-            }
+        if (bfdNameProvider != null) {
+            var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+            bfdNameProvider.setNativeLibs(accessImpl.getNativeLibraries());
         }
     }
 
