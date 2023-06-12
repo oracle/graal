@@ -49,8 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -137,6 +137,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
+import com.oracle.svm.hosted.substitute.SubstitutionType;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1031,5 +1032,14 @@ public class SVMHost extends HostVM {
             annotationTypes.add(fieldType.getJavaClass());
         }
         return annotationTypes.toArray(new Class<?>[0]);
+    }
+
+    @Override
+    public ResolvedJavaType getOriginalHostType(AnalysisType type) {
+        ResolvedJavaType unwrapped = super.getOriginalHostType(type);
+        if (unwrapped instanceof SubstitutionType substituted) {
+            return substituted.getOriginal();
+        }
+        return unwrapped;
     }
 }

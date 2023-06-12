@@ -391,4 +391,15 @@ public abstract class HostVM {
     public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
         return null;
     }
+
+    /**
+     * Returns the "naked" original type in the hosting VM that corresponds to the passed
+     * {@link AnalysisType} without any injected or changed members or attributes.
+     *
+     * In most cases, {@link AnalysisType#getWrapped} or {@link AnalysisType#getWrappedWithResolve}
+     * are better alternatives to this method.
+     */
+    public ResolvedJavaType getOriginalHostType(AnalysisType type) {
+        return type.getWrapped();
+    }
 }

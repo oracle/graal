@@ -42,10 +42,12 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
@@ -53,11 +55,16 @@ import org.graalvm.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNod
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
@@ -132,8 +139,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     @Override
     protected final Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
-        Node canonical = super.canonicalizeFixedNode(methodScope, loopScope, node);
-        canonical = doCanonicalizeFixedNode(cast(methodScope), loopScope, canonical);
+        Node canonical = node;
+        if (node instanceof UnsafeAccessNode unsafeAccess) {
+            canonical = canonicalizeUnsafeAccess(unsafeAccess);
+        }
+        canonical = super.canonicalizeFixedNode(methodScope, loopScope, canonical);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
          * alive, but we know it was just decoded and therefore not checked yet).
@@ -147,9 +157,48 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         return canonical;
     }
 
-    @SuppressWarnings("unused")
-    protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
-        return node;
+    /**
+     * Method handles do unsafe field accesses with offsets from the hosting VM which we need to
+     * transform to field accesses to intrinsify method handle calls in an effective way (or at all,
+     * even). {@link UnsafeAccessNode#canonical} would call {@link AnalysisField#getOffset}, which
+     * is deemed not safe in the general case and therefore not allowed. Here, however, we execute
+     * before analysis and can assume that any field offsets originate in the hosting VM because we
+     * do not assign our field offsets until after the analysis. Therefore, we can transform unsafe
+     * accesses by accessing the hosting VM's types and fields, using code adapted from
+     * {@link UnsafeAccessNode#canonical}. We cannot do the same for arrays because array offsets
+     * with our own object layout can be computed early on (using {@code Unsafe}, even).
+     */
+    private Node canonicalizeUnsafeAccess(UnsafeAccessNode node) {
+        if (!node.isCanonicalizable()) {
+            return node;
+        }
+        JavaConstant offset = node.offset().asJavaConstant();
+        JavaConstant object = node.object().asJavaConstant();
+        if (offset == null || object == null) {
+            return node;
+        }
+        AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
+        if (objectType == null || objectType.isArray()) {
+            return node;
+        }
+        AnalysisType objectAsType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(object);
+        if (objectAsType != null) {
+            // Note: using the Class object of a type as the base object for accesses
+            // of that type's static fields is a HotSpot implementation detail.
+            ResolvedJavaType objectAsHostType = bb.getHostVM().getOriginalHostType(objectAsType);
+            ResolvedJavaField hostField = UnsafeAccessNode.findStaticFieldWithOffset(objectAsHostType, offset.asLong(), node.accessKind());
+            return canonicalizeUnsafeAccessToField(node, hostField);
+        }
+        ResolvedJavaType objectHostType = bb.getHostVM().getOriginalHostType(objectType);
+        ResolvedJavaField hostField = objectHostType.findInstanceFieldWithOffset(offset.asLong(), node.accessKind());
+        return canonicalizeUnsafeAccessToField(node, hostField);
+    }
+
+    private ValueNode canonicalizeUnsafeAccessToField(UnsafeAccessNode node, ResolvedJavaField unwrappedField) {
+        AnalysisError.guarantee(unwrappedField != null, "Unsafe access to object header?");
+        AnalysisField field = bb.getUniverse().lookup(unwrappedField);
+        AnalysisError.guarantee(!field.isInternal() && field.getJavaKind() == node.accessKind());
+        return node.cloneAsFieldAccess(field);
     }
 
     @Override

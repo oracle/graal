@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.compiler.debug.GraalError;
+
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -483,8 +485,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
          * the hosting HotSpot VM, but it is safer to disallow the operation entirely. The offset
          * from the hosting VM can be accessed by explicitly calling `wrapped.getOffset()`.
          */
-        // throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
-        return wrapped.getOffset(); // FIXME
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

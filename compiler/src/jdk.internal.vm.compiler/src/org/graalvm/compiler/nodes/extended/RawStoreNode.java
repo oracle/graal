@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
@@ -43,7 +44,6 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -148,8 +148,10 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
     }
 
     @Override
-    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, MemoryOrderMode memOrder) {
-        return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), memOrder);
+    public ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
+        assert field.getJavaKind() == accessKind() && !field.isInternal();
+        assert graph().isBeforeStage(GraphState.StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
+        return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), getMemoryOrder());
     }
 
     @Override
