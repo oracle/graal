@@ -1176,7 +1176,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private void logPointerToInfo(HostedType hostedType, PointerToInfo pointerToInfo) {
-        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign pointer type %s %s", hostedType.toJavaName(), elementKind(pointerToInfo).toString());
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign pointer type %s %s", hostedType.toJavaName(), elementKind(pointerToInfo));
         assert hostedType.isInterface();
         int size = elementSize(pointerToInfo);
         boolean isUnsigned = pointerToInfo.isUnsigned();
@@ -1190,7 +1190,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private void logStructInfo(HostedType hostedType, StructInfo structInfo) {
-        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign struct type %s %s", hostedType.toJavaName(), elementKind(structInfo).toString());
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign struct type %s %s", hostedType.toJavaName(), elementKind(structInfo));
         assert hostedType.isInterface();
         boolean isIncomplete = structInfo.isIncomplete();
         if (isIncomplete) {
@@ -1206,7 +1206,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private void logRawStructureInfo(HostedType hostedType, RawStructureInfo rawStructureInfo) {
-        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign raw struct type %s %s", hostedType.toJavaName(), elementKind(rawStructureInfo).toString());
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign raw struct type %s %s", hostedType.toJavaName(), elementKind(rawStructureInfo));
         assert hostedType.isInterface();
         debugContext.log("element size = %d", elementSize(rawStructureInfo));
         String typedefName = rawStructureInfo.getTypedefName();
@@ -1337,7 +1337,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private void dumpElementInfo(ElementInfo elementInfo) {
         if (elementInfo != null) {
-            debugContext.log("Element Info {\n%s}", formatElementInfo(elementInfo));
+            debugContext.log("Element Info {%n%s}", formatElementInfo(elementInfo));
         } else {
             debugContext.log("Element Info {}");
         }
