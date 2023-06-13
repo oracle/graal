@@ -224,13 +224,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      */
     public void handleEmbeddedConstant(ReachabilityAnalysisMethod method, JavaConstant constant, Object reason) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-            if (scanningPolicy().trackConstant(this, constant)) {
-                BytecodePosition position = new BytecodePosition(null, method, 0);
-                getUniverse().registerEmbeddedRoot(constant, position);
+            BytecodePosition position = new BytecodePosition(null, method, 0);
+            getUniverse().registerEmbeddedRoot(constant, position);
 
-                AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
-                registerTypeAsInHeap(type, reason);
-            }
+            AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
+            registerTypeAsInHeap(type, reason);
         }
     }
 
