@@ -676,8 +676,8 @@ public class SubstrateOptions {
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
-    @Option(help = "REMOVE ME")//
-    public static final HostedOptionKey<String> ListRequiringModules = new HostedOptionKey<>(null);
+    @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(1);
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
