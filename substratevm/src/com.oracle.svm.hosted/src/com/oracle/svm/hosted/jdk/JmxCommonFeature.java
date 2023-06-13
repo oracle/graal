@@ -192,7 +192,7 @@ public class JmxCommonFeature implements InternalFeature {
      * <li>{@link javax.management.openmbean.CompositeData}</li>
      * <li>{@link javax.management.openmbean.ArrayType}</li> These
      * {@link javax.management.openmbean.OpenType}s are reflectively accessed at multiple points in
-     * the remote JMX infrastructure (See {@link sun.management.MappedMXBeanType},
+     * the remote JMX infrastructure (See {@code sun.management.MappedMXBeanType},
      * {@code com.sun.jmx.mbeanserver.MXBeanMapping#makeOpenClass(Type, javax.management.openmbean.OpenType)})
      */
     private static void configureSerialization(BeforeAnalysisAccess access) {
@@ -254,11 +254,11 @@ public class JmxCommonFeature implements InternalFeature {
      * This method configures reflection metadata shared between both JMX client and server.
      * <ul>
      * <li>All <i>*Skel</i> and <i>*Stub</i> classes must be registered for reflection along with
-     * their constructors. See {@link sun.rmi.server.Util} for an example.</li>
+     * their constructors. See {@code sun.rmi.server.Util} for an example.</li>
      *
      * <li>All methods of <i>*Info</i> classes with static <i>from</i> methods must be registered
      * for reflection. For example see:
-     * {@link com.sun.management.GcInfo#from(javax.management.openmbean.CompositeData)} and
+     * {@code com.sun.management.GcInfo#from(javax.management.openmbean.CompositeData)} and
      * {@link java.lang.management.MemoryUsage#from(javax.management.openmbean.CompositeData)}. This
      * is because these classes have their methods reflectively accessed from their static
      * <i>from</i> methods. Remote JMX infrastructure uses the following pattern: the <i>*Info</i>
@@ -266,11 +266,11 @@ public class JmxCommonFeature implements InternalFeature {
      * static <i>from</i>method. (ie. SomeInfo would correspond to <i>SomeInfoCompositeData extends
      * LazyCompositeData </i>).</li>
      *
-     * <li>{@link javax.management.remote.rmi.RMIServer} requires registration of all its methods as
-     * they are used from {@link javax.management.remote.rmi.RMIServerImpl_Stub}.</li>
-     * <li>{@link javax.management.remote.rmi.RMIConnection} requires registration of all its
+     * <li>{@code javax.management.remote.rmi.RMIServer} requires registration of all its methods as
+     * they are used from {@code javax.management.remote.rmi.RMIServerImpl_Stub}.</li>
+     * <li>{@code javax.management.remote.rmi.RMIConnection} requires registration of all its
      * methods as they are used from
-     * {@link javax.management.remote.rmi.RMIConnectionImpl_Stub}.</li>
+     * {@code javax.management.remote.rmi.RMIConnectionImpl_Stub}.</li>
      * </ul>
      */
     private static void configureReflection(BeforeAnalysisAccess access) {

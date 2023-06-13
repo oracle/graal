@@ -38,7 +38,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * to be registered manually by the user using the {@link RuntimeReflection runtime reflection
  * support} of Substrate VM. It is not feasible to automatically detect all necessary classes.
  * <p>
- * This feature registers parts of {@link sun.misc.Unsafe} as reflectively accessible. Gson uses it
+ * This feature registers parts of {@code sun.misc.Unsafe} as reflectively accessible. Gson uses it
  * internally to instantiate classes that do not have a no-argument constructor.
  */
 public final class GsonFeature implements Feature {

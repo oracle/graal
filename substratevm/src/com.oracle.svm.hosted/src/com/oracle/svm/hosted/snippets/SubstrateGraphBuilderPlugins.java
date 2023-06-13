@@ -265,7 +265,7 @@ public class SubstrateGraphBuilderPlugins {
                         if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
                             var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
                             b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
-                                    constructorDeclaringClass), reason));
+                                            constructorDeclaringClass), reason));
                             return true;
                         }
                         return false;

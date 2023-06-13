@@ -178,10 +178,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         knownServices = Collections.unmodifiableList(classList);
     }
 
-    private static Optional<Module> javaSmartcardioModule() {
-        return ModuleLayer.boot().findModule("java.smartcardio");
-    }
-
     private ImageClassLoader loader;
     /** Given a service type will return its constructor parameters, if any. */
     private Function<String, Class<?>> ctrParamClassAccessor;
