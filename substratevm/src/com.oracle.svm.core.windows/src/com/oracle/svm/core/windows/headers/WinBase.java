@@ -95,6 +95,9 @@ public class WinBase {
     @CConstant
     public static native int ERROR_TIMEOUT();
 
+    @CConstant
+    public static native int ERROR_SUCCESS();
+
     /**
      * QueryPerformance Counter - used for elapsed time
      */
