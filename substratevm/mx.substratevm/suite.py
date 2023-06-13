@@ -971,7 +971,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.util",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
