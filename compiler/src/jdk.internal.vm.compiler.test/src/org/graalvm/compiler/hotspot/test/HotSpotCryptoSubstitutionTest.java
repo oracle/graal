@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.test;
 
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 
 import java.io.DataInputStream;
@@ -283,6 +284,12 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     public void testDigestBaseSHA5() throws Exception {
         Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().useSHA512Intrinsics());
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-512", SHA5_IMPL_COMPRESS_MB);
+    }
+
+    @Test
+    public void testDigestBaseSHA3() throws Exception {
+        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().useSHA3Intrinsics());
+        testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA3-512", SHA3_IMPL_COMPRESS_MB);
     }
 
     @Before

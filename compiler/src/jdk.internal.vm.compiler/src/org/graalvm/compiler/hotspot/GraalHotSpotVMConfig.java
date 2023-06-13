@@ -129,6 +129,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
+    private final boolean useSHA3Intrinsics = getFlag("UseSHA3Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
@@ -155,6 +156,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean useSHA512Intrinsics() {
         return useSHA512Intrinsics && sha512ImplCompress != 0 && sha512ImplCompressMultiBlock != 0;
     }
+
+    public boolean useSHA3Intrinsics() {
+        return useSHA3Intrinsics && sha3ImplCompress != 0 && sha3ImplCompressMultiBlock != 0;
+    }
+
 
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
