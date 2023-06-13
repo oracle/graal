@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.lang.ref.WeakReference;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -52,12 +54,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstrateInstalledCode}).
  */
 public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
-    protected final SubstrateOptimizedCallTarget callTarget;
+    protected final WeakReference<SubstrateOptimizedCallTarget> callTargetRef;
     private String nameSuffix = "";
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
-        this.callTarget = callTarget;
+        this.callTargetRef = new WeakReference<>(callTarget);
     }
 
     @Override
@@ -81,7 +83,10 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public final void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
-        callTarget.onInvalidate(null, null, true);
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
+        if (callTarget != null) {
+            callTarget.onInvalidate(null, null, true);
+        }
     }
 
     @Override
@@ -93,7 +98,10 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         } else {
             assert !isValid() : "Cannot be valid but not alive";
         }
-        callTarget.onInvalidate(source, reason, wasActive);
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
+        if (callTarget != null) {
+            callTarget.onInvalidate(source, reason, wasActive);
+        }
     }
 
     /**
@@ -109,12 +117,17 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public TruffleCompilable getCompilable() {
-        return callTarget;
+        return callTargetRef.get();
     }
 
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
-        return callTarget.getSpeculationLog();
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
+        if (callTarget != null) {
+            return callTarget.getSpeculationLog();
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -124,7 +137,14 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public String getName() {
-        return callTarget.getName() + nameSuffix;
+        SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
+        String targetName;
+        if (callTarget != null) {
+            targetName = callTarget.getName();
+        } else {
+            targetName = "<<collected-target>>";
+        }
+        return targetName + nameSuffix;
     }
 
     @Override
@@ -137,7 +157,21 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         assert VMOperation.isInProgressAtSafepoint();
         this.address = address;
         this.entryPoint = entryPoint;
-        callTarget.onCodeInstalled(this);
+
+        SubstrateOptimizedCallTarget target = callTargetRef.get();
+        if (target != null) {
+            target.onCodeInstalled(this);
+        } else {
+            /*
+             * During compilation a strong reference to the call target is guaranteed. So at this
+             * point the call target must never be collected. If it happens though, no harm is done,
+             * as onCodeInstalled only needs to be called if the call target can still be called,
+             * which is impossible if the call target was collected.
+             *
+             * We fail here in order to validate this assumption.
+             */
+            throw VMError.shouldNotReachHere("Call target must not be collected during code installation.");
+        }
     }
 
     @Override
@@ -145,7 +179,11 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         assert VMOperation.isInProgressAtSafepoint();
         this.entryPoint = 0;
         this.address = 0;
-        callTarget.onCodeCleared(this);
+
+        SubstrateOptimizedCallTarget target = callTargetRef.get();
+        if (target != null) {
+            target.onCodeCleared(this);
+        }
     }
 
     @Override

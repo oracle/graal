@@ -63,7 +63,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected final MultiMethodKey callerMultiMethodKey;
 
     /**
-     * Flag to monitor whether all callees are original or not. This is used for to optimize
+     * Flag to monitor whether all callees are original or not. This is used to optimize
      * {@link #getOriginalCallees}.
      */
     protected volatile boolean allOriginalCallees = true;
