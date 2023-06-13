@@ -22,40 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
+package org.graalvm.compiler.hotspot.jdk21.test;
 
-import java.lang.reflect.Method;
+import java.io.IOException;
 
+import org.graalvm.compiler.api.test.ModuleSupport;
+import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.test.AddExports;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
-import jdk.incubator.concurrent.ScopedValue;
+@AddExports("java.base/jdk.internal.misc")
+public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
 
-@AddExports({"java.base/jdk.internal.misc", "jdk.incubator.concurrent/jdk.incubator.concurrent"})
-public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
-
-    private static boolean contains(Object[] array, Object value) {
-        for (Object element : array) {
-            if (element == value) {
-                return true;
-            }
-        }
-        return false;
+    @Before
+    public void checkJavaAgent() {
+        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
     }
 
-    @SuppressWarnings("preview")
-    public static void testScopedValue() {
-        ScopedValue<Integer> scopedValue = ScopedValue.newInstance();
-        ScopedValue.where(scopedValue, 42).run(() -> {
-            scopedValue.get();
-            try {
-                Method get = Thread.class.getDeclaredMethod("scopedValueCache");
-                get.setAccessible(true);
-                Object[] cache = (Object[]) get.invoke(null);
-                assertTrue(contains(cache, scopedValue));
-            } catch (ReflectiveOperationException e) {
-                fail(e.getMessage());
-            }
-        });
+    public void testScopedValue() {
+        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
+        ScopedValueCacheTest.testScopedValue();
+
+        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
+        ScopedValueCacheTest.testScopedValue();
+    }
+
+    public void testBody() {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
+        testScopedValue();
+    }
+
+    @Test
+    public void testInSubprocess() throws IOException, InterruptedException {
+        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview");
     }
 }

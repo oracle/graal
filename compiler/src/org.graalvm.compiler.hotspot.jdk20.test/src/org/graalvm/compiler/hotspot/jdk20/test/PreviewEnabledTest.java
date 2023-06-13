@@ -52,14 +52,6 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
         CarrierThreadTest.test();
     }
 
-    public void testScopedValue() {
-        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-
-        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-    }
-
     public void testJFR() {
         try {
             // resolve class, profile exceptions
@@ -78,13 +70,11 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
     public void testBody() {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
         testGetCarrierThread();
-        testScopedValue();
         testJFR();
     }
 
     @Test
     public void testInSubprocess() throws IOException, InterruptedException {
-        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview", "--add-modules=jdk.incubator.concurrent",
-                        "--add-opens=jdk.incubator.concurrent/jdk.incubator.concurrent=ALL-UNNAMED");
+        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview");
     }
 }
