@@ -3856,7 +3856,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
             b.statement("bci = handlers[idx + 2]");
             b.statement("sp = handlers[idx + 3] + $this.numLocals");
-            b.statement(setFrameObject("handlers[idx + 4]", "ex"));
+            b.statement(setFrameObject(localFrame(), "handlers[idx + 4]", "ex"));
 
             b.statement("continue loop");
 
