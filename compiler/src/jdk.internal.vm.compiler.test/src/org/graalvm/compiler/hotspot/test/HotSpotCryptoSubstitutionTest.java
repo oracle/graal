@@ -25,8 +25,8 @@
 package org.graalvm.compiler.hotspot.test;
 
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 
 import java.io.DataInputStream;
@@ -36,6 +36,7 @@ import java.security.AlgorithmParameters;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -52,6 +53,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
@@ -96,7 +98,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAESEncryptBlock() throws Exception {
-        Assume.assumeTrue(AESNode.isSupported(getArchitecture()));
+        Assume.assumeTrue("AESNode not supported", AESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 192, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 256, "AES/CBC/NoPadding");
@@ -107,7 +109,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAESDecryptBlock() throws Exception {
-        Assume.assumeTrue(AESNode.isSupported(getArchitecture()));
+        Assume.assumeTrue("AESNode not supported", AESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 192, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 256, "AES/CBC/NoPadding");
@@ -118,7 +120,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCipherBlockChainingEncrypt() throws Exception {
-        Assume.assumeTrue(CipherBlockChainingAESNode.isSupported(getArchitecture()));
+        Assume.assumeTrue("CipherBlockChainingAESNode not supported", CipherBlockChainingAESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "AES", 192, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "AES", 256, "AES/CBC/NoPadding");
@@ -131,7 +133,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCipherBlockChainingDecrypt() throws Exception {
-        Assume.assumeTrue(CipherBlockChainingAESNode.isSupported(getArchitecture()));
+        Assume.assumeTrue("CipherBlockChainingAESNode not supported", CipherBlockChainingAESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "AES", 192, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "AES", 256, "AES/CBC/NoPadding");
@@ -144,7 +146,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCounterModeEncrypt() throws Exception {
-        Assume.assumeTrue(CounterModeAESNode.isSupported(getArchitecture()));
+        Assume.assumeTrue("CounterModeAESNode not supported", CounterModeAESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 128, "AES/CTR/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 192, "AES/CTR/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 256, "AES/CTR/NoPadding");
@@ -157,7 +159,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testEletronicCodeBookEncrypt() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookEncrypt != 0L);
+        Assume.assumeTrue("ElectronicCodeBook encrypt not supported", runtime().getVMConfig().electronicCodeBookEncrypt != 0L);
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 128, "AES/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 192, "AES/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 256, "AES/ECB/NoPadding");
@@ -170,7 +172,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testEletronicCodeBookDecrypt() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookDecrypt != 0L);
+        Assume.assumeTrue("ElectronicCodeBook decrypt not supported", runtime().getVMConfig().electronicCodeBookDecrypt != 0L);
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 128, "AES/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 192, "AES/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 256, "AES/ECB/NoPadding");
@@ -183,7 +185,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testGaloisCounterModeCrypt() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().galoisCounterModeCrypt != 0L);
+        Assume.assumeTrue("GaloisCounterMode not supported", runtime().getVMConfig().galoisCounterModeCrypt != 0L);
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "AES", 128, "AES/GCM/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "AES", 128, "AES/GCM/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "DESede", 168, "DESede/GCM/NoPadding");
@@ -192,7 +194,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testPoly1305() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().poly1305ProcessBlocks != 0L);
+        Assume.assumeTrue("Poly1305 not supported", runtime().getVMConfig().poly1305ProcessBlocks != 0L);
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
@@ -205,7 +207,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testChaCha20() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().chacha20Block != 0L);
+        Assume.assumeTrue("ChaCha20 not support", runtime().getVMConfig().chacha20Block != 0L);
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/PKCS5Padding");
@@ -342,5 +344,86 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         } finally {
             intrinsic.invalidate();
         }
+    }
+
+    public byte[] testDigest(String name, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException {
+        MessageDigest digest;
+        digest = MessageDigest.getInstance(name, "SUN");
+        digest.update(data);
+        return digest.digest();
+    }
+
+    byte[] getData() {
+        byte[] data = new byte[1024 * 16];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) i;
+        }
+        return data;
+    }
+
+    @Test
+    public void testSha1() {
+        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().useSHA1Intrinsics());
+        testWithInstalledIntrinsic("sun.security.provider.SHA", "implCompress0", "testDigest", "SHA-1", getData());
+    }
+
+    void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, String algorithm, byte[] data) {
+        // Ensure the algorithm exists
+        try {
+            MessageDigest.getInstance(algorithm, "SUN");
+        } catch (NoSuchAlgorithmException e) {
+            assertFalse(true, "unknown algorithm " + algorithm);
+        } catch (NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+
+        Class<?> c;
+        try {
+            c = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            // It's ok to not find the class - a different security provider
+            // may have been installed
+            Assume.assumeTrue(className + " is not available", false);
+            return;
+        }
+        InstalledCode code = null;
+        try {
+            ResolvedJavaMethod method = getResolvedJavaMethod(testSnippetName);
+            Object receiver = method.isStatic() ? null : this;
+            Result expect = executeExpected(method, receiver, algorithm, data);
+            code = compileAndInstallSubstitution(c, methodName);
+            assertTrue("Failed to install " + methodName, code != null);
+            testAgainstExpected(method, expect, receiver, algorithm, data);
+        } catch (AssumptionViolatedException e) {
+            // Suppress so that subsequent calls to this method within the
+            // same Junit @Test annotated method can proceed.
+        }
+        if (code != null) {
+            code.invalidate();
+        }
+    }
+
+    @Test
+    public void testSha256() {
+        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().useSHA256Intrinsics());
+        testWithInstalledIntrinsic("sun.security.provider.SHA2", "implCompress0", "testDigest", "SHA-256", getData());
+    }
+
+    @Test
+    public void testSha512() {
+        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().useSHA512Intrinsics());
+        testWithInstalledIntrinsic("sun.security.provider.SHA5", "implCompress0", "testDigest", "SHA-512", getData());
+    }
+
+    @Test
+    public void testSha3() {
+        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().sha3ImplCompress != 0L);
+        testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA3-512", getData());
+    }
+
+    @Test
+    public void testMD5() {
+        Assume.assumeTrue("MD5 not supported", runtime().getVMConfig().md5ImplCompress != 0L);
+        testWithInstalledIntrinsic("sun.security.provider.MD5", "implCompress0", "testDigest", "MD5", getData());
     }
 }

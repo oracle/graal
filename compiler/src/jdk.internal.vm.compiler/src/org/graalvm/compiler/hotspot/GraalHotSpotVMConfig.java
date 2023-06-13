@@ -161,7 +161,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return useSHA3Intrinsics && sha3ImplCompress != 0 && sha3ImplCompressMultiBlock != 0;
     }
 
-
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
     }
