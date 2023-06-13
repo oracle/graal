@@ -45,15 +45,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class TestMessageDigestSubstitutions extends HotSpotGraalCompilerTest {
 
-    public byte[] testDigest(String name, byte[] data) throws NoSuchAlgorithmException {
+    public byte[] testDigest(String name, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException {
         MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance(name, "SUN");
-            digest.update(data);
-            return digest.digest();
-        } catch (NoSuchProviderException e) {
-            return null;
-        }
+        digest = MessageDigest.getInstance(name, "SUN");
+        digest.update(data);
+        return digest.digest();
     }
 
     byte[] getData() {
@@ -75,23 +71,33 @@ public class TestMessageDigestSubstitutions extends HotSpotGraalCompilerTest {
         testWithInstalledIntrinsic("sun.security.provider.SHA", "implCompress0", "testDigest", "SHA-1", getData());
     }
 
-    void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, Object... args) {
+    void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, String algorithm, byte[] data) {
+        // Ensure the algorithm exists
+        try {
+            MessageDigest.getInstance(algorithm, "SUN");
+        } catch (NoSuchAlgorithmException e) {
+            assertFalse(true, "unknown algorithm " + algorithm);
+        } catch (NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+
         Class<?> c;
         try {
             c = Class.forName(className);
         } catch (ClassNotFoundException e) {
             // It's ok to not find the class - a different security provider
             // may have been installed
+            assumeTrue(className + " is not available", false);
             return;
         }
         InstalledCode code = null;
         try {
             ResolvedJavaMethod method = getResolvedJavaMethod(testSnippetName);
             Object receiver = method.isStatic() ? null : this;
-            Result expect = executeExpected(method, receiver, args);
+            Result expect = executeExpected(method, receiver, algorithm, data);
             code = compileAndInstallSubstitution(c, methodName);
             assertTrue("Failed to install " + methodName, code != null);
-            testAgainstExpected(method, expect, receiver, args);
+            testAgainstExpected(method, expect, receiver, algorithm, data);
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
             // same Junit @Test annotated method can proceed.
@@ -116,7 +122,7 @@ public class TestMessageDigestSubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha3() {
         assumeTrue("SHA3 not supported", getConfig().sha3ImplCompress != 0L);
-        testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA-3", getData());
+        testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA3-512", getData());
     }
 
     @Test
