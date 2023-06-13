@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
@@ -73,8 +74,8 @@ public class VMThreadLocalInfo {
     public final boolean allowFloatingReads;
     public final String name;
 
-    @UnknownPrimitiveField public int offset;
-    @UnknownPrimitiveField public int sizeInBytes;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int offset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int sizeInBytes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMThreadLocalInfo(FastThreadLocal threadLocal) {

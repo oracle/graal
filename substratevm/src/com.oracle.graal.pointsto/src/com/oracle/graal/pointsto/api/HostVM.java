@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -380,14 +381,14 @@ public abstract class HostVM {
         return false;
     }
 
-    public boolean isUnknownValueField(@SuppressWarnings("unused") AnalysisField field) {
-        return false;
-    }
-
     /**
      * Returns the function Strengthen Graphs should use to improve types based on analysis results.
      */
     public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
         return (t) -> t;
+    }
+
+    public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
+        return null;
     }
 }

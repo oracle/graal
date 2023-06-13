@@ -40,6 +40,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
@@ -85,22 +87,22 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final int hashCode;
     private SubstrateType declaringClass;
     private int encodedGraphStartOffset;
-    @UnknownPrimitiveField private int vTableIndex;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
 
     /**
      * A pointer to the compiled code of the corresponding method in the native image. Used as
      * destination address if this method is called in a direct call.
      */
-    @UnknownPrimitiveField private int codeOffsetInImage;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int codeOffsetInImage;
 
     /**
      * A pointer to the deoptimization target code in the native image. Used as destination address
      * for deoptimization. This is only != 0, if there _is_ a deoptimization target method in the
      * image for this method.
      */
-    @UnknownPrimitiveField private int deoptOffsetInImage;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int deoptOffsetInImage;
 
-    @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true)//
+    @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true, availability = ReadyForCompilation.class)//
     protected Object implementations;
 
     private SubstrateSignature signature;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.pointsto.meta;
 
-package com.oracle.svm.hosted.substitute;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import java.lang.reflect.Field;
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface FieldValueComputer {
 
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+    Class<?>[] EMPTY_TYPES = new Class<?>[0];
 
-public interface ComputedValue {
-    RecomputeFieldValue.Kind getRecomputeValueKind();
+    default boolean isAvailable() {
+        return true;
+    }
 
-    Field getTargetField();
+    default Class<?>[] types() {
+        return EMPTY_TYPES;
+    }
+
+    default boolean canBeNull() {
+        return false;
+    }
 }

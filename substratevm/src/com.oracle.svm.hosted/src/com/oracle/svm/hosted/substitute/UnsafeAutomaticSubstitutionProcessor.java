@@ -319,8 +319,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      */
     void processComputedValueFields(DuringAnalysisAccessImpl access) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
-            if (field instanceof ComputedValue) {
-                ComputedValue cvField = (ComputedValue) field;
+            if (field instanceof ComputedValueField) {
+                ComputedValueField cvField = (ComputedValueField) field;
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
