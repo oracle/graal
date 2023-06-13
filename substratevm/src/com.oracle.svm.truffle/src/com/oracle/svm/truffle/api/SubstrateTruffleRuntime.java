@@ -396,11 +396,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
-        return TruffleSupport.singleton().getCallTargetForCallNode(callNodeConstant);
-    }
-
-    @Override
     public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
         return TruffleSupport.singleton().asCompilableTruffleAST(constant);
     }

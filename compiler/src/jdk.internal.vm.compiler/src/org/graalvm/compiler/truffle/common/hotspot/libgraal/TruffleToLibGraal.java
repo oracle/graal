@@ -48,7 +48,6 @@ public @interface TruffleToLibGraal {
     enum Id {
         DoCompile,
         GetCompilerConfigurationFactoryName,
-        GetCompilerConfigurationName,
         GetDataPatchesCount,
         GetExceptionHandlersCount,
         GetInfopoints,

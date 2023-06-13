@@ -105,6 +105,8 @@ public final class LibGraalUtil {
                                 hsExpect = Object[].class;
                             } else if (libgraal == JNI.JObject.class) {
                                 hsExpect = Object.class;
+                            } else if (libgraal == JNI.JClass.class) {
+                                hsExpect = Class.class;
                             } else {
                                 throw fail("Method %s must only use supported parameters but uses unsupported class %s", libGraalMethod, libgraal.getName());
                             }
