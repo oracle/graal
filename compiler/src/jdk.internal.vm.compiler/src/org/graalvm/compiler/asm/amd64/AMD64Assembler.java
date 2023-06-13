@@ -29,6 +29,7 @@ import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
+import static jdk.vm.ci.amd64.AMD64.r14;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
@@ -37,6 +38,7 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
@@ -492,6 +494,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
             assert verify(asm, size, dst, null);
             assert !isSSEInstruction();
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
             emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
             asm.emitOperandHelper(dst, src, 0);
         }
@@ -529,6 +534,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
             assert verify(asm, size, src, null);
             assert !isSSEInstruction();
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.sfence();
+            }
             emitOpcode(asm, size, getRXB(src, dst), src.encoding, 0);
             asm.emitOperandHelper(src, dst, 0);
         }
@@ -639,6 +647,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             int nextInsnPos = asm.position();
             if (annotateImm && asm.codePatchingAnnotationConsumer != null) {
                 asm.codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+            }
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.sfence();
             }
         }
     }
@@ -841,6 +853,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
+
+
+            // TODO: Potentially also here we need to check/mask the address.
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -887,6 +905,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.simdPrefix(src, nds, dst, size, prefix1, prefix2, size == QWORD);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 0);
+
+            // TODO: Potentially also here we need to check/mask the address.
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1361,6 +1384,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0, getDisp8Scale(useEvex, size));
+            // TODO: Potentially also here we need to check/mask the address.
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1412,6 +1439,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(useEvex, size));
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public void emitReverse(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
@@ -1483,6 +1514,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(useEvex, size));
             asm.emitByte(imm8);
+
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
@@ -1499,6 +1534,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
             asm.emitByte(imm8);
+
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1553,6 +1592,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1608,6 +1651,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
             asm.emitByte(imm8);
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
@@ -1624,6 +1671,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
             asm.emitByte(imm8);
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1655,6 +1706,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
             asm.emitByte(mask.encoding() << 4);
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1790,9 +1845,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
+
             boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+
+            if (src2.getBase().equals(r14) && src2.getIndex().isValid()) {
+                asm.lfence();
+                asm.clflush(src2);
+                AMD64Address newAddress = emitMasking(asm, src2, dst);
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, newAddress, 0, getDisp8Scale(useEvex, size));
+            } else {
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+            }
+
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask) {
@@ -1807,6 +1873,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, Z0, B0);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
@@ -1821,6 +1891,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public boolean isPacked() {
@@ -1880,6 +1954,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         @Override
@@ -1889,6 +1967,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1919,6 +2001,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src1, 0);
+
+            if(src1.getBase().equals(r14) && src1.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1969,6 +2055,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, mask, address, size, pp, mmmmm, w, wEvex, true, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, address, 0);
+
+            if(address.getBase().equals(r14) && address.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -1997,6 +2087,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, Register.None, address, mask, size, pp, mmmmm, w, wEvex, true, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, address, 0);
+
+            if(address.getBase().equals(r14) && address.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -2035,6 +2129,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
+
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         @Override
@@ -2043,6 +2141,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -2131,6 +2232,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, mask, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
+
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+            }
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register mask, Register src) {
@@ -2138,6 +2243,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(src, mask, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(useEvex, size));
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+            }
         }
     }
 
@@ -2191,18 +2300,46 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
             GraalError.guarantee(inRC(MASK, src), "source must be a mask register");
-            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
-            asm.emitByte(OP_MEM_FROM_K);
-            asm.emitOperandHelper(src, dst, 0);
+
+            if(dst.getBase().equals(r14) && dst.getIndex().isValid()){
+                asm.lfence();
+                // free the index register to be used as an additional temp register
+                asm.push(dst.getIndex());
+                AMD64Address newAddr = emitVectorMasking(asm, dst, dst.getIndex());
+                asm.vexPrefix(src, Register.None, newAddr, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(OP_MEM_FROM_K);
+                asm.emitOperandHelper(src, newAddr, 0);
+
+                // revert changes to index register
+                asm.pop(dst.getIndex());
+            }else{
+                asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(OP_MEM_FROM_K);
+                asm.emitOperandHelper(src, dst, 0);
+            }
         }
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
             GraalError.guarantee(inRC(MASK, dst), "destination must be a mask register");
-            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
-            asm.emitByte(OP_K_FROM_K_MEM);
-            asm.emitOperandHelper(dst, src, 0);
+
+            if(src.getBase().equals(r14) && src.getIndex().isValid()){
+                asm.lfence();
+                // free the index register to be used as an additional temp register
+                asm.push(src.getIndex());
+                AMD64Address newAddr = emitVectorMasking(asm, src, src.getIndex());
+                asm.vexPrefix(dst, Register.None, newAddr, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(OP_K_FROM_K_MEM);
+                asm.emitOperandHelper(dst, newAddr, 0);
+
+                // revert changes to index register
+                asm.pop(src.getIndex());
+            }else{
+                asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(OP_K_FROM_K_MEM);
+                asm.emitOperandHelper(dst, src, 0);
+            }
         }
 
         private static int op(Register dst, Register src) {
@@ -2306,10 +2443,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, int imm8) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
             assert (imm8 & 0xFF) == imm8;
-            boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
-            asm.emitByte(imm8);
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+                // free the index register to be used as an additional temp register
+                asm.push(src2.getIndex());
+                AMD64Address newAddr = emitVectorMasking(asm, src2, src2.getIndex());
+                boolean useEvex = asm.vexPrefix(dst, src1, newAddr, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
+                asm.emitByte(imm8);
+
+                // revert changes to index register
+                asm.pop(src2.getIndex());
+            }else{
+                boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
+                asm.emitByte(imm8);
+            }
+
         }
     }
 
@@ -2426,10 +2579,25 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Predicate p) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
-            boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
-            asm.emitByte(p.imm8);
+
+            if(src2.getBase().equals(r14) && src2.getIndex().isValid()){
+                asm.lfence();
+                // free the index register to be used as an additional temp register
+                asm.push(src2.getIndex());
+                AMD64Address newAddr = emitVectorMasking(asm, src2, src2.getIndex());
+                boolean useEvex = asm.vexPrefix(dst, src1, newAddr, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, newAddr, 1, getDisp8Scale(useEvex, size));
+                asm.emitByte(p.imm8);
+
+                // revert changes to index register
+                asm.pop(src2.getIndex());
+            }else{
+                boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+                asm.emitByte(op);
+                asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
+                asm.emitByte(p.imm8);
+            }
         }
     }
 
@@ -2632,6 +2800,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x0F);
         emitByte(0xB1);
         emitOperandHelper(reg, adr, 0);
+
+        // TODO maybe also this case should be masked
     }
 
     /**
@@ -2644,6 +2814,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x0F);
         emitByte(0xB1);
         emitOperandHelper(reg, adr, 0);
+
+        // TODO maybe also this case should be masked
     }
 
     public final void cvtsi2sdl(Register dst, Register src) {
@@ -2656,6 +2828,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void decl(AMD64Address dst) {
         DEC.emit(this, DWORD, dst);
+        // TODO maybe also this case should be masked
     }
 
     public final void divsd(Register dst, Register src) {
@@ -5348,5 +5521,85 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x67);
         emitModRM(dst, src);
         emitByte(imm8);
+    }
+
+    /**
+     * Emits the operations to mask access to memory that uses the R14 register.
+     * @param asm is the assembler instance used to emit the code.
+     * @param address is the address using the r14 register to be masked.
+     * @param register is the register that can be used since it is the one allocated for the result.
+     * @return The masked address to be used.
+     */
+    private static AMD64Address emitMasking(AMD64Assembler asm, AMD64Address address, Register register){
+
+        Register tmpReg;
+        long mask = ( 1L << 35 ) - 1;
+
+        // Define a register to be used for the mask.
+        if(register.equals(AMD64.r10)){
+            tmpReg = AMD64.r9;
+        }else{
+            tmpReg = AMD64.r10;
+        }
+
+        // Free the register.
+        asm.push(tmpReg);
+
+        // Load the offset from the base.
+        asm.leaq(register, address);
+        asm.subq(register, address.getBase());
+
+        // Load the mask and mask.
+        asm.movq(tmpReg, mask);
+        asm.andq(register, tmpReg);
+
+        // Restore the used register.
+        asm.pop(tmpReg);
+
+        // Compute the new address which relays on the masked value stored in the result.
+
+        return new AMD64Address(address.getBase(), register, Stride.S1);
+    }
+
+
+    /**
+     * Emits the operations to mask access to memory that uses the R14 register.
+     * @param asm is the assembler instance used to emit the code.
+     * @param address is the address using the r14 register to be masked.
+     * @param register is the freed register that can be used to do the masking.
+     * @return The masked address to be used.
+     */
+    private static AMD64Address emitVectorMasking(AMD64Assembler asm, AMD64Address address, Register register){
+
+        // In this case, the register is probably the index register after beein stored on the stack (temporarly).
+        // We cannot do it hee since we need to use this register in the final address that we don't consume in this
+        // method.
+
+        Register tmpReg;
+        long mask = ( 1L << 35 ) - 1;
+
+        // Define a register to be used for the mask.
+        if(address.getIndex().equals(AMD64.r10)){
+            tmpReg = AMD64.r9;
+        }else{
+            tmpReg = AMD64.r10;
+        }
+
+        // Free the register.
+        asm.push(tmpReg);
+
+        // Load the offset from the base.
+        asm.leaq(register, address);
+        asm.subq(register, address.getBase());
+
+        // Load the mask and mask.
+        asm.movq(tmpReg, mask);
+        asm.andq(register, tmpReg);
+
+        // Restore the used register.
+        asm.pop(tmpReg);
+
+        // Compute the new address which relays on the masked value stored in the result.
+        return new AMD64Address(address.getBase(), register, Stride.S1);
     }
 }
