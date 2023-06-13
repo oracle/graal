@@ -281,7 +281,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
 
     @Override
     public boolean isValidGlobalIndex(int index) {
-        return index >= 0 && index < instance.globalCount();
+        return index >= 0 && index < instance.symbolTable().numGlobals();
     }
 
     @TruffleBoundary

@@ -143,6 +143,7 @@ public class DebugTranslator {
         if (pcs == null) {
             return null;
         }
+        assert pcs.length == 2;
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
         final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);

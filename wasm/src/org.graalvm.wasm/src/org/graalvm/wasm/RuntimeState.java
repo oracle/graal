@@ -213,10 +213,6 @@ public class RuntimeState {
         return result;
     }
 
-    public int globalCount() {
-        return globalAddresses.length;
-    }
-
     void setGlobalAddress(int globalIndex, int address) {
         ensureGlobalsCapacity(globalIndex);
         checkNotLinked();

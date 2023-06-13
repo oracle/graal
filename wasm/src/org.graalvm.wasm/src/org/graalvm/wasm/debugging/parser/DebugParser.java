@@ -358,7 +358,7 @@ public class DebugParser {
                     final int stringOffset = read4();
                     final int strOffset = DebugUtil.getStrOffsetOrUndefined(data, debugInfoOffset);
                     final int strLength = DebugUtil.getStrLengthOrUndefined(data, debugInfoOffset);
-                    if (strOffset == DebugUtil.UNDEFINED || Integer.compareUnsigned(stringOffset, strLength) >= 0) {
+                    if (strOffset == DebugUtil.UNDEFINED || strLength == DebugUtil.UNDEFINED || Integer.compareUnsigned(stringOffset, strLength) >= 0) {
                         return null;
                     }
                     value = readString(strOffset + stringOffset, strLength);

@@ -97,7 +97,7 @@ public final class DebugTypeRef extends DebugType {
     @Override
     public int asInt(DebugContext context, DebugLocation location) {
         if (delegate == null) {
-            return 0;
+            return DebugConstants.DEFAULT_I32;
         }
         return delegate.asInt(context, location);
     }
@@ -113,7 +113,7 @@ public final class DebugTypeRef extends DebugType {
     @Override
     public long asLong(DebugContext context, DebugLocation location) {
         if (delegate == null) {
-            return 0L;
+            return DebugConstants.DEFAULT_I64;
         }
         return delegate.asLong(context, location);
     }

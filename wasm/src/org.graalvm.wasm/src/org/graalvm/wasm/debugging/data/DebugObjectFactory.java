@@ -523,7 +523,7 @@ public abstract class DebugObjectFactory {
         }
         final DebugTypeRef objectRef = new DebugTypeRef();
         types.put(data.offset(), objectRef);
-        DebugType type = switch (data.tag()) {
+        final DebugType type = switch (data.tag()) {
             case Tags.ARRAY_TYPE -> parseArrayType(context, scope, data);
             case Tags.CLASS_TYPE, Tags.STRUCTURE_TYPE, Tags.UNION_TYPE -> parseStructType(context, scope, data);
             case Tags.ENUMERATION_TYPE -> parseEnumType(context, scope, data);
