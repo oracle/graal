@@ -1579,6 +1579,18 @@ suite = {
   "distributions" : {
     "SULONG_CORE" : {
       "description" : "Sulong core functionality (parser, execution engine, launcher)",
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm",
+        "requires" : [
+          "static org.graalvm.llvm.toolchain.config",
+        ],
+        "exports" : [
+          "* to org.graalvm.llvm.nativemode,org.graalvm.llvm_enterprise,org.graalvm.llvm.managed,org.graalvm.llvm.nativemode_enterprise,org.graalvm.llvm.mixed",
+        ],
+        "uses" : [
+          "com.oracle.truffle.llvm.runtime.config.ConfigurationFactory",
+        ],
+      },
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm",
@@ -1600,6 +1612,13 @@ suite = {
     },
 
     "SULONG_API" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.api",
+        "exports" : [
+          "com.oracle.truffle.llvm.api",
+          "com.oracle.truffle.llvm.spi",
+        ],
+      },
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm.api",
@@ -1609,18 +1628,28 @@ suite = {
       "license" : "BSD-new",
     },
     "SULONG_TOOLCHAIN_CONFIG" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.toolchain.config",
+        "exports" : [
+          "com.oracle.truffle.llvm.toolchain.config",
+        ],
+      },
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.toolchain.config"],
       "license" : "BSD-new",
     },
     "SULONG_NATIVE" : {
       "description" : "Sulong Native functionality (native memory support, native library support)",
-      "subDir" : "projects",
-      # Fixed automatic module name until SULONG_NATIVE becomes regular named module
-      # native is a Java keyword and is not allowed as a part of a module fqn.
-      "manifestEntries" : {
-        "Automatic-Module-Name": "sulong.nativemode"
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.nativemode",
+        "requires" : [
+          "static org.graalvm.llvm.toolchain.config",
+        ],
+        "exports" : [
+          "* to org.graalvm.llvm.nativemode_enterprise,org.graalvm.llvm.mixed",
+        ],
       },
+      "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode"],
       "distDependencies" : [
         "SULONG_CORE",
@@ -1631,6 +1660,9 @@ suite = {
     },
     "SULONG_NFI" : {
       "description" : "Sulong NFI backend",
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.nfi",
+      },
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
       "distDependencies" : ["truffle:TRUFFLE_NFI"],
