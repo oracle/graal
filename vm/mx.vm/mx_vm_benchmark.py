@@ -970,6 +970,8 @@ class NativeImageVM(GraalVm):
     def _print_binary_size(self, config, out):
         # The image size for benchmarks is tracked by printing on stdout and matching the rule.
         image_path = os.path.join(config.output_dir, config.final_image_name)
+        if config.bundle_create_path is not None:
+            image_path = os.path.join(config.output_dir, config.bundle_create_path[:-len("reports")], config.bundle_create_path.split(".")[0])
         image_size = os.stat(image_path).st_size
         out(f'The executed image size for benchmark {config.benchmark_suite_name}:{config.benchmark_name} is {image_size} B')
 
