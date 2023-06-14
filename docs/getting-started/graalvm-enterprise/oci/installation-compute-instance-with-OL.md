@@ -89,7 +89,7 @@ Now you have a ready-to-go OCI Compute instance with Oracle GraalVM installed.
 ## Install Additional Features
 
 Oracle GraalVM consists of several features and components&emdash;JDK, Native Image, Javascript runtime, and Node.js runtime&emdash;each of which can be installed separately or as an add-on. 
-See the [Distribution Components List](https://docs.oracle.com/en/graalvm/enterprise/23/docs/overview/architecture/#distribution-components-list) for more information.
+See the [Distribution Components List](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#certified-platforms) for more information.
 
 To add additional features to Oracle GraalVM, use the `yum install <package_name>` command. 
 
@@ -169,7 +169,7 @@ The `yum` package manager for Oracle Linux can be used to update an existing Gra
    java -version
    ```
 
-The **graalvm22-ee-17-jdk** package is installed alongside **graalvm22-ee-17-jdk** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in [Install Oracle GraalVM](#install-graalvm-enterprise), step 3.
+The **graalvm22-ee-17-jdk** package is installed alongside **graalvm22-ee-17-jdk** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in step 3.
 
 ### Note on `yum upgrade`
 

@@ -16,10 +16,11 @@ permalink: /reference-manual/embed-languages/
 * [Host Access](#host-access)
 * [Build Native Executables from Polyglot Applications](#build-native-executables-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
-* [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
+* [Embed Guest Languages in Java](#embed-guest-languages-in-java)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
-* [Dependency setup](#dependency-setup)
+* [Setting the Heap Size](#setting-the-heap-size)
+* [Dependency Setup](#dependency-setup)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -526,7 +527,7 @@ with "js" language, which is the language identifier for JavaScript.
 an explicit engine assigned to it. All contexts associated with an engine share the code.
 - `context.eval(source).asInt()` evaluates the source and returns the result as `Value` instance.
 
-## Embed Guest languages in Guest Languages
+## Embed Guest Languages in Java
 
 The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
 This can be useful if a script needs to run isolated from the parent context.
