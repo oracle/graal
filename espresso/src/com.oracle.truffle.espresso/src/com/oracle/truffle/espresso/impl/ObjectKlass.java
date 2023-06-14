@@ -1396,7 +1396,7 @@ public final class ObjectKlass extends Klass {
                 ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
                 for (Field declaredField : getDeclaredFields()) {
                     if (!declaredField.isStatic()) {
-                        declaredField.removeByRedefintion();
+                        declaredField.removeByRedefinition();
 
                         int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
                         LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
@@ -1447,7 +1447,7 @@ public final class ObjectKlass extends Klass {
         }
 
         for (Field removedField : change.getRemovedFields()) {
-            removedField.removeByRedefintion();
+            removedField.removeByRedefinition();
         }
 
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
