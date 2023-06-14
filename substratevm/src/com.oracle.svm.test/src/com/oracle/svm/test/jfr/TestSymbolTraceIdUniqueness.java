@@ -85,7 +85,6 @@ public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
         boolean found = false;
         for (RecordedEvent event : events) {
             if (event.getEventType().getName().equals(JfrEvent.JavaMonitorWait.getName())) {
-                System.out.println("------ Wait: " + event.<RecordedClass> getValue("monitorClass").getName() + "| Thread: " + event.getThread().getJavaName());
                 if (event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                     found = true;
                     break;
