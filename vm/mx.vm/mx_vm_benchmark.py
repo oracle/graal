@@ -1571,7 +1571,7 @@ def register_graalvm_vms():
                 final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
                 # ' '  force the empty O<> configs as well
-            for main_config in ['llvm', 'native-architecture', 'g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 for optimization_level in optimization_levels:
                     if len(main_config) > 0:
                         final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
