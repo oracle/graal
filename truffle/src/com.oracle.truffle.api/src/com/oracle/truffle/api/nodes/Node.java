@@ -223,6 +223,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final <T extends Node> T insert(final T newChild) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (newChild != null) {
+            // TODO GR-46607 consider removing after GR-46607 is fixed.
+            if (newChild.isAdoptable()) {
+                ((Node) newChild).parent = this;
+            }
             adoptHelper(newChild);
             assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
         }
