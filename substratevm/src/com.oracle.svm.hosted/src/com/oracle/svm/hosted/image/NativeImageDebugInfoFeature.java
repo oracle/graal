@@ -81,7 +81,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 assert imageLoaderParent == appLoader.getParent();
                 // ensure the mangle ignores prefix generation for Graal loaders
                 List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
-                bfdNameProvider =  new NativeImageBFDNameProvider(ignored);
+                bfdNameProvider = new NativeImageBFDNameProvider(ignored);
                 ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
             }
         }
