@@ -34,14 +34,10 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
 import org.graalvm.nativebridge.BinaryInput;
-
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs
@@ -146,10 +142,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     static long handle(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope()) {
             return scope.getIsolate().getSingleton(Handle.class, () -> {
-                MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
-                HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(runtime.getClass());
-                long classLoaderDelegate = LibGraal.translate(type);
-                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, classLoaderDelegate));
+                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass()));
             }).getHandle();
         }
     }
