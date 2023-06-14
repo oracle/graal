@@ -55,6 +55,7 @@ from mx_unittest import _run_tests, _VMLauncher
 
 import sys
 
+
 if sys.version_info[0] < 3:
     from StringIO import StringIO
 else:
@@ -730,13 +731,54 @@ def _cinterfacetutorial(native_image, args=None):
     mx.run([join(build_dir, 'cinterfacetutorial')])
 
 
-def _helloworld(native_image, javac_command, path, build_only, args):
+_helloworld_variants = {
+    'traditional': '''
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'noArgs': '''
+// requires JDK 21 and --enable-preview
+public class HelloWorld {
+    static void main() {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'instance': '''
+// requires JDK 21 and --enable-preview
+class HelloWorld {
+    void main(String[] args) {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'instanceNoArgs': '''
+// requires JDK 21 and --enable-preview
+class HelloWorld {
+    void main() {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'unnamedClass': '''
+// requires JDK 21 and javac --enable-preview --source 21 and native-image --enable-preview
+void main() {
+    System.out.println(System.getenv("%s"));
+}
+''',
+}
+
+
+def _helloworld(native_image, javac_command, path, build_only, args, variant=list(_helloworld_variants.keys())[0]):
     mkpath(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
     with open(hello_file, 'w') as fp:
-        fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println(System.getenv("' + envkey + '")); } }')
+        fp.write(_helloworld_variants[variant] % envkey)
         fp.flush()
     mx.run(javac_command + [hello_file])
 
@@ -1238,20 +1280,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 def run_helloworld_command(args, config, command_name):
     parser = ArgumentParser(prog='mx ' + command_name)
-    all_args = ['--output-path', '--javac-command', '--build-only']
+    all_args = ['--output-path', '--javac-command', '--build-only', '--variant', '--list']
     masked_args = [_mask(arg, all_args) for arg in args]
+    default_variant = list(_helloworld_variants.keys())[0]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
     parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[3], choices=_helloworld_variants.keys(), default=default_variant, help=f'The Hello World source code variant to use (default: {default_variant})')
+    parser.add_argument(all_args[4], action='store_true', help='Print the Hello World source and exit')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
     image_args = unmask(parsed.image_args)
+    if parsed.list:
+        mx.log(_helloworld_variants[parsed.variant])
+        return
     native_image_context_run(
         lambda native_image, a:
-        _helloworld(native_image, javac_command, output_path, build_only, a), unmask(image_args),
+        _helloworld(native_image, javac_command, output_path, build_only, a, variant=parsed.variant), unmask(image_args),
         config=config,
     )
 
