@@ -49,30 +49,30 @@ public abstract class AMD64CompressAddressLowering extends AMD64AddressLowering 
 
     @Override
     protected final boolean improve(StructuredGraph graph, DebugContext debug, AMD64AddressNode addr, boolean isBaseNegated, boolean isIndexNegated) {
-        if (super.improve(graph, debug, addr, isBaseNegated, isIndexNegated)) {
-            return true;
-        }
+//        if (super.improve(graph, debug, addr, isBaseNegated, isIndexNegated)) {
+//            return true;
+//        }
 
-        if (!isBaseNegated && !isIndexNegated && addr.getScale() == Stride.S1) {
-            ValueNode base = addr.getBase();
-            ValueNode index = addr.getIndex();
-
-            if (tryToImproveUncompression(addr, index, base) || tryToImproveUncompression(addr, base, index)) {
-                counterFoldedUncompressDuringAddressLowering.increment(debug);
-                return true;
-            }
-        }
+//        if (!isBaseNegated && !isIndexNegated && addr.getScale() == Stride.S1) {
+//            ValueNode base = addr.getBase();
+//            ValueNode index = addr.getIndex();
+//
+//            if (tryToImproveUncompression(addr, index, base) || tryToImproveUncompression(addr, base, index)) {
+//                counterFoldedUncompressDuringAddressLowering.increment(debug);
+//                return true;
+//            }
+//        }
 
         return false;
     }
 
     private boolean tryToImproveUncompression(AMD64AddressNode addr, ValueNode value, ValueNode other) {
-        if (value instanceof CompressionNode) {
-            CompressionNode compression = (CompressionNode) value;
-            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress && improveUncompression(addr, compression, other)) {
-                return true;
-            }
-        }
+//        if (value instanceof CompressionNode) {
+//            CompressionNode compression = (CompressionNode) value;
+//            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress && improveUncompression(addr, compression, other)) {
+//                return true;
+//            }
+//        }
 
         return false;
     }

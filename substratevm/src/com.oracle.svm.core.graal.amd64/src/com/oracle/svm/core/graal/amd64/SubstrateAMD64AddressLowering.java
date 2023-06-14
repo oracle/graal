@@ -50,28 +50,30 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         assert SubstrateOptions.SpawnIsolates.getValue();
 
-        CompressEncoding encoding = compression.getEncoding();
-        if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
-            return false;
-        }
+        return false;
 
-        long encodingBase = encoding.getBase();
-        ValueNode base = other;
-        if (heapBaseRegister != null && encodingBase == heapBase) {
-            if (other != null) {
-                return false;
-            }
-            base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
-        } else if (encodingBase != 0) {
-            if (!updateDisplacement(addr, encodingBase, false)) {
-                return false;
-            }
-        }
-
-        Stride stride = Stride.fromLog2(encoding.getShift());
-        addr.setBase(base);
-        addr.setScale(stride);
-        addr.setIndex(compression.getValue());
-        return true;
+//        CompressEncoding encoding = compression.getEncoding();
+//        if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
+//            return false;
+//        }
+//
+//        long encodingBase = encoding.getBase();
+//        ValueNode base = other;
+//        if (heapBaseRegister != null && encodingBase == heapBase) {
+//            if (other != null) {
+//                return false;
+//            }
+//            base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
+//        } else if (encodingBase != 0) {
+//            if (!updateDisplacement(addr, encodingBase, false)) {
+//                return false;
+//            }
+//        }
+//
+//        Stride stride = Stride.fromLog2(encoding.getShift());
+//        addr.setBase(base);
+//        addr.setScale(stride);
+//        addr.setIndex(compression.getValue());
+//        return true;
     }
 }
