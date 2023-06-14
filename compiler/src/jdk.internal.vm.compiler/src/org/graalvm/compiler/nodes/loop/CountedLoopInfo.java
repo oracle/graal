@@ -191,6 +191,10 @@ public class CountedLoopInfo {
         return end;
     }
 
+    private void assertNoOverflow() {
+        GraalError.guarantee(loopCanNeverOverflow(), "Counter must never overflow when reasoning about trip counts of a loop");
+    }
+
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
      * this loop assuming it is not exited by an other exit than the {@linkplain #getLimitTest()
@@ -201,6 +205,7 @@ public class CountedLoopInfo {
      * THIS VALUE SHOULD BE TREATED AS UNSIGNED.
      */
     public ValueNode maxTripCountNode() {
+        assertNoOverflow();
         return maxTripCountNode(false);
     }
 
@@ -209,11 +214,17 @@ public class CountedLoopInfo {
     }
 
     public ValueNode maxTripCountNode(boolean assumeLoopEntered) {
+        assertNoOverflow();
         return maxTripCountNode(assumeLoopEntered, getCounterIntegerHelper());
     }
 
     protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
+        assertNoOverflow();
         return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIV().initNode(), getTripCountLimit());
+    }
+
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
+        return maxTripCountNode(assumeLoopEntered, integerHelper, initNode, tripCountLimit, false);
     }
 
     /**
@@ -232,7 +243,10 @@ public class CountedLoopInfo {
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
      *
      */
-    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit, boolean ignoreOverflow) {
+        if (!ignoreOverflow) {
+            assertNoOverflow();
+        }
         StructuredGraph graph = getBodyIV().valueNode().graph();
         Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
 
@@ -256,8 +270,9 @@ public class CountedLoopInfo {
             range = add(range, one);
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
+        final boolean divisorNonZero = true;
         ValueNode denominator = add(graph, range, sub(absStride, one), NodeView.DEFAULT);
-        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride, null);
+        ValueNode div = unsignedDivBefore(graph, divisorNonZero, loop.entryPoint(), denominator, absStride, null);
 
         if (assumeLoopEntered) {
             return graph.addOrUniqueWithInputs(div);
@@ -404,6 +419,7 @@ public class CountedLoopInfo {
     }
 
     public ValueNode exactTripCountNode() {
+        assertNoOverflow();
         assert isExactTripCount();
         return maxTripCountNode();
     }
@@ -414,6 +430,7 @@ public class CountedLoopInfo {
     }
 
     public UnsignedLong constantExactTripCount() {
+        assertNoOverflow();
         assert isExactTripCount();
         return constantMaxTripCount();
     }
@@ -464,6 +481,10 @@ public class CountedLoopInfo {
 
     public GuardingNode getOverFlowGuard() {
         return loop.loopBegin().getOverflowGuard();
+    }
+
+    public boolean loopCanNeverOverflow() {
+        return counterNeverOverflows() || getOverFlowGuard() != null;
     }
 
     public boolean counterNeverOverflows() {
