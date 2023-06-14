@@ -677,7 +677,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
     @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
-    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(1);
+    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(ModuleSupport.modulePathBuild ? 1 : 0);
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
