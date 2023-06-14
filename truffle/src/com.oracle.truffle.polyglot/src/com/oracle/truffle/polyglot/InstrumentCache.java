@@ -147,16 +147,6 @@ final class InstrumentCache {
         }
     }
 
-    static <T> Iterable<T> loadTruffleService(Class<T> type) {
-        List<T> result = new ArrayList<>();
-        for (InstrumentCache cache : load()) {
-            for (T service : cache.providerAdapter.loadTruffleService(type)) {
-                result.add(service);
-            }
-        }
-        return result;
-    }
-
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
@@ -286,8 +276,6 @@ final class InstrumentCache {
         String getInstrumentClassName();
 
         Collection<String> getServicesClassNames();
-
-        <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
     /**
@@ -324,11 +312,6 @@ final class InstrumentCache {
         public Collection<String> getServicesClassNames() {
             return provider.getServicesClassNames();
         }
-
-        @Override
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            return List.of();
-        }
     }
 
     /**
@@ -362,11 +345,6 @@ final class InstrumentCache {
         @Override
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
-        }
-
-        @Override
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            return EngineAccessor.INSTRUMENT_PROVIDER.loadTruffleService(provider, type);
         }
     }
 }

@@ -1044,15 +1044,13 @@ suite = {
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+          "com.oracle.truffle.api.provider.DefaultExportProvider",
+          "com.oracle.truffle.api.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
-          "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider",
+          "com.oracle.truffle.api.library.DefaultExportProvider", # Deprecated
+          "com.oracle.truffle.api.library.EagerExportProvider", # Deprecated
           "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
-        ],
-        "ignoredServiceTypes" : [
-          "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider",
         ],
       },
       "moduleInfo:closed" : {
@@ -1106,10 +1104,6 @@ suite = {
           "com.oracle.truffle.nfi.backend.spi.types",
           "com.oracle.truffle.nfi.backend.spi.util",
         ],
-        "ignoredServiceTypes" : [
-          "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider",
-        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1128,10 +1122,6 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
-        "ignoredServiceTypes" : [
-          "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider",
-        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
