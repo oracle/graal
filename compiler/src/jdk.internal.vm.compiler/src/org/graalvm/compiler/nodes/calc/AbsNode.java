@@ -31,14 +31,17 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmetic
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * Absolute value.
@@ -68,6 +71,10 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
         if (forValue instanceof AbsNode) {
             return forValue;
         }
+        if (forValue.stamp(view) instanceof IntegerStamp && ((IntegerStamp) forValue.stamp(view)).isPositive()) {
+            // The value always positive so nothing to do
+            return forValue;
+        }
         // abs(-x) => abs(x)
         if (forValue instanceof NegateNode) {
             NegateNode negate = (NegateNode) forValue;
@@ -92,6 +99,21 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
             return synonym;
         }
         return this;
+    }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        if (NarrowableArithmeticNode.super.isNarrowable(resultBits)) {
+            /*
+             * Abs(Narrow(x)) is only equivalent to Narrow(Abs(x)) if the cut off bits are all equal
+             * to the sign bit of the input. That's equivalent to the condition that the input is in
+             * the signed range of the narrow type.
+             */
+            IntegerStamp inputStamp = (IntegerStamp) getValue().stamp(NodeView.DEFAULT);
+            return CodeUtil.minValue(resultBits) <= inputStamp.lowerBound() && inputStamp.upperBound() <= CodeUtil.maxValue(resultBits);
+        } else {
+            return false;
+        }
     }
 
     @Override
