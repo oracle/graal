@@ -39,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
