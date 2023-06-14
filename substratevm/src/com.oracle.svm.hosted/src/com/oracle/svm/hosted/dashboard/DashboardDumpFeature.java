@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.dashboard;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.System.Logger.Level;
 import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -98,8 +99,7 @@ public class DashboardDumpFeature implements InternalFeature {
                     try {
                         GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).build(Channels.newChannel(os)).close();
                     } catch (IOException ex) {
-                        // TODO Replace with LogUtils.warning once GR-40798 is merged
-                        System.out.println("Warning: " + ex + " during Dashboard BGV dump header");
+                        System.getLogger(DashboardDumpFeature.class.getName()).log(Level.ERROR, "IOException during Dashboard BGV dump header", ex);
                     }
                 });
             }
