@@ -63,7 +63,13 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
-### 2021
+### 2022 
+
+- Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck, Jacob Kreindl
+[**TruffleTaint: Polyglot Dynamic Taint Analysis on GraalVM**](https://apexapps.oracle.com/pls/apex/f?p=94065:10:116444111260916:8758)
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
+
+### 2021 
 
 - David Justo, Shaoqing Yi, Lukas Stadler, Nadia Polikarpova, Arun Kumar
 [**Towards a polyglot framework for factorized ML**](https://dl.acm.org/doi/abs/10.14778/3476311.3476372)
@@ -292,12 +298,46 @@ Describes the design of self-optimizing and self-specializing interpreter, and t
 
 ## GraalVM Compiler Papers
 
+### 2023
+
+- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Moessenboeck, Sebastian Kloibhofer, Lukas Makor
+[**Control Flow Duplication for Columnar Arrays in a Dynamic Compiler**](https://doi.org/10.22152/programming-journal.org/2023/7/9)
+In _Proceedings of the <Programming> 2023 Journal and Conference_
+
+### 2022
+
+- Felix Berlakovich, Matthias Neugschwandtner, Gergö Barany
+[**Look Ma, no constants: practical constant blinding in GraalVM**](https://dl.acm.org/doi/10.1145/3517208.3523751)
+In _Proceedings of the 15th European Workshop on Systems Security (EuroSec '22)_
+
+- Gergo Barany, David Leopoldseder, Hanspeter Moessenboeck, Raphael Mosaner
+[**Improving Vectorization Heuristics in a Dynamic Compiler with Learned Models**](https://doi.org/10.1145/3563838.3567679)
+In _Proceedings of the Virtual Machines and Language Implementations Workshop Co-located with SPLASH 2022_
+
+- Stefan Marr, Humphrey Burchell, Fabio Niephaus
+[**Execution vs. Parse-Based Language Servers: Tradeoffs and Opportunities for Language-Agnostic Tooling for Dynamic Languages**](https://doi.org/10.1145/3563834.3567537)
+In _Proceedings of the 18th Dynamic Languages Symposium (DLS) at SPLASH 2022_
+
+- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Moessenboeck, Lukas Makor, Sebastian Kloibhofer
+[**Automatic Array Transformation to Columnar Storage at Run Time**](https://doi.org/10.1145/3546918.3546919)
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
+
+- David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck, Raphael Mosaner, Wolfgang Kisling
+[**Machine-Learning-Based Self-Optimizing Compiler Heuristics**](https://doi.org/10.1145/3546918.3546921)
+In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
+
+- Stefan Reschke, Toni Mattis, Fabio Niephaus, Robert Hirschfeld
+[**Toward Just-in-time and Language-agnostic Mutation Testing**](https://doi.org/10.1145/3532512.3532514)
+In _Proceedings of the MoreVMs’22 workshop at ‹Programming› 2022_
+
 ### 2021
 
-- Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso [**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
+- Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso 
+[**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
 In _Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)_
 
-- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
+- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck 
+[**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 
 - Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://doi.org/10.1145/3475738.3480939)
@@ -315,8 +355,8 @@ In _Proceedings of SPLASH Companion 2021_
 - Lukas Makor [**Run-time data analysis in dynamic runtimes**](https://dl.acm.org/doi/10.1145/3484271.3484974)
 In _Proceedings of SPLASH Companion 2021_
 
-<!-- -  Hugo Guiroux, Jean-Pierre Lozi, Peterson Yuhala, Jämes Ménétrey, Pascal Felber, Valerio Schiavoni, Alain Tchana, Gaël Thomas [**Montsalvat: Intel SGX Shielding for GraalVM Native Images**](#)
-In _Proceedings of MIDDLEWARE 2021 - 22nd ACM/IFIP International Conference 2021_ -->
+-  Hugo Guiroux, Jean-Pierre Lozi, Peterson Yuhala, Jämes Ménétrey, Pascal Felber, Valerio Schiavoni, Alain Tchana, Gaël Thomas [**Montsalvat: Intel SGX Shielding for GraalVM Native Images**](https://doi.org/10.1145/3464298.3493406)
+In _Proceedings of MIDDLEWARE 2021 - 22nd ACM/IFIP International Conference 2021_
 
 ### 2020
 
