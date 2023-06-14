@@ -37,6 +37,7 @@ import java.util.concurrent.locks.LockSupport;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.heap.Heap;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -60,7 +61,7 @@ public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
         Recording recording = startRecording(events, getDefaultConfiguration(), settings);
 
         // Generate some symbol table entries and trace IDs.
-        for (Class<?> clazz : com.oracle.svm.core.heap.Heap.getHeap().getLoadedClasses()) {
+        for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
             LockSupport.parkNanos(clazz, 1);
         }
 
