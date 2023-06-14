@@ -324,17 +324,18 @@ public final class EngineData {
     }
 
     /**
-     * Checks if a {@link OptimizedCallTarget} with the given name should be compiled. The
+     * Checks if a {@link OptimizedCallTarget} should be compiled. The
      * {@link OptimizedRuntimeOptions#Compilation Compilation} and
      * {@link OptimizedRuntimeOptions#CompileOnly CompileOnly} options are used to determine if the
      * calltarget should be compiled.
      */
-    boolean acceptForCompilation(String name) {
+    boolean acceptForCompilation(OptimizedCallTarget target) {
         if (!compilation) {
             return false;
         }
         Pair<List<String>, List<String>> value = getCompileOnly();
         if (value != null) {
+            String name = target.toString();
             List<String> includes = value.getLeft();
             boolean included = includes.isEmpty();
             if (name != null) {
