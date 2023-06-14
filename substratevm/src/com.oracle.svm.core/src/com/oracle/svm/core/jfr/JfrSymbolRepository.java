@@ -177,7 +177,7 @@ public class JfrSymbolRepository implements JfrRepository {
     }
 
     private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable {
-        private long nextId;
+        private static long nextId;
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
