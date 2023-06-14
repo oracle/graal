@@ -125,6 +125,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.word.WordBase;
 
 /**
@@ -969,9 +970,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public ResolvedJavaType pointerTo() {
             if (isPointer()) {
+                // any target type for the pointer will be defined by a CPointerTo or RawPointerTo
+                // annotation
                 CPointerTo cPointerTo = hostedType.getAnnotation(CPointerTo.class);
                 if (cPointerTo != null) {
                     HostedType pointerTo = heap.hMetaAccess.lookupJavaType(cPointerTo.value());
+                    return getOriginal(pointerTo);
+                }
+                RawPointerTo rawPointerTo = hostedType.getAnnotation(RawPointerTo.class);
+                if (rawPointerTo != null) {
+                    HostedType pointerTo = heap.hMetaAccess.lookupJavaType(rawPointerTo.value());
                     return getOriginal(pointerTo);
                 }
             }
