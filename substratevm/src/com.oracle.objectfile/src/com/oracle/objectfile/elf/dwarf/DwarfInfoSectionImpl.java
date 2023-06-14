@@ -344,6 +344,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 pos = writeEmbeddedArrayDataType(context, foreignValueType, valueSize, fieldSize / valueSize, buffer, pos);
             } else {
                 if (foreignValueType.isPointer()) {
+                    TypeEntry pointerTo = foreignValueType.getPointerTo();
+                    assert pointerTo != null : "ADDRESS field pointer type must have a known target type";
                     // type the array using the referent of the pointer type
                     //
                     // n.b it is critical for correctness to use the index of the referent rather
@@ -355,7 +357,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                     // of the referring type and the latter precedes the definition of the
                     // referent type then the layout index of the referring type may still be unset
                     // at this point.
-                    valueTypeIdx = getTypeIndex(foreignValueType.getPointerTo());
+                    valueTypeIdx = getTypeIndex(pointerTo);
                 } else {
                     valueTypeIdx = getIndirectLayoutIndex(foreignValueType);
                 }
@@ -1354,6 +1356,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String elementTypeName = foreignValueType.getTypeName();
         int elementTypeIdx;
         if (foreignValueType.isPointer()) {
+            TypeEntry pointerTo = foreignValueType.getPointerTo();
+            assert pointerTo != null : "ADDRESS field pointer type must have a known target type";
             // type the array using the referent of the pointer type
             //
             // n.b it is critical for correctness to use the index of the referent rather than
@@ -1363,7 +1367,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             // However, if this embedded struct field definition precedes the definition of the
             // referring type and the latter precedes the definition of the referent type then
             // the layout index of the referring type may still be unset at this point.
-            elementTypeIdx = getTypeIndex(foreignValueType.getPointerTo());
+            elementTypeIdx = getTypeIndex(pointerTo);
         } else {
             // type the array using the layout type
             elementTypeIdx = getIndirectLayoutIndex(foreignValueType);
