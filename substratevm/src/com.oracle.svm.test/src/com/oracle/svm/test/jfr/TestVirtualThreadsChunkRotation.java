@@ -69,7 +69,6 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
         assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
     }
 
-    @Ignore("GR-46117")
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
