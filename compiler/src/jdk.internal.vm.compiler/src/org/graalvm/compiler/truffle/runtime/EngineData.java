@@ -335,7 +335,7 @@ public final class EngineData {
         }
         Pair<List<String>, List<String>> value = getCompileOnly();
         if (value != null) {
-            String name = target.toString();
+            String name = target.getName();
             List<String> includes = value.getLeft();
             boolean included = includes.isEmpty();
             if (name != null) {
