@@ -38,9 +38,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.EngineData;
@@ -48,6 +48,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
+import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -82,7 +83,7 @@ import sun.misc.Unsafe;
  * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
  * native-image shared library).
  */
-public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
@@ -108,14 +109,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     static final class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
-        Lazy(AbstractHotSpotTruffleRuntime runtime) {
+        Lazy(HotSpotTruffleRuntime runtime) {
             super(runtime);
             runtime.installDefaultListeners();
         }
 
         @Override
         protected void notifyIdleCompilerThread() {
-            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
+            TruffleCompiler compiler = ((HotSpotTruffleRuntime) runtime).truffleCompiler;
             // truffleCompiler should never be null outside unit-tests, this check avoids transient
             // failures.
             if (compiler != null) {
@@ -128,7 +129,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
-    private volatile String lazyConfigurationName;
 
     private Lazy lazy() {
         if (lazy == null) {
@@ -151,8 +151,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private final MethodHandle setJVMCIReservedReference0;
     private final MethodHandle getJVMCIReservedReference0;
 
-    public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, AbstractHotSpotTruffleRuntime.class));
+    public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
+        super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
@@ -194,12 +194,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         this.getJVMCIReservedReference0 = getReservedReference0;
     }
 
-    public final int getJVMCIReservedLongOffset0() {
+    public int getJVMCIReservedLongOffset0() {
         return jvmciReservedLongOffset0;
     }
 
     @Override
-    public final ThreadLocalHandshake getThreadLocalHandshake() {
+    public ThreadLocalHandshake getThreadLocalHandshake() {
         return HotSpotThreadLocalHandshake.SINGLETON;
     }
 
@@ -281,7 +281,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     /*
      * Used reflectively in CompilerInitializationTest.
      */
-    public final void resetCompiler() {
+    public void resetCompiler() {
         truffleCompiler = null;
         truffleCompilerInitialized = false;
         truffleCompilerInitializationException = null;
@@ -332,7 +332,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public final OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+    public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         OptimizedCallTarget target = new HotSpotOptimizedCallTarget(source, rootNode);
         ensureInitialized(target);
         return target;
@@ -413,47 +413,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return lazy();
     }
 
-    @Override
-    protected String getCompilerConfigurationName() {
-        TruffleCompiler compiler = truffleCompiler;
-        String compilerConfig;
-        if (compiler != null) {
-            compilerConfig = compiler.getCompilerConfigurationName();
-            // disabled GR-10618
-            // assert verifyCompilerConfiguration(compilerConfig);
-        } else {
-            compilerConfig = getLazyCompilerConfigurationName();
-        }
-        return compilerConfig;
-    }
-
     @SuppressWarnings("unused")
     private boolean verifyCompilerConfiguration(String name) {
-        String lazyName = getLazyCompilerConfigurationName();
+        String lazyName = getCompilerConfigurationName();
         if (!name.equals(lazyName)) {
             throw new AssertionError("Expected compiler configuration name " + name + " but was " + lazyName + ".");
         }
         return true;
     }
-
-    private String getLazyCompilerConfigurationName() {
-        String compilerConfig = this.lazyConfigurationName;
-        if (compilerConfig == null) {
-            synchronized (this) {
-                compilerConfig = this.lazyConfigurationName;
-                if (compilerConfig == null) {
-                    compilerConfig = initLazyCompilerConfigurationName();
-                    this.lazyConfigurationName = compilerConfig;
-                }
-            }
-        }
-        return compilerConfig;
-    }
-
-    /**
-     * Gets the compiler configuration name without requiring a compiler to be created.
-     */
-    protected abstract String initLazyCompilerConfigurationName();
 
     @SuppressWarnings("try")
     @Override
@@ -577,7 +544,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public final void notifyTransferToInterpreter() {
+    public void notifyTransferToInterpreter() {
         if (CompilerDirectives.inInterpreter() && traceTransferToInterpreter) {
             traceTransferToInterpreter();
         }
@@ -590,7 +557,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public final boolean isProfilingEnabled() {
+    public boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
             return true;
         }
@@ -720,7 +687,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             }
         }
 
-        static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
+        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
             OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
             if (callTarget == null) {
                 return;
@@ -735,8 +702,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
     }
 
-    public static AbstractHotSpotTruffleRuntime getRuntime() {
-        return (AbstractHotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
+    public static HotSpotTruffleRuntime getRuntime() {
+        return (HotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
+    }
+
+    public boolean isLibGraalCompilationEnabled() {
+        return compilationSupport instanceof LibGraalTruffleCompilationSupport;
     }
 
 }

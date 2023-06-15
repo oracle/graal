@@ -84,7 +84,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -131,7 +130,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {
-        OptionValues options = runtime.getGraalOptions(OptionValues.class);
+        OptionValues options = HotSpotGraalOptionValues.defaultOptions();
         /*
          * Host inlining is not necessary for Truffle guest compilation so disable it.
          */
@@ -259,9 +258,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return factories;
     }
 
-    @Override
-    public String getCompilerConfigurationName() {
-        return hotspotGraalRuntime.getCompilerConfigurationName();
+    public HotSpotGraalRuntimeProvider getHotspotGraalRuntime() {
+        return hotspotGraalRuntime;
     }
 
     @Override
@@ -326,9 +324,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             // nothing to do
             return;
         }
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
         HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.lastTier().backend().getCompilationIdentifier(method);
-        OptionValues options = runtime.getGraalOptions(OptionValues.class);
+        OptionValues options = getGraalOptions();
         try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                         ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
                         : DebugContext.disabled(options);
@@ -436,8 +433,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
         if (result instanceof HotSpotTruffleCompilationResult) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
-            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
+            config.runtime().onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
         }
     }
 

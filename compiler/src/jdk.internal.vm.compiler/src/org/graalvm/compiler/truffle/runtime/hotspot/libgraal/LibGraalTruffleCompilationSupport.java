@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,38 +27,58 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
 import org.graalvm.nativebridge.BinaryInput;
 
-import com.oracle.truffle.api.TruffleRuntime;
-
 /**
- * A {@link TruffleRuntime} that uses libgraal for compilation.
+ * Represents a truffle compilation bundling compilable and task into a single object. Also installs
+ * the TTY filter to forward log messages to the truffle runtime.
  */
-final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
+public final class LibGraalTruffleCompilationSupport implements TruffleCompilationSupport {
+
+    private volatile String cachedCompilerConfigurationName;
+
+    /*
+     * When migrated to native-bridge this method should be marked @Idempotent instead.
+     */
+    @Override
+    public String getCompilerConfigurationName(TruffleCompilerRuntime runtime) {
+        String compilerConfiguration = this.cachedCompilerConfigurationName;
+        if (compilerConfiguration == null) {
+            this.cachedCompilerConfigurationName = compilerConfiguration = getCompilerConfigurationNameImpl(runtime);
+        }
+        return compilerConfiguration;
+    }
 
     @SuppressWarnings("try")
-    LibGraalTruffleRuntime() {
+    private static String getCompilerConfigurationNameImpl(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
-            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), this)) {
-                throw new IllegalStateException("Truffle with libgraal cannot be loaded in multiple class loaders. Make sure Truffle is loaded with the system class loader.");
-            }
+            return TruffleToLibGraalCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle(runtime));
         }
     }
 
-    long handle() {
-        try (LibGraalScope scope = new LibGraalScope()) {
-            return scope.getIsolate().getSingleton(Handle.class, () -> {
-                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, getClass()));
-            }).getHandle();
+    @Override
+    public TruffleCompiler createCompiler(TruffleCompilerRuntime runtime) {
+        return new LibGraalHotSpotTruffleCompiler((HotSpotTruffleRuntime) runtime);
+    }
+
+    @SuppressWarnings("try")
+    @Override
+    public void registerRuntime(TruffleCompilerRuntime runtime) {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime)) {
+                throw new IllegalStateException("Truffle with libgraal cannot be loaded in multiple class loaders. Make sure Truffle is loaded with the system class loader.");
+            }
         }
     }
 
@@ -93,33 +113,15 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     @Override
-    public boolean existsCompilerOption(String key) {
+    public boolean compilerOptionExists(String key) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            return TruffleToLibGraalCalls.existsCompilerOption(getIsolateThread(), key);
+            return TruffleToLibGraalCalls.compilerOptionExists(getIsolateThread(), key);
         }
     }
 
     @Override
-    public HotSpotTruffleCompiler newTruffleCompiler() {
-        return new LibGraalHotSpotTruffleCompiler(this);
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    protected String initLazyCompilerConfigurationName() {
-        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            return TruffleToLibGraalCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle());
-        }
-    }
-
-    @Override
-    protected AutoCloseable openCompilerThreadScope() {
+    public AutoCloseable openCompilerThreadScope() {
         return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
-    }
-
-    @Override
-    protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
-        return throwable instanceof DestroyedIsolateException && ((DestroyedIsolateException) throwable).isVmExit();
     }
 
     /**
@@ -130,4 +132,19 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             super(handle);
         }
     }
+
+    @Override
+    public boolean isSuppressedCompilationFailure(Throwable throwable) {
+        return throwable instanceof DestroyedIsolateException && ((DestroyedIsolateException) throwable).isVmExit();
+    }
+
+    @SuppressWarnings("try")
+    static long handle(TruffleCompilerRuntime runtime) {
+        try (LibGraalScope scope = new LibGraalScope()) {
+            return scope.getIsolate().getSingleton(Handle.class, () -> {
+                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass()));
+            }).getHandle();
+        }
+    }
+
 }

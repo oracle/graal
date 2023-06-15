@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
+package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 
-import jdk.vm.ci.code.InstalledCode;
+public abstract class AbstractTruffleCompilationSupport implements TruffleCompilationSupport {
 
-public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return TruffleCompilerOptions.listOptions();
+    }
 
-    /**
-     * Notifies this runtime once {@code installedCode} has been installed in the code cache.
-     *
-     * @param compilable the {@link TruffleCompilable compilable} to install code into
-     * @param installedCode code that has just been installed in the code cache
-     */
-    void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
+    @Override
+    public boolean compilerOptionExists(String key) {
+        return TruffleCompilerOptions.optionExists(key);
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        return TruffleCompilerOptions.validateOption(key, value);
+    }
+
 }

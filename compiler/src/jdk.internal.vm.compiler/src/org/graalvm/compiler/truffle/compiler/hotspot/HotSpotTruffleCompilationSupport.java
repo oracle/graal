@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.java;
+package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.AbstractTruffleCompilationSupport;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
-final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
+public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompilationSupport {
 
-    HotSpotTruffleRuntime() {
-        HotSpotTruffleHostEnvironmentLookup.registerRuntime(this);
-    }
+    private volatile String compilerConfigurationName;
 
     @Override
-    public <T> T getGraalOptions(Class<T> optionValuesType) {
-        if (optionValuesType == OptionValues.class) {
-            return optionValuesType.cast(HotSpotGraalOptionValues.defaultOptions());
+    public String getCompilerConfigurationName(TruffleCompilerRuntime truffleRuntime) {
+        String compilerConfig = compilerConfigurationName;
+        if (compilerConfig != null) {
+            return compilerConfig;
         }
-        return super.getGraalOptions(optionValuesType);
+
+        // compiler not yet intitialized. try to resolve the configuration name without initializing
+        // a JVMCI compiler for lazy class loading.
+        return getLazyCompilerConfigurationName();
     }
 
-    @Override
-    protected String initLazyCompilerConfigurationName() {
-        final OptionValues options = getGraalOptions(OptionValues.class);
+    public static String getLazyCompilerConfigurationName() {
+        final OptionValues options = HotSpotGraalOptionValues.defaultOptions();
         String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options, runtime);
@@ -60,23 +60,16 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    public synchronized TruffleCompiler newTruffleCompiler() {
-        return HotSpotTruffleCompilerImpl.create(this);
+    public TruffleCompiler createCompiler(TruffleCompilerRuntime runtime) {
+        HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime);
+        compilerConfigurationName = compiler.getHotspotGraalRuntime().getCompilerConfigurationName();
+        return compiler;
+
     }
 
     @Override
-    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
-        return TruffleCompilerOptions.listOptions();
-    }
-
-    @Override
-    public boolean existsCompilerOption(String key) {
-        return TruffleCompilerOptions.existsOption(key);
-    }
-
-    @Override
-    public String validateCompilerOption(String key, String value) {
-        return TruffleCompilerOptions.validateOption(key, value);
+    public void registerRuntime(TruffleCompilerRuntime runtime) {
+        HotSpotTruffleHostEnvironmentLookup.registerRuntime((HotSpotTruffleRuntime) runtime);
     }
 
 }

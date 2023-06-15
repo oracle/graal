@@ -60,7 +60,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @TruffleFromLibGraal(OnSuccess)
     @Override
     public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
         JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
         JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo);
@@ -72,7 +72,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @TruffleFromLibGraal(OnTruffleTierFinished)
     @Override
     public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
         JObject hasTask = ((HSTruffleCompilationTask) task).getHandle();
         JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
@@ -84,7 +84,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @TruffleFromLibGraal(OnGraalTierFinished)
     @Override
     public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
         JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
             callOnGraalTierFinished(env, getHandle(), hsCompilable, graphInfoScope.getHandle());
@@ -94,7 +94,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @TruffleFromLibGraal(OnFailure)
     @Override
     public void onFailure(TruffleCompilable compilable, String serializedException, boolean bailout, boolean permanentBailout, int tier) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
         JNIEnv env = JNIMethodScope.env();
         JString hsReason = createHSString(env, serializedException);
         callOnFailure(env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier);
@@ -103,7 +103,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @TruffleFromLibGraal(OnCompilationRetry)
     @Override
     public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
         JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
         JNIEnv env = JNIMethodScope.env();
         callOnCompilationRetry(env, getHandle(), hsCompilable, hsTask);

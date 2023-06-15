@@ -72,8 +72,8 @@ final class TruffleToLibGraalCalls {
     @TruffleToLibGraal(Id.ListCompilerOptions)
     static native byte[] listCompilerOptions(long isolateThreadId);
 
-    @TruffleToLibGraal(Id.ExistsCompilerOption)
-    static native boolean existsCompilerOption(long isolateThreadId, String optionName);
+    @TruffleToLibGraal(Id.CompilerOptionExists)
+    static native boolean compilerOptionExists(long isolateThreadId, String optionName);
 
     @TruffleToLibGraal(Id.ValidateCompilerOption)
     static native String validateCompilerOption(long isolateThreadId, String optionName, String optionValue);

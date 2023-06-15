@@ -25,7 +25,6 @@
 package com.oracle.svm.truffle.api;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -35,15 +34,12 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
@@ -68,16 +64,17 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -118,7 +115,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
-        super(Collections.emptyList());
+        super(new SubstrateTruffleCompilationSupport(), List.of());
         /* Ensure the factory class gets initialized. */
         super.getLoopNodeFactory();
     }
@@ -131,6 +128,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void resetHosted() {
         truffleCompiler = null;
+    }
+
+    @Override
+    public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
+        throw CompilerDirectives.shouldNotReachHere("onCodeInstallation is not implemented by " + getClass().getName());
     }
 
     @Override
@@ -187,30 +189,16 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTruffleCompiler initTruffleCompiler() {
+    public SubstrateTruffleCompiler preinitializeTruffleCompiler() {
         assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
-        SubstrateTruffleCompiler compiler = newTruffleCompiler();
+        ((SubstrateTruffleCompilationSupport) compilationSupport).preinitialize();
+        SubstrateTruffleCompiler compiler = (SubstrateTruffleCompiler) newTruffleCompiler();
         truffleCompiler = compiler;
         return compiler;
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
         return knownMethods.anyFrameMethod;
-    }
-
-    @Override
-    protected String getCompilerConfigurationName() {
-        TruffleCompiler compiler = truffleCompiler;
-        if (compiler != null) {
-            return compiler.getCompilerConfigurationName();
-        }
-        return null;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @Override
-    public SubstrateTruffleCompiler newTruffleCompiler() {
-        return TruffleSupport.singleton().createTruffleCompiler(this);
     }
 
     @Override
@@ -282,21 +270,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public String validateCompilerOption(String key, String value) {
-        return TruffleCompilerOptions.validateOption(key, value);
-    }
-
-    @Override
-    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
-        return TruffleCompilerOptions.listOptions();
-    }
-
-    @Override
-    public boolean existsCompilerOption(String key) {
-        return TruffleCompilerOptions.existsOption(key);
-    }
-
-    @Override
     public boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
             /*
@@ -365,14 +338,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     protected StackIntrospection getStackIntrospection() {
         return SubstrateStackIntrospection.SINGLETON;
-    }
-
-    @Override
-    public <T> T getGraalOptions(Class<T> type) {
-        if (type == OptionValues.class) {
-            return type.cast(RuntimeOptionValues.singleton());
-        }
-        return super.getGraalOptions(type);
     }
 
     @Platforms(HOSTED_ONLY.class)

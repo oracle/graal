@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.java;
+package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -64,10 +65,11 @@ public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnv
             }
             this.environment = env = new HotSpotTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         }
+
         return env;
     }
 
-    static boolean registerRuntime(HotSpotTruffleRuntime runtime) {
+    public static boolean registerRuntime(HotSpotTruffleRuntime runtime) {
         return RUNTIME.compareAndSet(null, runtime);
     }
 
