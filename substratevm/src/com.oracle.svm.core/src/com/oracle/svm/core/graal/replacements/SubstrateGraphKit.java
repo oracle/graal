@@ -26,11 +26,11 @@ package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import jdk.vm.ci.code.CallingConvention;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -79,7 +79,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -198,17 +197,15 @@ public class SubstrateGraphKit extends GraphKit {
 
     public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
         return createCFunctionCallWithCapture(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
-                        Set.of(),
-                        null);
+                        null, null, null);
     }
 
     public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
-                    CallingConvention.Type convention, Set<CapturableState> statesToCapture, ValueNode captureBuffer) {
-        assert statesToCapture.isEmpty() == (captureBuffer == null);
+                    CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
         /*
          * State capture require the epilogue (and thus prologue) to be emitted
          */
-        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus) || !statesToCapture.isEmpty();
+        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus) || captureBuffer != null;
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
         }
@@ -228,7 +225,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, statesToCapture, captureBuffer);
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, captureFunction, statesToCapture, captureBuffer);
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {

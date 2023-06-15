@@ -31,9 +31,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.headers.WindowsAPIs;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.foreign.abi.CapturableState;
 
 public class ForeignFunctionsRuntime {
     @Fold
@@ -80,4 +90,54 @@ public class ForeignFunctionsRuntime {
             return "Cannot perform downcall with leaf type " + nep.nativeMethodType() + " as it was not registered at compilation time.";
         }
     }
+
+    /**
+     * Workaround for CapturableState.mask() being interruptible.
+     */
+    @Fold
+    public static int getMask(CapturableState state) {
+        return state.mask();
+    }
+
+    @Fold
+    public static boolean isWindows() {
+        return OS.WINDOWS.isCurrent();
+    }
+
+    /**
+     * Note that the states must be captured in the same order as in the JDK: GET_LAST_ERROR,
+     * WSA_GET_LAST_ERROR, ERRNO.
+     *
+     * Violation of the assertions should have already been caught in
+     * {@link Target_jdk_internal_foreign_abi_CapturableState#isSupported}
+     */
+    @Uninterruptible(reason = "Interruptions might change call state.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
+        assert statesToCapture != 0;
+        assert captureBuffer.isNonNull();
+
+        int i = 0;
+        if (isWindows()) {
+            assert WindowsAPIs.isSupported() : "Windows APIs should be supported on Windows OS";
+
+            if ((statesToCapture & getMask(CapturableState.GET_LAST_ERROR)) != 0) {
+                captureBuffer.write(i, WindowsAPIs.getLastError());
+            }
+            ++i;
+            if ((statesToCapture & getMask(CapturableState.WSA_GET_LAST_ERROR)) != 0) {
+                captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
+            }
+            ++i;
+        }
+
+        assert LibC.isSupported() : "LibC should always be supported";
+        if ((statesToCapture & getMask(CapturableState.ERRNO)) != 0) {
+            captureBuffer.write(i, LibC.errno());
+        }
+        ++i;
+    }
+
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
+                    "captureCallState", false, LocationIdentity.any());
 }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.foreign;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
@@ -35,6 +38,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /** Downcall stubs will be synthesized in this class. */
 @InternalVMMethod
 public final class DowncallStubsHolder {
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         return metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class).getDeclaredConstructors()[0].getConstantPool();
     }
@@ -48,6 +52,7 @@ public final class DowncallStubsHolder {
      *  downcall_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
      * </pre>
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static String stubName(NativeEntryPointInfo nep) {
         StringBuilder builder = new StringBuilder("downcall_(");
         for (var param : nep.nativeMethodType().parameterArray()) {
@@ -60,8 +65,7 @@ public final class DowncallStubsHolder {
             builder.append("_r");
         }
         if (nep.capturesCallState()) {
-            builder.append('_');
-            builder.append(nep.capturedStateMask());
+            builder.append("_c");
         }
 
         StringBuilder assignmentsBuilder = new StringBuilder();

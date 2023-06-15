@@ -31,7 +31,6 @@ import java.util.Objects;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 
 import jdk.internal.foreign.abi.ABIDescriptor;
-import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.VMStorage;
 
 /**
@@ -42,7 +41,7 @@ public final class NativeEntryPointInfo {
     private final MethodType methodType;
     private final AssignedLocation[] parameterAssignments;
     private final AssignedLocation[] returnBuffering;
-    private final int capturedStateMask;
+    private final boolean capturesState;
     private final boolean needsTransition;
 
     /**
@@ -56,15 +55,15 @@ public final class NativeEntryPointInfo {
      *
      * where <actual arg i>s are the arguments which end up passed to the C native function
      */
-    public NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, int stateCaptureMask, boolean needsTransition) {
+    private NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, boolean capturesState, boolean needsTransition) {
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
-        this.capturedStateMask = stateCaptureMask;
+        this.capturesState = capturesState;
         this.needsTransition = needsTransition;
     }
 
-    public static NativeEntryPointInfo make(@SuppressWarnings("unused") ABIDescriptor ignoreAbi,
+    public static NativeEntryPointInfo make(
                     VMStorage[] argMoves, VMStorage[] returnMoves,
                     MethodType methodType,
                     boolean needsReturnBuffer,
@@ -74,9 +73,21 @@ public final class NativeEntryPointInfo {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
 
-        var parametersAssignment = AbiUtils.singleton().toMemoryAssignment(argMoves, false);
-        var returnBuffering = needsReturnBuffer ? AbiUtils.singleton().toMemoryAssignment(returnMoves, true) : null;
-        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask, needsTransition);
+        AssignedLocation[] parametersAssignment = AbiUtils.singleton().toMemoryAssignment(argMoves, false);
+        AssignedLocation[] returnBuffering = needsReturnBuffer ? AbiUtils.singleton().toMemoryAssignment(returnMoves, true) : null;
+        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask != 0, needsTransition);
+    }
+
+    public static Target_jdk_internal_foreign_abi_NativeEntryPoint makeEntryPoint(
+                    @SuppressWarnings("unused") ABIDescriptor ignoreAbi,
+                    VMStorage[] argMoves, VMStorage[] returnMoves,
+                    MethodType methodType,
+                    boolean needsReturnBuffer,
+                    int capturedStateMask,
+                    boolean needsTransition) {
+        var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
+        long addr = ForeignFunctionsRuntime.singleton().getStubPointer(info).rawValue();
+        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr, capturedStateMask);
     }
 
     public int callAddressIndex() {
@@ -113,11 +124,7 @@ public final class NativeEntryPointInfo {
     }
 
     public boolean capturesCallState() {
-        return capturedStateMask != 0;
-    }
-
-    public boolean requiresCapture(CapturableState capture) {
-        return (capture.mask() & capturedStateMask) != 0;
+        return capturesState;
     }
 
     public AssignedLocation[] parametersAssignment() {
@@ -129,14 +136,14 @@ public final class NativeEntryPointInfo {
         return returnBuffering;
     }
 
-    public int capturedStateMask() {
-        return capturedStateMask;
-    }
-
     public boolean skipsTransition() {
         return !needsTransition;
     }
 
+    /**
+     * We consider two NEPIs to be equal if they will generate the same downcall stub. This means in
+     * particular that the captured state is irrelevant here.
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -146,13 +153,13 @@ public final class NativeEntryPointInfo {
             return false;
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturedStateMask == that.capturedStateMask && needsTransition == that.needsTransition && Objects.equals(methodType, that.methodType) &&
+        return capturesState == that.capturesState && needsTransition == that.needsTransition && Objects.equals(methodType, that.methodType) &&
                         Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(methodType, capturedStateMask, needsTransition);
+        int result = Objects.hash(capturesState, methodType, needsTransition);
         result = 31 * result + Arrays.hashCode(parameterAssignments);
         result = 31 * result + Arrays.hashCode(returnBuffering);
         return result;

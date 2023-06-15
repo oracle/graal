@@ -31,9 +31,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import java.util.Set;
-
-import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -47,11 +45,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 
 /**
  * See comments in {@link CFunctionPrologueNode} for details.
@@ -59,67 +53,43 @@ import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Capturing the call state requires calls whose cost is unknown.", size = SIZE_UNKNOWN, sizeRationale = "Capturing the call state requires calls whose cost is unknown.", allowedUsageTypes = {
                 Memory})
 public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore {
-    public enum CapturableState {
-        ERRNO,
-        GET_LAST_ERROR,
-        WSA_GET_LAST_ERROR;
-
-        private final int mask;
-
-        CapturableState() {
-            this.mask = 1 << this.ordinal();
-        }
-
-        /**
-         * We want this class to disappear from compiled code, only leaving the mask, as to avoid
-         * leaking compilation objects. See
-         * {@link com.oracle.svm.core.graal.snippets.CFunctionSnippets#callCaptureCallState}
-         */
-        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        @Fold
-        public int mask() {
-            return this.mask;
-        }
-
-        public static int mask(CapturableState state) {
-            return state.mask;
-        }
-
-        public static int mask(Set<CapturableState> states) {
-            int mask = 0;
-            for (CapturableState state : states) {
-                mask |= state.mask;
-            }
-            return mask;
-        }
-    }
-
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
-    private final Set<CapturableState> statesToCapture;
-    /**
-     * Call state capture is currently implemented to always be performed by
-     * {@link CFunctionSnippets#captureCallState(int, CIntPointer)}, but we could instead add a call
-     * parameter as parameter/member to this class to have different capture logics, if the need for
-     * multiple ones ever arises.
+    /*
+     * This method is called with an integer (the capture mask) and a pointer to int (the capture
+     * buffer).
+     *
+     * This method is called from inside the CFunction prologue before transitioning back into Java.
+     * This means that no transition to/from should happen and the method must be uninterruptible.
+     *
+     * You need to register this method for foreign call and may need to declare it as root method.
      */
+    private final ForeignCallDescriptor captureFunction;
+    @OptionalInput ValueNode statesToCapture;
     @OptionalInput ValueNode captureBuffer;
     /**
      * See comment in {@link CFunctionPrologueNode}.
      */
     private CFunctionEpilogueMarker marker;
 
-    public CFunctionEpilogueNode(int oldThreadStatus, Set<CapturableState> statesToCapture, ValueNode captureBuffer) {
+    public CFunctionEpilogueNode(int oldThreadStatus, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
         super(TYPE, StampFactory.forVoid());
         this.oldThreadStatus = oldThreadStatus;
+        if ((captureFunction != null) && ((statesToCapture == null) || (captureBuffer == null))) {
+            throw new IllegalArgumentException("The states to capture and capture buffer must be specified since a capture function was provided.");
+        }
+
+        if ((captureFunction == null) && ((statesToCapture != null) || (captureBuffer != null))) {
+            throw new IllegalArgumentException("The states to capture and capture buffer must not be specified since a capture function was not provided.");
+        }
+        this.captureFunction = captureFunction;
         this.statesToCapture = statesToCapture;
         this.captureBuffer = captureBuffer;
-        assert (statesToCapture.size() == 0) == (captureBuffer == null);
     }
 
     public CFunctionEpilogueNode(int oldThreadStatus) {
-        this(oldThreadStatus, Set.of(), null);
+        this(oldThreadStatus, null, null, null);
     }
 
     @Override
@@ -144,7 +114,7 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
         return oldThreadStatus;
     }
 
-    public Set<CapturableState> getStatesToCapture() {
+    public ValueNode getStatesToCapture() {
         return statesToCapture;
     }
 
@@ -186,5 +156,9 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     @Override
     protected NodeSize dynamicNodeSizeEstimate() {
         return captureBuffer == null ? SIZE_8 : super.dynamicNodeSizeEstimate();
+    }
+
+    public ForeignCallDescriptor getCaptureFunction() {
+        return captureFunction;
     }
 }
