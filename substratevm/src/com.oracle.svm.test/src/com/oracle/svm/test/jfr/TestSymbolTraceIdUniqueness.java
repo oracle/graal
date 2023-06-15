@@ -35,8 +35,8 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -44,8 +44,8 @@ import jdk.jfr.consumer.RecordedEvent;
 /**
  * This test checks if symbol table JFR trace IDs get reused across successive epochs. If they are
  * reused/duplicated, the validation step will fail because the trace ID key associated with
- * com.oracle.svm.test.jfr.AbstractJfrTest$MonitorWaitHelper will also be associated with another
- * value that was serialized during a prior epoch.
+ * {@link com.oracle.svm.test.jfr.AbstractJfrTest.MonitorWaitHelper} will also be associated with
+ * another value that was serialized during a prior epoch.
  */
 public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
@@ -70,10 +70,10 @@ public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
         // Emit event that will insert a new symbol table entry who's ID is under test.
         helper.doEvent();
 
-        stopRecording(recording, this::validateEvents);
+        stopRecording(recording, TestSymbolTraceIdUniqueness::validateEvents);
     }
 
-    private void validateEvents(List<RecordedEvent> events) {
+    private static void validateEvents(List<RecordedEvent> events) {
         boolean found = false;
         for (RecordedEvent event : events) {
             if (event.getEventType().getName().equals(JfrEvent.JavaMonitorWait.getName())) {
