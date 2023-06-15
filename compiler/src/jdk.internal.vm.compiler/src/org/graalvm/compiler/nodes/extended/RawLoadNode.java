@@ -205,4 +205,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @NodeIntrinsic
     public static native Object load(Object object, long offset, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @NodeIntrinsic
+    public static native int loadInt(Object object, long offset, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 }
