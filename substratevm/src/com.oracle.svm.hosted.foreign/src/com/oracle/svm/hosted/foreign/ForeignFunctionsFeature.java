@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,11 +34,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
@@ -52,6 +55,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -91,8 +95,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     private boolean sealed = false;
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
-    private final Set<NativeEntryPointInfo> stubsToRegister = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> stubsToRegister = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<NativeEntryPointInfo, ResolvedJavaMethod> stubsToCreate = new HashMap<>();
+    private final Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> generatedMapping = new HashMap<>();
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -107,7 +112,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> stubsToRegister.add(AbiUtils.singleton().makeEntrypoint(desc, options)));
+            registerConditionalConfiguration(condition, () -> stubsToRegister.add(Pair.create(desc, options)));
         }
     }
 
@@ -165,26 +170,35 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                         ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.DowncallLinker"),
                                         "USE_SPEC"),
                         (receiver, originalValue) -> false);
+
+        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        if (stubsToRegister.isEmpty()) {
-            return;
-        }
         var access = (FeatureImpl.DuringAnalysisAccessImpl) a;
 
-        for (NativeEntryPointInfo nepi : stubsToRegister) {
-            stubsToCreate.computeIfAbsent(nepi, ignored -> {
+        boolean updated = false;
+        for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : stubsToRegister) {
+            NativeEntryPointInfo nepi = AbiUtils.singleton().makeEntrypoint(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
+
+            if (!stubsToCreate.containsKey(nepi)) {
+                updated = true;
                 ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false);
-                return analysisStub;
-            });
+                stubsToCreate.put(nepi, analysisStub);
+            }
+
+            String stubName = stubsToCreate.get(nepi).getName();
+            generatedMapping.putIfAbsent(stubName, new ArrayList<>());
+            generatedMapping.get(stubName).add(fdOptionsPair);
         }
         stubsToRegister.clear();
 
-        access.requireAnalysisIteration();
+        if (updated) {
+            access.requireAnalysisIteration();
+        }
     }
 
     @Override
@@ -196,6 +210,22 @@ public class ForeignFunctionsFeature implements InternalFeature {
                             nepiStubPair.getKey(),
                             new MethodPointer(nepiStubPair.getValue()));
         }
-        stubsToCreate.clear();
+    }
+
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(ForeignFunctionsRuntime.CAPTURE_CALL_STATE);
+    }
+
+    /* Testing interface */
+
+    public int getCreatedStubsCount() {
+        assert sealed;
+        return stubsToCreate.size();
+    }
+
+    public Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> getCreatedStubsMap() {
+        assert sealed;
+        return generatedMapping;
     }
 }

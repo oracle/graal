@@ -26,7 +26,6 @@ package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodType;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -37,12 +36,14 @@ import jdk.internal.foreign.abi.VMStorage;
 @Substitute
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 
-    @Alias private final MethodType methodType;
-    @Alias public final long downcallStubAddress;
+    private final MethodType methodType;
+    public final long downcallStubAddress;
+    public final int captureMask;
 
-    public Target_jdk_internal_foreign_abi_NativeEntryPoint(MethodType methodType, long downcallStubAddress) {
+    Target_jdk_internal_foreign_abi_NativeEntryPoint(MethodType methodType, long downcallStubAddress, int captureMask) {
         this.methodType = methodType;
         this.downcallStubAddress = downcallStubAddress;
+        this.captureMask = captureMask;
     }
 
     @Substitute
@@ -52,10 +53,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition) {
-
-        var info = NativeEntryPointInfo.make(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
-        long addr = ForeignFunctionsRuntime.singleton().getStubPointer(info).rawValue();
-        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr);
+        return NativeEntryPointInfo.makeEntryPoint(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
     }
 
     @Substitute /* Could also be @Alias */

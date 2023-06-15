@@ -25,10 +25,10 @@
 package com.oracle.svm.hosted.foreign;
 
 import java.lang.invoke.MethodType;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,18 +42,19 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
+import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle;
+import com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -114,7 +115,10 @@ class DowncallStub extends NonBytecodeMethod {
         AbiUtils.Adaptation[] adaptations = AbiUtils.singleton().adaptArguments(nep);
 
         assert arguments.size() == 1;
-        arguments = adaptArguments(kit, nep.linkMethodType(), arguments.get(0), adaptations);
+        var argumentsAndNep = adaptArguments(kit, nep.linkMethodType(), arguments.get(0), adaptations);
+        arguments = argumentsAndNep.getLeft();
+        ValueNode runtimeNep = argumentsAndNep.getRight();
+
         MethodType callType = adaptMethodType(nep, adaptations);
         assert callType.parameterCount() == arguments.size();
 
@@ -122,8 +126,13 @@ class DowncallStub extends NonBytecodeMethod {
         ValueNode callAddress = arguments.remove(callAddressIndex);
         callType = callType.dropParameterTypes(callAddressIndex, callAddressIndex + 1);
 
+        ForeignCallDescriptor captureFunction = null;
+        ValueNode captureMask = null;
         ValueNode captureAddress = null;
         if (nep.capturesCallState()) {
+            captureFunction = ForeignFunctionsRuntime.CAPTURE_CALL_STATE;
+            captureMask = kit.createLoadField(runtimeNep, kit.getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(Target_jdk_internal_foreign_abi_NativeEntryPoint.class, "captureMask")));
+
             assert nep.captureAddressIndex() > nep.callAddressIndex();
             /*
              * We already removed 1 element from the list, so we must offset the index by one as
@@ -150,7 +159,8 @@ class DowncallStub extends NonBytecodeMethod {
                         VMThreads.StatusSupport.getNewThreadStatus(transition),
                         deoptimizationTarget,
                         cc,
-                        capturedStates(nep),
+                        captureFunction,
+                        captureMask,
                         captureAddress);
 
         returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
@@ -187,16 +197,16 @@ class DowncallStub extends NonBytecodeMethod {
         return MethodType.methodType(mt.returnType(), parameters);
     }
 
-    private static List<ValueNode> adaptArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray, AbiUtils.Adaptation[] adaptations) {
+    private static Pair<List<ValueNode>, ValueNode> adaptArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray, AbiUtils.Adaptation[] adaptations) {
         var args = kit.liftArray(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);
         assert adaptations.length == signature.parameterCount() : adaptations.length + " " + signature.parameterCount();
         assert args.size() == signature.parameterCount() + 1 : args.size() + " " + (signature.parameterCount() + 1);
         // We have to drop the NEP, which is the last argument
-        args.remove(args.size() - 1);
+        ValueNode nep = args.remove(args.size() - 1);
         for (int i = 0; i < args.size(); ++i) {
             args.set(i, adaptArgument(kit, args.get(i), signature.parameterType(i), adaptations[i]));
         }
-        return args;
+        return Pair.create(args, nep);
     }
 
     private static ValueNode adaptReturnValue(HostedGraphKit kit, MethodType signature, ValueNode invokeValue) {
@@ -209,31 +219,5 @@ class DowncallStub extends NonBytecodeMethod {
         var boxed = kit.getMetaAccess().lookupJavaType(returnKind.toBoxedJavaClass());
         returnValue = kit.createBoxing(returnValue, returnKind, boxed);
         return returnValue;
-    }
-
-    /**
-     * Transform HotSpot capturable states into substrate capturable states.
-     */
-    private static Set<CapturableState> capturedStates(NativeEntryPointInfo nep) {
-        Set<CapturableState> states = new HashSet<>();
-
-        for (var state : jdk.internal.foreign.abi.CapturableState.values()) {
-            if (nep.requiresCapture(state)) {
-                /* This error should have been caught earlier... */
-                VMError.guarantee(
-                                AbiUtils.singleton().captureIsSupported(state),
-                                "%s does not support capture of %s when performing a foreign call.",
-                                AbiUtils.singleton().name(),
-                                state.stateName());
-                var mappedState = switch (state) {
-                    case GET_LAST_ERROR -> CapturableState.GET_LAST_ERROR;
-                    case WSA_GET_LAST_ERROR -> CapturableState.WSA_GET_LAST_ERROR;
-                    case ERRNO -> CapturableState.ERRNO;
-                };
-                states.add(mappedState);
-            }
-        }
-
-        return states;
     }
 }

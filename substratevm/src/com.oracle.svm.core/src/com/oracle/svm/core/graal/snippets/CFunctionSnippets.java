@@ -28,11 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -59,23 +57,16 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
-import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.CPrologueData;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.Safepoint;
@@ -135,64 +126,14 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    @Uninterruptible(reason = "Interruptions might change call state.")
-    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
-        /*
-         * This method is called from inside the CFunction prologue before transitioning back into
-         * Java. This means that the calls we do here should not transition to/from native, as this
-         * would introduce a safepoint.
-         *
-         * Note that the states must be captured in the same order as in the JDK: GET_LAST_ERROR,
-         * WSA_GET_LAST_ERROR, ERRNO
-         *
-         * There doesn't seem to be a "best" behavior when capture is requested for a state which is
-         * not supported (e.g. GET_LAST_ERROR on Linux). We simply ignore such capture requests and
-         * push the responsibility of checking that this won't happen to the caller (similarly to
-         * what is done in DowncallLinker::capture_state in HotSpot).
-         *
-         * Finally, in order for this implementation to correctly mimic the JDK's behavior, the
-         * following assumptions are made: 1. WindowsAPI is supported <=> the OS is windows 2. LibC
-         * is always supported
-         */
-        int i = 0;
-        if (WindowsAPIs.isSupported()) {
-            if ((statesToCapture & CapturableState.GET_LAST_ERROR.mask()) != 0) {
-                captureBuffer.write(i, WindowsAPIs.getLastError());
-            }
-            ++i;
-            if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0) {
-                captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
-            }
-            ++i;
-        }
-        if (LibC.isSupported()) {
-            if ((statesToCapture & CapturableState.ERRNO.mask()) != 0) {
-                captureBuffer.write(i, LibC.errno());
-            }
-            ++i;
-        }
-    }
-
-    private static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(CFunctionSnippets.class, "captureCallState", false, LocationIdentity.any());
-
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
-    public static native void callCaptureCallState(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
-
-    @Fold
-    static boolean checkIfCaptureNeeded(int states) {
-        return states != 0;
-    }
+    public static native void callCaptureFunction(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
 
     @Snippet
-    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter int statesToCapture, CIntPointer captureBuffer) {
-        /*
-         * Putting this trivial check in a separate function might be a bit overkill, but this
-         * ensures that it is correctly folded, which should be sufficient to ensure that the
-         * if-the-else is itself folded.
-         */
-        if (checkIfCaptureNeeded(statesToCapture)) {
-            callCaptureCallState(CAPTURE_CALL_STATE, statesToCapture, captureBuffer);
+    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter boolean enableCapture, @ConstantParameter ForeignCallDescriptor captureFunction, int statesToCapture,
+                    CIntPointer captureBuffer) {
+        if (enableCapture) {
+            callCaptureFunction(captureFunction, statesToCapture, captureBuffer);
         }
 
         if (oldThreadStatus != StatusSupport.STATUS_ILLEGAL) {
@@ -255,6 +196,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 
     class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
+        private static final ForeignCallDescriptor DUMMY_DESCRIPTOR = new ForeignCallDescriptor("dummy", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
 
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
@@ -264,15 +206,22 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int oldThreadStatus = node.getOldThreadStatus();
-
-            Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("oldThreadStatus", oldThreadStatus);
-            args.addConst("statesToCapture", CapturableState.mask(node.getStatesToCapture()), StampFactory.objectNonNull());
+            ValueNode statesToCapture = node.getStatesToCapture();
+            if (statesToCapture == null) {
+                statesToCapture = ConstantNode.forLong(0, node.graph());
+            }
+            ForeignCallDescriptor captureFunction = node.getCaptureFunction();
             ValueNode buffer = node.getCaptureBuffer();
             if (buffer == null) {
                 // Set it to the null pointer
                 buffer = ConstantNode.forLong(0, node.graph());
             }
+            Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("oldThreadStatus", oldThreadStatus);
+            args.addConst("enableCapture", captureFunction != null);
+            /* We cannot pass null as const argument, so we pass a dummy instead */
+            args.addConst("captureFunction", captureFunction == null ? DUMMY_DESCRIPTOR : captureFunction);
+            args.add("statesToCapture", statesToCapture);
             args.add("captureBuffer", buffer);
 
             SnippetTemplate template = template(tool, node, args);
@@ -333,10 +282,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             cur = ((FixedWithNextNode) cur).next();
         }
     }
-
-    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(CAPTURE_CALL_STATE);
-    }
 }
 
 @AutomaticallyRegisteredFeature
@@ -347,10 +292,5 @@ class CFunctionSnippetsFeature implements InternalFeature {
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new CFunctionSnippets(options, providers, lowerings);
-    }
-
-    @Override
-    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        CFunctionSnippets.registerForeignCalls(foreignCalls);
     }
 }

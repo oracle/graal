@@ -43,6 +43,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.AssignedLocation;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.headers.WindowsAPIs;
 
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.Binding;
@@ -225,7 +227,7 @@ class ABIs {
             var parametersAssignment = toMemoryAssignment(argMoves, false);
             var returnBuffering = needsReturnBuffer ? toMemoryAssignment(returnMoves, true) : null;
             methodTypeMatchAssignment(callingSequence.capturedStateMask(), boundaryType, parametersAssignment, returnBuffering, desc, options);
-            return new NativeEntryPointInfo(boundaryType, parametersAssignment, returnBuffering, callingSequence.capturedStateMask(), callingSequence.needsTransition());
+            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition());
         }
 
         @Override
@@ -299,7 +301,7 @@ class ABIs {
         @Override
         @Platforms(Platform.HOSTED_ONLY.class)
         public boolean captureIsSupported(CapturableState cs) {
-            return cs.equals(CapturableState.ERRNO);
+            return cs.equals(CapturableState.ERRNO) && LibC.isSupported();
         }
     };
 
@@ -378,7 +380,7 @@ class ABIs {
         @Override
         @Platforms(Platform.HOSTED_ONLY.class)
         public boolean captureIsSupported(CapturableState cs) {
-            return Set.of(CapturableState.ERRNO, CapturableState.GET_LAST_ERROR, CapturableState.WSA_GET_LAST_ERROR).contains(cs);
+            return Set.of(CapturableState.ERRNO, CapturableState.GET_LAST_ERROR, CapturableState.WSA_GET_LAST_ERROR).contains(cs) && LibC.isSupported() && WindowsAPIs.isSupported();
         }
     };
 }
