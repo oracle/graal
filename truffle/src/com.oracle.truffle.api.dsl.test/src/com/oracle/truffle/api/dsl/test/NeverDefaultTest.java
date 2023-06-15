@@ -121,7 +121,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     abstract static class SharedDefaultIntNode extends TestNode {
 
-        @Specialization(guards = "value == cachedValue", limit = "1")
+        @Specialization(guards = "value == cachedValue")
         int s0(int value,
                         @Shared("a") @Cached(value = "value", neverDefault = false) int cachedValue,
                         @Cached(value = "value", neverDefault = false) int notShared) {
@@ -142,7 +142,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     abstract static class SharedNeverDefaultIntNode extends TestNode {
 
-        @Specialization(guards = "value == cachedValue", limit = "1")
+        @Specialization(guards = "value == cachedValue")
         int s0(int value,
                         @Shared("a") @Cached(value = "value", neverDefault = true) int cachedValue,
                         @Cached(value = "value", neverDefault = true) int notShared) {
@@ -692,7 +692,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     @GenerateInline
     abstract static class SingleInstanceSharedCacheNode extends InlinableTestNode {
 
-        @Specialization(guards = "guardNode.execute(value)", limit = "1")
+        @Specialization(guards = "guardNode.execute(value)")
         int s0(int value, @SuppressWarnings("unused") @Shared @Cached InnerGuardNode guardNode) {
             assertNotNull(guardNode);
             return value;

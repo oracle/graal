@@ -135,7 +135,7 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         @SuppressWarnings("unused")
         @ExportMessage
         static class Accepts {
-            @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+            @Specialization(guards = "cachedShape == receiver.getShape()")
             @SuppressWarnings("unused")
             static boolean doCachedShape(DynamicallyDispatchedObject receiver,
                             @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
@@ -153,7 +153,7 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         @SuppressWarnings("unused")
         @ExportMessage
         static class Dispatch {
-            @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+            @Specialization(guards = "cachedShape == receiver.getShape()")
             static Class<?> doCachedShape(DynamicallyDispatchedObject receiver,
                             @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
                             @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getDynamicType().getClass()", allowUncached = true) Class<? extends Object> typeClass) {
