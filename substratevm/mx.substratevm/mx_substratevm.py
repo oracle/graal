@@ -844,6 +844,9 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         '--initialize-at-build-time=hello',
         'hello.Hello'
     ]
+    if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
+
     if not with_isolates_only:
         hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + ['-H:-SpawnIsolates'])
         if mx.get_os() == 'linux' and not build_only:
@@ -851,8 +854,6 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
             mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
 
     hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + ['-H:+SpawnIsolates'])
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
