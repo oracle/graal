@@ -106,23 +106,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Field.class, new Function<>() {
-            @Override
-            public Field apply(Integer i) {
-                return (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true);
-            }
-        });
+        return decodeArray(reader, Field.class, (i) -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true));
     }
 
     @Override
     public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, FieldDescriptor.class, new Function<>() {
-            @Override
-            public FieldDescriptor apply(Integer i) {
-                return (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false);
-            }
-        });
+        return decodeArray(reader, FieldDescriptor.class, (i) -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false));
     }
 
     /**
@@ -135,23 +125,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Method.class, new Function<>() {
-            @Override
-            public Method apply(Integer i) {
-                return (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true);
-            }
-        });
+        return decodeArray(reader, Method.class, (i) -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true));
     }
 
     @Override
     public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, MethodDescriptor.class, new Function<>() {
-            @Override
-            public MethodDescriptor apply(Integer i) {
-                return (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true);
-            }
-        });
+        return decodeArray(reader, MethodDescriptor.class, (i) -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true));
     }
 
     /**
@@ -164,23 +144,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Constructor.class, new Function<>() {
-            @Override
-            public Constructor apply(Integer i) {
-                return (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false);
-            }
-        });
+        return decodeArray(reader, Constructor.class, (i) -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false));
     }
 
     @Override
     public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, ConstructorDescriptor.class, new Function<>() {
-            @Override
-            public ConstructorDescriptor apply(Integer i) {
-                return (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false);
-            }
-        });
+        return decodeArray(reader, ConstructorDescriptor.class, (i) -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false));
     }
 
     /**
@@ -193,12 +163,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Class<?>[] parseClasses(int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Class.class, new Function<>() {
-            @Override
-            public Class apply(Integer i) {
-                return decodeType(reader);
-            }
-        });
+        return decodeArray(reader, Class.class, (i) -> decodeType(reader));
     }
 
     /**
@@ -211,12 +176,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, new Function<>() {
-            @Override
-            public Target_java_lang_reflect_RecordComponent apply(Integer i) {
-                return decodeRecordComponent(reader, DynamicHub.toClass(declaringType));
-            }
-        });
+        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType)));
     }
 
     /**
@@ -229,12 +189,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Object[] parseObjects(int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Object.class, new Function<>() {
-            @Override
-            public Object apply(Integer i) {
-                return decodeObject(reader);
-            }
-        });
+        return decodeArray(reader, Object.class, (i) -> decodeObject(reader));
     }
 
     /**
@@ -247,12 +202,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Parameter[] parseReflectParameters(Executable executable, byte[] encoding) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Parameter.class, new Function<>() {
-            @Override
-            public Parameter apply(Integer i) {
-                return decodeReflectParameter(reader, executable, i);
-            }
-        });
+        return decodeArray(reader, Parameter.class, (i) -> decodeReflectParameter(reader, executable, i));
     }
 
     /**
@@ -556,19 +506,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         String name = isMethod ? decodeName(buf) : null;
         Object[] parameterTypes;
         if (complete || hiding || negative) {
-            parameterTypes = decodeArray(buf, Class.class, new Function<>() {
-                @Override
-                public Class apply(Integer i) {
-                    return decodeType(buf);
-                }
-            });
+            parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
         } else {
-            parameterTypes = decodeArray(buf, String.class, new Function<>() {
-                @Override
-                public String apply(Integer i) {
-                    return decodeName(buf);
-                }
-            });
+            parameterTypes = decodeArray(buf, String.class, (i) -> decodeName(buf));
         }
         Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
@@ -596,12 +536,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return SubstrateUtil.cast(constructor, Executable.class);
             }
         }
-        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, new Function<>() {
-            @Override
-            public Class apply(Integer i) {
-                return decodeType(buf);
-            }
-        });
+        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
         String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
