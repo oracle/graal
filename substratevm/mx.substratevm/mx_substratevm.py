@@ -1402,7 +1402,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             pass
 
         self.jvm_funcs_path = join(libjvm.dir, 'src', 'JvmFuncs.c')
-        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'src_gen', 'JvmFuncsFallbacks.c')
+        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'gensrc', 'JvmFuncsFallbacks.c')
         self.register_in_libjvm(libjvm)
 
         staticlib_path = ['lib', 'static', mx.get_os() + '-' + mx.get_arch()]
