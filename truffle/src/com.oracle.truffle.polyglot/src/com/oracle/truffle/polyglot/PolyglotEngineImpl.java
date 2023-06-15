@@ -1663,7 +1663,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, LogHandler handler,
                     boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
-                    String currentWorkingDirectory, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
+                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
         boolean replayEvents;
         boolean contextAddedToEngine;
@@ -1722,14 +1722,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
                 }
                 FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newNoIOFileSystem();
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
             } else if (allowHostFileAccess) {
-                FileSystem fs = FileSystems.newDefaultFileSystem();
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
+                FileSystem fs = FileSystems.newDefaultFileSystem(tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
             } else if (customFileSystem != null) {
-                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
+                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem, tmpDir);
             } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem(tmpDir), tmpDir);
             }
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;

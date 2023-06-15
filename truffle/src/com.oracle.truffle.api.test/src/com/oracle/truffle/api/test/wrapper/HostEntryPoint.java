@@ -117,7 +117,7 @@ final class HostEntryPoint {
         return type.cast(idToGuestObject.get(id));
     }
 
-    public long remoteCreateContext(long engineId, SandboxPolicy sandboxPolicy) {
+    public long remoteCreateContext(long engineId, SandboxPolicy sandboxPolicy, String tmpDir) {
         Engine engine = unmarshall(Engine.class, engineId);
         Object receiver = api.getReceiver(engine);
         AbstractEngineDispatch dispatch = api.getDispatch(engine);
@@ -125,7 +125,7 @@ final class HostEntryPoint {
                         false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], IOAccess.NONE, null,
                         false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null, true, false);
+                        null, null, null, null, tmpDir, null, true, false);
         return guestToHost(remoteContext);
     }
 

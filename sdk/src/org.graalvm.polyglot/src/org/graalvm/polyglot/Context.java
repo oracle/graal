@@ -1938,7 +1938,7 @@ public final class Context implements AutoCloseable {
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
+                            localCurrentWorkingDirectory, System.getProperty("java.io.tmpdir"), hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }
 
