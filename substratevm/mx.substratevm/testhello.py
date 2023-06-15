@@ -833,7 +833,7 @@ def test():
             r"/\*%sXXX%s4-byte hole%s\*/"%(spaces_pattern, spaces_pattern, spaces_pattern),
             r"/\*%s32%s\|%s8%s\*/%sdouble f_double;"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern),
             r"/\*%s40%s\|%s32%s\*/%sint32_t a_int\[8\];"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern),
-            r"/\*%s72%s\|%s12%s\*/%sint8_t a_char\[12\];"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern),
+            r"/\*%s72%s\|%s12%s\*/%s(u)?int8_t a_char\[12\];"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern),
             r"/\*%sXXX%s4-byte padding%s\*/"%(spaces_pattern, spaces_pattern, spaces_pattern),
             r"%s/\* total size \(bytes\):%s88 \*/"%(spaces_pattern, spaces_pattern),
             r"%s} \*"%(spaces_pattern)]
