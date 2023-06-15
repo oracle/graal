@@ -743,7 +743,7 @@ public class FlatNodeGenFactory {
         if (specialization.hasMultipleInstances()) {
             return false;
         }
-        if (specialization.isGuardBindsCache() && FlatNodeGenFactory.guardUseInstanceField(specialization)) {
+        if (specialization.isGuardBindsExclusiveCache() && FlatNodeGenFactory.guardUseInstanceField(specialization)) {
             return false;
         }
         return !FlatNodeGenFactory.shouldUseSpecializationClassBySize(specialization);
@@ -759,7 +759,7 @@ public class FlatNodeGenFactory {
                 // we need a place to store the next pointer.
                 return true;
             }
-            if (specialization.isGuardBindsCache() && guardUseInstanceField(specialization)) {
+            if (specialization.isGuardBindsExclusiveCache() && guardUseInstanceField(specialization)) {
                 /*
                  * For specializations that bind cached values in guards that use instance fields we
                  * need to use specialization classes because the duplication check is not reliable
@@ -1975,7 +1975,7 @@ public class FlatNodeGenFactory {
     private static boolean needsDuplicationCheck(SpecializationData specialization) {
         if (specialization.hasMultipleInstances()) {
             return true;
-        } else if (specialization.isGuardBindsCache()) {
+        } else if (specialization.isGuardBindsExclusiveCache()) {
             return true;
         }
         return false;
@@ -4915,7 +4915,7 @@ public class FlatNodeGenFactory {
         final boolean useSpecializationClass = useSpecializationClass(specialization);
         final boolean multipleInstances = specialization.hasMultipleInstances();
         final boolean needsDuplicationCheck = needsDuplicationCheck(specialization);
-        final boolean useDuplicateFlag = specialization.isGuardBindsCache() && !useSpecializationClass;
+        final boolean useDuplicateFlag = specialization.isGuardBindsExclusiveCache() && !useSpecializationClass;
         final String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
         boolean pushBoundary = specialization.needsPushEncapsulatingNode();
