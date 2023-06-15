@@ -192,8 +192,8 @@ public class NativeImageGeneratorRunner {
                         "java.base",
                         "java.management",
                         "jdk.management",
-                        "jdk.management.agent",
-                        "java.management.rmi", // READ-BY org.graalvm.nativeimage.builder
+                        "jdk.management.agent", // READ-BY org.graalvm.nativeimage.builder
+                        "java.management.rmi", // READ-BY jdk.management.agent
                         "java.rmi",
                         "java.logging", // READ-BY java.rmi READ-BY java.management.rmi
                         "java.naming",
