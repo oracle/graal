@@ -34,7 +34,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, dirname, relpath
+from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
 import fnmatch
@@ -1426,8 +1426,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         if not JvmFuncsFallbacksBuildTask.registered_in_libjvm:
             JvmFuncsFallbacksBuildTask.registered_in_libjvm = True
             # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
-            rel_jvm_fallbacks_dir = relpath(dirname(self.jvm_fallbacks_path), libjvm.dir)
-            libjvm.srcDirs.append(rel_jvm_fallbacks_dir)
+            libjvm.c_files.append(self.jvm_fallbacks_path)
 
     def newestOutput(self):
         return mx.TimeStampFile(self.jvm_fallbacks_path)
