@@ -171,7 +171,7 @@ public class StubPortProcessor extends AbstractProcessor {
             String newFullFile = newUrlIn.lines().skip(newLineStartExclusive).limit(newLineEnd - newLineStartExclusive).collect(Collectors.joining("\n"));
             int idx = newFullFile.indexOf(oldSnippet);
             if (idx != -1) {
-                return newLineStartExclusive + newFullFile.substring(0, idx).split("\n").length;
+                return newLineStartExclusive + (int) newFullFile.substring(0, idx).lines().count();
             }
         }
         return -1;
