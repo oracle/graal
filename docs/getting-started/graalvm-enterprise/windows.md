@@ -1,20 +1,18 @@
 ---
-layout: docs
-toc_group: getting-started
-link_title:  Installation on Windows
-permalink: /docs/getting-started/windows/
+layout: ohc
+permalink: /getting-started/installation-windows/
 ---
 
 # Installation on Windows Platforms
 
-GraalVM Community Edition is available for Windows on the x64 architecture. 
-You can install it on Windows from an archive file (_zip_).
+Oracle GraalVM is available for Windows on the x64 architecture.
 
-Follow these steps to install GraalVM:
+Follow these steps to install Oracle GraalVM:
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download.
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/).  
+Select the preferred Oracle GraalVM version, **17** or **20** for the Java version, and **Windows** for the operating system. Start downloading.
 
-2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
+2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 
 3. Unzip the archive to your file system.
 
@@ -23,7 +21,7 @@ Follow these steps to install GraalVM:
     ```shell
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```
-  - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:
+  - Set the `JAVA_HOME` environment variable to resolve to the installation directory:
     ```shell
     setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
     ```
@@ -38,17 +36,15 @@ Follow these steps to install GraalVM:
 Alternatively, you can set up environment variables through a Windows GUI:
 
 1. Go to Windows Start Menu - Settings - ... - Advanced.
-2. Click **Environment Variables**. In the section "System Variables" find the `JAVA_HOME` variable and select it.
+2. Click **Environment Variables**. In the section labeled "System Variables" find the `JAVA_HOME` variable and select it.
 3. Click **Edit**.
 4. Click **New**.
 5. Click **Browse** to find the directory to add. Confirm by clicking **OK**.
-6. Restart the Command Prompt to reload the environment variables.
+6. Restart Command Prompt to reload the environment variables.
 
 Repeat the same for the `PATH` environment variable.
 
-Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
-
-## Prerequisites for Using GraalVM Native Image on Windows
+## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
 You can use Visual Studio 2022 version 17.1.0 or later.
 There are two installation options:

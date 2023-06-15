@@ -14,7 +14,7 @@ permalink: /tools/vscode/graalvm-extension/
 * [Native Image Support](#native-image-support)
 * [Extension Settings](#extension-settings)
 
-[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension provides capabilities to manage GraalVM installations and its components in VS Code and/or locally. 
+[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension provides capabilities to manage GraalVM installations and its components in Visual Studio (VS) Code and/or locally. 
 The extension ships a GraalVM installation and configuration wizard. 
 You can conveniently set up the default Java runtime to GraalVM JDK which comes with both just-in-time ([Graal](../../../reference-manual/java/compiler.md)) and ahead-of-time ([Native Image](../../../reference-manual/native-image/README.md)) compilers, making VS Code a comfortable and convenient integrated environment.
 
@@ -58,7 +58,7 @@ The installation starts immediately.
 If you are installing Oracle GraalVM, the installation wizard downloads a package from Oracle's storage point and displays progress. 
 If you are installing GraalVM Community Edition, the wizard downloads the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and displays progress.
 
-> Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/get-started-graalvm-community.md#install-graalvm).
+> Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/get-started-graalvm-community.md).
 
 Once the installation completes, the **Install Optional GraalVM Components** window pops up prompting you to install additional language runtimes and utilities (Java on Truffle, JavaScript, Node.js, LLVM toolchain, Python, etc.):
 

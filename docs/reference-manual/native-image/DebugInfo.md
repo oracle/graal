@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: debugging-and-diagnostics
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/debugging-and-diagnostics/DebugInfo/

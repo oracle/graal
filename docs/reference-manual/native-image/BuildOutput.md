@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: build-overview
 link_title: Build Output
 permalink: /reference-manual/native-image/overview/BuildOutput/

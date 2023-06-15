@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-code-interoperability
 link_title: C API
 permalink: /reference-manual/native-image/native-code-interoperability/C-API/
