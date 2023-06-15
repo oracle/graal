@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.provider;
+package com.oracle.truffle.api.library.provider;
 
 /**
  * Service provider interface implemented by external default exports of a library. This class is

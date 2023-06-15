@@ -159,7 +159,9 @@ final class InstrumentCache {
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
-            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            if (supplier.supportsLegacyProviders()) {
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            }
         }
         /*
          * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
@@ -179,6 +181,7 @@ final class InstrumentCache {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        ModuleUtils.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 

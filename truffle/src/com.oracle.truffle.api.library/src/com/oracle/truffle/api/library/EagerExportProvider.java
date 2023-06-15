@@ -52,8 +52,8 @@ package com.oracle.truffle.api.library;
  * {@link #ensureRegistered()}.
  *
  * @since 21.2
- * @deprecated Use {@link com.oracle.truffle.api.provider.EagerExportProvider}.
+ * @deprecated Use {@link com.oracle.truffle.api.library.provider.EagerExportProvider}.
  */
 @Deprecated(since = "23.1")
-public interface EagerExportProvider extends com.oracle.truffle.api.provider.EagerExportProvider {
+public interface EagerExportProvider extends com.oracle.truffle.api.library.provider.EagerExportProvider {
 }

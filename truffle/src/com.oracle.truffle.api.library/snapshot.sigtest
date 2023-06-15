@@ -10,7 +10,7 @@ meth public abstract !hasdefault java.lang.String value()
 
 CLSS public abstract interface com.oracle.truffle.api.library.DefaultExportProvider
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
-intf com.oracle.truffle.api.provider.DefaultExportProvider
+intf com.oracle.truffle.api.library.provider.DefaultExportProvider
 
 CLSS public abstract com.oracle.truffle.api.library.DynamicDispatchLibrary
 cons protected init()
@@ -22,7 +22,7 @@ hfds FACTORY
 
 CLSS public abstract interface com.oracle.truffle.api.library.EagerExportProvider
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
-intf com.oracle.truffle.api.provider.EagerExportProvider
+intf com.oracle.truffle.api.library.provider.EagerExportProvider
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
@@ -189,6 +189,16 @@ meth public static com.oracle.truffle.api.library.ReflectionLibrary getUncached(
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY,UNCACHED
 
+CLSS public abstract interface com.oracle.truffle.api.library.provider.DefaultExportProvider
+meth public abstract int getPriority()
+meth public abstract java.lang.Class<?> getDefaultExport()
+meth public abstract java.lang.Class<?> getReceiverClass()
+meth public abstract java.lang.String getLibraryClassName()
+
+CLSS public abstract interface com.oracle.truffle.api.library.provider.EagerExportProvider
+meth public abstract java.lang.String getLibraryClassName()
+meth public abstract void ensureRegistered()
+
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
 innr public abstract interface static !annotation Child
@@ -224,16 +234,6 @@ supr java.lang.Object
 hfds GIL_LOCK,PARENT_LIMIT,parent
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
-
-CLSS public abstract interface com.oracle.truffle.api.provider.DefaultExportProvider
-meth public abstract int getPriority()
-meth public abstract java.lang.Class<?> getDefaultExport()
-meth public abstract java.lang.Class<?> getReceiverClass()
-meth public abstract java.lang.String getLibraryClassName()
-
-CLSS public abstract interface com.oracle.truffle.api.provider.EagerExportProvider
-meth public abstract java.lang.String getLibraryClassName()
-meth public abstract void ensureRegistered()
 
 CLSS public abstract interface java.lang.Cloneable
 

@@ -29,15 +29,15 @@ module, the following migration steps need to be applied:
    `provides TruffleInstrumentProvider with <InstrumentClass>Provider` directive.
 4. If a library is exported with a default export lookup enabled using `@GenerateLibrary(defaultExportLookupEnabled = true)`,
    the generated implementation of the `DefaultExportProvider` must be registered in the module descriptor using the provides
-   directive for the `com.oracle.truffle.api.provider.DefaultExportProvider` service. If you build your language or instrument using `mx`
+   directive for the `com.oracle.truffle.api.library.provider.DefaultExportProvider` service. If you build your language or instrument using `mx`
    the provides directive is generated automatically.  
 5. If an AOT library is exported using `@ExportLibrary(useForAOT = true)`, the generated implementation of the `EagerExportProvider`
-   must be registered in the module descriptor using the provides directive for the `com.oracle.truffle.api.provider.EagerExportProvider`
+   must be registered in the module descriptor using the provides directive for the `com.oracle.truffle.api.library.provider.EagerExportProvider`
    service. If you build your language or instrument using `mx` the provides directive is generated automatically.
 6. If your language or instrument already has a module descriptor, make sure that it does not provide any implementation
    of a deprecated `com.oracle.truffle.api.library.EagerExportProvider` or `com.oracle.truffle.api.library.DefaultExportProvider`
-   interface in the module descriptor. They must be replaced by the `com.oracle.truffle.api.provider.EagerExportProvider` and
-   `com.oracle.truffle.api.provider.DefaultExportProvider`. Providing these deprecated interfaces in the module descriptor
+   interface in the module descriptor. They must be replaced by the `com.oracle.truffle.api.library.provider.EagerExportProvider` and
+   `com.oracle.truffle.api.library.provider.DefaultExportProvider`. Providing these deprecated interfaces in the module descriptor
    will cause an error during  creation of a module layer on the closed Truffle.
 7. Languages or instruments must not provide JDK services or services from third party libraries in the module descriptor.
    This is needed to avoid languages getting loaded by the JDK or third parties without the necessary dynamic exports.  

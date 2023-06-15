@@ -239,7 +239,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 continue;
             }
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
-            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            if (supplier.supportsLegacyProviders()) {
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            }
         }
 
         Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
@@ -267,6 +269,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        ModuleUtils.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 

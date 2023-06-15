@@ -1295,16 +1295,6 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
-CLSS public abstract interface com.oracle.truffle.api.provider.DefaultExportProvider
-meth public abstract int getPriority()
-meth public abstract java.lang.Class<?> getDefaultExport()
-meth public abstract java.lang.Class<?> getReceiverClass()
-meth public abstract java.lang.String getLibraryClassName()
-
-CLSS public abstract interface com.oracle.truffle.api.provider.EagerExportProvider
-meth public abstract java.lang.String getLibraryClassName()
-meth public abstract void ensureRegistered()
-
 CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
 cons protected init()
 meth protected abstract java.lang.Object create()

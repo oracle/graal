@@ -106,10 +106,8 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
-    public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.provider.DefaultExportProvider";
     public static final String DenyReplace_Name = "com.oracle.truffle.api.nodes.DenyReplace";
     public static final String DirectCallNode_Name = "com.oracle.truffle.api.nodes.DirectCallNode";
-    public static final String EagerExportProvider_Name = "com.oracle.truffle.api.provider.EagerExportProvider";
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
@@ -150,10 +148,8 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
-    public final DeclaredType DefaultExportProvider = c.getDeclaredType(DefaultExportProvider_Name);
     public final DeclaredType DenyReplace = c.getDeclaredType(DenyReplace_Name);
     public final DeclaredType DirectCallNode = c.getDeclaredType(DirectCallNode_Name);
-    public final DeclaredType EagerExportProvider = c.getDeclaredType(EagerExportProvider_Name);
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
@@ -311,7 +307,9 @@ public class TruffleTypes {
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
+    public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.library.provider.DefaultExportProvider";
     public static final String DynamicDispatchLibrary_Name = "com.oracle.truffle.api.library.DynamicDispatchLibrary";
+    public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.provider.EagerExportProvider";
     public static final String ExportLibrary_Name = "com.oracle.truffle.api.library.ExportLibrary";
     public static final String ExportLibrary_Repeat_Name = "com.oracle.truffle.api.library.ExportLibrary.Repeat";
     public static final String ExportMessage_Ignore_Name = "com.oracle.truffle.api.library.ExportMessage.Ignore";
@@ -328,7 +326,9 @@ public class TruffleTypes {
     public static final String ReflectionLibrary_Name = "com.oracle.truffle.api.library.ReflectionLibrary";
 
     public final DeclaredType CachedLibrary = c.getDeclaredType(CachedLibrary_Name);
+    public final DeclaredType DefaultExportProvider = c.getDeclaredType(DefaultExportProvider_Name);
     public final DeclaredType DynamicDispatchLibrary = c.getDeclaredType(DynamicDispatchLibrary_Name);
+    public final DeclaredType EagerExportProvider = c.getDeclaredType(EagerExportProvider_Name);
     public final DeclaredType ExportLibrary = c.getDeclaredType(ExportLibrary_Name);
     public final DeclaredType ExportLibrary_Repeat = c.getDeclaredType(ExportLibrary_Repeat_Name);
     public final DeclaredType ExportMessage = c.getDeclaredType(ExportMessage_Name);

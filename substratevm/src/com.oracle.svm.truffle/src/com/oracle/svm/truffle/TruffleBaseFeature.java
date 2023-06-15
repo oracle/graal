@@ -144,7 +144,7 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.Profile;
-import com.oracle.truffle.api.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 

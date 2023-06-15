@@ -1034,6 +1034,7 @@ suite = {
           "com.oracle.truffle.api.staticobject",
           "com.oracle.truffle.api.provider",
           "com.oracle.truffle.api.instrumentation.provider",
+          "com.oracle.truffle.api.library.provider",
 
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",
@@ -1044,8 +1045,8 @@ suite = {
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
-          "com.oracle.truffle.api.provider.DefaultExportProvider",
-          "com.oracle.truffle.api.provider.EagerExportProvider",
+          "com.oracle.truffle.api.library.provider.DefaultExportProvider",
+          "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
           "com.oracle.truffle.api.library.DefaultExportProvider", # Deprecated
           "com.oracle.truffle.api.library.EagerExportProvider", # Deprecated
@@ -1060,6 +1061,7 @@ suite = {
           # Unqualified exports
           "com.oracle.truffle.api.provider",
           "com.oracle.truffle.api.instrumentation.provider",
+          "com.oracle.truffle.api.library.provider",
           # Qualified exports
           "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.api.impl to org.graalvm.locator",

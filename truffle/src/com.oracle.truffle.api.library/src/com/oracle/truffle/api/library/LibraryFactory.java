@@ -64,8 +64,8 @@ import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.provider.DefaultExportProvider;
-import com.oracle.truffle.api.provider.EagerExportProvider;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 import sun.misc.Unsafe;
