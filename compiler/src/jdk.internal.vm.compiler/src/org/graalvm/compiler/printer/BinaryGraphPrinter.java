@@ -42,6 +42,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.InputEdges;
@@ -255,8 +256,16 @@ public class BinaryGraphPrinter implements
             }
         }
 
-        props.put("nodeCostSize", node.estimatedNodeSize());
-        props.put("nodeCostCycles", node.estimatedNodeCycles());
+        try {
+            props.put("nodeCostSize", node.estimatedNodeSize());
+        } catch (Exception e) {
+            handleNodePropertyException("nodeCostSize", node, e, props);
+        }
+        try {
+            props.put("nodeCostCycles", node.estimatedNodeCycles());
+        } catch (Exception e) {
+            handleNodePropertyException("nodeCostCycles", node, e, props);
+        }
 
         if (nodeToBlocks != null) {
             Object block = getBlockForNode(node, nodeToBlocks);
@@ -302,14 +311,26 @@ public class BinaryGraphPrinter implements
         }
 
         if (MemoryKill.isSingleMemoryKill(node)) {
-            props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
+            try {
+                props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
+            } catch (Exception e) {
+                handleNodePropertyException("killedLocationIdentity", node, e, props);
+            }
         }
         if (MemoryKill.isMultiMemoryKill(node)) {
-            props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
+            try {
+                props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
+            } catch (Exception e) {
+                handleNodePropertyException("killedLocationIdentities", node, e, props);
+            }
         }
 
         if (node instanceof MemoryAccess) {
-            props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
+            try {
+                props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
+            } catch (Exception e) {
+                handleNodePropertyException("locationIdentity", node, e, props);
+            }
         }
 
         if (getSnippetReflectionProvider() != null) {
@@ -319,6 +340,11 @@ public class BinaryGraphPrinter implements
                 }
             }
         }
+    }
+
+    private static void handleNodePropertyException(String property, Node node, Exception e, Map<String, Object> properties) {
+        TTY.printf("Exception when calculating node property \"%s\" for node %s: %s%n", property, node, e);
+        properties.put(property, "Error when calculating node property.");
     }
 
     private HIRBlock getBlockForNode(Node node, NodeMap<HIRBlock> nodeToBlocks) {
