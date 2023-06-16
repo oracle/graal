@@ -180,23 +180,32 @@ public class ExperimentParser {
     /**
      * Assigns the sampled execution periods from an AOT profile to partial compilation units.
      * Compilation units are linked using their names. This is because compilation IDs are
-     * unavailable in AOT profiles.
+     * unavailable in AOT profiles. If there are more compilation units with equal names, the
+     * sampled periods are linked to all of them. These names are expected to be stable across
+     * experiments.
      *
      * @param partialCompilationUnits partial compilation units
      * @param proftoolLog the AOT profile
      */
     private static void linkAOTProfilesToCompilationUnits(List<PartialCompilationUnit> partialCompilationUnits, ProftoolLog proftoolLog) {
-        EconomicMap<String, PartialCompilationUnit> units = EconomicMap.create();
+        EconomicMap<String, List<PartialCompilationUnit>> units = EconomicMap.create();
         for (PartialCompilationUnit unit : partialCompilationUnits) {
-            units.put(unit.methodName, unit);
+            List<PartialCompilationUnit> list = units.get(unit.methodName);
+            if (list == null) {
+                list = new ArrayList<>();
+                units.put(unit.methodName, list);
+            }
+            list.add(unit);
         }
         for (ProftoolMethod method : proftoolLog.methods) {
             if (method.getName() == null) {
                 continue;
             }
-            PartialCompilationUnit unit = units.get(method.getName());
-            if (unit != null) {
-                unit.period = method.getPeriod();
+            List<PartialCompilationUnit> list = units.get(method.getName());
+            if (list != null) {
+                for (PartialCompilationUnit unit : list) {
+                    unit.period = method.getPeriod();
+                }
             }
         }
     }
