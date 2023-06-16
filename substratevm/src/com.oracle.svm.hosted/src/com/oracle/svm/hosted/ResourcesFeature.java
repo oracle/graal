@@ -29,6 +29,9 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -42,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -52,6 +56,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -143,6 +148,8 @@ public final class ResourcesFeature implements InternalFeature {
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
+    private HashMap<String, List<String>> registerIfReachable = new HashMap<>();
+
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
 
@@ -150,11 +157,64 @@ public final class ResourcesFeature implements InternalFeature {
             this.configurationTypeResolver = configurationTypeResolver;
         }
 
+        private static Stream<ClassLoaderSupportImpl.ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
+            List<ClassLoaderSupportImpl.ResourceLookupInfo> data = new ArrayList<>(layer.configuration().modules().size());
+            for (ResolvedModule m : layer.configuration().modules()) {
+                Module module = layer.findModule(m.name()).orElse(null);
+                ClassLoaderSupportImpl.ResourceLookupInfo info = new ClassLoaderSupportImpl.ResourceLookupInfo(m, module);
+                data.add(info);
+            }
+            return data.stream();
+        }
+
+        private List<String> findReachableForPattern(String pattern) {
+            List<String> founded = new ArrayList<>();
+            ResourcePattern compiledPattern = compilePatterns(Set.of(pattern))[0];
+            NativeImageClassLoaderSupport.allLayers(imageClassLoader.classLoaderSupport.moduleLayerForImageBuild).stream()
+                            .parallel()
+                            .flatMap(ResourcesRegistryImpl::extractModuleLookupData)
+                            .forEach(info -> {
+                                ModuleReference moduleReference = info.resolvedModule().reference();
+                                try (ModuleReader moduleReader = moduleReference.open()) {
+                                    List<String> foundResources = moduleReader.list()
+                                                    .filter(resourceName -> {
+                                                        System.out.println("Module files: " + resourceName);
+                                                        return compiledPattern.pattern.matcher(resourceName).matches();
+                                                    })
+                                                    .toList();
+                                    founded.addAll(foundResources);
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
+
+            for (Path classpathFile : imageClassLoader.classLoaderSupport.classpath()) {
+                System.out.println("Classpath file: " + classpathFile);
+                if (compiledPattern.pattern.matcher(classpathFile.toString()).matches()) {
+                    founded.add(classpathFile.toString());
+                }
+            }
+
+            System.out.println(founded);
+            return founded;
+        }
+
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
             if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
+
+            if (!ConfigurationCondition.alwaysTrue().equals(condition)) {
+                registerIfReachable.put(condition.getTypeName(), findReachableForPattern(pattern));
+            }
+
+            try {
+                throw new Exception("a");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             registerConditionalConfiguration(condition, () -> {
                 UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
                 resourcePatternWorkSet.add(pattern);

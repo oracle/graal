@@ -89,7 +89,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return false;
     }
 
-    private record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
+    public record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
     }
 
     private static Stream<ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
