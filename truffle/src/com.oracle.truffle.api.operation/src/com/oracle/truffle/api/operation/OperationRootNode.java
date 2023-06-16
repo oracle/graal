@@ -47,7 +47,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;

@@ -106,7 +106,7 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
         // operation. The localFrame should be passed to the custom operation (as opposed to the
         // frame containing the stack locals).
 
-        RootCallTarget root = parse("yieldLocal", b -> {
+        RootCallTarget root = parse("yieldTee", b -> {
             b.beginRoot(LANGUAGE);
             OperationLocal local = b.createLocal();
 
@@ -179,16 +179,18 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
 
     @Test
     public void testYieldFromFinally() {
+        // @formatter:off
         // try {
-        // yield 1;
-        // if (false) {
-        // return 2;
-        // } else {
-        // return 3;
-        // }
+        //   yield 1;
+        //   if (false) {
+        //     return 2;
+        //   } else {
+        //     return 3;
+        //   }
         // } finally {
-        // yield 4;
+        //   yield 4;
         // }
+        // @formatter:on
 
         RootCallTarget root = parse("yieldFromFinally", b -> {
             b.beginRoot(LANGUAGE);
@@ -228,6 +230,32 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
         assertEquals(4L, r2.getResult());
 
         assertEquals(3L, r2.continueWith(4L));
+    }
+
+    @Test
+    public void testYieldUpdateArguments() {
+        // yield arg0
+        // return arg0
+
+        // If we update arguments, the resumed code should see the updated value.
+        RootCallTarget root = parse("yieldUpdateArguments", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginYield();
+            b.emitLoadArgument(0);
+            b.endYield();
+
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) root.call(42L);
+        assertEquals(42L, r1.getResult());
+        r1.frame.getArguments()[0] = 123L;
+        assertEquals(123L, r1.continueWith(null));
     }
 
 }
