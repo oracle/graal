@@ -457,10 +457,10 @@ public class NativeImageGeneratorRunner {
                         mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ignored2) {
                         Method javaMainMethod;
-                            /*
-                             * If no C-level main method was found, look for a Java-level main
-                             * method and use our wrapper to invoke it.
-                             */
+                        /*
+                         * If no C-level main method was found, look for a Java-level main method
+                         * and use our wrapper to invoke it.
+                         */
                         if ("main".equals(mainEntryPointName) && JavaMainWrapper.instanceMainMethodSupported()) {
                             // Instance main method only supported for "main" method name
                             try {
@@ -495,15 +495,15 @@ public class NativeImageGeneratorRunner {
                                 if (!Modifier.isPublic(mainMethodModifiers)) {
                                     throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
                                 }
-                        } catch (ReflectionUtilError ex) {
-                            throw UserError.abort(ex.getCause(),
-                                            "Method '%s.%s' is declared as the main entry point but it can not be found. " +
-                                                            "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
-                                            mainClass.getName(),
-                                            mainEntryPointName,
-                                            mainClass.getName(),
-                                            mainEntryPointName);
-                        }
+                            } catch (ReflectionUtilError ex) {
+                                throw UserError.abort(ex.getCause(),
+                                                "Method '%s.%s' is declared as the main entry point but it can not be found. " +
+                                                                "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
+                                                mainClass.getName(),
+                                                mainEntryPointName,
+                                                mainClass.getName(),
+                                                mainEntryPointName);
+                            }
                         }
 
                         if (javaMainMethod.getReturnType() != void.class) {
