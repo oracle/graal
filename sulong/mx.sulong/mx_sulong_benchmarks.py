@@ -532,7 +532,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '--engine.CompilationFailureAction=Diagnose',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
             # GR-38646 - Known GraphTooBigBailoutException
-            '--engine.CompileOnly=~_ZN3UCI4initERNSt3__13mapINS0_12basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEENS_6OptionENS_19CaseInsensitiveLessENS5_INS0_4pairIKS7_S8_EEEEEE'
+            '--engine.CompileOnly=~_ZN3UCI4initERNSt3__13mapINS0_12basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEENS_6OptionENS_19CaseInsensitiveLessENS5_INS0_4pairIKS7_S8_EEEEEE,~sendMTFValues<OSR'
         ]
         return launcher_args + args
 
