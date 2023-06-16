@@ -8,7 +8,7 @@ permalink: /getting-started/oci/devops-build-pipeline/
 This guide describes how to use Oracle GraalVM in the Oracle Cloud Infrastructure (OCI) DevOps service. 
 [OCI DevOps](https://www.oracle.com/in/devops/devops-service/) is a continuous integration/continuous delivery (CI/CD) service that enables developers to automate the delivery and deployment of software to OCI compute platforms.
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost.
+> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
 
 OCI DevOps service provides build runners with Oracle Linux 7 as the base container image along with a number of [runtimes and tools](https://docs.oracle.com/en-us/iaas/Content/devops/using/runtime_details.htm). 
 Oracle GraalVM is supported.
