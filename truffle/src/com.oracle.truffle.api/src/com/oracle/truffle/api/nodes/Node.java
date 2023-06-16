@@ -131,14 +131,15 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (oldParent == null) {
             return true;
         }
-        if (oldParent.getRootNode() != null) {
+        RootNode oldRoot = oldParent.getRootNode();
+        if (oldRoot != null) {
             if (newParent == null) {
                 throw CompilerDirectives.shouldNotReachHere("Old parent was adopted, but new insertion parent be non-null.");
             } else {
                 try {
                     return NodeUtil.assertAdopted(newParent);
                 } catch (AssertionError e) {
-                    throw CompilerDirectives.shouldNotReachHere("Old parent was adopted, but new insertion parent is not adopted.", e);
+                    throw CompilerDirectives.shouldNotReachHere("Old parent was adopted, but new insertion parent is not adopted. Old root was: " + oldRoot, e);
                 }
             }
         }
@@ -255,19 +256,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         return newChild;
     }
 
-    /**
-     * Special version of adoption that sets the parent before adopting its children. This avoids
-     * race conditions due to the temporary disconnection of nodes.
-     */
     private void adoptHelperInsert(final Node newChild) {
         if (newChild != null) {
-            if (newChild.isAdoptable()) {
-                if (newChild == this) {
-                    throw new IllegalStateException("The parent of a node can never be the node itself.");
-                }
-                newChild.setParent(this);
-                NodeUtil.adoptChildrenHelper(newChild);
-            }
+            adoptHelper(newChild);
             assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
         }
     }
@@ -311,8 +302,16 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         if (newChild.isAdoptable()) {
-            NodeUtil.adoptChildrenHelper(newChild);
-            newChild.setParent(this);
+            Node oldParent = newChild.getParent();
+            try {
+                newChild.setParent(this);
+                NodeUtil.adoptChildrenHelper(newChild);
+            } catch (Throwable t) {
+                // anything goes wrong adoption (e.g. stackoverflow) restore the old value.
+                // important: keep this handle as simple as possible to minimize stack use.
+                newChild.parent = oldParent;
+                throw t;
+            }
         }
     }
 
@@ -330,8 +329,16 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         int count = 1;
         if (newChild.isAdoptable()) {
-            count += NodeUtil.adoptChildrenAndCountHelper(newChild);
-            newChild.setParent(this);
+            Node oldParent = newChild.getParent();
+            try {
+                newChild.setParent(this);
+                count += NodeUtil.adoptChildrenAndCountHelper(newChild);
+            } catch (Throwable t) {
+                // anything goes wrong adoption (e.g. stackoverflow) restore the old value.
+                // important: keep this handle as simple as possible to minimize stack use.
+                newChild.parent = oldParent;
+                throw t;
+            }
         }
         return count;
     }
