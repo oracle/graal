@@ -175,7 +175,7 @@ public final class NodeUtil {
             current = current.getParent();
         } while (current != null);
 
-        if (!(prev instanceof RootNode)) {
+        if (!(prev instanceof ExecutableNode)) {
             failNotAdopted(node, prev);
         }
         return true;
