@@ -25,12 +25,15 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import org.graalvm.compiler.core.common.Stride;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -43,9 +46,9 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
 
 /**
  * Represents an address of the form [base + index*scale + displacement]. Both base and index are
@@ -116,6 +119,13 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
                 indexReference = Value.ILLEGAL;
             }
         }
+//        // FIXME
+//        if (base instanceof AMD64CompressAddressLowering.HeapBaseNode && index != null){
+//            gen.getLIRGeneratorTool().emitSpeculationFence();
+//            int mask = (int) ((1L << 32) - 1); // TODO this can fit an int.
+//            Value maskValue = new ConstantValue(LIRKind.fromJavaKind(gen.getLIRGeneratorTool().target().arch, JavaKind.Int), JavaConstant.forInt(mask));
+//            indexValue = gen.getLIRGeneratorTool().asAllocatable(gen.getLIRGeneratorTool().getArithmetic().emitAnd(gen.operand(index), maskValue));
+//        }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
         gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
