@@ -9,7 +9,8 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cloudshellintro.htm) is a browser-based terminal accessible from the Oracle Cloud Console. It provides access to a Linux shell with a pre-authenticated OCI Command Line Interface (CLI), preinstalled developer tools, and comes with 5GB of storage.
 
-Oracle GraalVM for JDK 17 with Native Image are preinstalled in Cloud Shell. 
+Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell. 
+It includes a JDK and Natime Image.
 
 > Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
 
@@ -24,16 +25,16 @@ Cloud Shell has several preinstalled JDKs, including Oracle GraalVM JDK.
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell: GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell: Oracle GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
 
-3. Select GraalVM for JDK 17 as the current JDK:
+3. Select Oracle GraalVM for JDK 17 as the current JDK:
 
     ```shell
     csruntimectl java set graalvmeejdk-17
     ```
     You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
 
-4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
+4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`:
 
     ```shell
     echo $JAVA_HOME
@@ -43,9 +44,6 @@ Cloud Shell has several preinstalled JDKs, including Oracle GraalVM JDK.
     ```
     ```shell
     java -version
-    ```
-    ```shell
-    native-image --version
     ```
 
 You are all set to run Java applications using Oracle GraalVM JDK in Cloud Shell.
@@ -115,7 +113,7 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
     ```
     Terminate the application by pressing Ctrl+c.
 
-Congratulations! You have successfully used Oracle GraalVM JDK with Native Image to build and test a Spring Boot REST application in Cloud Shell. 
+Congratulations! You have successfully used Oracle GraalVM to build and test a Spring Boot REST application in Cloud Shell. 
 
 Thus, you can easily use Oracle GraalVM in OCI Cloud Shell to build and test simple Java applications with Micronaut, Spring, and other microservice frameworks.
 
