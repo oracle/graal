@@ -35,6 +35,7 @@ import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -60,7 +61,8 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private MethodHandle asTypeCache;
 
-    @Alias MethodType type;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();
@@ -115,6 +117,17 @@ final class Target_java_lang_invoke_MethodHandle {
     static Object linkToSpecial(Object... args) throws Throwable {
         return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
     }
+
+    @Substitute
+    void maybeCustomize() {
+        /*
+         * JDK 8 update 60 added an additional customization possibility for method handles. For all
+         * use cases that we care about, that seems to be unnecessary, so we can just do nothing.
+         */
+    }
+
+    @Delete
+    native void customize();
 }
 
 final class Util_java_lang_invoke_MethodHandle {
@@ -235,7 +248,8 @@ final class Util_java_lang_invoke_MethodHandle {
 
 @TargetClass(className = "java.lang.invoke.DirectMethodHandle")
 final class Target_java_lang_invoke_DirectMethodHandle {
-    @Alias Target_java_lang_invoke_MemberName member;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    Target_java_lang_invoke_MemberName member;
 
     @Substitute
     void ensureInitialized() {

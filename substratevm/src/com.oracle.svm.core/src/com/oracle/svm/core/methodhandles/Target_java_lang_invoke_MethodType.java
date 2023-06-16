@@ -45,7 +45,7 @@ final class Target_java_lang_invoke_MethodType {
      * Since MethodHandle is not supported yet at run time, we could also disable the usage of
      * MethodType completely. But this recomputation seems less intrusive.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.invoke.MethodType$ConcurrentWeakInternSet") //
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.invoke.MethodType$ConcurrentWeakInternSet", isFinal = true) //
     static Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet internTable;
 
     /**

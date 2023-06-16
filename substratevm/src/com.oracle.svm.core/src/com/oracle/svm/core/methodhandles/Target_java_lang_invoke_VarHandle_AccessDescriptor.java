@@ -27,12 +27,14 @@ package com.oracle.svm.core.methodhandles;
 import java.lang.invoke.MethodType;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "java.lang.invoke.VarHandle", innerClass = "AccessDescriptor")
 final class Target_java_lang_invoke_VarHandle_AccessDescriptor {
-    @Alias//
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     MethodType symbolicMethodTypeInvoker;
-    @Alias//
+
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     int mode;
 }

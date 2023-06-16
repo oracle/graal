@@ -457,19 +457,7 @@ public class InlineBeforeAnalysisPolicyUtils {
 
     private static boolean inlineForMethodHandleIntrinsification(ResolvedJavaMethod method) {
         String className = method.getDeclaringClass().toJavaName(true);
-        if (className.startsWith("java.lang.invoke.VarHandle") && (!className.equals("java.lang.invoke.VarHandle") || method.getName().equals("getMethodHandleUncached"))) {
-            /*
-             * Do not inline implementation methods of various VarHandle implementation classes.
-             * They are too complex and cannot be reduced to a single invoke or field access. There
-             * is also no need to inline them, because they are not related to any MethodHandle
-             * mechanism.
-             *
-             * Methods defined in VarHandle itself are fine and not covered by this rule, apart from
-             * well-known methods that are never useful to be inlined. If these methods are reached,
-             * intrinsification will not be possible in any case.
-             */
-            return false;
-        } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
+        if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
             /*
              * Inline all helper methods used by method handles. We do not know exactly which ones
              * they are, but they are all from the same package.

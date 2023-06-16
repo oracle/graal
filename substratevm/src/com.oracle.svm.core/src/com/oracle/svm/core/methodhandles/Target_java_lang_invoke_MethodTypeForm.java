@@ -40,8 +40,8 @@ final class Target_java_lang_invoke_MethodTypeForm {
      * consistent state, to avoid problems when the lazily initialization happens during image heap
      * writing.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
     private SoftReference<?>[] methodHandles;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
     private SoftReference<?>[] lambdaForms;
 }

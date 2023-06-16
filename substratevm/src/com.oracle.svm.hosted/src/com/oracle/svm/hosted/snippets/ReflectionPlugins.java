@@ -155,6 +155,9 @@ public final class ReflectionPlugins {
         rp.registerClassPlugins(plugins);
     }
 
+    private static final Class<?> VAR_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
+    private static final Class<?> MEMBER_NAME_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
+
     /**
      * Classes that are allowed to be constant folded for Object parameters. We must be careful and
      * return only objects of classes that are "immutable enough", i.e., cannot change their
@@ -173,7 +176,7 @@ public final class ReflectionPlugins {
                     Class.class, String.class, ClassLoader.class,
                     Method.class, Constructor.class, Field.class,
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
-                    VarHandle.class,
+                    VarHandle.class, VAR_FORM_CLASS, MEMBER_NAME_CLASS,
                     ByteOrder.class);
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
@@ -200,6 +203,10 @@ public final class ReflectionPlugins {
                         "changeParameterType", "insertParameterTypes", "appendParameterTypes", "replaceParameterTypes", "dropParameterTypes",
                         "changeReturnType", "erase", "generic", "wrap", "unwrap",
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
+
+        registerFoldInvocationPlugins(plugins, MethodHandle.class, "asType");
+
+        registerFoldInvocationPlugins(plugins, VAR_FORM_CLASS, "resolveMemberName");
 
         registerConditionalFoldInvocationPlugins(plugins);
 

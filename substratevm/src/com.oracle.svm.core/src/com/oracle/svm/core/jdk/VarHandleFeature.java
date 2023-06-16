@@ -251,73 +251,73 @@ class VarHandleFieldStaticBaseObjectAccessor {
  */
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleBooleans_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = boolean[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = boolean[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = boolean[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = boolean[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleBytes_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = byte[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = byte[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = byte[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = byte[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleChars_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = char[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = char[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = char[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = char[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleDoubles_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = double[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = double[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = double[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = double[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleFloats_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = float[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = float[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = float[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = float[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleInts_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = int[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = int[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = int[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = int[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleLongs_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = long[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = long[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = long[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = long[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleShorts_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = short[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = short[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = short[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = short[].class, isFinal = true) //
     int ashift;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleReferences_Array {
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = Object[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = Object[].class, isFinal = true) //
     int abase;
-    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = Object[].class) //
+    @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = Object[].class, isFinal = true) //
     int ashift;
 }
 
@@ -325,6 +325,10 @@ final class Target_java_lang_invoke_VarHandleReferences_Array {
  * Substitutions for VarHandle instance field access classes. They all follow the same pattern: they
  * store the receiver type (no need to recompute that) and the field offset (we need to recompute
  * that).
+ *
+ * Because the offset field values can be set only after instance field offsets are assigned
+ * following the analysis, the unsafe accesses cannot be constant-folded unless inlining before
+ * analysis is already successful in transforming them to a field access.
  */
 
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldInstanceReadOnly")
