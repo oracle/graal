@@ -90,6 +90,7 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaul
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaultNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaultObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceLibraryCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstancePrimitiveCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceSharedCacheNodeGen;
@@ -710,6 +711,38 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     public void testSingleInstanceSharedCacheNode() throws InterruptedException {
         assertInParallel(SingleInstanceSharedCacheNodeGen::create, (node, threadIndex, objectIndex) -> {
             node.execute(node, 0);
+        });
+    }
+
+    @GenerateInline
+    abstract static class SingleInstanceLibraryCacheNode extends InlinableTestNode {
+
+        @Specialization(guards = "value == 1", limit = "1")
+        int s0(int value, @CachedLibrary("value") InteropLibrary interop,
+                        @Cached RegularNode node) {
+            assertNotNull(interop);
+            assertNotNull(node);
+            return value;
+        }
+
+        @Specialization(guards = {"value == 1 || value == 2"}, replaces = "s0")
+        int s1(int value, @Cached RegularNode node) {
+            assertNotNull(node);
+            return value;
+        }
+
+        @Specialization
+        int s1(int value) {
+            fail("must not fallthrough");
+            return value;
+        }
+
+    }
+
+    @Test
+    public void testSingleInstanceLibraryCacheNode() throws InterruptedException {
+        assertInParallel(SingleInstanceLibraryCacheNodeGen::create, (node, threadIndex, objectIndex) -> {
+            node.execute(node, threadIndex % 2 + 1);
         });
     }
 
