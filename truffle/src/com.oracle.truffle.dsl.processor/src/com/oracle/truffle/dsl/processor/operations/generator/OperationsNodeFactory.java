@@ -168,7 +168,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
-            continuationRoot = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
+            continuationRoot = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
             continuationLocationImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationLocationImpl");
         } else {
             continuationRoot = null;
@@ -3733,7 +3733,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case INSTRUMENTATION_LEAVE:
                         break;
                     case LOAD_ARGUMENT:
-                        b.statement(setFrameObject("sp", "frame.getArguments()[" + readBc("bci + 1") + "]"));
+                        b.statement(setFrameObject("sp", localFrame() + ".getArguments()[" + readBc("bci + 1") + "]"));
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
@@ -4185,6 +4185,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
 
             continuationRoot.add(createExecute());
+            continuationRoot.add(createGetOperationRootNode());
 
             continuationRoot.add(createToString());
 
@@ -4215,6 +4216,13 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
 
+            return ex;
+        }
+
+        private CodeExecutableElement createGetOperationRootNode() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), operationNodeGen.asType(), "getOperationRootNode");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("root").end();
             return ex;
         }
 

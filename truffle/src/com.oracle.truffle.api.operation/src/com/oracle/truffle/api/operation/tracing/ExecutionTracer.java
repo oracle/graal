@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.api.operation.tracing;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.tracing.OperationsStatistics.DisabledExecutionTracer;
 
