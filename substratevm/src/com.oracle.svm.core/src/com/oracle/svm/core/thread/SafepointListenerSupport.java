@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.thread;
 
+import java.util.Arrays;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.heap.UnknownObjectField;
-
 @AutomaticallyRegisteredImageSingleton
-public final class DynamicHubSupport {
-
-    @UnknownObjectField(availability = AfterHostedUniverse.class) private int maxTypeId;
-    @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
+public class SafepointListenerSupport {
+    private SafepointListener[] listeners;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHubSupport() {
+    public SafepointListenerSupport() {
+        listeners = new SafepointListener[0];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMaxTypeId(int maxTypeId) {
-        this.maxTypeId = maxTypeId;
+    public synchronized void register(SafepointListener listener) {
+        assert listener != null;
+        int oldLength = listeners.length;
+        // We expect a very small number of listeners, so only increase the size by 1.
+        listeners = Arrays.copyOf(listeners, oldLength + 1);
+        listeners[oldLength] = listener;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public int getMaxTypeId() {
-        return maxTypeId;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(NonmovableArray<Byte> referenceMapEncoding) {
-        this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
+    @Fold
+    public static SafepointListenerSupport singleton() {
+        return ImageSingletons.lookup(SafepointListenerSupport.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableArray<Byte> getReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
+    public void beforeSlowpathSafepointCheck() {
+        for (int i = 0; i < listeners.length; i++) {
+            listeners[i].beforeSlowPathSafepointCheck();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void afterFreezeAtSafepoint() {
+        for (int i = 0; i < listeners.length; i++) {
+            listeners[i].afterFreezeAtSafepoint();
+        }
     }
 }

@@ -50,7 +50,7 @@ import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp.newLabels;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import java.util.function.BiConsumer;
 

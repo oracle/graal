@@ -50,8 +50,8 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import java.util.EnumSet;
 

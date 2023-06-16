@@ -45,7 +45,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
     @Override
     public <T> T readConstantField(ResolvedJavaField f, ConstantFieldTool<T> analysisTool) {
         AnalysisField field = (AnalysisField) f;
-        if (field.isUnknownValue()) {
+        if (!field.isValueAvailable()) {
             return null;
         }
 

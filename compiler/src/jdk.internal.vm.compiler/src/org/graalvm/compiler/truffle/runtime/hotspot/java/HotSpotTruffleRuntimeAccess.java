@@ -31,10 +31,15 @@ import com.oracle.truffle.api.TruffleRuntimeAccess;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 
 @ServiceProvider(TruffleRuntimeAccess.class)
-public class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
 
     @Override
     protected TruffleRuntime createRuntime() {
         return new HotSpotTruffleRuntime();
+    }
+
+    @Override
+    protected int calculatePriority() {
+        return 0;
     }
 }

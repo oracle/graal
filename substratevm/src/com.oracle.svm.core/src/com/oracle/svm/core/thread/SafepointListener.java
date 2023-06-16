@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
+package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.libgraal.LibGraal;
+import com.oracle.svm.core.Uninterruptible;
 
-import com.oracle.truffle.api.TruffleRuntime;
-
-/**
- * Access to a {@link TruffleRuntime} that uses libgraal for compilation.
- */
-public final class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
-
-    @Override
-    protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
+public interface SafepointListener {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default void beforeSlowPathSafepointCheck() {
     }
 
-    @Override
-    protected int calculatePriority() {
-        if (LibGraal.isAvailable()) {
-            return Integer.MAX_VALUE;
-        }
-        return Integer.MIN_VALUE;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default void afterFreezeAtSafepoint() {
     }
 }

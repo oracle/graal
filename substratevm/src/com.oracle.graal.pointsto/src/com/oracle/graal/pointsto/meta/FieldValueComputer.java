@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.pointsto.meta;
 
-package com.oracle.svm.core.jdk;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import java.util.function.BooleanSupplier;
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface FieldValueComputer {
 
-/**
- * A predicate that returns {@code true} iff
- * {@code boolean jdk.internal.platform.CgroupMetrics.getTotalMemorySize0()} exists. It should only
- * be used in conjunction with {@link CgroupMetricsJDK} as {@code CgroupMetrics} isn't available in
- * all JDKs.
- */
-public class HasGetTotalMemorySize0 implements BooleanSupplier {
+    Class<?>[] EMPTY_TYPES = new Class<?>[0];
 
-    @Override
-    public boolean getAsBoolean() {
-        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-        Class<?> cgroupMetrics = Class.forName(javaBase, CgroupMetricsJDK.CGROUP_METRICS_CLASS);
-        if (cgroupMetrics != null) {
-            try {
-                cgroupMetrics.getDeclaredMethod("getTotalMemorySize0");
-                return true;
-            } catch (Exception e) {
-                return false;
-            }
-        }
-        return false;
+    default boolean isAvailable() {
+        return true;
     }
 
+    default Class<?>[] types() {
+        return EMPTY_TYPES;
+    }
+
+    default boolean canBeNull() {
+        return false;
+    }
 }

@@ -30,6 +30,7 @@ import java.util.Map;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.Safepoint;
@@ -41,8 +42,8 @@ public class CallStackFrameMethodInfo {
     protected static final int INITIAL_METHOD_ID = -1;
 
     private final Map<Integer, String> sampledMethods = new HashMap<>();
-    @UnknownPrimitiveField private int enterSafepointCheckId = INITIAL_METHOD_ID;
-    @UnknownPrimitiveField private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int enterSafepointCheckId = INITIAL_METHOD_ID;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {

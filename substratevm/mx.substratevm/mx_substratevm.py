@@ -1155,7 +1155,10 @@ libgraal_build_args = [
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
-]
+] + ([
+   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+   '-H:PageSize=64K'
+] if mx.get_arch() == 'aarch64' else [])
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1179,6 +1182,8 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             headers=False,
         ),
     ],
+    # GR-46611 Temporary solution. When the optimized runtime is moved to the TRUFFLE_API distribution, truffleattach should be moved as well.
+    support_libraries_distributions=['compiler:TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT'],
     stability="supported",
     jlink=False,
 )
@@ -1451,6 +1456,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_symbols_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     try:
                         mx.logvv('Processing line: ' + line.rstrip())
                         line_tokens = line.split()
@@ -1474,7 +1481,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                                 mx.logv('Pick symbol: ' + symbol_candiate)
                                 symbols.add(symbol_candiate[len(platform_prefix):])
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             if mx.is_windows():
@@ -1509,6 +1516,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_impls_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     mx.logvv('Processing line: ' + line.rstrip())
                     # JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version
                     tokens = line.split()
@@ -1520,7 +1529,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                             mx.logv('Found matching implementation: ' + impl_name)
                             impls.add(impl_name)
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             with open(self.jvm_funcs_path) as f:

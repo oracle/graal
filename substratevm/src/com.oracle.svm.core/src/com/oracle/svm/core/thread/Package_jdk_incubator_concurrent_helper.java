@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.thread;
 
-package com.oracle.svm.core.jdk;
+import java.util.function.Function;
 
-import java.util.function.BooleanSupplier;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public class CgroupMetricsJDK implements BooleanSupplier {
+import com.oracle.svm.core.annotate.TargetClass;
 
-    static final String CGROUP_METRICS_CLASS = "jdk.internal.platform.CgroupMetrics";
+@Platforms(Platform.HOSTED_ONLY.class)
+public class Package_jdk_incubator_concurrent_helper implements Function<TargetClass, String> {
 
     @Override
-    public boolean getAsBoolean() {
-        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-        Class<?> cgroupMetrics = Class.forName(javaBase, CGROUP_METRICS_CLASS);
-        return cgroupMetrics != null;
+    public String apply(TargetClass annotation) {
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            return "java.lang." + annotation.className();
+        } else {
+            return "jdk.incubator.concurrent." + annotation.className();
+        }
     }
-
 }

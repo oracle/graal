@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,34 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.substitute;
+#include<jni.h>
 
-import java.lang.reflect.Field;
-
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-
-public interface ComputedValue {
-    RecomputeFieldValue.Kind getRecomputeValueKind();
-
-    Field getTargetField();
+#define EXCEPTION_CHECK_VOID(env) if (env->ExceptionCheck()) { \
+return;                                                        \
 }
+
+
+static void openJVMCITo(JNIEnv* jniEnv, jobject callerModule)  {
+    jclass servicesClz = jniEnv->FindClass("jdk/vm/ci/services/Services");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jmethodID openJVMCIMethod = jniEnv->GetStaticMethodID(servicesClz, "openJVMCITo", "(Ljava/lang/Module;)V");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jvalue args[2] {};
+    args[0].l = callerModule;
+    jniEnv->CallStaticVoidMethodA(servicesClz, openJVMCIMethod, args);
+}
+
+// Library entry points
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_hotspot_JVMCIOpenSupport_openJVMCITo0(JNIEnv *env, jclass clz, jobject callerModule) {
+    openJVMCITo(env, callerModule);
+}
+
+#ifdef __cplusplus
+}
+#endif
+

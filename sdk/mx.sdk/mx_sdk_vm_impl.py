@@ -3012,6 +3012,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if len(self.language_library_config.option_vars) > 0:
             _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
 
+        if len(self.language_library_config.default_vm_args) > 0:
+            _dynamic_cflags += ['-DLAUNCHER_DEFAULT_VM_ARGS="{\\"' + '\\", \\"'.join(self.language_library_config.default_vm_args) + '\\"}"']
+
         return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
 
     @property
