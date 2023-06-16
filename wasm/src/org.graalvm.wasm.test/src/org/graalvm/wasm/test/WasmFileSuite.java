@@ -105,7 +105,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
-        contextBuilder.option("engine.Inlining", "false");
+        contextBuilder.option("compiler.Inlining", "false");
         return contextBuilder.build();
     }
 
@@ -113,7 +113,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "false");
         contextBuilder.option("engine.CompileImmediately", "true");
-        contextBuilder.option("engine.Inlining", "false");
+        contextBuilder.option("compiler.Inlining", "false");
         return contextBuilder.build();
     }
 
@@ -121,7 +121,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "false");
         contextBuilder.option("engine.CompileImmediately", "true");
-        contextBuilder.option("engine.Inlining", "true");
+        contextBuilder.option("compiler.Inlining", "true");
         return contextBuilder.build();
     }
 
@@ -129,7 +129,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "true");
         contextBuilder.option("engine.CompileImmediately", "false");
-        contextBuilder.option("engine.Inlining", "false");
+        contextBuilder.option("compiler.Inlining", "false");
         contextBuilder.option("engine.FirstTierCompilationThreshold", "100");
         return contextBuilder.build();
     }
