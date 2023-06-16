@@ -239,6 +239,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     private Consumer<Field> markAsUnsafeAccessed;
     private final ConcurrentMap<Object, Boolean> processedInlinedFields = new ConcurrentHashMap<>();
 
+    private boolean needsAllEncodings;
+
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "initializeNativeImageState",
@@ -308,11 +310,8 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         initializeTruffleReflectively(imageClassLoader);
         initializeHomeFinder();
-        boolean needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
+        needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
                         Collections.emptyList());
-        if (needsAllEncodings) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
-        }
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
@@ -449,6 +448,10 @@ public final class TruffleBaseFeature implements InternalFeature {
         libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
+        }
+
+        if (needsAllEncodings) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
     }
 
