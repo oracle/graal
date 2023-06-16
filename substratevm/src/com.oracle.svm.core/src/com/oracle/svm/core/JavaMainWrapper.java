@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -121,7 +122,7 @@ public class JavaMainWrapper {
                         Constructor<?> ctor = ReflectionUtil.lookupConstructor(javaMainMethod.getDeclaringClass());
                         ctorHandle = MethodHandles.lookup().unreflectConstructor(ctor);
                     } catch (ReflectionUtil.ReflectionUtilError ex) {
-                        throw UserError.abort(ex, "no non-private zero argument constructor found in class %s", javaMainMethod.getDeclaringClass().getSimpleName());
+                        throw UserError.abort(ex, "No non-private zero argument constructor found in class %s", ClassUtil.getUnqualifiedName(javaMainMethod.getDeclaringClass()));
                     }
                 }
                 this.javaMainHandle = mainHandle;
