@@ -40,11 +40,12 @@
  */
 package com.oracle.truffle.api.library;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryFactory.ResolvedDispatch;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 /**
@@ -126,49 +127,11 @@ public abstract class LibraryExport<T extends Library> {
      */
     @TruffleBoundary
     protected static boolean assertAdopted(Node node) {
-        assert node != null;
-        Node current = node;
-        Node prev;
-        int parentsVisited = 0;
-        do {
-            if (parentsVisited++ > 100000) {
-                assert false : "getRootNode() did not terminate in 100000 iterations.";
-                return false;
-            }
-            prev = current;
-            current = current.getParent();
-        } while (current != null);
-
-        if (!(prev instanceof RootNode)) {
-            failNotAdopted(node, prev);
+        try {
+            return NodeUtil.assertAdopted(node);
+        } catch (AssertionError e) {
+            throw CompilerDirectives.shouldNotReachHere("Invalid library usage. Cached library must be adopted by a RootNode before it is executed.", e);
         }
-        return true;
-    }
-
-    private static void failNotAdopted(Node node, Node prev) {
-        Node current;
-        StringBuilder b = new StringBuilder();
-        current = node;
-        do {
-            appendEnclosingSimpleName(b, current.getClass());
-            b.append(".parent -> ");
-            if (current == prev) {
-                break;
-            }
-            current = current.getParent();
-        } while (current != null);
-        b.append("null");
-
-        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed. Path to null parent: " + b.toString();
-    }
-
-    private static void appendEnclosingSimpleName(StringBuilder b, Class<?> c) {
-        Class<?> enclosing = c.getEnclosingClass();
-        if (enclosing != null) {
-            appendEnclosingSimpleName(b, enclosing);
-            b.append(".");
-        }
-        b.append(c.getSimpleName());
     }
 
     /**

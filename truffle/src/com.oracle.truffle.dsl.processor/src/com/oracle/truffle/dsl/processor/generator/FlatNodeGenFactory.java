@@ -2106,6 +2106,9 @@ public class FlatNodeGenFactory {
 
         if (specialization.hasMultipleInstances() && !specialization.getAssumptionExpressions().isEmpty()) {
             CodeExecutableElement remove = specializationClass.add(new CodeExecutableElement(referenceType, "remove"));
+            if (useNode) {
+                remove.addParameter(new CodeVariableElement(types.Node, "parent"));
+            }
             remove.addParameter(new CodeVariableElement(referenceType, "search"));
             CodeTreeBuilder builder = remove.createBuilder();
             builder.declaration(referenceType, "newNext", "this.next_");
@@ -2113,15 +2116,36 @@ public class FlatNodeGenFactory {
             builder.startIf().string("search == newNext").end().startBlock();
             builder.statement("newNext = newNext.next_");
             builder.end().startElseBlock();
-            builder.statement("newNext = newNext.remove(search)");
+            if (useNode) {
+                builder.statement("newNext = newNext.remove(this, search)");
+            } else {
+                builder.statement("newNext = newNext.remove(search)");
+            }
             builder.end();
             builder.end();
 
-            builder.declaration(referenceType, "copy", builder.create().startNew(referenceType).string("newNext").end());
+            builder.startStatement();
+            builder.type(referenceType).string(" copy = ");
+            if (useNode) {
+                builder.startCall("parent.insert");
+            }
+            builder.startNew(referenceType).string("newNext").end();
+            if (useNode) {
+                builder.end();
+            }
+            builder.end();
             for (Element element : specializationClassElements) {
-                if (element instanceof VariableElement && !element.getModifiers().contains(Modifier.STATIC)) {
+                if (element instanceof VariableElement variable && !element.getModifiers().contains(Modifier.STATIC)) {
                     String name = element.getSimpleName().toString();
-                    builder.startStatement().string("copy.", name, " = this.", name).end();
+                    TypeMirror type = variable.asType();
+
+                    boolean needsInsert = useNode && isAssignable(type, types.Node) || isNodeArray(type);
+                    if (needsInsert) {
+                        builder.startStatement().string("copy.", name, " = copy.insert(this.", name, ")").end();
+                    } else {
+                        builder.startStatement().string("copy.", name, " = this.", name).end();
+                    }
+
                 }
             }
             builder.startReturn().string("copy").end();
@@ -5978,7 +6002,11 @@ public class FlatNodeGenFactory {
                 builder.startIf().string("cur == original").end().startBlock();
                 builder.statement("update = cur.next_");
                 builder.end().startElseBlock();
-                builder.statement("update = original.remove(", specializationLocalName, ")");
+                if (specializedIsNode) {
+                    builder.statement("update = original.remove(this, ", specializationLocalName, ")");
+                } else {
+                    builder.statement("update = original.remove(", specializationLocalName, ")");
+                }
                 builder.end();
                 builder.statement("break");
                 builder.end(); // if cur == s0_
@@ -6007,11 +6035,6 @@ public class FlatNodeGenFactory {
                 builder.statement("break");
                 builder.end();
                 builder.end();
-
-                if (specializedIsNode) {
-                    builder.statement("this.adoptChildren()");
-                }
-
             }
             removeThisMethods.put(specialization, method);
         }
