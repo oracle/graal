@@ -11,7 +11,7 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 Oracle GraalVM for JDK 17 with Native Image are preinstalled in Cloud Shell. 
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure at no additional cost.
+> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
 
 ## Steps to Use Oracle GraalVM in Cloud Shell
 

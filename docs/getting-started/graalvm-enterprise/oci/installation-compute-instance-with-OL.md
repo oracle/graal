@@ -8,7 +8,7 @@ permalink: /getting-started/oci/compute-instance/
 This guide describes how to install Oracle GraalVM on an Oracle Cloud Infrastructure (OCI) Compute instance with Oracle Linux 7, 8, and 9.
 For complete beginners, [start with this tutorial to create and launch your first Linux instance](https://docs.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm).
 
-> Note: [Oracle Cloud Infrastructure (OCI)](https://www.oracle.com/cloud) provides Oracle GraalVM to its customers for free. The support is included in the Oracle Cloud subscription.
+> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
 
 ### Prerequisites
 
