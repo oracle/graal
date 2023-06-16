@@ -75,7 +75,8 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
             // FIXME
             if (compression.getOp() == CompressionNode.CompressionOp.Uncompress) {
                 GetObjectAddressNode compressAsAddress = compression.graph().addOrUnique(new GetObjectAddressNode(compression.getValue()));
-                idx = compression.graph().addOrUnique(new AndNode(compressAsAddress, new ConstantNode(JavaConstant.forInt(0xdeafbeef), IntegerStamp.create(32))));
+                ConstantNode constantNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(0xdeafbeef), IntegerStamp.create(32)));
+                idx = compression.graph().addOrUnique(new AndNode(compressAsAddress, constantNode));
             }
         } else if (encodingBase != 0) {
             if (!updateDisplacement(addr, encodingBase, false)) {
