@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
@@ -91,12 +89,6 @@ public class ExperimentParser {
          */
         List<ProftoolMethod> methods = new ArrayList<>();
     }
-
-    /**
-     * A regex capturing the method name and the compilation ID of a serialized compilation unit.
-     */
-    private static final String COMPILATION_UNIT_REGEX = String.format("\\{\"%s\": \"([^\"]*)\", \"%s\": \"([^\"]*)\"",
-                    OptimizationLogImpl.METHOD_NAME_PROPERTY, OptimizationLogImpl.COMPILATION_ID_PROPERTY);
 
     /**
      * The experiment files to be parsed.
@@ -216,23 +208,19 @@ public class ExperimentParser {
      * @throws IOException failed to read the optimization logs
      */
     private List<PartialCompilationUnit> parsePartialCompilationUnits() throws IOException {
+        List<String> allowedKeys = List.of(OptimizationLogImpl.METHOD_NAME_PROPERTY, OptimizationLogImpl.COMPILATION_ID_PROPERTY);
         List<PartialCompilationUnit> partialCompilationUnits = new ArrayList<>();
-        Pattern compilationUnitPattern = Pattern.compile(COMPILATION_UNIT_REGEX);
         for (FileView fileView : experimentFiles.getOptimizationLogs()) {
-            final long[] lineNumber = {0};
             fileView.forEachLine((line, lineView) -> {
-                ++lineNumber[0];
-                // assume that the beginning of the JSON has the exact format as described by
-                // the regex
-                Matcher matcher = compilationUnitPattern.matcher(line);
-                if (matcher.find()) {
+                try {
+                    var map = new ExperimentJSONParser(experimentFiles.getExperimentId(), lineView).parseAllowedKeys(allowedKeys, line);
                     PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
                     compilationUnit.fileView = lineView;
-                    compilationUnit.methodName = matcher.group(1);
-                    compilationUnit.compilationId = matcher.group(2);
+                    compilationUnit.methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asString();
+                    compilationUnit.compilationId = map.property(OptimizationLogImpl.COMPILATION_ID_PROPERTY).asString();
                     partialCompilationUnits.add(compilationUnit);
-                } else {
-                    warningWriter.writeln("Warning: Invalid compilation unit in file " + fileView.getSymbolicPath() + " on line " + lineNumber[0]);
+                } catch (ExperimentParserError e) {
+                    warningWriter.writeln("Warning: Invalid compilation unit: " + e.getMessage());
                 }
             });
         }
