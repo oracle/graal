@@ -75,3 +75,4 @@ public final class GetObjectAddressNode extends FixedWithNextNode implements LIR
         return super.verify();
     }
 }
+

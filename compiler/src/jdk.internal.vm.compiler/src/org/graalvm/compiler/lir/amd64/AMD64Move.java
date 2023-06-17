@@ -957,6 +957,20 @@ public class AMD64Move {
             assert !baseReg.equals(Register.None) || shift != 0 : "compression not enabled";
             if (AMD64Address.isScaleShiftSupported(shift)) {
                 Stride stride = Stride.fromLog2(shift);
+                long isolateDefaultSize = (1L << 35);
+                if (shift == 3 ) {
+                    int mask = (int) ((isolateDefaultSize >> shift) - 1);
+                    masm.andl(inputReg, mask);
+                } else {
+                    long mask = (isolateDefaultSize >> shift) - 1;
+
+                    // Temporary free a register to be used
+                    masm.push(AMD64.r10);
+                    masm.movq(AMD64.r10, mask);
+                    masm.andl(inputReg, AMD64.r10);
+                    masm.pop(AMD64.r10);
+
+                }
                 masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, stride));
             } else {
                 if (preserveFlagsRegister) {
