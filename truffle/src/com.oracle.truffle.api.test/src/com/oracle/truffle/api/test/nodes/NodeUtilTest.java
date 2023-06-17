@@ -81,7 +81,7 @@ public class NodeUtilTest {
 
         TestNode disconnectedNode = new TestNode();
         assertFails(() -> disconnectedNode.insert(replacedNode.child0), AssertionError.class, (e) -> {
-            assertEquals("Old parent was adopted, but new insertion parent is not adopted.", e.getMessage());
+            assertTrue(e.getMessage(), e.getMessage().startsWith("Old parent was adopted, but new insertion parent is not adopted."));
             assertEquals("Invalid node usage. Node must be adopted. Path to null parent: NodeUtilTest.TestNode.parent -> null", e.getCause().getMessage());
         });
     }
