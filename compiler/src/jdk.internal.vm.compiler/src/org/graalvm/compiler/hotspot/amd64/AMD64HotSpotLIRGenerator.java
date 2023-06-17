@@ -599,7 +599,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Value emitTimeStampWithProcid() {
+    public Value emitTimeStamp() {
         AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
         append(timestamp);
         // Combine RDX and RAX into a single 64-bit register.

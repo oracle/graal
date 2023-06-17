@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,53 +24,35 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * AMD64 rdtscp operation. The timestamp result is in EDX:EAX, the processor ID is left in ECX. Note
- * that the processor ID is the contents of IA32_TSC_AUX, so it's up to the OS to set it. Linux
- * apparently puts 12-bits for the chip ID, followed by 12-bits for the CPU ID.
+ * AMD64 rdpid operation. The processor ID is put in the destination register. Note that the
+ * processor ID is the contents of IA32_TSC_AUX, so it's up to the OS to set it. Linux apparently
+ * puts 12-bits for the chip ID, followed by 12-bits for the CPU ID.
  */
-@Opcode("RDTSCP")
-public class AMD64ReadTimestampCounterWithProcid extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64ReadTimestampCounterWithProcid> TYPE = LIRInstructionClass.create(AMD64ReadTimestampCounterWithProcid.class);
+@Opcode("RDPID")
+public class AMD64ReadProcid extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64ReadProcid> TYPE = LIRInstructionClass.create(AMD64ReadProcid.class);
 
-    @Def({REG}) protected AllocatableValue highResult;
-    @Def({REG}) protected AllocatableValue lowResult;
     @Def({REG}) protected AllocatableValue procidResult;
 
-    public AMD64ReadTimestampCounterWithProcid() {
+    public AMD64ReadProcid(AllocatableValue dst) {
         super(TYPE);
 
-        this.highResult = AMD64.rdx.asValue(LIRKind.value(AMD64Kind.DWORD));
-        this.lowResult = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
-        this.procidResult = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.DWORD));
-    }
-
-    public AllocatableValue getHighResult() {
-        return highResult;
-    }
-
-    public AllocatableValue getLowResult() {
-        return lowResult;
-    }
-
-    public AllocatableValue getProcidResult() {
-        return procidResult;
+        this.procidResult = dst;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        masm.rdtscp();
+        masm.rdpid(asRegister(procidResult));
     }
 }
