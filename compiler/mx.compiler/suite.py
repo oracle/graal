@@ -197,6 +197,7 @@ suite = {
       ],
       "annotationProcessors" : [
         "truffle:TRUFFLE_DSL_PROCESSOR",
+        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
         "GRAAL_PROCESSOR"
       ],
       "checkPackagePrefix": "false",
@@ -455,6 +456,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
+        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
       ],
     },
 

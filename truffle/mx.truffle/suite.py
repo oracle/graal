@@ -447,6 +447,21 @@ suite = {
       "workingSets" : "Truffle,Codegen",
     },
 
+    "com.oracle.truffle.libgraal.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:ANTLR4"
+      ],
+      "requires" : [
+        "java.compiler",
+        "jdk.management"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,Codegen",
+    },
+
     "com.oracle.truffle.api.interop" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1336,6 +1351,14 @@ suite = {
                         "com.oracle.truffle.dsl.processor"],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
+      "allowsJavadocWarnings": True,
+    },
+    
+    "TRUFFLE_LIBGRAAL_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.libgraal.processor"],
+      "distDependencies" : [],
+      "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
       "allowsJavadocWarnings": True,
     },
 
