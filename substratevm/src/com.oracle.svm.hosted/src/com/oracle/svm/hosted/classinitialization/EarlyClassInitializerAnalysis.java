@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -292,6 +293,8 @@ final class AbortOnDisallowedNode extends Graph.NodeEventListener {
             for (var dimension : dimensions) {
                 checkArrayAllocationLength(dimension);
             }
+        } else if (node instanceof AccessMonitorNode) {
+            throw new ClassInitializerHasSideEffectsException("Synchronization");
         }
     }
 
