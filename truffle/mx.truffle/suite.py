@@ -244,6 +244,44 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
     },
+    
+    "com.oracle.truffle.runtime" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.exception",
+      ],
+      "requires" : [
+        "java.logging",
+        "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Truffle",
+    },
+    
+    "com.oracle.truffle.compiler" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.exception",
+      ],
+      "requires" : [
+        "java.logging",
+        "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Truffle",
+    },
 
     "com.oracle.truffle.host" : {
       "subDir" : "src",
@@ -1095,6 +1133,7 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.compiler to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise"
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1139,6 +1178,7 @@ suite = {
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
+        "com.oracle.truffle.compiler",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"
