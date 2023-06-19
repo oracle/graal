@@ -1090,6 +1090,35 @@ suite = {
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
     },
+
+    "org.graalvm.compiler.truffle.libgraal.truffleattach" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "truffleattach",
+      "use_jdk_headers" : True,
+      "buildDependencies" : [
+      ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11"]
+          }
+        },
+        "linux" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+      },
+    },
+   },
   },
 
   "licenses" : {
@@ -1205,6 +1234,33 @@ suite = {
         # Deploy the modular jar specified by "moduleInfo.closed"
         "moduleInfo" : "closed",
       }
+    },
+
+    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH" : {
+      "native" : True,
+      "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+      ],
+      "layout" : {
+        "bin/" : "dependency:org.graalvm.compiler.truffle.libgraal.truffleattach",
+      },
+      "description" : "Contains a library to attach Truffle runtime to jvmci runtime.",
+      "maven": True,
+    },
+
+    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : ["dependency:org.graalvm.compiler.truffle.libgraal.truffleattach"],
+      },
+      "description" : "Truffle attach library support distribution for the GraalVM",
+      "maven" : False,
     },
 
     "TRUFFLE_NFI" : {
