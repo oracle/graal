@@ -140,7 +140,6 @@ final class BundleSupport {
     private String containerImage;
     private String bundleContainerImage;
     private Path dockerfile;
-    private Path bundleDockerfile;
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private static final String DEFAULT_DOCKERFILE = NativeImage.getResource("/container-default/Dockerfile");
     private static final String DEFAULT_DOCKERFILE_MUSLIB = NativeImage.getResource("/container-default/Dockerfile_muslib_extension");
@@ -235,15 +234,15 @@ final class BundleSupport {
                     .forEach(bundleSupport::parseExtendedOption);
 
             if (bundleSupport.useContainer) {
-                if (!OS.LINUX.isCurrent()) {
-                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Skipping containerized build, only supported for Linux.");
-                    bundleSupport.useContainer = false;
-                } else {
+                if (OS.LINUX.isCurrent()) {
                     if (nativeImage.isDryRun()) {
                         nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
                     } else {
                         bundleSupport.initializeContainerImage();
                     }
+                } else {
+                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Skipping containerized build, only supported for Linux.");
+                    bundleSupport.useContainer = false;
                 }
             }
 
@@ -252,6 +251,21 @@ final class BundleSupport {
         } catch (StringIndexOutOfBoundsException | IllegalArgumentException e) {
             String suggestedVariants = StringUtil.joinSingleQuoted(Arrays.stream(BundleOptionVariants.values()).map(v -> BUNDLE_OPTION + "-" + v).toList());
             throw NativeImage.showError("Unknown option '" + bundleArg + "'. Valid variants are " + suggestedVariants + ".");
+        }
+    }
+
+    private void createDockerfile() {
+        // create Dockerfile if not available
+        try {
+            dockerfile = stageDir.resolve("Dockerfile");
+            String dockerfileText = DEFAULT_DOCKERFILE;
+            if (nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
+                dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
+            }
+            Files.writeString(dockerfile, dockerfileText);
+            dockerfile.toFile().deleteOnExit();
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to create default Dockerfile " + dockerfile);
         }
     }
 
@@ -286,14 +300,13 @@ final class BundleSupport {
                 if (!useContainer) {
                     throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", optionKey, ExtendedBundleOptions.container));
                 }
-                if (dockerfile != null) {
-                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", optionKey));
-                }
                 if (optionValue != null) {
                     dockerfile = Path.of(optionValue);
                     if (!Files.isReadable(dockerfile)) {
                         throw NativeImage.showError(String.format("Dockerfile '%s' is not readable", dockerfile.toAbsolutePath()));
                     }
+                } else {
+                    throw NativeImage.showError(String.format("native-image option %s requires a dockerfile argument. E.g. %s=path/to/Dockerfile.", optionKey, optionKey));
                 }
             }
             default -> {
@@ -308,26 +321,13 @@ final class BundleSupport {
     private void initializeContainerImage() {
         String bundleFileName = bundlePath == null ? "" : bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
 
-        if (bundleDockerfile != null && dockerfile == null) {
-            dockerfile = bundleDockerfile;
+        if (dockerfile == null) {
+            createDockerfile();
         }
-
-        // create Dockerfile if not available for writing or loading bundle
         try {
-            if (dockerfile == null) {
-                dockerfile = Files.createTempFile("Dockerfile", null);
-                String dockerfileText = DEFAULT_DOCKERFILE;
-                if (nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
-                    dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
-                }
-                Files.writeString(dockerfile, dockerfileText);
-                dockerfile.toFile().deleteOnExit();
-                containerImage = SubstrateUtil.digest(dockerfileText);
-            } else {
-                containerImage = SubstrateUtil.digest(Files.readString(dockerfile));
-            }
+            containerImage = SubstrateUtil.digest(Files.readString(dockerfile));
         } catch (IOException e) {
-            throw NativeImage.showError(e.getMessage());
+            throw NativeImage.showError("Could not read Dockerfile " + dockerfile);
         }
 
         if (bundleContainerImage != null && !bundleContainerImage.equals(containerImage)) {
@@ -622,11 +622,7 @@ final class BundleSupport {
             }
         }
 
-        bundleDockerfile = stageDir.resolve("Dockerfile");
-        if (!Files.isReadable(bundleDockerfile)) {
-            bundleDockerfile = null;
-        }
-
+        dockerfile = stageDir.resolve("Dockerfile");
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
@@ -998,15 +994,17 @@ final class BundleSupport {
                     throw NativeImage.showError("Failed to write bundle-file " + containerFile, e);
                 }
             }
+        }
 
-            if (dockerfile != null) {
-                bundleDockerfile = stageDir.resolve("Dockerfile");
-                try {
-                    Files.copy(dockerfile, bundleDockerfile);
-                } catch (IOException e) {
-                    throw NativeImage.showError("Failed to write bundle-file " + bundleDockerfile, e);
-                }
+        Path dockerfilePath = stageDir.resolve("Dockerfile");
+        try {
+            if (dockerfile == null) {
+                createDockerfile();
+            } else if (!dockerfilePath.equals(dockerfile)) {
+                Files.copy(dockerfile, dockerfilePath);
             }
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + dockerfilePath, e);
         }
 
         Path buildArgsFile = stageDir.resolve("build.json");
