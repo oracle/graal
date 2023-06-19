@@ -204,17 +204,17 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.jdk19" : {
+    "com.oracle.truffle.api.jdk20" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
       "overlayTarget" : "com.oracle.truffle.api",
       "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "19",
+      "multiReleaseJarVersion" : "20",
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19+",
+      "javaCompliance" : "20+",
+      "javaPreviewNeeded": "20",
       "workingSets" : "API,Truffle",
     },
 
