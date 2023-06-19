@@ -489,6 +489,13 @@ public final class Space {
             return null;
         }
 
+        /*
+         * It's important that we set the RS bit before everything else because
+         * YoungGeneration.contains() checks it.
+         */
+        long copyHeaderBytes = isOldSpace() ? ObjectHeaderImpl.setRememberedSetBit(eightHeaderBytes) : eightHeaderBytes;
+        copyMemory.writeLong(hubOffset, copyHeaderBytes);
+
         /* Install forwarding pointer into the original header. */
         Object copy = copyMemory.toObject();
         Object forward = ohi.installForwardingPointerParallel(original, eightHeaderBytes, copy);
@@ -498,8 +505,7 @@ public final class Space {
             return forward;
         }
 
-        /* We have won the race. Install the object header and copy the rest of the object. */
-        copyMemory.writeLong(hubOffset, eightHeaderBytes);
+        /* We have won the race. Copy the rest of the object. */
         if (hubOffset > 0) {
             UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, WordFactory.unsigned(hubOffset));
         }

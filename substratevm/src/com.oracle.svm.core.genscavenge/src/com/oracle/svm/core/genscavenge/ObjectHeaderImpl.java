@@ -344,6 +344,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static long setRememberedSetBit(long headerBytes) {
+        return headerBytes | REMEMBERED_SET_BIT.rawValue();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
         return header.and(REMEMBERED_SET_BIT).notEqual(0);
     }
@@ -357,11 +362,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
         return header.and(FORWARDED_BIT).notEqual(0);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr) {
-        return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

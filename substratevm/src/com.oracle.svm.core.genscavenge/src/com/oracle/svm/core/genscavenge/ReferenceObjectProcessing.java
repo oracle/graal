@@ -233,7 +233,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr, UnsignedWord header) {
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(referentAddr);
+            Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(referentAddr, header);
             ReferenceInternals.setReferent(dr, forwardedObj);
             return true;
         }
