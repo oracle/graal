@@ -714,6 +714,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
+     * Retrieve the entry for the void type.
+     *
+     * @return the entry for the void type.
+     */
+    protected TypeEntry voidType() {
+        return dwarfSections.lookupVoidType();
+    }
+
+    /**
      * Retrieve a stream of all instance classes, including interfaces and enums, notified via the
      * DebugTypeInfo API.
      *
@@ -783,7 +792,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected int getTypeIndex(TypeEntry typeEntry) {
         if (!contentByteArrayCreated()) {
-            return 0;
+            return -1;
         }
         return dwarfSections.getTypeIndex(typeEntry);
     }

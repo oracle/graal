@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +23,21 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry;
+package com.oracle.svm.test.debug;
 
-public class FieldEntry extends MemberEntry {
-    private final int size;
-    private final int offset;
+import java.util.List;
 
-    private final boolean isEmbedded;
+import org.graalvm.nativeimage.c.CContext;
 
-    public FieldEntry(FileEntry fileEntry, String fieldName, StructureTypeEntry ownerType, TypeEntry valueType, int size, int offset, boolean isEmbedded, int modifiers) {
-        super(fileEntry, fieldName, ownerType, valueType, modifiers);
-        this.size = size;
-        this.offset = offset;
-        this.isEmbedded = isEmbedded;
+public class CInterfaceDebugTestDirectives implements CContext.Directives {
+
+    @Override
+    public boolean isInConfiguration() {
+        return "true".equals(System.getProperty("buildDebugInfoTestExample"));
     }
 
-    public String fieldName() {
-        return memberName;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    public int getOffset() {
-        return offset;
-    }
-
-    public boolean isEmbedded() {
-        return isEmbedded;
+    @Override
+    public List<String> getHeaderFiles() {
+        return List.of("<systemjava_debugtest.h>");
     }
 }

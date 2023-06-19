@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +23,38 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry;
+#ifndef SYSTEMJAVA_TEST_H_INCLUDED
+#define SYSTEMJAVA_TEST_H_INCLUDED
 
-public class FieldEntry extends MemberEntry {
-    private final int size;
-    private final int offset;
+struct simple_struct {
+    int first;
+    int second;
+};
 
-    private final boolean isEmbedded;
+struct simple_struct2 {
+    char alpha;
+    long long beta;
+};
 
-    public FieldEntry(FileEntry fileEntry, String fieldName, StructureTypeEntry ownerType, TypeEntry valueType, int size, int offset, boolean isEmbedded, int modifiers) {
-        super(fileEntry, fieldName, ownerType, valueType, modifiers);
-        this.size = size;
-        this.offset = offset;
-        this.isEmbedded = isEmbedded;
-    }
+struct composite_struct {
+    char c1;
+    struct simple_struct c2;
+    int c3;
+    struct simple_struct2 c4;
+    short c5;
+};
 
-    public String fieldName() {
-        return memberName;
-    }
+struct weird {
+    short  f_short;
+    unsigned int   f_uint;
+    int    f_int;
+    long   f_long;
+    float  f_float;
+    double f_double;
+    int a_int[8];
+    char a_char[12];
+};
 
-    public int getSize() {
-        return size;
-    }
+#include <dlfcn.h>
 
-    public int getOffset() {
-        return offset;
-    }
-
-    public boolean isEmbedded() {
-        return isEmbedded;
-    }
-}
+#endif // SYSTEMJAVA_TEST_H_INCLUDED

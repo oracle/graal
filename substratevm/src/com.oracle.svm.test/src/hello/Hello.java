@@ -30,6 +30,7 @@ package hello;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.test.debug.CStructTests;
 
 public class Hello {
     public abstract static class Greeter {
@@ -95,6 +96,10 @@ public class Hello {
         noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
                         0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
         noInlinePassConstants();
+        // create and manipulate some foreign types
+        CStructTests tests = new CStructTests();
+        tests.composite();
+        tests.weird();
         System.exit(0);
     }
 
