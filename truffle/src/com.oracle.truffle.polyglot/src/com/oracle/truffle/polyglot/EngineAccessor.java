@@ -76,6 +76,7 @@ import java.util.logging.LogRecord;
 
 import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.library.provider.EagerExportProvider;
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -2041,6 +2042,12 @@ final class EngineAccessor extends Accessor {
         public void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId) {
             PolyglotInstrument polyglotInstrument = ((PolyglotContextImpl) polyglotContextImpl).engine.idToInstrument.get(instrumentId);
             polyglotInstrument.ensureCreated();
+        }
+
+        @Override
+        public TruffleFile getInternalResource(Object polyglotLanguageContext, Class<? extends InternalResource> resourceType) {
+            Path resourceRoot = InternalResourceCache.getInternalResource(((PolyglotLanguageContext) polyglotLanguageContext).getEngine(), resourceType);
+            throw new UnsupportedOperationException("Implement me");
         }
     }
 

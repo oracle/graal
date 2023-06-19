@@ -69,6 +69,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -753,6 +754,8 @@ public abstract class Accessor {
         public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
 
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
+
+        public abstract TruffleFile getInternalResource(Object polyglotLanguageContext, Class<? extends InternalResource> resourceType);
     }
 
     public abstract static class LanguageSupport extends Support {

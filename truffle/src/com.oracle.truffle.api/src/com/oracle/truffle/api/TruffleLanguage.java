@@ -3513,14 +3513,7 @@ public abstract class TruffleLanguage<C> {
          * @since 23.1
          */
         public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
-
-            // implementation notes:
-            // cache-dir on Mac = ${user.home}/Library/Caches/org.graalvm.polyglot/
-            // ${cache-dir}/${component-id}/${name()}/${versionHash()}/
-            // directory gets locked on unpacking
-            // native-image: ./resources/${language-id}/${name()}/
-
-            return null;
+            return LanguageAccessor.engineAccess().getInternalResource(this.polyglotLanguageContext, resource);
         }
 
         /**
