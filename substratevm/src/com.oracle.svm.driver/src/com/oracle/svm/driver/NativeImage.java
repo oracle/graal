@@ -1094,7 +1094,7 @@ public class NativeImage {
         imageBuilderJavaArgs.addAll(getAgentArguments());
 
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
-        boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix));
+        buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
         printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.matches("-H:MicroArchitecture(@[^=]*)?=list"));
 
@@ -1115,7 +1115,7 @@ public class NativeImage {
             if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass) != null;
-                String mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
+                mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
 
                 boolean hasMainClassModule = mainClassModule != null && !mainClassModule.isEmpty();
                 boolean hasMainClass = mainClass != null && !mainClass.isEmpty();
@@ -1409,7 +1409,9 @@ public class NativeImage {
         }
     }
 
+    boolean buildExecutable;
     String mainClass;
+    String mainClassModule;
     String imageName;
     Path imagePath;
 

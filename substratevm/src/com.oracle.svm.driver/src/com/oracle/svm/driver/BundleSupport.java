@@ -947,7 +947,7 @@ final class BundleSupport {
                             if (bundleFileParent != null) {
                                 Files.createDirectories(bundleFileParent);
                             }
-                            Files.copy(source, target);
+                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
                         } catch (Exception e) {
                             throw NativeImage.showError("Failed to write bundle-file " + target, e);
                         }
@@ -1033,25 +1033,30 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
         }
 
-        Path runArgsFile = stageDir.resolve("run.json");
-        try (JsonWriter writer = new JsonWriter(runArgsFile)) {
-            List<String> equalsRunArg = List.of("-m", "--module");
-            List<String> runArgs = new ArrayList<>();
-            ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
-            while (bundleArgsIterator.hasNext()) {
-                String arg = bundleArgsIterator.next();
-                if (equalsRunArg.contains(arg)) {
-                    runArgs.add(arg);
-                    runArgs.add(bundleArgsIterator.next());
+        // skip run.json for shared library bundles
+        if (nativeImage.buildExecutable) {
+            Path runArgsFile = stageDir.resolve("run.json");
+            try (JsonWriter writer = new JsonWriter(runArgsFile)) {
+                List<String> runArgs = new ArrayList<>();
+
+                boolean hasMainClassModule = nativeImage.mainClassModule != null && !nativeImage.mainClassModule.isEmpty();
+                boolean hasMainClass = nativeImage.mainClass != null && !nativeImage.mainClass.isEmpty();
+                if (hasMainClassModule) {
+                    runArgs.add("-m");
+                    StringBuilder mainModule = new StringBuilder(nativeImage.mainClassModule);
+                    if (hasMainClass) {
+                        mainModule.append("/").append(nativeImage.mainClass);
+                    }
+                    runArgs.add(mainModule.toString());
+                } else {
+                    runArgs.add(nativeImage.mainClass);
                 }
+
+                /* Printing as list with defined sort-order ensures useful diffs are possible */
+                JsonPrinter.printCollection(writer, runArgs, null, BundleSupport::printBuildArg);
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to write bundle-file " + runArgsFile, e);
             }
-            if (runArgs.isEmpty()) {
-                runArgs.add(nativeImage.mainClass);
-            }
-            /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, runArgs, null, BundleSupport::printBuildArg);
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-file " + runArgsFile, e);
         }
 
         bundleProperties.write();
