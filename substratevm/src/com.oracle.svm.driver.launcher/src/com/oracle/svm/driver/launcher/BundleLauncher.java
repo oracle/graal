@@ -68,13 +68,76 @@ public class BundleLauncher {
     private static Path modulePathDir;
 
     private static Path bundleFilePath;
+    private static String bundleName;
+    private static Path agentOutputDir;
+
+    private static String newBundleName = null;
+    private static boolean updateBundle = false;
+
+    public static boolean verbose = false;
 
 
     public static void main(String[] args) {
-        List<String> command = new ArrayList<>();
-
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
+        agentOutputDir = bundleFilePath.getParent().resolve(Paths.get(bundleName + "." + OUTPUT_DIR_NAME, "launcher"));
         unpackBundle(bundleFilePath);
+
+        // if we did not create a run.json bundle is not executable, e.g. shared library bundles
+        if (!Files.exists(stageDir.resolve("run.json"))) {
+            System.out.println("Bundle " + bundleFilePath + " is not executable!");
+            System.exit(1);
+        }
+
+        List<String> command = createLaunchCommand(args);
+        ProcessBuilder pb = new ProcessBuilder(command);
+
+        Path environmentFile = stageDir.resolve("environment.json");
+        if (Files.isReadable(environmentFile)) {
+            try (Reader reader = Files.newBufferedReader(environmentFile)) {
+                Map<String, String> launcherEnvironment = new HashMap<>();
+                new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
+                pb.environment().putAll(launcherEnvironment);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
+            }
+        }
+
+        if (verbose) {
+            List<String> environmentList = pb.environment()
+                    .entrySet()
+                    .stream()
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .sorted()
+                    .toList();
+            System.out.println("Executing [");
+            System.out.println(String.join(" \\\n", environmentList));
+            System.out.println(String.join(" \\\n", command));
+            System.out.println("]");
+        }
+
+        Process p = null;
+        int exitCode;
+        try {
+            p = pb.inheritIO().start();
+            exitCode = p.waitFor();
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Failed to run bundled application");
+        } finally {
+            if (p != null) {
+                p.destroy();
+            }
+        }
+
+        if (updateBundle) {
+            exitCode = updateBundle();
+        }
+
+        System.exit(exitCode);
+    }
+
+    private static List<String> createLaunchCommand(String[] args) {
+        List<String> command = new ArrayList<>();
 
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
@@ -126,38 +189,29 @@ public class BundleLauncher {
 
         command.addAll(applicationArgs);
 
+        return command;
+    }
+
+    private static int updateBundle() {
+        List<String> command = new ArrayList<>();
+
+        Path nativeImageExecutable = getNativeImageExecutable().toAbsolutePath().normalize();
+        command.add(nativeImageExecutable.toString());
+
+        Path newBundleFilePath = newBundleName == null ? bundleFilePath : bundleFilePath.getParent().resolve(newBundleName + BUNDLE_FILE_EXTENSION);
+        command.add("--bundle-apply=" + bundleFilePath);
+        command.add("--bundle-create=" + newBundleFilePath + ",dry-run");
+
+        command.add("-cp");
+        command.add(agentOutputDir.toString());
+
         ProcessBuilder pb = new ProcessBuilder(command);
-
-        Path environmentFile = stageDir.resolve("environment.json");
-        if (Files.isReadable(environmentFile)) {
-            try (Reader reader = Files.newBufferedReader(environmentFile)) {
-                Map<String, String> launcherEnvironment = new HashMap<>();
-                new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
-                pb.environment().putAll(launcherEnvironment);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
-            }
-        }
-
-        if (System.getenv("BUNDLE_LAUNCHER_VERBOSE") != null) {
-            List<String> environmentList = pb.environment()
-                    .entrySet()
-                    .stream()
-                    .map(e -> e.getKey() + "=" + e.getValue())
-                    .sorted()
-                    .toList();
-            System.out.println("Executing [");
-            System.out.println(String.join(" \\\n", environmentList));
-            System.out.println(String.join(" \\\n", command));
-            System.out.println("]");
-        }
-
         Process p = null;
         try {
             p = pb.inheritIO().start();
-            p.waitFor();
+            return p.waitFor();
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to run bundled application");
+            throw new RuntimeException("Failed to create updated bundle.");
         } finally {
             if (p != null) {
                 p.destroy();
@@ -173,16 +227,28 @@ public class BundleLauncher {
             String arg = argQueue.removeFirst();
 
             if (arg.startsWith("--with-native-image-agent")) {
-                String bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
-                Path bundlePath = bundleFilePath.getParent();
-                Path externalAuxiliaryOutputDir = bundlePath.resolve(bundleName + "." + OUTPUT_DIR_NAME).resolve(AUXILIARY_OUTPUT_DIR_NAME);
+                if (arg.indexOf(',') >= 0) {
+                    String option = arg.substring(arg.indexOf(',') + 1);
+                    if (option.startsWith("update-bundle")) {
+                        updateBundle = true;
+                        if (option.indexOf('=') >= 0) {
+                            newBundleName = option.substring(option.indexOf('=')).replace(BUNDLE_FILE_EXTENSION, "");
+                        }
+                    } else {
+                        throw new RuntimeException(String.format("Unknown option %s. Valid option is: update-bundle[=<new-bundle-name>].", option));
+                    }
+                }
+
+                Path outputDir = agentOutputDir.resolve(Paths.get("META-INF", "native-image", bundleName + "-agent"));
                 try {
-                    Files.createDirectories(externalAuxiliaryOutputDir);
-                    System.out.println("Native image agent output written to " + externalAuxiliaryOutputDir);
-                    launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + externalAuxiliaryOutputDir);
+                    Files.createDirectories(outputDir);
+                    System.out.println("Native image agent output written to " + agentOutputDir);
+                    launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + outputDir);
                 } catch (IOException e) {
                     System.out.println("Failed to create native image agent output dir");
                 }
+            } else if (arg.equals("--verbose")) {
+                verbose = true;
             } else if (arg.equals("--")) {
                 applicationArgs.addAll(argQueue);
                 argQueue.clear();
@@ -202,6 +268,10 @@ public class BundleLauncher {
             return buildTimeJavaHome.resolve(binJava);
         }
 
+        return getJavaHomeExecutable(binJava);
+    }
+
+    private static Path getJavaHomeExecutable(Path executable) {
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
             throw new RuntimeException("Environment variable JAVA_HOME is not set");
@@ -210,10 +280,27 @@ public class BundleLauncher {
         if (!Files.isDirectory(javaHomeDir)) {
             throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory");
         }
-        if (!Files.isExecutable(javaHomeDir.resolve(binJava))) {
-            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
+        if (!Files.isExecutable(javaHomeDir.resolve(executable))) {
+            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory with a " + executable + " executable");
         }
-        return javaHomeDir.resolve(binJava);
+        return javaHomeDir.resolve(executable);
+    }
+
+    private static Path getNativeImageExecutable() {
+        Path binNativeImage = Paths.get("bin", System.getProperty("os.name").contains("Windows") ? "native-image.exe" : "native-image");
+        if (Files.isExecutable(buildTimeJavaHome.resolve(binNativeImage))) {
+            return buildTimeJavaHome.resolve(binNativeImage);
+        }
+
+        String graalVMHome = System.getenv("GRAALVM_HOME");
+        if (graalVMHome != null) {
+            Path graalVMHomeDir = Paths.get(graalVMHome);
+            if (Files.isDirectory(graalVMHomeDir) && Files.isExecutable(graalVMHomeDir.resolve(binNativeImage))) {
+                return graalVMHomeDir.resolve(binNativeImage);
+            }
+        }
+
+        return getJavaHomeExecutable(binNativeImage);
     }
 
     private static final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
@@ -257,16 +344,14 @@ public class BundleLauncher {
                 while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
                     JarEntry jarEntry = jarEntries.nextElement();
                     Path bundleEntry = rootDir.resolve(jarEntry.getName());
-                    if (bundleEntry.startsWith(inputDir)) {
-                        try {
-                            Path bundleFileParent = bundleEntry.getParent();
-                            if (bundleFileParent != null) {
-                                Files.createDirectories(bundleFileParent);
-                            }
-                            Files.copy(archive.getInputStream(jarEntry), bundleEntry);
-                        } catch (IOException e) {
-                            throw new RuntimeException("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
+                    try {
+                        Path bundleFileParent = bundleEntry.getParent();
+                        if (bundleFileParent != null) {
+                            Files.createDirectories(bundleFileParent);
                         }
+                        Files.copy(archive.getInputStream(jarEntry), bundleEntry);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                     }
                 }
             }
