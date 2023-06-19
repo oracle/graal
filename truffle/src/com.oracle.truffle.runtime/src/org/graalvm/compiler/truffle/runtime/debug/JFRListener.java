@@ -48,8 +48,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
 import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
 import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
@@ -65,6 +63,8 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

@@ -54,9 +54,6 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.EngineData;
@@ -71,6 +68,9 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 

@@ -42,8 +42,8 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 /**
  * Encapsulates a handle to a {@link GraphInfo} object in the libgraal heap.

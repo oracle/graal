@@ -26,7 +26,8 @@ package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;

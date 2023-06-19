@@ -43,16 +43,17 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
+
+import com.oracle.truffle.compiler.TruffleCompilationSupport;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs

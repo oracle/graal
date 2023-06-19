@@ -38,39 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler.hotspot.libgraal;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * A compiler that partially evaluates and compiles a {@link TruffleCompilable} to machine code.
+ * Container for repeated {@link TruffleFromLibGraal} annotations.
  */
-public interface TruffleCompiler {
-
-    String FIRST_TIER_COMPILATION_SUFFIX = "#1";
-    String SECOND_TIER_COMPILATION_SUFFIX = "#2";
-
-    /**
-     * Initializes the compiler before the first compilation.
-     *
-     * @param compilable the Truffle AST that triggered the initialization
-     * @param firstInitialization first initialization. For a multi-isolate compiler the
-     *            {@code firstInitialization} must be {@code true} for an initialization in the
-     *            first isolate and {@code false} for an initialization in the following isolates.
-     *
-     * @since 20.0.0
-     */
-    void initialize(TruffleCompilable compilable, boolean firstInitialization);
-
-    /**
-     * Compiles {@code compilable} to machine code.
-     *
-     * @param listener a listener receiving events about compilation success or failure
-     */
-    void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);
-
-    /**
-     * Notifies this object that it will no longer being used and should thus perform all relevant
-     * finalization tasks. This is typically performed when the process exits.
-     */
-    void shutdown();
-
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TruffleFromLibGraalRepeated {
+    TruffleFromLibGraal[] value();
 }

@@ -51,9 +51,6 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -61,6 +58,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.vm.ci.meta.JavaConstant;
 

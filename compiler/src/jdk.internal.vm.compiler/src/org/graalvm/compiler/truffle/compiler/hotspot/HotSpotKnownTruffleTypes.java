@@ -27,8 +27,9 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;

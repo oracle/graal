@@ -32,7 +32,6 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

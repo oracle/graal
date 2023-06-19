@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.FromLibGraalId;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JMethodID;
@@ -45,6 +44,8 @@ import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNICalls;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+
+import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 
 /**
  * Helpers for calling methods in HotSpot heap via JNI.

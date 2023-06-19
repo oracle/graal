@@ -42,12 +42,12 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompiler;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotNmethod;

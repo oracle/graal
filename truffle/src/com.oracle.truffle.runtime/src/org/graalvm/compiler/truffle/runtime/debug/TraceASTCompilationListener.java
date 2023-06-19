@@ -43,8 +43,6 @@ package org.graalvm.compiler.truffle.runtime.debug;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -54,6 +52,8 @@ import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 /**
  * Traces all polymorphic and generic nodes after each successful Truffle compilation.

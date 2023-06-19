@@ -97,7 +97,6 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -122,6 +121,8 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSwapNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 import org.graalvm.word.LocationIdentity;
+
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;

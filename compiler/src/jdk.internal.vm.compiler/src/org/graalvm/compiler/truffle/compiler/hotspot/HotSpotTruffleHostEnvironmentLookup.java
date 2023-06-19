@@ -27,8 +27,9 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;

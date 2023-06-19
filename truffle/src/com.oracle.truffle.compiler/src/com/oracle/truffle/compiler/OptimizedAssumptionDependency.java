@@ -38,35 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
-
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PACKAGE;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package com.oracle.truffle.compiler;
 
 /**
- * Annotation to generate the {@code FromLibGraalCalls} for given id type. The annotation can be
- * applied to packages, types and methods. When applied to method the generated
- * {@code FromLibGraalCalls} subclass delegates to the annotated method. The annotated method must
- * be static and its return type must be {@code JClass}. When applied to package or type the
- * {@link #entryPointsClassName} is used to resolve the {@code JClass}.
+ * Represents some machine code whose validity depends on an assumption. Valid machine code can
+ * still be executed.
  */
-@Retention(RetentionPolicy.SOURCE)
-@Target({PACKAGE, TYPE, METHOD})
-public @interface FromLibGraalEntryPointsResolver {
-    /**
-     * The id class. It has to implement the {@link FromLibGraalId}.
-     */
-    Class<? extends Enum<?>> value();
+public interface OptimizedAssumptionDependency {
 
     /**
-     * The fully qualified name of the entry points class on the HotSpot side. The
-     * {@code entryPointsClassName} is mandatory when the annotation is present on package or type
-     * element.
+     * Called when a depended-on assumption is invalidated, with the intention to invalidate the
+     * machine code referenced by this object.
      */
-    String entryPointsClassName() default "";
+    void onAssumptionInvalidated(Object source, CharSequence reason);
+
+    /**
+     * Determines if the machine code referenced by this object is valid.
+     */
+    boolean isAlive();
+
+    /**
+     * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
+     */
+    default TruffleCompilable getCompilable() {
+        return null;
+    }
+
 }

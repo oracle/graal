@@ -78,11 +78,11 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.compiler.HostMethodInfo;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;

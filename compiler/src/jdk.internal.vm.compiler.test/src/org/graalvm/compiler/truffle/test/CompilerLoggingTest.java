@@ -36,8 +36,6 @@ import java.util.logging.LogRecord;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -49,6 +47,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

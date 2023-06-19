@@ -40,34 +40,34 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopointsCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeTypes;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeCompiler;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeRuntime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethod;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleReservedOopMethod;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopointsCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeTypes;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.InitializeCompiler;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.InitializeRuntime;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethod;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleReservedOopMethod;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 
 /**
  * Native methods linked to libgraal entry points.

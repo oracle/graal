@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+package com.oracle.truffle.compiler.hotspot.libgraal;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;

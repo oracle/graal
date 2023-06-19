@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler;
 
 /**
  * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the

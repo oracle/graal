@@ -42,7 +42,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 /**
  * Encapsulates a handle to a {@code CompilationResultInfo} object in the libgraal heap.

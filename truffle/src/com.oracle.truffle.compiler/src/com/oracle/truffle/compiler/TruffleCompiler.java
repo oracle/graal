@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.java;
+package com.oracle.truffle.compiler;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
+/**
+ * A compiler that partially evaluates and compiles a {@link TruffleCompilable} to machine code.
+ */
+public interface TruffleCompiler {
 
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.compiler.TruffleCompilationSupport;
+    String FIRST_TIER_COMPILATION_SUFFIX = "#1";
+    String SECOND_TIER_COMPILATION_SUFFIX = "#2";
 
-public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+    /**
+     * Initializes the compiler before the first compilation.
+     *
+     * @param compilable the Truffle AST that triggered the initialization
+     * @param firstInitialization first initialization. For a multi-isolate compiler the
+     *            {@code firstInitialization} must be {@code true} for an initialization in the
+     *            first isolate and {@code false} for an initialization in the following isolates.
+     *
+     * @since 20.0.0
+     */
+    void initialize(TruffleCompilable compilable, boolean firstInitialization);
 
-    @Override
-    protected TruffleRuntime createRuntime() {
-        try {
-            Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
-            TruffleCompilationSupport compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
-            HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
-            compilationSupport.registerRuntime(rt);
-            return rt;
-        } catch (ReflectiveOperationException e) {
-            throw new InternalError(e);
-        }
-    }
+    /**
+     * Compiles {@code compilable} to machine code.
+     *
+     * @param listener a listener receiving events about compilation success or failure
+     */
+    void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);
 
-    @Override
-    protected int calculatePriority() {
-        return 0;
-    }
+    /**
+     * Notifies this object that it will no longer being used and should thus perform all relevant
+     * finalization tasks. This is typically performed when the process exits.
+     */
+    void shutdown();
+
 }

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler;
 
 /**
  * A listener for events related to the compilation of a {@link TruffleCompilable}. The events are

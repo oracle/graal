@@ -40,7 +40,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 /**
  * @deprecated this class is schedule for removal. Use {@link AbstractCompilationTask} instead.

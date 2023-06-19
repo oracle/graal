@@ -31,8 +31,6 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
@@ -65,6 +63,8 @@ import com.oracle.svm.truffle.isolated.IsolatedTruffleRuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.meta.JavaConstant;
 

@@ -30,7 +30,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
@@ -43,6 +42,7 @@ import org.junit.Before;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompiler;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 

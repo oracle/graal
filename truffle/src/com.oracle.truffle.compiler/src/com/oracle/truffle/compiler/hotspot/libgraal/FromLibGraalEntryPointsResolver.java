@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.LoopExplosionKind;
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PACKAGE;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
- * compiler implementation side.
- *
- * @param loopExplosion Queries how loops in {@code method} with constant number of invocations
- *            should be unrolled.
- * @param inlineForPartialEvaluation Gets an object describing whether and how a method can be
- *            inlined based on Truffle directives during partial evaluation
- * @param inlineForTruffleBoundary Gets an object describing whether and how a method can be inlined
- *            based on Truffle directives after partial evaluation e.g. during later inlining
- *            phases.
- * @param isInlineable Determines if {@code method} can be inlined by the runtime (independently
- *            from Truffle).
- * @param isSpecializationMethod Determines if {@code method} is annotated by
- *            {@code Specialization}.
+ * Annotation to generate the {@code FromLibGraalCalls} for given id type. The annotation can be
+ * applied to packages, types and methods. When applied to method the generated
+ * {@code FromLibGraalCalls} subclass delegates to the annotated method. The annotated method must
+ * be static and its return type must be {@code JClass}. When applied to package or type the
+ * {@link #entryPointsClassName} is used to resolve the {@code JClass}.
  */
-public record PartialEvaluationMethodInfo(
-                LoopExplosionKind loopExplosion,
-                InlineKind inlineForPartialEvaluation,
-                InlineKind inlineForTruffleBoundary,
-                boolean isInlineable,
-                boolean isSpecializationMethod) {
+@Retention(RetentionPolicy.SOURCE)
+@Target({PACKAGE, TYPE, METHOD})
+public @interface FromLibGraalEntryPointsResolver {
+    /**
+     * The id class. It has to implement the {@link FromLibGraalId}.
+     */
+    Class<? extends Enum<?>> value();
 
+    /**
+     * The fully qualified name of the entry points class on the HotSpot side. The
+     * {@code entryPointsClassName} is mandatory when the annotation is present on package or type
+     * element.
+     */
+    String entryPointsClassName() default "";
 }

@@ -38,30 +38,85 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler;
+
+import java.util.Collections;
+import java.util.Map;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Represents some machine code whose validity depends on an assumption. Valid machine code can
- * still be executed.
+ * A handle to a compilation task managed by the Truffle runtime.
  */
-public interface OptimizedAssumptionDependency {
+public interface TruffleCompilationTask {
+    /**
+     * Determines if this compilation has been cancelled.
+     */
+    boolean isCancelled();
 
     /**
-     * Called when a depended-on assumption is invalidated, with the intention to invalidate the
-     * machine code referenced by this object.
+     * Returns {@code true} if this is a last tier compilation.
      */
-    void onAssumptionInvalidated(Object source, CharSequence reason);
+    boolean isLastTier();
 
     /**
-     * Determines if the machine code referenced by this object is valid.
+     * Returns {@code true} if this is a first tier compilation.
      */
-    boolean isAlive();
+    default boolean isFirstTier() {
+        return !isLastTier();
+    }
+
+    default int tier() {
+        return isFirstTier() ? 1 : 2;
+    }
+
+    boolean hasNextTier();
 
     /**
-     * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
+     * If {@code node} represents an AST Node then return the nearest source information for it.
+     * Otherwise simply return null.
      */
-    default TruffleCompilable getCompilable() {
+    // TODO GR-44222 move this to CompilableTruffleAST
+    @SuppressWarnings("unused")
+    default TruffleSourceLanguagePosition getPosition(JavaConstant node) {
         return null;
+    }
+
+    /**
+     * Returns the debug properties of a truffle node constant or an empty map if there are no debug
+     * properties.
+     */
+    // TODO GR-44222 move this to CompilableTruffleAST
+    @SuppressWarnings("unused")
+    default Map<String, Object> getDebugProperties(JavaConstant node) {
+        return Collections.emptyMap();
+    }
+
+    /**
+     * Records the given target to be dequeued from the compilation queue at the end of the current
+     * compilation.
+     */
+    @SuppressWarnings("unused")
+    default void addTargetToDequeue(TruffleCompilable target) {
+        // not supported -> do nothing
+    }
+
+    /**
+     * To be used from the compiler side. Sets how many calls in total are in the related
+     * compilation unit, and how many of those were inlined.
+     */
+    @SuppressWarnings("unused")
+    default void setCallCounts(int total, int inlined) {
+        // not supported -> discard
+    }
+
+    /**
+     * To be used from the compiler side.
+     *
+     * @param target register this target as inlined.
+     */
+    default void addInlinedTarget(TruffleCompilable target) {
+        // not supported -> discard
     }
 
 }

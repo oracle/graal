@@ -29,8 +29,7 @@ import org.graalvm.word.WordFactory;
 
 /**
  * Manages handles to libgraal objects whose lifetime is controlled by
- * {@code org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalObject} instances in the
- * HotSpot heap.
+ * {@code com.oracle.truffle.runtime.hotspot.libgraal.LibGraalObject} instances in the HotSpot heap.
  */
 final class LibGraalObjectHandles {
 

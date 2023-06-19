@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;

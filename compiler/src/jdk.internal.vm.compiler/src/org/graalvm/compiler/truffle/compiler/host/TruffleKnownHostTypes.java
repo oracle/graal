@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.truffle.compiler.host;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.AbstractKnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

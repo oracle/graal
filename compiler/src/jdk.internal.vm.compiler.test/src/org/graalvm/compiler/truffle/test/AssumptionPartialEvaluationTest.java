@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -46,6 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 
 public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {

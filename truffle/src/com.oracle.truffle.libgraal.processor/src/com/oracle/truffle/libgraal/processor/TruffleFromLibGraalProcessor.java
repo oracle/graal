@@ -75,8 +75,8 @@ import javax.lang.model.util.ElementFilter;
  * {@code org.graalvm.nativeimage.StackValue}, it's very hard to use runtime assertion checking.
  */
 @SupportedAnnotationTypes({
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal",
-                "org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraalRepeated"})
+                "com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal",
+                "com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalRepeated"})
 public class TruffleFromLibGraalProcessor extends AbstractProcessor {
 
     /**
@@ -167,7 +167,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
             annotations = Collections.singletonList(annotation);
         }
 
-        TypeMirror signatureAnnotationType = getType("org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Signature");
+        TypeMirror signatureAnnotationType = getType("com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Signature");
         for (AnnotationMirror a : annotations) {
             VariableElement annotationValue = getAnnotationValue(a, "value", VariableElement.class);
             String idName = annotationValue.getSimpleName().toString();
@@ -225,7 +225,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
             out.println("");
             boolean usesJObject = false;
             for (Id id : info.ids) {
-                out.printf("import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.%s;%n", id.name);
+                out.printf("import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.%s;%n", id.name);
                 TypeMirror returnType = id.returnType;
                 if (!isPrimitiveOrVoid(returnType)) {
                     usesJObject = true;

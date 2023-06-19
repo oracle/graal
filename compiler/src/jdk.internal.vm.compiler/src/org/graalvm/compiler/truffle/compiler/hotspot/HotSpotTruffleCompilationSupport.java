@@ -27,10 +27,11 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.AbstractTruffleCompilationSupport;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
+
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 

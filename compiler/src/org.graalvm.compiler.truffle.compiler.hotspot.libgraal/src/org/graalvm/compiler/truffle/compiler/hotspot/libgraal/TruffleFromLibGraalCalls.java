@@ -25,9 +25,11 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
+
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
 
@@ -39,6 +41,6 @@ final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
 
     @Override
     protected JClass resolvePeer(JNIEnv env) {
-        return getJNIClass(env, "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints");
+        return getJNIClass(env, "com.oracle.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints");
     }
 }

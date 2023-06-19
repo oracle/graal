@@ -38,40 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+package com.oracle.truffle.compiler;
 
-final class Utilities {
+import java.net.URI;
 
-    private Utilities() {
-    }
+public interface TruffleSourceLanguagePosition {
 
-    static void encodeType(Class<?> type, StringBuilder buf) {
-        String desc;
-        if (type == boolean.class) {
-            desc = "Z";
-        } else if (type == byte.class) {
-            desc = "B";
-        } else if (type == char.class) {
-            desc = "C";
-        } else if (type == short.class) {
-            desc = "S";
-        } else if (type == int.class) {
-            desc = "I";
-        } else if (type == long.class) {
-            desc = "J";
-        } else if (type == float.class) {
-            desc = "F";
-        } else if (type == double.class) {
-            desc = "D";
-        } else if (type == void.class) {
-            desc = "V";
-        } else if (type.isArray()) {
-            buf.append('[');
-            encodeType(type.getComponentType(), buf);
-            return;
-        } else {
-            desc = "L" + type.getName().replace('.', '/') + ";";
-        }
-        buf.append(desc);
-    }
+    String getDescription();
+
+    int getOffsetEnd();
+
+    int getOffsetStart();
+
+    int getLineNumber();
+
+    URI getURI();
+
+    String getLanguage();
+
+    int getNodeId();
+
+    String getNodeClassName();
 }

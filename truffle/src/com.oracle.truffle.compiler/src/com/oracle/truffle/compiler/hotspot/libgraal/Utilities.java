@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
+package com.oracle.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
+final class Utilities {
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+    private Utilities() {
+    }
 
-public interface HotSpotTruffleCompiler extends TruffleCompiler {
-
-    /**
-     * Compiles and installs special code for truffle call boundary methods. The passed method must
-     * have compilation and inlining disabled in HotSpot.
-     */
-    void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable);
-
-    /**
-     * Compiles and installs special code fast thread local object access. The passed method must
-     * have compilation and inlining disabled in HotSpot.
-     */
-    void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable);
-
-    int pendingTransferToInterpreterOffset(TruffleCompilable compilable);
-
-    /**
-     * Releases caches used for PE/compilation.
-     */
-    void purgePartialEvaluationCaches();
-
+    static void encodeType(Class<?> type, StringBuilder buf) {
+        String desc;
+        if (type == boolean.class) {
+            desc = "Z";
+        } else if (type == byte.class) {
+            desc = "B";
+        } else if (type == char.class) {
+            desc = "C";
+        } else if (type == short.class) {
+            desc = "S";
+        } else if (type == int.class) {
+            desc = "I";
+        } else if (type == long.class) {
+            desc = "J";
+        } else if (type == float.class) {
+            desc = "F";
+        } else if (type == double.class) {
+            desc = "D";
+        } else if (type == void.class) {
+            desc = "V";
+        } else if (type.isArray()) {
+            buf.append('[');
+            encodeType(type.getComponentType(), buf);
+            return;
+        } else {
+            desc = "L" + type.getName().replace('.', '/') + ";";
+        }
+        buf.append(desc);
+    }
 }

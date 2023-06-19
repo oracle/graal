@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler.hotspot.libgraal;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Represents entry points for Truffle runtime implementations to Truffle compilation.
+ * Annotates methods associated with both ends of a HotSpot to libgraal call. This annotation
+ * simplifies navigating between these methods in an IDE.
  */
-public interface TruffleCompilationSupport {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TruffleToLibGraal {
+    /**
+     * Gets the token identifying a call from HotSpot to libgraal.
+     */
+    Id value();
 
     /**
-     * Registers a runtime instance after it was fully initialized.
+     * Identifier for a call from HotSpot to libgraal.
      */
-    void registerRuntime(TruffleCompilerRuntime runtime);
-
-    /**
-     * Creates a new compiler handle for compilation. A runtime must be
-     * {@link #registerRuntime(TruffleCompilerRuntime) registered} prior to calling this method.
-     * Only one compiler instance should be created per Truffle runtime instance.
-     */
-    TruffleCompiler createCompiler(TruffleCompilerRuntime runtime);
-
-    /**
-     * Lists all compiler options available, including deprecated options.
-     */
-    TruffleCompilerOptionDescriptor[] listCompilerOptions();
-
-    /**
-     * Returns <code>true</code> if a compilation key exists, else <code>false</code>.
-     */
-    boolean compilerOptionExists(String key);
-
-    /**
-     * Validates a compiler option and returns <code>null</code> if the option is null. An error
-     * message otherwise.
-     */
-    String validateCompilerOption(String key, String value);
-
-    /**
-     * Returns a compiler configuration name that will be used.
-     */
-    String getCompilerConfigurationName(TruffleCompilerRuntime runtime);
-
-    /**
-     * Opens a compiler thread scope for compilation threads. Use with try-with-resourcce.
-     */
-    default AutoCloseable openCompilerThreadScope() {
-        return null;
+    // Please keep sorted
+    enum Id {
+        DoCompile,
+        GetCompilerConfigurationFactoryName,
+        GetDataPatchesCount,
+        GetExceptionHandlersCount,
+        GetInfopoints,
+        GetInfopointsCount,
+        GetMarksCount,
+        GetNodeCount,
+        GetNodeTypes,
+        GetSuppliedString,
+        GetTargetCodeSize,
+        GetTotalFrameSize,
+        InitializeCompiler,
+        RegisterRuntime,
+        ListCompilerOptions,
+        CompilerOptionExists,
+        ValidateCompilerOption,
+        InitializeRuntime,
+        InstallTruffleCallBoundaryMethod,
+        InstallTruffleReservedOopMethod,
+        NewCompiler,
+        PendingTransferToInterpreterOffset,
+        PurgePartialEvaluationCaches,
+        Shutdown;
     }
-
-    default boolean isSuppressedCompilationFailure(@SuppressWarnings("unused") Throwable throwable) {
-        return false;
-    }
-
 }

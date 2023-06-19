@@ -43,7 +43,6 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -52,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
 

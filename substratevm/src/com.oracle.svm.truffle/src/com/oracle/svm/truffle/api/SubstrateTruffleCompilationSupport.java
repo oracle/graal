@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.AbstractTruffleCompilationSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,6 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs

@@ -44,15 +44,16 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

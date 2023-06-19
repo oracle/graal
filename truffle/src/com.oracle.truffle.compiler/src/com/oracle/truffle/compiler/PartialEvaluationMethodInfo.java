@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.common;
+package com.oracle.truffle.compiler;
 
-import java.net.URI;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
 
-public interface TruffleSourceLanguagePosition {
+/**
+ * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+ * compiler implementation side.
+ *
+ * @param loopExplosion Queries how loops in {@code method} with constant number of invocations
+ *            should be unrolled.
+ * @param inlineForPartialEvaluation Gets an object describing whether and how a method can be
+ *            inlined based on Truffle directives during partial evaluation
+ * @param inlineForTruffleBoundary Gets an object describing whether and how a method can be inlined
+ *            based on Truffle directives after partial evaluation e.g. during later inlining
+ *            phases.
+ * @param isInlineable Determines if {@code method} can be inlined by the runtime (independently
+ *            from Truffle).
+ * @param isSpecializationMethod Determines if {@code method} is annotated by
+ *            {@code Specialization}.
+ */
+public record PartialEvaluationMethodInfo(
+                LoopExplosionKind loopExplosion,
+                InlineKind inlineForPartialEvaluation,
+                InlineKind inlineForTruffleBoundary,
+                boolean isInlineable,
+                boolean isSpecializationMethod) {
 
-    String getDescription();
-
-    int getOffsetEnd();
-
-    int getOffsetStart();
-
-    int getLineNumber();
-
-    URI getURI();
-
-    String getLanguage();
-
-    int getNodeId();
-
-    String getNodeClassName();
 }

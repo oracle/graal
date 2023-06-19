@@ -53,10 +53,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.EngineData;
@@ -71,6 +67,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationSupport;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;

@@ -41,7 +41,8 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Supplier;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 /**
  * Support for an embedder to impose control over logging and dumping during Truffle compilation

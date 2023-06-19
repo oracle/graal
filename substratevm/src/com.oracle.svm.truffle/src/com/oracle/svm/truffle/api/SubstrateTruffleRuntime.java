@@ -34,12 +34,6 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.common.HostMethodInfo;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
@@ -73,6 +67,12 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.HostMethodInfo;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompiler;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;

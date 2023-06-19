@@ -39,8 +39,9 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
+
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
 
 /*
  * Do not refer to any compiler classes here to guarantee lazy class loading.

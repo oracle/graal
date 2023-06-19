@@ -25,12 +25,13 @@
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.common.HostMethodInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleElementCache;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+
+import com.oracle.truffle.compiler.HostMethodInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

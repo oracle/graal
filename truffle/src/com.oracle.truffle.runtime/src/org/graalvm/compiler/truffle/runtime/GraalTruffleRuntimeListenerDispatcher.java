@@ -43,11 +43,10 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 /**
  * A collection for broadcasting {@link GraalTruffleRuntimeListener} events and converting

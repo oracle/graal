@@ -42,13 +42,12 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 /**
  * A listener for events related to the execution and compilation phases of a
