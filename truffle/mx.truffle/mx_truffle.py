@@ -898,8 +898,6 @@ class ShadedLibraryProject(mx.JavaProject):
     """
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
         self.shade = args.pop('shade')
-        #self.path = args.pop('path', join(suite.get_output_root(platformDependent=False, jdkDependent=True), name, name.lower() + ".jar"))
-        #self.sourcesPath = args.pop('sourcesPath', None) # join(suite.get_output_root(platformDependent=False, jdkDependent=True), name, name.lower() + ".src.zip"))
         subDir = args.pop('subDir', 'src')
         srcDirs = args.pop('sourceDirs', ['src']) + [os.path.join(suite.get_output_root(platformDependent=False, jdkDependent=True), name, 'src_gen')]
         d = mx.join(suite.dir, subDir, name)
@@ -1082,7 +1080,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                                     dst.write(contents)
 
         # After generating (re)sources, run the normal Java build task.
-        if self._javafiles == {}:
+        if getattr(self, '_javafiles', None) == {}:
             self._javafiles = None
         super().prepare(self.daemons)
         super().build()
