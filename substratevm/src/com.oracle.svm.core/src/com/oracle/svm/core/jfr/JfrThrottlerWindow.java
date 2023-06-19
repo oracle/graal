@@ -9,13 +9,13 @@ public class JfrThrottlerWindow {
     public UninterruptibleUtils.AtomicLong endTicks; // already volatile
 
     // Calculated every rotation based on params set by user and results from previous windows
-    public long samplingInterval;
-    public double projectedPopSize;
+    public volatile long samplingInterval;
+    public volatile double projectedPopSize;
 
     // params set by user
-    public long samplesPerWindow;
-    public long windowDurationNs;
-    public long debt;
+    public volatile long samplesPerWindow;
+    public volatile long windowDurationNs;
+    public volatile long debt;
 
     public JfrThrottlerWindow() {
         windowDurationNs = 0;

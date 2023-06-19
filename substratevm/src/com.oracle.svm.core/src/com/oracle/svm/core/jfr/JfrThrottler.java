@@ -10,6 +10,7 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.locks.VMMutex;
 
 /**
  * Similar to Hotspot, each event that allows throttling, shall have its own throttler instance. An
@@ -32,10 +33,13 @@ public class JfrThrottler {
     private static final long TEN_PER_S_IN_MINUTES = 600;
     private static final long TEN_PER_S_IN_HOURS = 36000;
     private static final long TEN_PER_S_IN_DAYS = 864000;
+    // Copied from hotspot
+    private static final int WINDOW_DIVISOR = 5;
+
     // Can't use reentrant lock because it allocates
     private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
-    // Copied from hotspot
-    private final int windowDivisor = 5;
+    private final VMMutex mutex;
+
 
     public UninterruptibleUtils.AtomicBoolean disabled; // Already volatile
     private JfrThrottlerWindow window0;
@@ -49,7 +53,7 @@ public class JfrThrottler {
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
 
-    public JfrThrottler() {
+    public JfrThrottler(com.oracle.svm.core.locks.VMMutex mutex) {
         accumulatedDebtCarryLimit = 0;
         accumulatedDebtCarryCount = 0;
         reconfigure = false;
@@ -60,6 +64,7 @@ public class JfrThrottler {
         window1 = new JfrThrottlerWindow();
         activeWindow = window0; // same as hotspot. Unguarded is ok because all throttler instances
                                 // are created before program execution.
+        this.mutex = mutex;
     }
 
     /**
@@ -70,7 +75,7 @@ public class JfrThrottler {
      * Otherwise, we risk a window's params being set with only one of the two updated.
      */
     private void normalize1(long eventSampleSize, long periodMs){
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         // Do we want more than 10samples/s ? If so convert to samples/s
         if (periodMs <= SECOND_IN_MS){
             //nothing
@@ -93,8 +98,8 @@ public class JfrThrottler {
         this.eventSampleSize = eventSampleSize;
         this.periodNs = periodMs * 1000000;
     }
-    private void normalize(double samplesPerPeriod, double periodMs){
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+    private void normalize(long samplesPerPeriod, double periodMs){
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         // Do we want more than 10samples/s ? If so convert to samples/s
         double periodsPerSecond = 1000.0/ periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
@@ -104,7 +109,7 @@ public class JfrThrottler {
             return;
         }
 
-        this.eventSampleSize = eventSampleSize;
+        this.eventSampleSize = samplesPerPeriod;
         this.periodNs = (long) periodMs * 1000000;
     }
 
@@ -114,11 +119,11 @@ public class JfrThrottler {
         }
 
         // Blocking lock because new settings MUST be applied.
-        lock();
+        mutex.lock();
         normalize(eventSampleSize, periodMs);
         reconfigure = true;
         rotateWindow(); // could omit this and choose to wait until next rotation.
-        unlock();
+        mutex.unlock();
         disabled.set(false); // should be after the above are set
         return true;
     }
@@ -138,15 +143,14 @@ public class JfrThrottler {
         boolean expired = window.isExpired();
         if (expired) {
             // Check lock to see if someone is already rotating. If so, move on.
-            if (tryLock()) {
-                // Once in critical section ensure active window is still expired.
-                // Another thread may have already handled the expired window, or new settings may
-                // have already triggered a rotation.
-                if (activeWindow.isExpired()) {
-                    rotateWindow();
-                }
-                unlock();
+            mutex.lock(); // TODO: would be better to tryLock() if possible.
+            // Once in critical section ensure active window is still expired.
+            // Another thread may have already handled the expired window, or new settings may
+            // have already triggered a rotation.
+            if (activeWindow.isExpired()) {
+                rotateWindow();
             }
+            mutex.unlock();
             return false; // if expired, hotspot returns false
         }
         return window.sample();
@@ -159,41 +163,34 @@ public class JfrThrottler {
      * matter as long as they are not interrupted.
      */
     private void rotateWindow() {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         configure();
         installNextWindow();
     }
 
     private void installNextWindow() {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         activeWindow = getNextWindow();
     }
 
     JfrThrottlerWindow getNextWindow() {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         if (window0 == activeWindow) {
             return window1;
         }
         return window0;
     }
 
-    private long computeAccumulatedDebtCarryLimitHotspot(long windowDurationNs) {
+    private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         if (periodNs == 0 || windowDurationNs >= SECOND_IN_NS) {
             return 1;
         }
-        return SECOND_IN_NS / windowDurationNs;
-    }
-
-    private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
-        if (periodNs == 0 || windowDurationNs > MINUTE_IN_NS) {
-            return 1;
-        }
-        return windowDivisor; // this var isn't available to the class in Hotspot.
+        return WINDOW_DIVISOR; // this var isn't available to the class in Hotspot.
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
             accumulatedDebtCarryCount = 1;
             return 0; // reset because new settings have been applied
@@ -209,11 +206,11 @@ public class JfrThrottler {
      * Handles the case where the sampling rate is very low.
      */
     private void setSamplePointsAndWindowDuration1(){
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
         JfrThrottlerWindow next = getNextWindow();
-        long samplesPerWindow = eventSampleSize / windowDivisor;
-        long windowDurationNs = periodNs / windowDivisor;
+        long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
+        long windowDurationNs = periodNs / WINDOW_DIVISOR;
         if (eventSampleSize < 10
         || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
         || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
@@ -227,11 +224,11 @@ public class JfrThrottler {
         next.windowDurationNs = windowDurationNs;
     }
     private void setSamplePointsAndWindowDuration(){
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
         JfrThrottlerWindow next = getNextWindow();
-        long samplesPerWindow = eventSampleSize / windowDivisor;
-        long windowDurationNs = periodNs / windowDivisor;
+        long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
+        long windowDurationNs = periodNs / WINDOW_DIVISOR;
         // If period isn't 1s, then we're effectively taking under 10 samples/s
         // because the values have already undergone normalization.
         if (eventSampleSize < 10 || periodNs > SECOND_IN_NS){
@@ -245,7 +242,7 @@ public class JfrThrottler {
     }
 
     public void configure() {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         JfrThrottlerWindow next = getNextWindow();
 
         // Store updated params to both windows.
@@ -282,21 +279,21 @@ public class JfrThrottler {
         return alpha * Y + (1 - alpha) * S;
     }
 
-    /** Basic spin lock */
-    private void lock() {
-        while (!tryLock()) {
-            PauseNode.pause();
-        }
-    }
-
-    private boolean tryLock() {
-        return lock.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread());
-    }
-
-    private void unlock() {
-        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
-        lock.set(WordFactory.nullPointer());
-    }
+//    /** Basic spin lock */
+//    private void lock() {
+//        while (!tryLock()) {
+//            PauseNode.pause();
+//        }
+//    }
+//
+//    private boolean tryLock() {
+//        return lock.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread());
+//    }
+//
+//    private void unlock() {
+////        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+//        lock.set(WordFactory.nullPointer());
+//    }
 
     /** Visible for testing. */
     public void beginTest(long eventSampleSize, long periodMs) {
@@ -344,7 +341,7 @@ public class JfrThrottler {
             window0.testCurrentNanos += periodNs;
             window1.testCurrentNanos += periodNs;
         }
-        window0.testCurrentNanos += periodNs / windowDivisor;
-        window1.testCurrentNanos += periodNs / windowDivisor;
+        window0.testCurrentNanos += periodNs / WINDOW_DIVISOR;
+        window1.testCurrentNanos += periodNs / WINDOW_DIVISOR;
     }
 }

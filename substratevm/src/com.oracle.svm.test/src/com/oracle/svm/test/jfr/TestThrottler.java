@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.svm.core.locks.VMMutex;
+
 public class TestThrottler {
 
     // Based on hardcoded value in the throttler class.
@@ -44,6 +46,8 @@ public class TestThrottler {
     // Arbitrary. It doesn't matter what this is.
     private final long WINDOW_DURATION_MS = 200;
     private final long SAMPLES_PER_WINDOW = 10;
+    private static final VMMutex mutex = new VMMutex("testThrottler");
+
 
     /**
      * This is the simplest test that ensures that sampling stops after the cap is hit. Single thread.
@@ -52,7 +56,7 @@ public class TestThrottler {
     @Test
     public void testCapSingleThread() {
         // Doesn't rotate after starting sampling
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.setThrottle(SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         for (int i = 0; i < SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD; i++) {
             boolean sample = throttler.sample();
@@ -71,7 +75,7 @@ public class TestThrottler {
         final int testingThreadCount = 10;
         final AtomicInteger count = new AtomicInteger();
         List<Thread> testingThreads = new ArrayList<>();
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         Runnable doSampling = () -> {
             for (int i = 0; i < samplesPerWindow; i++) {
@@ -116,7 +120,7 @@ public class TestThrottler {
     @Test
     public void testExpiry() {
         final long samplesPerWindow = 10;
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         int count = 0;
 
@@ -144,7 +148,7 @@ public class TestThrottler {
     @Test
     public void testEWMA() {
         final long samplesPerWindow = 100;
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         // Samples per second is low (<10) resulting in a windowDuration being un-normalized (1 min) resulting in a window lookback of 5.0
         throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD,  60 * 1000);
         assertTrue(throttler.getWindowLookback() == 5.0);
@@ -172,7 +176,7 @@ public class TestThrottler {
     public void testDebt() {
         final long samplesPerWindow = 10;
         final long actualSamplesPerWindow = 50;
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * WINDOW_DURATION_MS);
 
         for (int p = 0; p < 50; p++) {
@@ -184,7 +188,7 @@ public class TestThrottler {
         // now the sampling interval must be 50 / 10 = 5
         assertTrue("Sampling interval is incorrect:"+ throttler.getActiveWindowSamplingInterval(), throttler.getActiveWindowSamplingInterval() == 5);
 
-        // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 6
+        // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 10 - (20/5) = 6
         // samples
         for (int i = 0; i < 20; i++) {
             throttler.sample();
@@ -209,7 +213,7 @@ public class TestThrottler {
     public void testNormalization() {
         long sampleSize = 10 * 600;
         long periodMs = 60*1000;
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(sampleSize, periodMs);
         assertTrue(throttler.getPeriodNs()+" "+ throttler.getEventSampleSize(),throttler.getEventSampleSize()==sampleSize/60 && throttler.getPeriodNs() == 1000000000);
 
