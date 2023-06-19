@@ -114,10 +114,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.L
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgCountNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
@@ -279,6 +277,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStoreVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP128ArithmeticNodeGen;
@@ -289,7 +288,6 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI1
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI32ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI8ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMIVarBitArithmeticNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMDoubleUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFP128UnaryNodeGen;
@@ -1404,6 +1402,44 @@ public class BasicNodeFactory implements NodeFactory {
                 return CountLeadingZeroesNode.getFactory(kind);
             case "cttz":
                 return CountTrailingZeroesNode.getFactory(kind);
+            case "sqrt":
+                return LLVMCMathsIntrinsics.getSqrtFactory(kind);
+            case "log":
+                return LLVMCMathsIntrinsics.getLogFactory(kind);
+            case "log2":
+                return LLVMCMathsIntrinsics.getLog2Factory(kind);
+            case "log10":
+                return LLVMCMathsIntrinsics.getLog10Factory(kind);
+            case "rint":
+                return LLVMCMathsIntrinsics.getRintFactory(kind);
+            case "ceil":
+                return LLVMCMathsIntrinsics.getCeilFactory(kind);
+            case "floor":
+                return LLVMCMathsIntrinsics.getFloorFactory(kind);
+            case "exp":
+                return LLVMCMathsIntrinsics.getExpFactory(kind);
+            case "exp2":
+                return LLVMCMathsIntrinsics.getExp2Factory(kind);
+            case "sin":
+                return LLVMCMathsIntrinsics.getSinFactory(kind);
+            case "cos":
+                return LLVMCMathsIntrinsics.getCosFactory(kind);
+            case "round":
+                return LLVMCMathsIntrinsics.getRoundFactory(kind);
+            case "maxnum":
+                return LLVMCMathsIntrinsics.getMaxnumFactory(kind);
+            case "minnum":
+                return LLVMCMathsIntrinsics.getMinnumFactory(kind);
+            case "copysign":
+                return LLVMCMathsIntrinsics.getCopySignFactory(kind);
+            case "abs":
+                return LLVMCMathsIntrinsics.getAbsFactory(kind);
+            case "fabs":
+                return LLVMCMathsIntrinsics.getFAbsFactory(kind);
+            case "fshl":
+                return LLVMFunnelShiftNode.getFshlFactory(kind);
+            case "fshr":
+                return LLVMFunnelShiftNode.getFshrFactory(kind);
             default:
                 return null;
         }
@@ -1479,67 +1515,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.powi.f80":
                 case "llvm.powi.f80.i32":
                     return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP80);
-                case "llvm.sqrt.f80":
-                case "llvm.log.f80":
-                case "llvm.log2.f80":
-                case "llvm.log10.f80":
-                case "llvm.rint.f80":
-                case "llvm.ceil.f80":
-                case "llvm.floor.f80":
-                case "llvm.exp.f80":
-                case "llvm.exp2.f80":
-                case "llvm.sin.f80":
-                case "llvm.cos.f80":
-                    String[] split = intrinsicName.split("\\.");
-                    return LLVMLongDoubleNode.createUnary(split[1], args[1], LongDoubleKinds.FP80);
                 case "llvm.pow.f128":
                 case "llvm.powi.f128":
                 case "llvm.powi.f128.i32":
                     return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP128);
-                case "llvm.sqrt.f128":
-                case "llvm.log.f128":
-                case "llvm.log2.f128":
-                case "llvm.log10.f128":
-                case "llvm.rint.f128":
-                case "llvm.ceil.f128":
-                case "llvm.floor.f128":
-                case "llvm.exp.f128":
-                case "llvm.exp2.f128":
-                case "llvm.sin.f128":
-                case "llvm.cos.f128":
-                    split = intrinsicName.split("\\.");
-                    return LLVMLongDoubleNode.createUnary(split[1], args[1], LongDoubleKinds.FP128);
-                case "llvm.round.f32":
-                case "llvm.round.f64":
-                case "llvm.round.f80":
-                    return LLVMCMathsIntrinsicsFactory.LLVMRoundNodeGen.create(args[1]);
-                case "llvm.abs.i8":
-                case "llvm.abs.i16":
-                case "llvm.abs.i32":
-                case "llvm.abs.i64":
-                    return LLVMAbsNodeGen.create(args[1]);
-                case "llvm.fabs.f32":
-                case "llvm.fabs.f64":
-                case "llvm.fabs.f80":
-                    return LLVMFAbsNodeGen.create(args[1]);
-                case "llvm.fabs.v2f64":
-                    return LLVMFAbsVectorNodeGen.create(args[1], 2);
-                case "llvm.fshl.i8":
-                    return LLVMFunnelShiftNodeFactory.Fshl_I8NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshl.i16":
-                    return LLVMFunnelShiftNodeFactory.Fshl_I16NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshl.i32":
-                    return LLVMFunnelShiftNodeFactory.Fshl_I32NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshl.i64":
-                    return LLVMFunnelShiftNodeFactory.Fshl_I64NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshr.i8":
-                    return LLVMFunnelShiftNodeFactory.Fshr_I8NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshr.i16":
-                    return LLVMFunnelShiftNodeFactory.Fshr_I16NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshr.i32":
-                    return LLVMFunnelShiftNodeFactory.Fshr_I32NodeGen.create(args[1], args[2], args[3]);
-                case "llvm.fshr.i64":
-                    return LLVMFunnelShiftNodeFactory.Fshr_I64NodeGen.create(args[1], args[2], args[3]);
                 case "llvm.fmuladd.f32":
                     LLVMExpressionNode mulNodeFloat = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.FLOAT, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.FLOAT, mulNodeFloat, args[3]);
@@ -1552,12 +1531,6 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.fmuladd.f128":
                     LLVMExpressionNode mulNodeF128 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.F128, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.F128, mulNodeF128, args[3]);
-                case "llvm.minnum.f32":
-                case "llvm.minnum.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2]);
-                case "llvm.maxnum.f32":
-                case "llvm.maxnum.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2]);
                 case "llvm.returnaddress":
                     return LLVMReturnAddressNodeGen.create(args[1]);
                 case "llvm.lifetime.start.p0":
@@ -1632,11 +1605,6 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.objectsize.i64.p0i8":
                 case "llvm.objectsize.i64":
                     return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
-                case "llvm.copysign.f32":
-                case "llvm.copysign.f64":
-                case "llvm.copysign.f80":
-                    return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2]);
-
                 case "llvm.uadd.sat.i8":
                 case "llvm.uadd.sat.i16":
                 case "llvm.uadd.sat.i32":
@@ -1687,41 +1655,6 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.smul.with.overflow.i32":
                 case "llvm.smul.with.overflow.i64":
                     return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_MUL, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-                case "llvm.exp2.f32":
-                case "llvm.exp2.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen.create(args[1]);
-                case "llvm.sqrt.f32":
-                case "llvm.sqrt.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
-                case "llvm.sqrt.v2f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
-                case "llvm.sin.f32":
-                case "llvm.sin.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMSinNodeGen.create(args[1]);
-                case "llvm.cos.f32":
-                case "llvm.cos.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen.create(args[1]);
-                case "llvm.exp.f32":
-                case "llvm.exp.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMExpNodeGen.create(args[1]);
-                case "llvm.log.f32":
-                case "llvm.log.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen.create(args[1]);
-                case "llvm.log2.f32":
-                case "llvm.log2.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen.create(args[1]);
-                case "llvm.log10.f32":
-                case "llvm.log10.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen.create(args[1]);
-                case "llvm.floor.f32":
-                case "llvm.floor.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen.create(args[1]);
-                case "llvm.ceil.f32":
-                case "llvm.ceil.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen.create(args[1]);
-                case "llvm.rint.f32":
-                case "llvm.rint.f64":
-                    return LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen.create(args[1]);
                 case "llvm.x86.sse.cvtss2si":
                     return LLVMX86_ConversionFloatToIntNodeGen.create(args[1]);
                 case "llvm.x86.sse.cmp.ss":
@@ -1962,9 +1895,9 @@ public class BasicNodeFactory implements NodeFactory {
 
             case "sqrt":
                 if (declaration.getName().endsWith("v2f64")) {
-                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(2, args[1]);
                 } else if (declaration.getName().endsWith("v4f32")) {
-                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 4);
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(4, args[1]);
                 } else {
                     return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
                 }
