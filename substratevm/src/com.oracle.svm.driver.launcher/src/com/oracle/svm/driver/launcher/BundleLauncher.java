@@ -47,6 +47,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
+import static com.oracle.svm.driver.launcher.ContainerSupport.CONTAINER_GRAAL_VM_HOME;
+
 
 public class BundleLauncher {
 
@@ -63,6 +65,9 @@ public class BundleLauncher {
     public static final String IMAGE_PATH_OUTPUT_DIR_NAME = "default";
     public static final String AUXILIARY_OUTPUT_DIR_NAME = "other";
 
+    private static Path rootDir;
+    private static Path inputDir;
+    private static Path outputDir;
     private static Path stageDir;
     private static Path classPathDir;
     private static Path modulePathDir;
@@ -75,6 +80,8 @@ public class BundleLauncher {
     private static boolean updateBundle = false;
 
     public static boolean verbose = false;
+
+    public static ContainerSupport containerSupport;
 
 
     public static void main(String[] args) {
@@ -93,14 +100,30 @@ public class BundleLauncher {
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Path environmentFile = stageDir.resolve("environment.json");
+        Map<String, String> launcherEnvironment = new HashMap<>();
         if (Files.isReadable(environmentFile)) {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
-                Map<String, String> launcherEnvironment = new HashMap<>();
                 new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
                 pb.environment().putAll(launcherEnvironment);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
             }
+        }
+
+        if (useContainer()) {
+            Path javaHome = getJavaExecutable().getParent().getParent();
+            ContainerSupport.replaceContainerPaths(command, javaHome, rootDir);
+
+            // TODO also mount agentDir if necessary
+
+            Map<Path, ContainerSupport.TargetPath> mountMapping = new HashMap<>();
+            Path containerRoot = Paths.get("/");
+            mountMapping.put(javaHome, new ContainerSupport.TargetPath(containerRoot.resolve(CONTAINER_GRAAL_VM_HOME),true));
+            mountMapping.put(inputDir, new ContainerSupport.TargetPath(containerRoot.resolve(INPUT_DIR_NAME),true));
+            mountMapping.put(outputDir, new ContainerSupport.TargetPath(containerRoot.resolve(OUTPUT_DIR_NAME),false));
+
+            containerSupport.initializeContainerImage();
+            command.addAll(0, containerSupport.createContainerCommand(launcherEnvironment, mountMapping));
         }
 
         if (verbose) {
@@ -134,6 +157,10 @@ public class BundleLauncher {
         }
 
         System.exit(exitCode);
+    }
+
+    public static boolean useContainer() {
+        return containerSupport != null;
     }
 
     private static List<String> createLaunchCommand(String[] args) {
@@ -247,13 +274,43 @@ public class BundleLauncher {
                 } catch (IOException e) {
                     System.out.println("Failed to create native image agent output dir");
                 }
-            } else if (arg.equals("--verbose")) {
-                verbose = true;
-            } else if (arg.equals("--")) {
-                applicationArgs.addAll(argQueue);
-                argQueue.clear();
+            } else if (arg.startsWith("--container")) {
+                if (useContainer()) {
+                    throw new RuntimeException("native-image bundle allows option container to be specified only once.");
+                }
+                Path dockerfile;
+                if (arg.indexOf(',') != -1) {
+                    String option = arg.substring(arg.indexOf(',') + 1);
+                    arg = arg.substring(0, arg.indexOf(','));
+
+                    if (option.startsWith("dockerfile")) {
+                        if (option.indexOf('=') != -1) {
+                            dockerfile = Paths.get(option.substring(option.indexOf('=') + 1));
+                            if (!Files.isReadable(dockerfile)) {
+                                throw new Error(String.format("Dockerfile '%s' is not readable", dockerfile.toAbsolutePath()));
+                            }
+                        } else {
+                            throw new Error("container option dockerfile requires a dockerfile argument. E.g. dockerfile=path/to/Dockerfile.");
+                        }
+                    } else {
+                        throw new Error(String.format("Unknown option %s. Valid option is: dockerfile=path/to/Dockerfile.", option));
+                    }
+                } else {
+                    dockerfile = stageDir.resolve("Dockerfile");
+                }
+                containerSupport = new ContainerSupport(dockerfile, stageDir);
+                if (arg.indexOf('=') != -1) {
+                    containerSupport.containerTool = arg.substring(arg.indexOf('=') + 1);
+                }
             } else {
-                applicationArgs.add(arg);
+                switch (arg) {
+                    case "--verbose" -> verbose = true;
+                    case "--" -> {
+                        applicationArgs.addAll(argQueue);
+                        argQueue.clear();
+                    }
+                    default -> applicationArgs.add(arg);
+                }
             }
         }
 
@@ -334,9 +391,8 @@ public class BundleLauncher {
     }
 
     private static void unpackBundle(Path bundleFilePath) {
-        Path inputDir;
         try {
-            Path rootDir = createBundleRootDir();
+            rootDir = createBundleRootDir();
             inputDir = rootDir.resolve(INPUT_DIR_NAME);
 
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
@@ -369,6 +425,7 @@ public class BundleLauncher {
             Path classesDir = inputDir.resolve(CLASSES_DIR_NAME);
             classPathDir = Files.createDirectories(classesDir.resolve(CLASSPATH_DIR_NAME));
             modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
+            outputDir = Files.createDirectories(rootDir.resolve(OUTPUT_DIR_NAME));
         } catch (IOException e) {
             throw new RuntimeException("Unable to create bundle directory layout", e);
         }
