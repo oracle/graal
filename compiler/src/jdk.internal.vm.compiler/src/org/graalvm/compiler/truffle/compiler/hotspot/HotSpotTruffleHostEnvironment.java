@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleElementCache;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -54,7 +54,12 @@ final class HotSpotTruffleHostEnvironment extends TruffleHostEnvironment {
         /*
          * If we directly compile in the host, we can just lookup the host compiler.
          */
-        return (TruffleCompilerImpl) ((HotSpotTruffleRuntime) runtime()).getTruffleCompiler(compilable);
+        TruffleCompilerRuntime runtime = runtime();
+        try {
+            return (TruffleCompilerImpl) runtime.getClass().getMethod("getCompiler", TruffleCompilable.class).invoke(runtime, compilable);
+        } catch (ReflectiveOperationException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
     }
 
     final class HostMethodInfoCache extends TruffleElementCache<ResolvedJavaMethod, HostMethodInfo> {

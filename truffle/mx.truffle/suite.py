@@ -250,15 +250,23 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
+        "TRUFFLE_API",
+        "TRUFFLE_COMPILER",
       ],
       "requires" : [
         "java.logging",
         "jdk.management",
+        "jdk.jfr",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.code.stack",
+        ],
+      },
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "TRUFFLE_LIBGRAAL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
@@ -268,16 +276,18 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
       ],
       "requires" : [
         "java.logging",
         "jdk.management",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+      },
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
@@ -1140,6 +1150,80 @@ suite = {
       }
     },
 
+    "TRUFFLE_COMPILER" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.truffle.compiler",
+        "requires" : [
+          "jdk.unsupported", # sun.misc.Unsafe
+          "java.logging",
+          "java.management",
+        ],
+        "exports" : [
+          # Qualified exports
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise"
+        ],
+        "uses" : [
+        ],
+      },
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+      },
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.compiler",
+      ],
+      "distDependencies" : [
+      ],
+      "description" : "Truffle compiler API.",
+      "maven": True,
+    },
+    
+    "TRUFFLE_RUNTIME" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.truffle.runtime",
+        "requires" : [
+          "jdk.unsupported", # sun.misc.Unsafe
+          "java.logging",
+          "java.management",
+          "org.graalvm.truffle",
+          "org.graalvm.truffle.compiler",
+        ],
+        "exports" : [
+          # Qualified exports
+          "org.graalvm.compiler.truffle.runtime to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise"
+        ],
+        "uses" : [
+          "com.oracle.truffle.api.impl.TruffleLocator",
+          "com.oracle.truffle.api.object.LayoutFactory",
+          "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
+          "org.graalvm.compiler.truffle.runtime.TruffleTypes",
+          "org.graalvm.compiler.truffle.runtime.EngineCacheSupport",
+          "org.graalvm.compiler.truffle.jfr.EventFactory.Provider",
+          "org.graalvm.compiler.truffle.runtime.FloodControlHandler",
+          "org.graalvm.home.HomeFinder",
+        ],
+      },
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.runtime",
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+        "TRUFFLE_API",
+        "TRUFFLE_COMPILER",
+      ],
+      "description" : "Truffle runtime distribution.",
+      "maven": True,
+    },
+    
+
     "TRUFFLE_API" : {
       # This distribution defines a module.
       "moduleInfo" : {
@@ -1175,9 +1259,8 @@ suite = {
           "com.oracle.truffle.api.library.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",
+          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
-          "com.oracle.truffle.compiler to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise"
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1222,7 +1305,6 @@ suite = {
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
-        "com.oracle.truffle.compiler",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"

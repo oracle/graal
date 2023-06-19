@@ -163,7 +163,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
         "jdk.internal.vm.ci",
@@ -192,8 +192,6 @@ suite = {
         "org.graalvm.compiler.core.common.CompilerProfiler",
         "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
         "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider",
-        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider",
-        "org.graalvm.compiler.truffle.runtime.FloodControlHandler",
       ],
       "annotationProcessors" : [
         "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -224,25 +222,10 @@ suite = {
         "org.graalvm.compiler.truffle.jfr.impl",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.truffle.test",
-        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
         "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
       ],
     },
 
-    "jdk.internal.vm.compiler.truffle.jfr" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler",
-      ],
-      "requires" : [
-        "jdk.jfr"
-      ],
-      "checkPackagePrefix": "false",
-      "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
-      "jacoco" : "exclude",
-    },
 
     "jdk.internal.vm.compiler.processor" : {
       "subDir" : "src",
@@ -266,6 +249,7 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
+        "truffle:TRUFFLE_RUNTIME",
       ],
       "requires" : [
         "jdk.unsupported",
@@ -273,7 +257,7 @@ suite = {
         "java.logging",
         "java.instrument",
         "java.management",
-        "jdk.jfr"
+        "jdk.jfr",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -442,6 +426,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.internal.vm.compiler",
+        "truffle:TRUFFLE_COMPILER",
       ],
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
@@ -534,6 +519,8 @@ suite = {
         "GRAAL",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
+        "truffle:TRUFFLE_COMPILER",
+        "truffle:TRUFFLE_RUNTIME",
         "regex:TREGEX"
       ],
       "exclude" : [
@@ -541,21 +528,6 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
       "testDistribution" : True,
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_JFR_IMPL" : {
-      # This distribution defines a module.
-      "moduleInfo" : {
-        "name" : "jdk.internal.vm.compiler.truffle.jfr",
-      },
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.internal.vm.compiler.truffle.jfr",
-      ],
-      "distDependencies" : [
-        "GRAAL",
-      ],
       "maven": False,
     },
 
@@ -606,12 +578,9 @@ suite = {
           "org.graalvm.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
-          "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.util.json                       to org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.driver",
         ],
         "uses" : [
-          "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.api.object.LayoutFactory",
           "org.graalvm.compiler.code.DisassemblerProvider",
           "org.graalvm.compiler.core.match.MatchStatementSet",
           "org.graalvm.compiler.debug.DebugHandlersFactory",
@@ -625,10 +594,6 @@ suite = {
           "org.graalvm.compiler.serviceprovider.JMXService",
           "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
           "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
-          "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
-          "org.graalvm.compiler.truffle.runtime.TruffleTypes",
-          "org.graalvm.compiler.truffle.runtime.EngineCacheSupport",
-          "org.graalvm.home.HomeFinder",
         ],
       },
       "subDir" : "src",
@@ -637,7 +602,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-        "truffle:TRUFFLE_API"
+        "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
       "description":  "The GraalVM compiler and the Graal-truffle optimizer.",

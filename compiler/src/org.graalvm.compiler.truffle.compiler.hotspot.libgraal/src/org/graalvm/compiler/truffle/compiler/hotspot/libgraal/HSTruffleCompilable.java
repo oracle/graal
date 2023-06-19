@@ -69,7 +69,6 @@ import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativebridge.BinaryInput;
 
 import jdk.vm.ci.meta.JavaConstant;

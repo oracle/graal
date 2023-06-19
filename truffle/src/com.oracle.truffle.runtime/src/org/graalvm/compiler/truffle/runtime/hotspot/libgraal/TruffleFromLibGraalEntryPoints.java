@@ -94,9 +94,8 @@ import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.nativebridge.BinaryOutput;
-import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;

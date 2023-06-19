@@ -32,7 +32,6 @@ import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JWeak;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

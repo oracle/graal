@@ -37,7 +37,6 @@ import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
-import org.graalvm.nativebridge.BinaryInput;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs

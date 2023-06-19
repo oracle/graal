@@ -33,8 +33,6 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
-
 /**
  * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
  * simplifies navigating between these methods in an IDE.

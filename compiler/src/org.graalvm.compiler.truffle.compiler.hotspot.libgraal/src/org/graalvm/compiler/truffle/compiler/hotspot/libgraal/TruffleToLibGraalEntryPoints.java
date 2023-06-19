@@ -72,7 +72,6 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
 import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativebridge.BinaryOutput;

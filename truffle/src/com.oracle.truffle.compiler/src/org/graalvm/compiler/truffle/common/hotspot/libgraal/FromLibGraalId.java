@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni.annotation;
+package org.graalvm.compiler.truffle.common.hotspot.libgraal;
 
 public interface FromLibGraalId {
 

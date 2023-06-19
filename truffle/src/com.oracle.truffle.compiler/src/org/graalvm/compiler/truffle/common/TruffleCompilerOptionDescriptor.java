@@ -24,29 +24,10 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.options.OptionDescriptor;
-
 /**
  * Represents the description of a Truffle compiler options.
  */
 public record TruffleCompilerOptionDescriptor(String name, Type type, boolean deprecated, String help, String deprecationMessage) {
-
-    public TruffleCompilerOptionDescriptor(OptionDescriptor d) {
-        this(d.getName(), matchGraalOptionType(d), d.isDeprecated(), d.getHelp(), d.getDeprecationMessage());
-    }
-
-    static Type matchGraalOptionType(OptionDescriptor d) {
-        switch (d.getOptionType()) {
-            case User:
-                return Type.USER;
-            case Expert:
-                return Type.EXPERT;
-            case Debug:
-                return Type.DEBUG;
-            default:
-                return Type.DEBUG;
-        }
-    }
 
     public enum Type {
         /**

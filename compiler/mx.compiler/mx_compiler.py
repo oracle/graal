@@ -1312,7 +1312,7 @@ def _graal_config():
                     self.boot_dists.append(d)
                     self.boot_jars.append(d.classpath_repr())
 
-            self.jvmci_parent_dists = [mx.distribution('truffle:TRUFFLE_API')]
+            self.jvmci_parent_dists = [mx.distribution('truffle:TRUFFLE_API', 'truffle:TRUFFLE_COMPILER', 'truffle:TRUFFLE_RUNTIME')]
             self.jvmci_parent_jars = [jar.classpath_repr() for jar in self.jvmci_parent_dists]
 
             self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
@@ -1328,7 +1328,6 @@ def _jvmci_jars():
     return [
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
-        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
     ]
 
 # The community compiler component
