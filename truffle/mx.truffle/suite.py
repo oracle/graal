@@ -1480,8 +1480,6 @@ suite = {
       "description" : "Truffle support distribution for ICU4J",
       "layout" : {
         "native-image.properties" : "file:mx.truffle/language-icu4j.properties",
-        "icu4j-reflection-config.json" : "file:src/org.graalvm.shadowed.com.ibm.icu/src/META-INF/native-image/icu4j/reflect-config.json",
-        "icu4j-resource-config.json" : "file:src/org.graalvm.shadowed.com.ibm.icu/src/META-INF/native-image/icu4j/resource-config.json",
       },
       "maven" : False,
     },
