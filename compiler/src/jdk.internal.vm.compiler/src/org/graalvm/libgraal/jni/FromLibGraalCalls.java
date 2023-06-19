@@ -25,9 +25,6 @@
 package org.graalvm.libgraal.jni;
 
 import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-
-import org.graalvm.jniutils.JNICalls;
-import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
 import static org.graalvm.jniutils.JNIUtil.getBinaryName;
@@ -44,6 +41,7 @@ import org.graalvm.jniutils.JNI.JMethodID;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JValue;
+import org.graalvm.jniutils.JNICalls;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
