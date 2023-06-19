@@ -2,13 +2,6 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
-import com.oracle.svm.core.jfr.JfrTicks;
-
-import com.oracle.svm.core.jfr.JfrThrottlerWindow;
-import org.graalvm.word.WordFactory;
-import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.locks.VMMutex;
 
@@ -25,19 +18,20 @@ public class JfrThrottler {
     private static final long SECOND_IN_NS = 1000000000;
     private static final long SECOND_IN_MS = 1000;
     private static final long MINUTE_IN_NS = SECOND_IN_NS * 60;
-    private static final long MINUTE_IN_MS = SECOND_IN_MS *60;
-    private static final long HOUR_IN_MS = MINUTE_IN_MS * 60;
-    private static final long HOUR_IN_NS = MINUTE_IN_NS * 60;
-    private static final long DAY_IN_MS = HOUR_IN_MS * 24;
-    private static final long DAY_IN_NS = HOUR_IN_NS * 24;
-    private static final long TEN_PER_S_IN_MINUTES = 600;
-    private static final long TEN_PER_S_IN_HOURS = 36000;
-    private static final long TEN_PER_S_IN_DAYS = 864000;
+//    private static final long MINUTE_IN_MS = SECOND_IN_MS *60;
+//    private static final long HOUR_IN_MS = MINUTE_IN_MS * 60;
+//    private static final long HOUR_IN_NS = MINUTE_IN_NS * 60;
+//    private static final long DAY_IN_MS = HOUR_IN_MS * 24;
+//    private static final long DAY_IN_NS = HOUR_IN_NS * 24;
+//    private static final long TEN_PER_S_IN_MINUTES = 600;
+//    private static final long TEN_PER_S_IN_HOURS = 36000;
+//    private static final long TEN_PER_S_IN_DAYS = 864000;
     // Copied from hotspot
     private static final int WINDOW_DIVISOR = 5;
+    private static final int EVENT_THROTTLER_OFF = -2;
 
     // Can't use reentrant lock because it allocates
-    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
+//    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
     private final VMMutex mutex;
 
 
@@ -50,15 +44,15 @@ public class JfrThrottler {
     private volatile double ewmaPopulationSizeAlpha = 0;
     private volatile double avgPopulationSize = 0;
     private volatile boolean reconfigure;
-    private long accumulatedDebtCarryLimit;
-    private long accumulatedDebtCarryCount;
+    private volatile long accumulatedDebtCarryLimit;
+    private volatile long accumulatedDebtCarryCount;
 
-    public JfrThrottler(com.oracle.svm.core.locks.VMMutex mutex) {
+    public JfrThrottler(VMMutex mutex) {
         accumulatedDebtCarryLimit = 0;
         accumulatedDebtCarryCount = 0;
         reconfigure = false;
         disabled = new UninterruptibleUtils.AtomicBoolean(true);
-        lock = new UninterruptibleUtils.AtomicPointer<>(); // I assume this is initially
+//        lock = new UninterruptibleUtils.AtomicPointer<>(); // I assume this is initially
                                                            // WordFactorynullPointer()
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
@@ -74,36 +68,36 @@ public class JfrThrottler {
      * This is in the critical section because setting the sample size and period must be done together atomically.
      * Otherwise, we risk a window's params being set with only one of the two updated.
      */
-    private void normalize1(long eventSampleSize, long periodMs){
-        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
-        // Do we want more than 10samples/s ? If so convert to samples/s
-        if (periodMs <= SECOND_IN_MS){
-            //nothing
-        } else if (periodMs <= MINUTE_IN_MS) {
-            if (eventSampleSize >= TEN_PER_S_IN_MINUTES) {
-                eventSampleSize /= 60;
-                periodMs /= 60;
-            }
-        } else if (periodMs <= HOUR_IN_MS) {
-            if (eventSampleSize >=TEN_PER_S_IN_HOURS) {
-                eventSampleSize /= 3600;
-                periodMs /= 3600;
-            }
-        } else if (periodMs <= DAY_IN_MS) {
-            if (eventSampleSize >=TEN_PER_S_IN_DAYS) {
-                eventSampleSize /= 86400;
-                periodMs /= 86400;
-            }
-        }
-        this.eventSampleSize = eventSampleSize;
-        this.periodNs = periodMs * 1000000;
-    }
+//    private void normalize1(long eventSampleSize, long periodMs){
+//        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
+//        // Do we want more than 10samples/s ? If so convert to samples/s
+//        if (periodMs <= SECOND_IN_MS){
+//            //nothing
+//        } else if (periodMs <= MINUTE_IN_MS) {
+//            if (eventSampleSize >= TEN_PER_S_IN_MINUTES) {
+//                eventSampleSize /= 60;
+//                periodMs /= 60;
+//            }
+//        } else if (periodMs <= HOUR_IN_MS) {
+//            if (eventSampleSize >=TEN_PER_S_IN_HOURS) {
+//                eventSampleSize /= 3600;
+//                periodMs /= 3600;
+//            }
+//        } else if (periodMs <= DAY_IN_MS) {
+//            if (eventSampleSize >=TEN_PER_S_IN_DAYS) {
+//                eventSampleSize /= 86400;
+//                periodMs /= 86400;
+//            }
+//        }
+//        this.eventSampleSize = eventSampleSize;
+//        this.periodNs = periodMs * 1000000;
+//    }
     private void normalize(long samplesPerPeriod, double periodMs){
         VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         // Do we want more than 10samples/s ? If so convert to samples/s
         double periodsPerSecond = 1000.0/ periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
-        if (samplesPerSecond >= 10) {
+        if (samplesPerSecond >= 10 && periodMs > SECOND_IN_MS) {
             this.periodNs = SECOND_IN_NS;
             this.eventSampleSize = (long) samplesPerSecond;
             return;
@@ -114,16 +108,20 @@ public class JfrThrottler {
     }
 
     public boolean setThrottle(long eventSampleSize, long periodMs) {
-        if (eventSampleSize == 0) {
+        if (eventSampleSize == EVENT_THROTTLER_OFF) {
             disabled.set(true);
+            return true;
         }
 
         // Blocking lock because new settings MUST be applied.
         mutex.lock();
-        normalize(eventSampleSize, periodMs);
-        reconfigure = true;
-        rotateWindow(); // could omit this and choose to wait until next rotation.
-        mutex.unlock();
+        try {
+            normalize(eventSampleSize, periodMs);
+            reconfigure = true;
+            rotateWindow(); // could omit this and choose to wait until next rotation.
+        } finally {
+            mutex.unlock();
+        }
         disabled.set(false); // should be after the above are set
         return true;
     }
@@ -144,13 +142,16 @@ public class JfrThrottler {
         if (expired) {
             // Check lock to see if someone is already rotating. If so, move on.
             mutex.lock(); // TODO: would be better to tryLock() if possible.
-            // Once in critical section ensure active window is still expired.
-            // Another thread may have already handled the expired window, or new settings may
-            // have already triggered a rotation.
-            if (activeWindow.isExpired()) {
-                rotateWindow();
+            try {
+                // Once in critical section ensure active window is still expired.
+                // Another thread may have already handled the expired window, or new settings may
+                // have already triggered a rotation.
+                if (activeWindow.isExpired()) {
+                    rotateWindow();
+                }
+            } finally {
+                mutex.unlock();
             }
-            mutex.unlock();
             return false; // if expired, hotspot returns false
         }
         return window.sample();
@@ -186,7 +187,7 @@ public class JfrThrottler {
         if (periodNs == 0 || windowDurationNs >= SECOND_IN_NS) {
             return 1;
         }
-        return WINDOW_DIVISOR; // this var isn't available to the class in Hotspot.
+        return SECOND_IN_NS/windowDurationNs; // this var isn't available to the class in Hotspot.
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
@@ -205,24 +206,24 @@ public class JfrThrottler {
     /**
      * Handles the case where the sampling rate is very low.
      */
-    private void setSamplePointsAndWindowDuration1(){
-        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
-        VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
-        JfrThrottlerWindow next = getNextWindow();
-        long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
-        long windowDurationNs = periodNs / WINDOW_DIVISOR;
-        if (eventSampleSize < 10
-        || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
-        || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
-        || periodNs >= DAY_IN_NS && eventSampleSize < TEN_PER_S_IN_DAYS){
-            samplesPerWindow = eventSampleSize;
-            windowDurationNs = periodNs;
-        }
-        activeWindow.samplesPerWindow = samplesPerWindow;
-        activeWindow.windowDurationNs = windowDurationNs;
-        next.samplesPerWindow = samplesPerWindow;
-        next.windowDurationNs = windowDurationNs;
-    }
+//    private void setSamplePointsAndWindowDuration1(){
+//        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
+//        VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
+//        JfrThrottlerWindow next = getNextWindow();
+//        long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
+//        long windowDurationNs = periodNs / WINDOW_DIVISOR;
+//        if (eventSampleSize < 10
+//        || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
+//        || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
+//        || periodNs >= DAY_IN_NS && eventSampleSize < TEN_PER_S_IN_DAYS){
+//            samplesPerWindow = eventSampleSize;
+//            windowDurationNs = periodNs;
+//        }
+//        activeWindow.samplesPerWindow = samplesPerWindow;
+//        activeWindow.windowDurationNs = windowDurationNs;
+//        next.samplesPerWindow = samplesPerWindow;
+//        next.windowDurationNs = windowDurationNs;
+//    }
     private void setSamplePointsAndWindowDuration(){
         VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");

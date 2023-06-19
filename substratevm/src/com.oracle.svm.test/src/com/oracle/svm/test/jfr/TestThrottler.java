@@ -26,12 +26,20 @@
 
 package com.oracle.svm.test.jfr;
 
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.genscavenge.HeapParameters;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrThrottler;
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 import org.junit.Test;
 import org.junit.Assert;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
@@ -39,7 +47,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.oracle.svm.core.locks.VMMutex;
 
-public class TestThrottler {
+public class TestThrottler extends JfrRecordingTest{
 
     // Based on hardcoded value in the throttler class.
     private final long WINDOWS_PER_PERIOD = 5;
@@ -224,9 +232,81 @@ public class TestThrottler {
     }
 
     /**
+     * Checks that no ObjectAllocationSample events are emitted when the sampling rate is 0.
+     */
+    @Test
+    public void testZeroRate() throws Throwable{
+        // Test throttler in isolation
+        JfrThrottler throttler = new JfrThrottler(mutex);
+        throttler.setThrottle(0, 2000);
+        assertFalse(throttler.sample());
+        throttler.setThrottle(10, 2000);
+        assertTrue(throttler.sample());
+
+        // Test applying throttling settings to an in-progress recording
+        Recording recording = startRecording(new String[]{}, null, new HashMap<>()); // don't use default configuration because it includes ObjectAllocationSample by default
+        recording.enable(JfrEvent.ObjectAllocationSample.getName()).with("throttle", "0/s");
+        final int alignedHeapChunkSize = com.oracle.svm.core.util.UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+        allocateCharArray(alignedHeapChunkSize);
+
+        recording.stop();
+        recording.close();
+
+        assertTrue(getEvents(recording.getDestination(),new String[]{JfrEvent.ObjectAllocationSample.getName()}).size()==0);
+    }
+
+    @NeverInline("Prevent escape analysis.")
+    private static char[] allocateCharArray(int length) {
+        return new char[length];
+    }
+
+    /**
+     * This is a more involved test that checks the sample distribution. It has been mostly copied from
+     * JfrGTestAdaptiveSampling in the OpenJDK
+     */
+    @Test
+    public void testDistribution(){
+        final int maxPopPerWindow = 2000;
+        final int minPopPerWindow = 2;
+        final int windowCount = 10000;
+        final int windowDurationMs = 100;
+        final int expectedSamplesPerWindow = 50;
+        final int expectedSamples = expectedSamplesPerWindow * windowCount;
+        final int windowLookBackCount = 50;
+        final double maxSampleBias  =0.11;
+        JfrThrottler throttler = new JfrThrottler(mutex);
+        throttler.beginTest(expectedSamplesPerWindow*WINDOWS_PER_PERIOD, windowDurationMs*WINDOWS_PER_PERIOD);
+
+        int[] population = new int[100];
+        int[] sample = new int[100];
+
+        int populationSize = 0;
+        int sampleSize = 0;
+        for(int t = 0; t < windowCount; t++){
+            int windowPop = ThreadLocalRandom.current().nextInt(minPopPerWindow, maxPopPerWindow + 1);
+            for(int i =0 ; i < windowPop; i++){
+                populationSize++;
+                int index = ThreadLocalRandom.current().nextInt(0, 100);
+                population[index] += 1;
+                if (throttler.sample()){
+                    sampleSize++;
+                    sample[index] +=1;
+                }
+            }
+            expireAndRotate(throttler);
+        }
+        expectNear(expectedSamples, sampleSize, expectedSamples* 0.05);
+    }
+
+    private static void expectNear(int value1, int value2, double error){
+        System.out.println(value1 +" "+ value2);
+        assertTrue(Math.abs(value1-value2) < error);
+    }
+
+    /**
      * Helper method that expires and rotates a throttler's active window
      */
-    private void expireAndRotate(JfrThrottler throttler) {
+    private static void expireAndRotate(JfrThrottler throttler) {
         throttler.expireActiveWindow();
         assertTrue("should be expired", throttler.IsActiveWindowExpired());
         assertFalse("Should have rotated not sampled!", throttler.sample());
