@@ -280,8 +280,6 @@ public class InlineBeforeAnalysisPolicyUtils {
         int numInvokes = 0;
 
         Boolean lenientForMethodHandleIntrinsic = null; // lazily initialized
-        boolean calleeMethodHandleIntrinsicFailed = false;
-        boolean methodHandleIntrinsicFailed = false;
 
         AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth) {
             super(inliningDepth);
@@ -320,7 +318,6 @@ public class InlineBeforeAnalysisPolicyUtils {
             } else {
                 assert !accumulativeCounters.inMethodHandleIntrinsification && calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
             }
-            calleeMethodHandleIntrinsicFailed = calleeScope.methodHandleIntrinsicFailed;
         }
 
         @Override
@@ -340,12 +337,6 @@ public class InlineBeforeAnalysisPolicyUtils {
 
             if (inliningDepth > accumulativeCounters.maxInliningDepth) {
                 // too deep to continue inlining
-                return false;
-            }
-
-            if (lenientForMethodHandleIntrinsic == Boolean.TRUE && calleeMethodHandleIntrinsicFailed) {
-                assert !methodHandleIntrinsicFailed : "must have failed earlier";
-                methodHandleIntrinsicFailed = true; // propagates to caller
                 return false;
             }
 
@@ -432,20 +423,13 @@ public class InlineBeforeAnalysisPolicyUtils {
                 if (lenientForMethodHandleIntrinsic == null) {
                     lenientForMethodHandleIntrinsic = inlineForMethodHandleIntrinsification(method);
                 }
-                if (lenientForMethodHandleIntrinsic) {
-                    if (calleeMethodHandleIntrinsicFailed) {
-                        methodHandleIntrinsicFailed = true; // propagates to caller
-                        return false;
-                    }
-                    allow = true;
-                }
+                allow = lenientForMethodHandleIntrinsic;
             }
             return allow;
         }
 
         @Override
         protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
-            methodHandleIntrinsicFailed = true;
             return false;
         }
 
