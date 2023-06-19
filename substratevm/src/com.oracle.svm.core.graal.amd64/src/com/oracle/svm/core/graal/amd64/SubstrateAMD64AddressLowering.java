@@ -79,7 +79,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
             // TODO, if the displacement is below a certain threshold we can optimize probably.
             //  which means assume that the displacement fits the shift and don't compute all the nodes
             //  but only the AND node.
-            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress) {
+            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress && compression.getEncoding().getShift() == 3) {
                 // ADDR is of the type [base + index*scale + displacement]
                 GetObjectAddressNode compressAsAddress = compression.graph().addOrUnique(new GetObjectAddressNode(compression.getValue()));
                 ConstantNode scaleNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(encoding.getShift()), IntegerStamp.create(32)));
