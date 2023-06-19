@@ -49,14 +49,14 @@ import jdk.vm.ci.meta.Value;
 // @formatter:off
 
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4648,
-          lineEnd   = 4667,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 4681,
+          lineEnd   = 4700,
+          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
           sha1      = "57f40186d75104a5e607d6fc047bbd50ef246590")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3517,
-          lineEnd   = 3553,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 3516,
+          lineEnd   = 3552,
+          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
           sha1      = "33649be9177daf5f0b4817d807458a5ff8c00365")
 // @formatter:on
 public final class AArch64BigIntegerMulAddOp extends AArch64LIRInstruction {
