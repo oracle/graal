@@ -1,11 +1,11 @@
 ---
 layout: docs
 toc_group: java
-link_title: Java Reference
+link_title: Java and JVM
 permalink: /reference-manual/java/
 ---
 
-# Java Reference
+# Java and JVM
 
 Any JVM-based application that runs on Java HotSpot VM can run on GraalVM.
 GraalVM is based on Java HotSpot VM, but integrates an advanced just-in-time (JIT) compiler, written in Java - the Graal compiler.
