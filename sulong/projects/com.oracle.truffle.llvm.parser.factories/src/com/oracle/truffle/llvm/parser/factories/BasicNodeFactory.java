@@ -122,12 +122,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgCountNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16VectorNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32VectorNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwap;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI1NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
@@ -147,6 +142,9 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMReturnAddressNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.ScalarBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.VectorBuiltinFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAArch64_NeonNodesFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
@@ -162,16 +160,9 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorRed
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceXorNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI8NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVACopyNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEndNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNodeGen;
@@ -1376,6 +1367,79 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    private static PrimitiveKind parsePrimitiveKind(String type) {
+        switch (type) {
+            case "i1":
+                return PrimitiveKind.I1;
+            case "i8":
+                return PrimitiveKind.I8;
+            case "i16":
+                return PrimitiveKind.I16;
+            case "i32":
+                return PrimitiveKind.I32;
+            case "i64":
+                return PrimitiveKind.I64;
+            case "f32":
+                return PrimitiveKind.FLOAT;
+            case "f64":
+                return PrimitiveKind.DOUBLE;
+            case "f80":
+                return PrimitiveKind.X86_FP80;
+            case "f128":
+                return PrimitiveKind.F128;
+            default:
+                return null;
+        }
+    }
+
+    private static final Pattern TYPED_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.(?<op>[a-z0-9.]+)\\.(?<type>(v(?<vlen>[0-9]+))?(?<ptype>[if][0-9]+))");
+
+    private static TypedBuiltinFactory getBuiltinFactory(String op, PrimitiveKind kind) {
+        switch (op) {
+            case "bswap":
+                return LLVMByteSwap.getFactory(kind);
+            case "ctpop":
+                return CountSetBitsNode.getFactory(kind);
+            case "ctlz":
+                return CountLeadingZeroesNode.getFactory(kind);
+            case "cttz":
+                return CountTrailingZeroesNode.getFactory(kind);
+            default:
+                return null;
+        }
+    }
+
+    protected LLVMExpressionNode getTypedLLVMBuiltin(String intrinsicName, LLVMExpressionNode[] args) {
+        Matcher matcher = TYPED_INTRINSIC_PATTERN.matcher(intrinsicName);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        PrimitiveKind type = parsePrimitiveKind(matcher.group("ptype"));
+        TypedBuiltinFactory factory = getBuiltinFactory(matcher.group("op"), type);
+        if (factory == null) {
+            // builtin not found or not supported for this type
+            return null;
+        }
+
+        String vlen = matcher.group("vlen");
+        if (vlen == null) {
+            ScalarBuiltinFactory scalar = factory.getScalar();
+            if (scalar != null) {
+                return scalar.create(args);
+            }
+        } else {
+            VectorBuiltinFactory vector = factory.getVector();
+            if (vector != null) {
+                int vectorSize = vlen == null ? 1 : Integer.parseInt(vlen);
+                return vector.create(vectorSize, args);
+            }
+        }
+
+        // vector not supported
+        return null;
+    }
+
     protected LLVMExpressionNode getLLVMBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, int callerArgumentCount) {
 
         String intrinsicName = declaration.getName();
@@ -1393,51 +1457,13 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMNoOpNodeGen.create();
                 case "llvm.prefetch":
                     return LLVMPrefetchNodeGen.create(args[1], args[2], args[3], args[4]);
-                case "llvm.ctlz.i8":
-                    return CountLeadingZeroesI8NodeGen.create(args[1], args[2]);
-                case "llvm.ctlz.i16":
-                    return CountLeadingZeroesI16NodeGen.create(args[1], args[2]);
-                case "llvm.ctlz.i32":
-                    return CountLeadingZeroesI32NodeGen.create(args[1], args[2]);
-                case "llvm.ctlz.i64":
-                    return CountLeadingZeroesI64NodeGen.create(args[1], args[2]);
                 case "llvm.memcpy.p0.p0.i64":
                 case "llvm.memcpy.p0i8.p0i8.i64":
                 case "llvm.memcpy.p0.p0.i32":
                 case "llvm.memcpy.p0i8.p0i8.i32":
                     return createMemcpyIntrinsic(args);
-                case "llvm.ctpop.i32":
-                    return CountSetBitsI32NodeGen.create(args[1]);
-                case "llvm.ctpop.i64":
-                    return CountSetBitsI64NodeGen.create(args[1]);
-                case "llvm.cttz.i8":
-                    return CountTrailingZeroesI8NodeGen.create(args[1], args[2]);
-                case "llvm.cttz.i16":
-                    return CountTrailingZeroesI16NodeGen.create(args[1], args[2]);
-                case "llvm.cttz.i32":
-                    return CountTrailingZeroesI32NodeGen.create(args[1], args[2]);
-                case "llvm.cttz.i64":
-                    return CountTrailingZeroesI64NodeGen.create(args[1], args[2]);
                 case "llvm.trap":
                     return LLVMTrapNodeGen.create();
-                case "llvm.bswap.i16":
-                    return LLVMByteSwapI16NodeGen.create(args[1]);
-                case "llvm.bswap.i32":
-                    return LLVMByteSwapI32NodeGen.create(args[1]);
-                case "llvm.bswap.i64":
-                    return LLVMByteSwapI64NodeGen.create(args[1]);
-                case "llvm.bswap.v8i16":
-                    return LLVMByteSwapI16VectorNodeGen.create(8, args[1]);
-                case "llvm.bswap.v16i16":
-                    return LLVMByteSwapI16VectorNodeGen.create(16, args[1]);
-                case "llvm.bswap.v4i32":
-                    return LLVMByteSwapI32VectorNodeGen.create(4, args[1]);
-                case "llvm.bswap.v8i32":
-                    return LLVMByteSwapI32VectorNodeGen.create(8, args[1]);
-                case "llvm.bswap.v2i64":
-                    return LLVMByteSwapI64VectorNodeGen.create(2, args[1]);
-                case "llvm.bswap.v4i64":
-                    return LLVMByteSwapI64VectorNodeGen.create(4, args[1]);
                 case "llvm.memmove.p0.p0.i64":
                 case "llvm.memmove.p0i8.p0i8.i64":
                     return createMemmoveIntrinsic(args);
@@ -1734,6 +1760,11 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } catch (TypeOverflowException e) {
             return Type.handleOverflowExpression(e);
+        }
+
+        LLVMExpressionNode typedIntrinsic = getTypedLLVMBuiltin(intrinsicName, args);
+        if (typedIntrinsic != null) {
+            return typedIntrinsic;
         }
 
         LLVMExpressionNode vectorIntrinsic = matchVectorOp(intrinsicName, args);
