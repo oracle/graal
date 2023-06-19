@@ -72,6 +72,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -349,25 +350,31 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private String signature;
 
-    @Substitute @InjectAccessors(ClassLoaderAccessors.class) //
+    @Substitute //
+    @InjectAccessors(ClassLoaderAccessors.class) //
     private ClassLoader classLoader;
 
-    @Substitute @InjectAccessors(ReflectionDataAccessors.class) //
+    @Substitute //
+    @InjectAccessors(ReflectionDataAccessors.class) //
     private SoftReference<Target_java_lang_Class_ReflectionData<?>> reflectionData;
 
-    @Substitute @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Substitute //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private int classRedefinedCount;
 
-    @Substitute @InjectAccessors(AnnotationDataAccessors.class) //
+    @Substitute //
+    @InjectAccessors(AnnotationDataAccessors.class) //
     private Target_java_lang_Class_AnnotationData annotationData;
 
-    @Substitute @InjectAccessors(AnnotationTypeAccessors.class) //
+    @Substitute //
+    @InjectAccessors(AnnotationTypeAccessors.class) //
     private AnnotationType annotationType;
 
     // This field has a fixed value 3206093459760846163L in java.lang.Class
     @Substitute private static final long serialVersionUID = 3206093459760846163L;
 
-    @Substitute @InjectAccessors(CachedConstructorAccessors.class) //
+    @Substitute //
+    @InjectAccessors(CachedConstructorAccessors.class) //
     private Constructor<?> cachedConstructor;
 
     @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class) private DynamicHubMetadata hubMetadata;
@@ -1905,6 +1912,12 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return soleInstance;
     }
 
+    /**
+     * Do not use the field handle based field accessor but the one based on unsafe. It takes effect
+     * when {@code Target_java_lang_reflect_Field#fieldAccessorField#fieldAccessor} is recomputed at
+     * runtime. See also GR-39586.
+     */
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK21OrEarlier.class})
     @Substitute
     public FieldAccessor newFieldAccessor(Field field0, boolean override) {
         Field field = field0;
@@ -1938,13 +1951,16 @@ final class Target_java_lang_PublicMethods_MethodList {
 final class Target_java_lang_Class_Atomic {
     @Delete static Unsafe unsafe;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "reflectionData") //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "reflectionData") //
     private static long reflectionDataOffset;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "annotationType") //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "annotationType") //
     private static long annotationTypeOffset;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "annotationData") //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, declClass = DynamicHubCompanion.class, name = "annotationData") //
     private static long annotationDataOffset;
 
     @Substitute

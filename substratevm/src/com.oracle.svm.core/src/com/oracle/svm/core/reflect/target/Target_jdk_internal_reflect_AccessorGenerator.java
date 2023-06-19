@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.reflect.target;
 
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -37,7 +38,7 @@ import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 public final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
-@TargetClass(className = "jdk.internal.reflect.MethodAccessorGenerator")
+@TargetClass(className = "jdk.internal.reflect.MethodAccessorGenerator", onlyWith = {JDK21OrEarlier.class})
 final class Target_jdk_internal_reflect_MethodAccessorGenerator {
 
     @Substitute
