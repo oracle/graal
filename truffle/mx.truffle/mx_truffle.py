@@ -42,6 +42,7 @@ import os
 import re
 import io
 import shutil
+import sys
 import tempfile
 import difflib
 import zipfile
@@ -1093,6 +1094,10 @@ def glob_match(path, pattern):
     :param pattern: a string or a PurePath representing the glob pattern
     """
     assert isinstance(path, PurePath), path
+    if sys.version_info[:2] >= (3, 13):
+        # Since Python 3.13, PurePath.match already supports '**'.
+        return path.match(pattern)
+
     pathType = type(path)
     patternParts = pathType(pattern).parts
     if not '**' in patternParts:
