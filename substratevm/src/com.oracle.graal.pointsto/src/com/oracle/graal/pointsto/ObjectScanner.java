@@ -197,7 +197,7 @@ public class ObjectScanner {
             if (!arrayType.getComponentType().isPrimitive()) {
                 ImageHeapArray heapArray = (ImageHeapArray) array;
                 for (int idx = 0; idx < heapArray.getLength(); idx++) {
-                    final JavaConstant element = (JavaConstant) heapArray.getElement(idx);
+                    final JavaConstant element = heapArray.readElementValue(idx);
                     if (element.isNull()) {
                         scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                     } else {
