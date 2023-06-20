@@ -56,7 +56,7 @@ public class DebugPointerType extends DebugType {
     protected final DebugType baseType;
 
     public DebugPointerType(DebugType baseType) {
-        assert baseType != null;
+        assert baseType != null : "the base type of a debug pointer must not be null";
         this.baseType = baseType;
     }
 

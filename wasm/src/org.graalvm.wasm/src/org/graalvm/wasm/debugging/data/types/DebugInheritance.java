@@ -66,7 +66,7 @@ public class DebugInheritance extends DebugType {
      *            expression is provided, this value is ignored.
      */
     public DebugInheritance(DebugType referenceType, byte[] locationExpression, int memberOffset) {
-        assert referenceType != null;
+        assert referenceType != null : "the reference type (super class) of a debug inheritance must not be null";
         this.referenceType = referenceType;
         this.locationExpression = locationExpression;
         this.memberOffset = memberOffset;

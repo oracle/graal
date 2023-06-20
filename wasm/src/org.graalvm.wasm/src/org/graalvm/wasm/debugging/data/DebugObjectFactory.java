@@ -233,7 +233,7 @@ public abstract class DebugObjectFactory {
             if (pcs == null) {
                 return;
             }
-            assert pcs.length == 2;
+            assert pcs.length == 2 : "the pc range of a debug lexical block must contain exactly two values (start pc and end pc) ";
             blockScope = scope.with(null, pcs[0], pcs[1]);
         } else {
             blockScope = scope;
@@ -405,7 +405,7 @@ public abstract class DebugObjectFactory {
         if (pcs == null) {
             return null;
         }
-        assert pcs.length == 2;
+        assert pcs.length == 2 : "the pc range of a debug subprogram (function) must contain exactly two values (start pc and end pc)";
         final int scopeStartPc = pcs[0];
         final int scopeEndPc = pcs[1];
         final int startLine = lineMap.getLine(scopeStartPc);

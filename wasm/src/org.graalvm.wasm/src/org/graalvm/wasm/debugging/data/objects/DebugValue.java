@@ -54,7 +54,7 @@ public class DebugValue extends DebugBinding {
 
     public DebugValue(String elementName, DebugLocation location, DebugType type) {
         super(type);
-        assert location != null;
+        assert location != null : "the location of a debug value must not be null";
         this.name = elementName;
         this.location = location;
     }

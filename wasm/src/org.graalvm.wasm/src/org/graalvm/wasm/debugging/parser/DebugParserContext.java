@@ -63,7 +63,8 @@ public class DebugParserContext {
     private final Source[] fileSources;
 
     public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Source[] fileSources) {
-        assert data != null && entryData != null;
+        assert data != null : "the reference to the array containing the debug information (data) must not be null";
+        assert entryData != null : "the mapping of locations in the bytecode to debug entries (entryData) must not be null";
         this.data = data;
         this.debugInfoOffset = debugInfoOffset;
         this.entryData = entryData;

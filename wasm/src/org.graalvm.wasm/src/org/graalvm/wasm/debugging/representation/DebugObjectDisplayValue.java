@@ -75,6 +75,9 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     private final EconomicMap<String, DebugObject> members;
 
     private DebugObjectDisplayValue(DebugContext context, DebugLocation location, String name, EconomicMap<String, DebugObject> members) {
+        assert context != null : "the context provided to a debug object display value must not be null";
+        assert location != null : "the location provided to a debug object display value must not be null";
+        assert members != null : "the list of members provided to a debug object display value must not be null";
         this.context = context;
         this.location = location;
         this.name = name;

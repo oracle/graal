@@ -54,7 +54,8 @@ public class DebugData {
     private final DebugData[] children;
 
     public DebugData(int tag, int offset, long[] attributeInfo, Object[] attributes, DebugData[] children) {
-        assert attributes != null && children != null;
+        assert attributes != null : "The attribute values of a debug data entry must not be null";
+        assert children != null : "The children of a debug data entry must not be null";
         this.tag = tag;
         this.offset = offset;
         this.attributeInfo = attributeInfo;
@@ -105,13 +106,10 @@ public class DebugData {
         final int encoding = attributeEncoding(attributeInfo[index]);
         final int value;
         if (DataEncoding.isByte(encoding)) {
-            assert attributes[index] instanceof Byte;
             value = (byte) attributes[index];
         } else if (DataEncoding.isShort(encoding)) {
-            assert attributes[index] instanceof Short;
             value = (short) attributes[index];
         } else if (DataEncoding.isInt(encoding)) {
-            assert attributes[index] instanceof Integer;
             value = (int) attributes[index];
         } else {
             return defaultValue;
@@ -143,16 +141,12 @@ public class DebugData {
         final int encoding = attributeEncoding(attributeInfo[index]);
         final long value;
         if (DataEncoding.isByte(encoding)) {
-            assert attributes[index] instanceof Byte;
             value = (byte) attributes[index];
         } else if (DataEncoding.isShort(encoding)) {
-            assert attributes[index] instanceof Short;
             value = (short) attributes[index];
         } else if (DataEncoding.isInt(encoding)) {
-            assert attributes[index] instanceof Integer;
             value = (int) attributes[index];
         } else if (DataEncoding.isLong(encoding)) {
-            assert attributes[index] instanceof Long;
             value = (long) attributes[index];
         } else {
             return defaultValue;
@@ -183,7 +177,6 @@ public class DebugData {
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isString(encoding)) {
-            assert attributes[index] instanceof String;
             return (String) attributes[index];
         }
         return null;
@@ -203,7 +196,6 @@ public class DebugData {
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isString(encoding)) {
-            assert attributes[index] instanceof String;
             return (String) attributes[index];
         }
         return "";
@@ -222,7 +214,6 @@ public class DebugData {
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isByteArray(encoding)) {
-            assert attributes[index] instanceof byte[];
             return (byte[]) attributes[index];
         }
         return null;
@@ -251,7 +242,6 @@ public class DebugData {
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isBoolean(encoding)) {
-            assert attributes[index] instanceof Boolean;
             return (boolean) attributes[index];
         }
         return false;

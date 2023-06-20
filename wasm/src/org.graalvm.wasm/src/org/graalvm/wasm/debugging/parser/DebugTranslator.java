@@ -70,7 +70,8 @@ public class DebugTranslator {
 
     @TruffleBoundary
     public EconomicMap<Integer, DebugFunction> readCompilationUnits(byte[] customData, int debugInfoOffset) {
-        assert customData != null && debugInfoOffset != -1;
+        assert customData != null : "the array containing the debug information must not be null when trying to parse the information";
+        assert debugInfoOffset != DebugUtil.UNDEFINED : "the offset of the debug information must be valid";
         EconomicMap<Integer, DebugFunction> debugFunctions = EconomicMap.create();
         int unitOffset = 0;
         DebugParseUnit entryUnit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
@@ -143,7 +144,7 @@ public class DebugTranslator {
         if (pcs == null) {
             return null;
         }
-        assert pcs.length == 2;
+        assert pcs.length == 2 : "the pc range of a debug compilation unit must contain exactly two values (start pc and end pc)";
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
         final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);

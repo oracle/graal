@@ -56,7 +56,7 @@ public final class DebugParserScope {
     private final List<DebugObject> variables;
 
     private DebugParserScope(String name, int startLocation, int endLocation, int fileIndex, List<DebugObject> variables) {
-        assert variables != null;
+        assert variables != null : "the list of variables in a debug parser scope must not be null";
         this.name = name;
         this.fileIndex = fileIndex;
         this.startLocation = startLocation;
