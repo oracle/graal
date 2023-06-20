@@ -663,9 +663,9 @@ public abstract class NFATraversalRegexASTVisitor {
         boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
         DeduplicationKey key;
         if (captureGroupsMatter) {
-            key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
+            key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears, lastGroup);
         } else {
-            key = DeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
+            key = DeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
         }
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
@@ -1168,19 +1168,21 @@ public abstract class NFATraversalRegexASTVisitor {
     private static class DeduplicationKey {
         protected final StateSet<RegexAST, RegexASTNode> nodesInvolved;
         protected final QuantifierGuardsLinkedList quantifierGuards;
+        protected final StateSet<RegexAST, Group> insideEmptyGuardGroup;
         protected int hashCode;
 
         protected DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards) {
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup) {
             this.nodesInvolved = lookAroundsOnPath.copy();
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
             this.quantifierGuards = quantifierGuards;
+            this.insideEmptyGuardGroup = insideEmptyGuardGroup.copy();
         }
 
         public static DeduplicationKey create(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards) {
-            DeduplicationKey key = new DeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup) {
+            DeduplicationKey key = new DeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
             key.hashCode = key.calculateHashCode();
             return key;
         }
@@ -1191,11 +1193,11 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards);
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.insideEmptyGuardGroup.equals(other.insideEmptyGuardGroup);
         }
 
         protected int calculateHashCode() {
-            return Objects.hash(nodesInvolved, quantifierGuards);
+            return Objects.hash(nodesInvolved, quantifierGuards, insideEmptyGuardGroup);
         }
 
         @Override
@@ -1210,16 +1212,17 @@ public abstract class NFATraversalRegexASTVisitor {
         private final int lastGroup;
 
         protected CGSensitiveDeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-            super(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+            super(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
             this.captureGroupUpdates = captureGroupUpdates.copy();
             this.captureGroupClears = captureGroupClears.copy();
             this.lastGroup = lastGroup;
         }
 
         public static CGSensitiveDeduplicationKey create(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-            CGSensitiveDeduplicationKey key = new CGSensitiveDeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+            CGSensitiveDeduplicationKey key = new CGSensitiveDeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates,
+                            captureGroupClears, lastGroup);
             key.hashCode = key.calculateHashCode();
             return key;
         }
@@ -1230,8 +1233,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             CGSensitiveDeduplicationKey other = (CGSensitiveDeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && Objects.equals(captureGroupUpdates, other.captureGroupUpdates) &&
-                            Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.insideEmptyGuardGroup.equals(other.insideEmptyGuardGroup) &&
+                            Objects.equals(captureGroupUpdates, other.captureGroupUpdates) && Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
         }
 
         @Override
