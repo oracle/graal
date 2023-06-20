@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.aarch64;
+package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+public class HotSpotGraphBuilderPhase extends GraphBuilderPhase {
 
-public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
-    public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
-                        new AArch64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
+    public HotSpotGraphBuilderPhase(GraphBuilderConfiguration config) {
+        super(config);
     }
+
+    @Override
+    protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        return new HotSpotGraphBuilderInstance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
+    }
+
 }

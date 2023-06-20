@@ -300,7 +300,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                 graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
                 graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
             }
-            GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
+            GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
             newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             if (isOSR) {
                 newGbs.appendPhase(new OnStackReplacementPhase());
@@ -318,4 +318,5 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         }
         return false;
     }
+
 }

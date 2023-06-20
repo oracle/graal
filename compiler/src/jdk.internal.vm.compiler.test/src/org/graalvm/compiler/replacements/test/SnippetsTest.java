@@ -24,12 +24,20 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SnippetsTest extends ReplacementsTest {
 
@@ -40,7 +48,21 @@ public abstract class SnippetsTest extends ReplacementsTest {
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        installer = new ReplacementsImpl(null, d.getProviders(), d.snippetReflection, bytecodeProvider, d.target);
+        installer = new ReplacementsImpl(null, d.getProviders(), d.snippetReflection, bytecodeProvider, d.target) {
+
+            @Override
+            protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
+                return new GraphMaker(this, substitute, original) {
+
+                    @Override
+                    protected Instance createGraphBuilder(Providers providers1, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                                    IntrinsicContext initialIntrinsicContext) {
+                        return new GraphBuilderPhase.Instance(providers1, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+                    }
+                };
+            }
+
+        };
         installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
     }
 
