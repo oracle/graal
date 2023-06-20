@@ -509,7 +509,7 @@ public class SourceCache {
 class SourceCacheFeature implements InternalFeature {
 
     public static class Options {
-        @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
+        @Option(help = "Search path for source files for application or GraalVM classes (list of comma-separated directories or jar files)")//
         static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
     }
 
