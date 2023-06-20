@@ -63,6 +63,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -247,7 +248,7 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
@@ -403,7 +404,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder, imageCodeInfo);
+        assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
     }
 
     protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
@@ -545,10 +546,22 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    protected boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
-        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            HostedMethod method = pair.getLeft();
-            CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);
+    protected boolean verifyMethods(HostedUniverse hUniverse, ForkJoinPool threadPool, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+        /*
+         * Run method verification in parallel to reduce computation time.
+         */
+        BigBang bb = hUniverse.getBigBang();
+        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        try {
+            executor.init();
+            executor.start();
+            for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+                HostedMethod method = pair.getLeft();
+                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo));
+            }
+            executor.complete();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere("Failed to verify methods");
         }
         codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;
