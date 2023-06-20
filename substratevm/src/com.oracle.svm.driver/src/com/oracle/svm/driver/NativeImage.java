@@ -102,6 +102,10 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
+import static com.oracle.svm.driver.launcher.ContainerSupport.replaceContainerPaths;
+import static com.oracle.svm.driver.launcher.ContainerSupport.mountMappingFor;
+import static com.oracle.svm.driver.launcher.ContainerSupport.TargetPath;
+
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
@@ -1558,10 +1562,11 @@ public class NativeImage {
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
+        List<String> completeCommandList = new ArrayList<>();
 
-        if (useBundle() && bundleSupport.useContainer) {
-            bundleSupport.replacePathsForContainerBuild(arguments);
-            bundleSupport.replacePathsForContainerBuild(finalImageBuilderArgs);
+        if (useBundle() && bundleSupport.useContainer()) {
+            replaceContainerPaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
+            replaceContainerPaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
             Path binJava = Paths.get("bin", "java");
             javaExecutable = BundleSupport.CONTAINER_GRAAL_VM_HOME.resolve(binJava).toString();
         }
@@ -1569,13 +1574,20 @@ public class NativeImage {
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
-        if (useBundle() && bundleSupport.useContainer) {
-            command.addAll(bundleSupport.createContainerCommand(argFile, builderArgFile));
+        if (useBundle() && bundleSupport.useContainer()) {
+            Map<Path, TargetPath> mountMapping = mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
+            mountMapping.put(argFile, TargetPath.readonly(argFile));
+            mountMapping.put(builderArgFile, TargetPath.readonly(builderArgFile));
+
+            List<String> containerCommand = bundleSupport.containerSupport.createContainerCommand(imageBuilderEnvironment, mountMapping);
+            command.addAll(containerCommand);
+            completeCommandList.addAll(containerCommand);
         }
 
         command.add(javaExecutable);
         command.add("@" + argFile);
         command.add(NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + builderArgFile);
+
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
@@ -1602,11 +1614,7 @@ public class NativeImage {
             LogUtils.warningDeprecatedEnvironmentVariable(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM);
         }
 
-        List<String> completeCommandList = new ArrayList<>();
-        completeCommandList.addAll(environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
-        if (!isDryRun() && useBundle() && bundleSupport.useContainer) {
-            completeCommandList.addAll(bundleSupport.createContainerCommand(argFile, builderArgFile));
-        }
+        completeCommandList.addAll(0, environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
         completeCommandList.add(javaExecutable);
         completeCommandList.addAll(arguments);
         completeCommandList.addAll(finalImageBuilderArgs);

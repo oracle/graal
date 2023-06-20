@@ -47,7 +47,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
-import static com.oracle.svm.driver.launcher.ContainerSupport.CONTAINER_GRAAL_VM_HOME;
+import static com.oracle.svm.driver.launcher.ContainerSupport.replaceContainerPaths;
+import static com.oracle.svm.driver.launcher.ContainerSupport.mountMappingFor;
+import static com.oracle.svm.driver.launcher.ContainerSupport.TargetPath;
 
 
 public class BundleLauncher {
@@ -106,21 +108,18 @@ public class BundleLauncher {
                 new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
                 pb.environment().putAll(launcherEnvironment);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to read bundle-file " + environmentFile, e);
+                throw new Error("Failed to read bundle-file " + environmentFile, e);
             }
         }
 
         if (useContainer()) {
             Path javaHome = getJavaExecutable().getParent().getParent();
-            ContainerSupport.replaceContainerPaths(command, javaHome, rootDir);
+            replaceContainerPaths(command, javaHome, rootDir);
 
-            // TODO also mount agentDir if necessary
-
-            Map<Path, ContainerSupport.TargetPath> mountMapping = new HashMap<>();
-            Path containerRoot = Paths.get("/");
-            mountMapping.put(javaHome, new ContainerSupport.TargetPath(containerRoot.resolve(CONTAINER_GRAAL_VM_HOME),true));
-            mountMapping.put(inputDir, new ContainerSupport.TargetPath(containerRoot.resolve(INPUT_DIR_NAME),true));
-            mountMapping.put(outputDir, new ContainerSupport.TargetPath(containerRoot.resolve(OUTPUT_DIR_NAME),false));
+            Map<Path, TargetPath> mountMapping = mountMappingFor(javaHome, inputDir, outputDir);
+            if (Files.isDirectory(agentOutputDir)) {
+                mountMapping.put(agentOutputDir, TargetPath.of(agentOutputDir, false));
+            }
 
             containerSupport.initializeContainerImage();
             command.addAll(0, containerSupport.createContainerCommand(launcherEnvironment, mountMapping));
@@ -145,7 +144,7 @@ public class BundleLauncher {
             p = pb.inheritIO().start();
             exitCode = p.waitFor();
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to run bundled application");
+            throw new Error("Failed to run bundled application");
         } finally {
             if (p != null) {
                 p.destroy();
@@ -180,7 +179,7 @@ public class BundleLauncher {
                         .map(Path::toString)
                         .forEach(classpath::add);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to iterate through directory " + classPathDir, e);
+                throw new Error("Failed to iterate through directory " + classPathDir, e);
             }
 
             command.add("-cp");
@@ -196,7 +195,7 @@ public class BundleLauncher {
                         .map(Path::toString)
                         .forEach(modulePath::add);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to iterate through directory " + modulePathDir, e);
+                throw new Error("Failed to iterate through directory " + modulePathDir, e);
             }
 
             if (!modulePath.isEmpty()) {
@@ -211,7 +210,7 @@ public class BundleLauncher {
             new BundleArgsParser(argsFromFile).parseAndRegister(reader);
             command.addAll(argsFromFile);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read bundle-file " + argsFile, e);
+            throw new Error("Failed to read bundle-file " + argsFile, e);
         }
 
         command.addAll(applicationArgs);
@@ -238,7 +237,7 @@ public class BundleLauncher {
             p = pb.inheritIO().start();
             return p.waitFor();
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to create updated bundle.");
+            throw new Error("Failed to create updated bundle.");
         } finally {
             if (p != null) {
                 p.destroy();
@@ -262,7 +261,7 @@ public class BundleLauncher {
                             newBundleName = option.substring(option.indexOf('=')).replace(BUNDLE_FILE_EXTENSION, "");
                         }
                     } else {
-                        throw new RuntimeException(String.format("Unknown option %s. Valid option is: update-bundle[=<new-bundle-name>].", option));
+                        throw new Error(String.format("Unknown option %s. Valid option is: update-bundle[=<new-bundle-name>].", option));
                     }
                 }
 
@@ -276,7 +275,7 @@ public class BundleLauncher {
                 }
             } else if (arg.startsWith("--container")) {
                 if (useContainer()) {
-                    throw new RuntimeException("native-image bundle allows option container to be specified only once.");
+                    throw new Error("native-image launcher allows option container to be specified only once.");
                 }
                 Path dockerfile;
                 if (arg.indexOf(',') != -1) {
@@ -331,14 +330,14 @@ public class BundleLauncher {
     private static Path getJavaHomeExecutable(Path executable) {
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
-            throw new RuntimeException("Environment variable JAVA_HOME is not set");
+            throw new Error("Environment variable JAVA_HOME is not set");
         }
         Path javaHomeDir = Paths.get(javaHome);
         if (!Files.isDirectory(javaHomeDir)) {
-            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory");
+            throw new Error("Environment variable JAVA_HOME does not refer to a directory");
         }
         if (!Files.isExecutable(javaHomeDir.resolve(executable))) {
-            throw new RuntimeException("Environment variable JAVA_HOME does not refer to a directory with a " + executable + " executable");
+            throw new Error("Environment variable JAVA_HOME does not refer to a directory with a " + executable + " executable");
         }
         return javaHomeDir.resolve(executable);
     }
@@ -407,12 +406,12 @@ public class BundleLauncher {
                         }
                         Files.copy(archive.getInputStream(jarEntry), bundleEntry);
                     } catch (IOException e) {
-                        throw new RuntimeException("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
+                        throw new Error("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                     }
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Unable to expand bundle directory layout from bundle file " + bundleFilePath, e);
+            throw new Error("Unable to expand bundle directory layout from bundle file " + bundleFilePath, e);
         }
 
         if (deleteBundleRoot.get()) {
@@ -427,7 +426,7 @@ public class BundleLauncher {
             modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
             outputDir = Files.createDirectories(rootDir.resolve(OUTPUT_DIR_NAME));
         } catch (IOException e) {
-            throw new RuntimeException("Unable to create bundle directory layout", e);
+            throw new Error("Unable to create bundle directory layout", e);
         }
     }
 }
