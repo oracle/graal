@@ -120,11 +120,12 @@ def test():
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:77"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#4%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#5%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#2%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#5%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -364,11 +365,12 @@ def test():
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:38"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:77"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#5%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#5%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#6%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#7%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
