@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -37,6 +40,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -45,8 +49,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import jdk.vm.ci.code.Register;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.ShiftNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 
 public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering {
     private final long heapBase;
@@ -81,13 +88,26 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
             //  but only the AND node.
             if (compression.getOp() == CompressionNode.CompressionOp.Uncompress && compression.getEncoding().getShift() == 3) {
                 // ADDR is of the type [base + index*scale + displacement]
-                GetObjectAddressNode compressAsAddress = compression.graph().addOrUnique(new GetObjectAddressNode(compression.getValue()));
-                ConstantNode scaleNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(encoding.getShift()), IntegerStamp.create(32)));
-                LeftShiftNode shiftNode = compression.graph().addOrUnique(new LeftShiftNode(compressAsAddress, scaleNode));
-                ConstantNode displacementNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(addr.getDisplacement()), IntegerStamp.create(32)));
-                AddNode addNode = compression.graph().addOrUnique(new AddNode(shiftNode, displacementNode));
-                ConstantNode maskNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forLong((1L << 35)-1), IntegerStamp.create(32)));
-                idx = compression.graph().addOrUnique(new AndNode(addNode, maskNode));
+                // TODO ConstantNode.forInt()
+
+                ConstantNode maskNode = compression.graph().addWithoutUnique(new ConstantNode(JavaConstant.forLong((1L << 35)-1), IntegerStamp.create(64)));
+                ConfigurationValues.getObjectLayout().getReferenceSize();
+                FloatingWordCastNode compressAsAddress = compression.graph().addWithoutUnique(new FloatingWordCastNode(IntegerStamp.create(ConfigurationValues.getObjectLayout().getReferenceSize()*8), compression.getValue()));
+                AMD64AddressNode indexAddressNode = compression.graph().addWithoutUnique(new AMD64AddressNode(null, compressAsAddress));
+                indexAddressNode.setScale(Stride.fromLog2(encoding.getShift()));
+                indexAddressNode.setDisplacement(addr.getDisplacement());
+                indexAddressNode.setStamp(maskNode.stamp(NodeView.DEFAULT));
+                idx = compression.graph().addWithoutUnique(new AndNode(indexAddressNode, maskNode));
+                
+//                ConstantNode scaleNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(encoding.getShift()), IntegerStamp.create(32)));
+//                LeftShiftNode shiftNode = compression.graph().addOrUnique(new LeftShiftNode(compressAsAddress, scaleNode));
+//                ConstantNode displacementNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forLong(addr.getDisplacement()), IntegerStamp.create(64)));
+//                AddNode addNode = compression.graph().addOrUnique(new AddNode(shiftNode, displacementNode));
+//                ConstantNode maskNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forLong((1L << 35)-1), IntegerStamp.create(64)));
+//                idx = compression.graph().addOrUnique(new AndNode(addNode, maskNode));
+
+
+
 
                 addr.setBase(base);
                 addr.setDisplacement(0);
