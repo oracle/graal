@@ -47,7 +47,16 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.graalvm.profdiff.parser.ExperimentParser.CODE;
+import static org.graalvm.profdiff.parser.ExperimentParser.COMPILE_ID;
+import static org.graalvm.profdiff.parser.ExperimentParser.EXECUTION_ID;
 import static org.graalvm.profdiff.parser.ExperimentParser.GRAAL_COMPILER_LEVEL;
+import static org.graalvm.profdiff.parser.ExperimentParser.LEVEL;
+import static org.graalvm.profdiff.parser.ExperimentParser.NAME;
+import static org.graalvm.profdiff.parser.ExperimentParser.NAME_SEPARATOR;
+import static org.graalvm.profdiff.parser.ExperimentParser.OSR_MARKER;
+import static org.graalvm.profdiff.parser.ExperimentParser.PERIOD;
+import static org.graalvm.profdiff.parser.ExperimentParser.TOTAL_PERIOD;
 
 public class MainTest {
 
@@ -354,12 +363,12 @@ public class MainTest {
          */
         EconomicMap<String, Object> toJSONMap() {
             EconomicMap<String, Object> map = EconomicMap.create();
-            String id = isOSR ? compileID + '%' : compileID;
-            map.put("compileId", id);
-            String name = compileID == null ? methodName : id + ": " + methodName;
-            map.put("name", name);
-            map.put("level", level);
-            map.put("period", period);
+            String id = isOSR ? compileID + OSR_MARKER : compileID;
+            map.put(COMPILE_ID, id);
+            String name = compileID == null ? methodName : id + NAME_SEPARATOR + methodName;
+            map.put(NAME, name);
+            map.put(LEVEL, level);
+            map.put(PERIOD, period);
             return map;
         }
     }
@@ -419,9 +428,9 @@ public class MainTest {
          */
         EconomicMap<String, Object> asJSONMap() {
             EconomicMap<String, Object> map = EconomicMap.create();
-            map.put("executionId", executionID);
-            map.put("totalPeriod", methodMocks.stream().mapToLong(ProftoolJITMethodMock::period).sum());
-            map.put("code", methodMocks.stream().map(ProftoolJITMethodMock::toJSONMap).collect(Collectors.toList()));
+            map.put(EXECUTION_ID, executionID);
+            map.put(TOTAL_PERIOD, methodMocks.stream().mapToLong(ProftoolJITMethodMock::period).sum());
+            map.put(CODE, methodMocks.stream().map(ProftoolJITMethodMock::toJSONMap).collect(Collectors.toList()));
             return map;
         }
 

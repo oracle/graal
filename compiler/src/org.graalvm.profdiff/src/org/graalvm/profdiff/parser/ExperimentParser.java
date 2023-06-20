@@ -40,6 +40,75 @@ import org.graalvm.profdiff.core.Writer;
  * Parses an experiment from its files.
  */
 public class ExperimentParser {
+
+    /**
+     * The compilation kind property in a proftool profile. Possible values are
+     * {@link #COMPILATION_AOT} or {@link #COMPILATION_JIT}. {@code null} is interpreted as
+     * {@link #COMPILATION_JIT} for backward compatibility.
+     */
+    public static final String COMPILATION_KIND = "compilationKind";
+
+    /**
+     * The literal marking an AOT compilation in a proftool profile.
+     */
+    public static final String COMPILATION_AOT = "AOT";
+
+    /**
+     * The literal marking a JIT compilation in a proftool profile.
+     */
+    public static final String COMPILATION_JIT = "JIT";
+
+    /**
+     * The execution ID property in a proftool profile. The execution ID is available only for JIT
+     * experiments.
+     */
+    public static final String EXECUTION_ID = "executionId";
+
+    /**
+     * The total period property in a proftool profile. The value is the sum of all periods recorded
+     * by the profiler.
+     */
+    public static final String TOTAL_PERIOD = "totalPeriod";
+
+    /**
+     * The code property in a proftool profile. The property holds the list of all nmethods recorded
+     * by the profiler.
+     */
+    public static final String CODE = "code";
+
+    /**
+     * The compile ID property in a proftool profile. Compile IDs are available only in JIT
+     * profiles.
+     */
+    public static final String COMPILE_ID = "compileId";
+
+    /**
+     * The name property in a proftool profile. The name contains the method name of the recorded
+     * nmethod.
+     */
+    public static final String NAME = "name";
+
+    /**
+     * The period property in a proftool profile. This is the total period recorded for a single
+     * nmethod.
+     */
+    public static final String PERIOD = "period";
+
+    /**
+     * The level property in a proftool profile.
+     */
+    public static final String LEVEL = "level";
+
+    /**
+     * Marks an OSR compilation in a proftool profile.
+     */
+    public static final String OSR_MARKER = "%";
+
+    /**
+     * Separates method names from compiled IDs in proftool profiles.
+     */
+    public static final String NAME_SEPARATOR = ": ";
+
     /**
      * A partially parsed {@link org.graalvm.profdiff.core.CompilationUnit}.
      */
@@ -248,29 +317,29 @@ public class ExperimentParser {
         ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), fileView);
         ProftoolLog proftoolLog = new ProftoolLog();
         ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-        String compilationKind = map.property("compilationKind").asNullableString();
-        if ("AOT".equals(compilationKind)) {
+        String compilationKind = map.property(COMPILATION_KIND).asNullableString();
+        if (COMPILATION_AOT.equals(compilationKind)) {
             proftoolLog.compilationKind = Experiment.CompilationKind.AOT;
-        } else if (compilationKind == null || "JIT".equals(compilationKind)) {
+        } else if (compilationKind == null || COMPILATION_JIT.equals(compilationKind)) {
             proftoolLog.compilationKind = Experiment.CompilationKind.JIT;
         } else {
             throw new ExperimentParserError(experimentFiles.getExperimentId(), fileView.getSymbolicPath(), "unexpected compilation kind: " + compilationKind);
         }
-        proftoolLog.executionId = map.property("executionId").asNullableString();
-        proftoolLog.totalPeriod = map.property("totalPeriod").asLong();
-        for (ExperimentJSONParser.JSONLiteral codeObject : map.property("code").asList()) {
+        proftoolLog.executionId = map.property(EXECUTION_ID).asNullableString();
+        proftoolLog.totalPeriod = map.property(TOTAL_PERIOD).asLong();
+        for (ExperimentJSONParser.JSONLiteral codeObject : map.property(CODE).asList()) {
             ExperimentJSONParser.JSONMap code = codeObject.asMap();
-            String compilationId = code.property("compileId").asNullableString();
-            if (compilationId != null && compilationId.endsWith("%")) {
+            String compilationId = code.property(COMPILE_ID).asNullableString();
+            if (compilationId != null && compilationId.endsWith(OSR_MARKER)) {
                 compilationId = compilationId.substring(0, compilationId.length() - 1);
             }
-            String name = code.property("name").asString();
-            int colonIndex = name.indexOf(':');
-            if (colonIndex != -1 && colonIndex + 2 <= name.length()) {
-                name = name.substring(colonIndex + 2);
+            String name = code.property(NAME).asString();
+            int colonIndex = name.indexOf(NAME_SEPARATOR);
+            if (colonIndex != -1) {
+                name = name.substring(colonIndex + NAME_SEPARATOR.length());
             }
-            long period = code.property("period").asLong();
-            Integer level = code.property("level").asNullableInteger();
+            long period = code.property(PERIOD).asLong();
+            Integer level = code.property(LEVEL).asNullableInteger();
             proftoolLog.methods.add(new ProftoolMethod(compilationId, name, level, period));
         }
         return proftoolLog;
