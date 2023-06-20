@@ -985,8 +985,8 @@ final class EngineAccessor extends Accessor {
                 fileSystemConfig = creatorConfig.fileSystemConfig;
             } else {
                 FileSystem publicFileSystem = FileSystems.newNoIOFileSystem();
-                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem(creatorConfig.fileSystemConfig.hostTmpDir) : publicFileSystem;
-                fileSystemConfig = new FileSystemConfig(IOAccess.NONE, publicFileSystem, internalFileSystem, creatorConfig.fileSystemConfig.hostTmpDir);
+                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : publicFileSystem;
+                fileSystemConfig = new FileSystemConfig(IOAccess.NONE, publicFileSystem, internalFileSystem);
             }
 
             /*

@@ -1934,11 +1934,12 @@ public final class Context implements AutoCloseable {
                 contextIn = in;
             }
             LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
+            String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
             ctx = engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, System.getProperty("java.io.tmpdir"), hostClassLoader, allowValueSharing, useSystemExit);
+                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }
 
