@@ -65,7 +65,7 @@ public class ForeignFunctionsRuntime {
     /**
      * We'd rather report the function descriptor rather than the native method type, but we don't
      * have it available here. One could intercept this exception in
-     * {@link jdk.internal.foreign.abi.DowncallLinker.getBoundMethodHandle} and add information
+     * {@link jdk.internal.foreign.abi.DowncallLinker#getBoundMethodHandle} and add information
      * about the descriptor there.
      */
     public CodePointer getStubPointer(NativeEntryPointInfo nep) {
@@ -109,7 +109,7 @@ public class ForeignFunctionsRuntime {
      * WSA_GET_LAST_ERROR, ERRNO.
      *
      * Violation of the assertions should have already been caught in
-     * {@link Target_jdk_internal_foreign_abi_CapturableState#isSupported}
+     * {@link AbiUtils#checkLibrarySupport()}, which is called when registering the feature.
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)

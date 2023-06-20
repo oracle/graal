@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -48,8 +47,7 @@ import org.graalvm.nativeimage.Platforms;
  *     StructLayout ::= '{' Layout* '}' |
  *     UnionLayout ::=  '<' Layout* '>'
  *     SequenceLayout ::= '[' Size ':' Layout ']'
- *     ValueLayout ::= 'z1' | 'b1' | 's2' | 'i4' | 'j8' | 'f4' | 'd8' | 'a??'
- *                              | 'Z1' | 'B1' | 'S2' | 'I4' | 'J8' | 'F4' | 'D8' | 'A??'
+ *     ValueLayout ::= 'z' | 'b' | 's' | 'i' | 'j' | 'f' | 'd' | 'a'
  *     PaddingLayout ::= 'x' Int
  *     Void ::= 'v'
  *     Size ::= Int
@@ -57,10 +55,18 @@ import org.graalvm.nativeimage.Platforms;
  *     Int ::= a positive (decimal) integer
  * }
  * </pre>
- * 
- * The byte endianess of a value layout is defined the by capitalization of the first and only
- * letter (Capital means big-endian, lower means little-endian). The '??' in 'a??'/'A??' should be
- * replaced by the size (in bytes) of a pointer on the platform under consideration.
+ *
+ * The letters correspond to the following java types/layouts:
+ * <ul>
+ * <li>z: Boolean</li>
+ * <li>b: Byte</li>
+ * <li>s: Short</li>
+ * <li>i: Integer</li>
+ * <li>j: Long</li>
+ * <li>f: Float</li>
+ * <li>d: Double</li>
+ * <li>a: Address</li>
+ * </ul>
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class FunctionDescriptorParser {
@@ -138,16 +144,16 @@ public final class FunctionDescriptorParser {
                 consumeChecked('%');
             }
 
-            MemoryLayout layout = switch (Character.toUpperCase(peek())) {
-                case 'Z' -> parseValueLayout(ValueLayout.JAVA_BOOLEAN);
-                case 'B' -> parseValueLayout(ValueLayout.JAVA_BYTE);
-                case 'S' -> parseValueLayout(ValueLayout.JAVA_SHORT);
-                case 'C' -> parseValueLayout(ValueLayout.JAVA_CHAR);
-                case 'I' -> parseValueLayout(ValueLayout.JAVA_INT);
-                case 'J' -> parseValueLayout(ValueLayout.JAVA_LONG);
-                case 'F' -> parseValueLayout(ValueLayout.JAVA_FLOAT);
-                case 'D' -> parseValueLayout(ValueLayout.JAVA_DOUBLE);
-                case 'A' -> parseValueLayout(ValueLayout.ADDRESS);
+            MemoryLayout layout = switch (peek()) {
+                case 'z' -> parseValueLayout(ValueLayout.JAVA_BOOLEAN);
+                case 'b' -> parseValueLayout(ValueLayout.JAVA_BYTE);
+                case 's' -> parseValueLayout(ValueLayout.JAVA_SHORT);
+                case 'c' -> parseValueLayout(ValueLayout.JAVA_CHAR);
+                case 'i' -> parseValueLayout(ValueLayout.JAVA_INT);
+                case 'j' -> parseValueLayout(ValueLayout.JAVA_LONG);
+                case 'f' -> parseValueLayout(ValueLayout.JAVA_FLOAT);
+                case 'd' -> parseValueLayout(ValueLayout.JAVA_DOUBLE);
+                case 'a' -> parseValueLayout(ValueLayout.ADDRESS);
                 case '[' -> parseSequenceLayout();
                 case '{' -> parseStructLayout();
                 case '<' -> parseUnionLayout();
@@ -189,18 +195,8 @@ public final class FunctionDescriptorParser {
         }
 
         private MemoryLayout parseValueLayout(ValueLayout baseLayout) {
-            ByteOrder order = ByteOrder.BIG_ENDIAN;
-            if (Character.isLowerCase(peek())) {
-                order = ByteOrder.LITTLE_ENDIAN;
-            }
             consume();
-            MemoryLayout layout = baseLayout.withOrder(order);
-            long size = parseInt();
-            guarantee(layout.byteSize() == size,
-                            "Value layout with carrier %s should have a byte size of %d (you specified %d)"
-                                            .formatted(baseLayout.carrier(), layout.byteSize(), size));
-
-            return layout;
+            return baseLayout;
         }
 
         private void checkDone() {

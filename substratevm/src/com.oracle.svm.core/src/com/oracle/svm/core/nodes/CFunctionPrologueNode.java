@@ -58,7 +58,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  *
  * It is also possible to capture the call state (i.e. some global variables, e.g. errno) in a
  * provided buffer right after the call, as to prevent the VM from changing it before it could be
- * queried by another downcall.
+ * queried by another downcall, see {@link CFunctionEpilogueNode#captureFunction}.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
 public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {

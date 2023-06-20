@@ -28,7 +28,6 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -37,8 +36,6 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.foreign.AbiUtils;
-import com.oracle.svm.core.util.UserError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
@@ -89,16 +86,12 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
             res.add(Linker.Option.firstVariadicArg(firstVariadic));
         }
         if (map.containsKey(DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
-            var ccs = asList(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, ""), DOWNCALL_OPTION_CAPTURE_CALL_STATE).stream()
-                            .map(cc -> asString(cc, DOWNCALL_OPTION_CAPTURE_CALL_STATE + " element")).toList().toArray(new String[0]);
-            try {
-                res.add(Linker.Option.captureCallState(ccs));
-            } catch (IllegalArgumentException e) {
-                UserError.abort(
-                                e,
-                                "%s does not support capture of %s when performing a foreign call.",
-                                AbiUtils.singleton().name(),
-                                Arrays.toString(ccs));
+            if (asBoolean(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, ""), DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
+                /*
+                 * Dirty hack: we need the entrypoint to have a captured state, whatever said state
+                 * is, so that the generated stub handles capture.
+                 */
+                res.add(Linker.Option.captureCallState("errno"));
             }
         }
         if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {

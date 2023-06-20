@@ -35,7 +35,18 @@ import jdk.internal.foreign.abi.VMStorage;
 
 /**
  * Carries information about an entrypoint for foreign function calls.
- * {@link ForeignFunctionsRuntime} allows getting the associated function pointer (if it exists).
+ * {@link ForeignFunctionsRuntime#getStubPointer} allows getting the associated function pointer at
+ * runtime (if it exists).
+ * <p>
+ * {@link NativeEntryPointInfo#linkMethodType} is of the form (<>: argument; []: optional argument)
+ *
+ * <pre>
+ * {@code
+ *      [return buffer address] <call address> [capture state address] <actual arg 1> <actual arg 2> ...
+ * }
+ * </pre>
+ * 
+ * where {@code <actual arg i>}s are the arguments which end up passed to the C native function.
  */
 public final class NativeEntryPointInfo {
     private final MethodType methodType;
@@ -44,17 +55,6 @@ public final class NativeEntryPointInfo {
     private final boolean capturesState;
     private final boolean needsTransition;
 
-    /**
-     * Method type is of the form (<>: argument; []: optional argument)
-     * 
-     * <pre>
-     * {@code
-     *      [return buffer address] <call address> [capture state address] <actual arg 1> <actual arg 2> ...
-     * }
-     * </pre>
-     *
-     * where <actual arg i>s are the arguments which end up passed to the C native function
-     */
     private NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, boolean capturesState, boolean needsTransition) {
         this.methodType = methodType;
         this.parameterAssignments = cc;
@@ -140,10 +140,6 @@ public final class NativeEntryPointInfo {
         return !needsTransition;
     }
 
-    /**
-     * We consider two NEPIs to be equal if they will generate the same downcall stub. This means in
-     * particular that the captured state is irrelevant here.
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -159,7 +155,7 @@ public final class NativeEntryPointInfo {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(capturesState, methodType, needsTransition);
+        int result = Objects.hash(methodType, capturesState, needsTransition);
         result = 31 * result + Arrays.hashCode(parameterAssignments);
         result = 31 * result + Arrays.hashCode(returnBuffering);
         return result;

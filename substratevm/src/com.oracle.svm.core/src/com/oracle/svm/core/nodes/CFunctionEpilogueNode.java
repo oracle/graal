@@ -65,7 +65,7 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
      *
      * You need to register this method for foreign call and may need to declare it as root method.
      */
-    private final ForeignCallDescriptor captureFunction;
+    final ForeignCallDescriptor captureFunction;
     @OptionalInput ValueNode statesToCapture;
     @OptionalInput ValueNode captureBuffer;
     /**

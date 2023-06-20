@@ -42,12 +42,10 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -147,7 +145,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
      * @param elementKinds The kinds of the elements in the array
      * @param length The length of the array
      */
-    public List<ValueNode> liftArray(ValueNode array, JavaKind[] elementKinds, int length) {
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind[] elementKinds, int length) {
         assert elementKinds.length == length;
 
         List<ValueNode> result = new ArrayList<>();
@@ -159,17 +157,9 @@ public class HostedGraphKit extends SubstrateGraphKit {
         return result;
     }
 
-    public List<ValueNode> liftArray(ValueNode array, JavaKind elementKind, int length) {
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind elementKind, int length) {
         JavaKind[] elementKinds = new JavaKind[length];
         Arrays.fill(elementKinds, elementKind);
-        return liftArray(array, elementKinds, length);
-    }
-
-    public ValueNode getLastArrayElement(ValueNode array, JavaKind elementKind) {
-        ValueNode length = append(new ArrayLengthNode(array));
-        ValueNode index = BinaryArithmeticNode.sub(length, ConstantNode.forInt(1, getGraph()));
-        ValueNode load = createLoadIndexed(array, index, elementKind, null);
-        append(load);
-        return load;
+        return loadArrayElements(array, elementKinds, length);
     }
 }

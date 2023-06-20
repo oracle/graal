@@ -32,6 +32,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
+/**
+ * Packs the address of a {@link com.oracle.svm.hosted.foreign.DowncallStub} with some extra
+ * information.
+ */
 @TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint")
 @Substitute
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
@@ -56,7 +60,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         return NativeEntryPointInfo.makeEntryPoint(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
     }
 
-    @Substitute /* Could also be @Alias */
+    @Substitute
     public MethodType type() {
         return methodType;
     }
