@@ -478,7 +478,7 @@ public class NativeImageGeneratorRunner {
                                 throw UserError.abort(ex.getCause(),
                                                 "Method '%s.%s' is declared as the main entry point but it can not be found. " +
                                                                 "Make sure that class '%s' is on the classpath and that non-private " +
-                                                                "method '%s()' or '%s(String[])' exists in that class.",
+                                                                "method '%s()' or '%s(String[])'.",
                                                 mainClass.getName(),
                                                 mainEntryPointName,
                                                 mainClass.getName(),

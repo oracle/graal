@@ -166,7 +166,6 @@ public class JavaMainWrapper {
     }
 
     public static void invokeMain(String[] args) throws Throwable {
-        // This needs to be a local and not a parameter to allow proper constant folding
         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
         if (javaMainSupport.mainNonstatic) {
             Object instance = javaMainSupport.javaMainClassCtorHandle.invoke();
