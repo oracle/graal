@@ -1208,6 +1208,9 @@ libgraal_build_args = [
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
+
+    # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
+    '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
