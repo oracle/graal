@@ -24,16 +24,6 @@
  */
 package com.oracle.svm.configure.config;
 
-import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
@@ -44,6 +34,17 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ResourceConfigurationParser;
+import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonPrinter;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 

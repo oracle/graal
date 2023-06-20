@@ -29,9 +29,6 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.module.ModuleReader;
-import java.lang.module.ModuleReference;
-import java.lang.module.ResolvedModule;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -45,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -56,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -143,12 +139,11 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     private boolean sealed = false;
-    private Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private Set<Pair<ConfigurationCondition, String>> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
-
-    private HashMap<String, List<String>> registerIfReachable = new HashMap<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -157,68 +152,17 @@ public final class ResourcesFeature implements InternalFeature {
             this.configurationTypeResolver = configurationTypeResolver;
         }
 
-        private static Stream<ClassLoaderSupportImpl.ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
-            List<ClassLoaderSupportImpl.ResourceLookupInfo> data = new ArrayList<>(layer.configuration().modules().size());
-            for (ResolvedModule m : layer.configuration().modules()) {
-                Module module = layer.findModule(m.name()).orElse(null);
-                ClassLoaderSupportImpl.ResourceLookupInfo info = new ClassLoaderSupportImpl.ResourceLookupInfo(m, module);
-                data.add(info);
-            }
-            return data.stream();
-        }
-
-        private List<String> findReachableForPattern(String pattern) {
-            List<String> founded = new ArrayList<>();
-            ResourcePattern compiledPattern = compilePatterns(Set.of(pattern))[0];
-            NativeImageClassLoaderSupport.allLayers(imageClassLoader.classLoaderSupport.moduleLayerForImageBuild).stream()
-                            .parallel()
-                            .flatMap(ResourcesRegistryImpl::extractModuleLookupData)
-                            .forEach(info -> {
-                                ModuleReference moduleReference = info.resolvedModule().reference();
-                                try (ModuleReader moduleReader = moduleReference.open()) {
-                                    List<String> foundResources = moduleReader.list()
-                                                    .filter(resourceName -> {
-                                                        System.out.println("Module files: " + resourceName);
-                                                        return compiledPattern.pattern.matcher(resourceName).matches();
-                                                    })
-                                                    .toList();
-                                    founded.addAll(foundResources);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });
-
-            for (Path classpathFile : imageClassLoader.classLoaderSupport.classpath()) {
-                System.out.println("Classpath file: " + classpathFile);
-                if (compiledPattern.pattern.matcher(classpathFile.toString()).matches()) {
-                    founded.add(classpathFile.toString());
-                }
-            }
-
-            System.out.println(founded);
-            return founded;
-        }
-
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
             if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
 
-            if (!ConfigurationCondition.alwaysTrue().equals(condition)) {
-                registerIfReachable.put(condition.getTypeName(), findReachableForPattern(pattern));
-            }
-
             try {
-                throw new Exception("a");
-            } catch (Exception e) {
-                e.printStackTrace();
+                resourcePatternWorkSet.add(Pair.create(condition, pattern));
+            } catch (UnsupportedOperationException e) {
+                UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
             }
-
-            registerConditionalConfiguration(condition, () -> {
-                UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
-                resourcePatternWorkSet.add(pattern);
-            });
         }
 
         private String urlToJarPath(URL url) {
@@ -348,19 +292,24 @@ public final class ResourcesFeature implements InternalFeature {
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFile.RESOURCES.getFileName());
-
-        resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
+        resourcePatternWorkSet.addAll(Options.IncludeResources.getValue()
+                        .values()
+                        .stream()
+                        .map(e -> Pair.create(ConfigurationCondition.alwaysTrue(), e))
+                        .toList());
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
 
         if (!resourcePatternWorkSet.isEmpty()) {
             FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+            Set<Pair<ConfigurationCondition, ResourcePattern>> includePatterns = resourcePatternWorkSet
+                            .stream()
+                            .map(e -> Pair.create(e.getLeft(), makeResourcePattern(e.getRight())))
+                            .collect(Collectors.toSet());
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 for (ResourcePattern resourcePattern : includePatterns) {
                     Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
                 }
             }
-
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
             DebugContext debugContext = beforeAnalysisAccess.getDebugContext();
             ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
@@ -381,7 +330,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     private static final class ResourceCollectorImpl implements ResourceCollector {
         private final DebugContext debugContext;
-        private final ResourcePattern[] includePatterns;
+        private final Set<Pair<ConfigurationCondition, ResourcePattern>> includePatterns;
         private final ResourcePattern[] excludePatterns;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
@@ -423,7 +372,7 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public boolean isIncluded(Module module, String resourceName, URI resource) {
+        public ConfigurationCondition isIncluded(Module module, String resourceName, URI resource) {
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -439,25 +388,30 @@ public final class ResourcesFeature implements InternalFeature {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return false;
+                    return null;
                 }
             }
 
-            for (ResourcePattern rp : includePatterns) {
-                if (!rp.moduleNameMatches(moduleName)) {
+            for (Pair<ConfigurationCondition, ResourcePattern> rp : includePatterns) {
+                if (!rp.getRight().moduleNameMatches(moduleName)) {
                     continue;
                 }
-                if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return true;
+                if (rp.getRight().pattern.matcher(resourceName).matches() || rp.getRight().pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                    return rp.getLeft();
                 }
             }
 
-            return false;
+            return null;
         }
 
         @Override
         public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
             registerResource(debugContext, module, resourceName, resourceStream, fromJar);
+        }
+
+        @Override
+        public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
+            access.registerReachabilityHandler(e -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName), access.findClassByName(condition.getTypeName()));
         }
 
         @Override
@@ -473,6 +427,12 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
             Resources.singleton().registerNegativeQuery(module, resourceName);
+        }
+
+        // TODO if pass all gates - remove
+        @Override
+        public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition) {
+            access.registerReachabilityHandler(e -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, dir), access.findClassByName(condition.getTypeName()));
         }
     }
 

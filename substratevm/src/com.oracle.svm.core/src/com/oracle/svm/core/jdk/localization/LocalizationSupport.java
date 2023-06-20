@@ -137,11 +137,12 @@ public class LocalizationSupport {
     }
 
     private static String packageName(String bundleName) {
-        int classSep = bundleName.lastIndexOf('.');
+        String uniformBundleName = bundleName.replace("/", ".");
+        int classSep = uniformBundleName.lastIndexOf('.');
         if (classSep == -1) {
             return ""; /* unnamed package */
         }
-        return bundleName.substring(0, classSep);
+        return uniformBundleName.substring(0, classSep);
     }
 
     public String getResultingPattern(String bundleName, Locale locale) {

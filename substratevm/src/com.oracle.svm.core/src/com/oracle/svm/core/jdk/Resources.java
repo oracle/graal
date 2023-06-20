@@ -218,6 +218,7 @@ public final class Resources {
     public static void registerResource(Module module, String resourceName, boolean isDir, InputStream is, boolean fromJar) {
         addEntry(module, resourceName, isDir, inputStreamToByteArray(is), fromJar);
     }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerDirectoryResource(String resourceDirName, String content) {
         registerDirectoryResource(null, resourceDirName, content, true);

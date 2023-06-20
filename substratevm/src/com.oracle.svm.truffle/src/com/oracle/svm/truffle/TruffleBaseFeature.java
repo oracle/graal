@@ -1182,8 +1182,7 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
     static ConcurrentHashMap<Object, Object> replacements;
 
     private static class MapCleaner implements FieldValueTransformerWithAvailability {
@@ -1365,8 +1364,7 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
      * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
      * substitution.
      */
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Reset) //
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private String languageHome;
 }
 
@@ -1411,15 +1409,13 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache_ResettableC
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
-    @Alias
-    @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
+    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
     private long offset;
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicLongFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocation {
-    @Alias
-    @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
+    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
     private long offset;
 }
 
@@ -1446,8 +1442,7 @@ final class Target_com_oracle_truffle_api_nodes_Node {
 
 @TargetClass(className = "com.oracle.truffle.api.nodes.NodeClassImpl", innerClass = "NodeFieldData", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
@@ -1473,8 +1468,7 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
 @TargetClass(className = "com.oracle.truffle.api.dsl.InlineSupport$UnsafeField", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
     /*

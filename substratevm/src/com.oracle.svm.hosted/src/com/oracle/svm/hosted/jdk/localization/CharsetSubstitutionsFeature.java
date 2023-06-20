@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.hosted.jdk.localization;
 
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 @AutomaticallyRegisteredFeature
 class CharsetSubstitutionsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler((e) -> RuntimeResourceAccess.addResource(ModuleLayer.boot().findModule("java.base").get(), "java/lang/uniName.dat"), access.findClassByName("java.lang.CharacterName"));
+        access.registerReachabilityHandler((e) -> RuntimeResourceAccess.addResource(ModuleLayer.boot().findModule("java.base").get(),
+                        "java/lang/uniName.dat"), access.findClassByName("java.lang.CharacterName"));
     }
 }

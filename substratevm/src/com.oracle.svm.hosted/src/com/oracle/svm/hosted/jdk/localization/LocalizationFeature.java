@@ -162,9 +162,6 @@ public class LocalizationFeature implements InternalFeature {
     private Field localeObjectCacheMapField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
-
-    @Platforms(Platform.HOSTED_ONLY.class) private ClassLoader classLoader;
-
     @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
 
     public static class Options {
@@ -298,7 +295,6 @@ public class LocalizationFeature implements InternalFeature {
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
 
-        this.classLoader = access.getApplicationClassLoader();
         this.imageClassLoader = access.getImageClassLoader();
     }
 

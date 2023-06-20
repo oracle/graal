@@ -35,6 +35,7 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ClassLoaderSupport {
@@ -53,16 +54,20 @@ public abstract class ClassLoaderSupport {
     protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
 
     public interface ResourceCollector {
-
-        boolean isIncluded(Module module, String resourceName, URI resourceURI);
+        ConfigurationCondition isIncluded(Module module, String resourceName, URI resourceURI);
 
         void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar);
+
+        void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition);
 
         void addDirectoryResource(Module module, String dir, String content, boolean fromJar);
 
         void registerNegativeQuery(Module module, String resourceName);
 
         void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime);
+
+        void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition);
+
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);
