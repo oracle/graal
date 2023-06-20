@@ -187,7 +187,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     protected List<String> getCompilerCommand(List<String> options) {
         /* Relativize input files where applicable to avoid unintentional leaking of host paths. */
-        Path[] inputPaths = inputFilenames.stream().map(path -> path.startsWith(tempDirectory) ? tempDirectory.relativize(path) : path).toArray(Path[]::new);
+        Path[] inputPaths = inputFilenames.stream()
+                        .map(path -> path.startsWith(tempDirectory) ? tempDirectory.relativize(path) : path)
+                        .toArray(Path[]::new);
         return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputPaths);
     }
 
@@ -239,7 +241,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     protected List<String> getNativeLinkerOptions() {
-        return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values()).flatMap(Collection::stream).collect(Collectors.toList());
+        return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values())
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toList());
     }
 
     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
@@ -267,7 +271,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
                 exportedSymbols.append("global:\n");
-                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
+                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");
