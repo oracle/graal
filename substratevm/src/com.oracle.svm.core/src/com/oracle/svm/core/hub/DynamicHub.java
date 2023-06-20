@@ -74,7 +74,6 @@ import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -1932,20 +1931,20 @@ final class Target_java_lang_Class_Atomic {
     static <T> boolean casReflectionData(DynamicHub clazz,
                     SoftReference<Target_java_lang_Class_ReflectionData<T>> oldData,
                     SoftReference<Target_java_lang_Class_ReflectionData<T>> newData) {
-        return GraalUnsafeAccess.getUnsafe().compareAndSwapObject(clazz.getCompanion(), reflectionDataOffset, oldData, newData);
+        return Unsafe.getUnsafe().compareAndSetReference(clazz.getCompanion(), reflectionDataOffset, oldData, newData);
     }
 
     @Substitute
     static boolean casAnnotationType(DynamicHub clazz,
                     AnnotationType oldType,
                     AnnotationType newType) {
-        return GraalUnsafeAccess.getUnsafe().compareAndSwapObject(clazz.getCompanion(), annotationTypeOffset, oldType, newType);
+        return Unsafe.getUnsafe().compareAndSetReference(clazz.getCompanion(), annotationTypeOffset, oldType, newType);
     }
 
     @Substitute
     static boolean casAnnotationData(DynamicHub clazz,
                     Target_java_lang_Class_AnnotationData oldData,
                     Target_java_lang_Class_AnnotationData newData) {
-        return GraalUnsafeAccess.getUnsafe().compareAndSwapObject(clazz.getCompanion(), annotationDataOffset, oldData, newData);
+        return Unsafe.getUnsafe().compareAndSetReference(clazz.getCompanion(), annotationDataOffset, oldData, newData);
     }
 }

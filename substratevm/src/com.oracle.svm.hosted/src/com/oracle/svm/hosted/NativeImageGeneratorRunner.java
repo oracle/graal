@@ -33,10 +33,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -131,6 +133,11 @@ public class NativeImageGeneratorRunner {
             if (!remainingArguments.isEmpty()) {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
             }
+
+            Integer checkDependencies = SubstrateOptions.CheckBootModuleDependencies.getValue(imageClassLoader.classLoaderSupport.getParsedHostedOptions());
+            if (checkDependencies > 0) {
+                checkBootModuleDependencies(checkDependencies > 1);
+            }
             exitStatus = build(imageClassLoader);
         } catch (UserException e) {
             reportUserError(e.getMessage());
@@ -155,6 +162,84 @@ public class NativeImageGeneratorRunner {
             }
         }
         System.exit(exitStatus);
+    }
+
+    private static void checkBootModuleDependencies(boolean verbose) {
+        Set<Module> allModules = ModuleLayer.boot().modules();
+        List<Module> builderModules = allModules.stream().filter(m -> m.isNamed() && m.getName().startsWith("org.graalvm.nativeimage.")).toList();
+        Set<Module> transitiveBuilderModules = new LinkedHashSet<>();
+        for (Module svmModule : builderModules) {
+            transitiveReaders(svmModule, allModules, transitiveBuilderModules);
+        }
+        if (verbose) {
+            System.out.println(transitiveBuilderModules.stream()
+                            .map(Module::getName)
+                            .collect(Collectors.joining("\n", "All builder modules: \n", "\n")));
+        }
+
+        Set<Module> modulesBuilderDependsOn = new LinkedHashSet<>();
+        for (Module builderModule : transitiveBuilderModules) {
+            transitiveRequires(verbose, builderModule, allModules, modulesBuilderDependsOn);
+        }
+        modulesBuilderDependsOn.removeAll(transitiveBuilderModules);
+        if (verbose) {
+            System.out.println(modulesBuilderDependsOn.stream()
+                            .map(Module::getName)
+                            .collect(Collectors.joining("\n", "All modules the builder modules depend on: \n", "\n")));
+        }
+
+        Set<String> expectedBuilderDependencies = Set.of(
+                        "java.base",
+                        "java.management",
+                        "jdk.management",
+                        "jdk.management.agent", // READ-BY org.graalvm.nativeimage.builder
+                        "java.management.rmi", // READ-BY jdk.management.agent
+                        "java.rmi",
+                        "java.logging", // READ-BY java.rmi READ-BY java.management.rmi
+                        "java.naming",
+                        "java.security.sasl", // READ-BY java.naming READ-BY java.management.rmi
+                        "java.compiler",
+                        "jdk.management.jfr",
+                        "jdk.jfr");
+
+        Set<String> unexpectedBuilderDependencies = modulesBuilderDependsOn.stream().map(Module::getName).collect(Collectors.toSet());
+        unexpectedBuilderDependencies.removeAll(expectedBuilderDependencies);
+        if (!unexpectedBuilderDependencies.isEmpty()) {
+            throw VMError.shouldNotReachHere("Unexpected image builder module-dependencies: " + String.join(", ", unexpectedBuilderDependencies));
+        }
+    }
+
+    private static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
+        for (Module potentialReader : potentialReaders) {
+            if (potentialReader.canRead(readModule)) {
+                if (actualReaders.add(potentialReader)) {
+                    transitiveReaders(potentialReader, potentialReaders, actualReaders);
+                }
+            }
+        }
+    }
+
+    private static void transitiveRequires(boolean verbose, Module requiringModule, Set<Module> potentialNeededModules, Set<Module> actualNeededModules) {
+        for (Module potentialNeedModule : potentialNeededModules) {
+            if (requiringModule.canRead(potentialNeedModule)) {
+                /* Filter out GraalVM modules */
+                if (potentialNeedModule.getName().startsWith("jdk.internal.vm.c") || /* JVMCI */
+                                /* graal */
+                                potentialNeedModule.getName().startsWith("org.graalvm.") ||
+                                /* enterprise graal */
+                                potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
+                                /* llvm-backend optional dependencies */
+                                potentialNeedModule.getName().startsWith("com.oracle.svm.shadowed.")) {
+                    continue;
+                }
+                if (actualNeededModules.add(potentialNeedModule)) {
+                    if (verbose) {
+                        System.out.println(requiringModule + " reads " + potentialNeedModule);
+                    }
+                    transitiveRequires(verbose, potentialNeedModule, potentialNeededModules, actualNeededModules);
+                }
+            }
+        }
     }
 
     public static void uninstallNativeImageClassLoader() {
@@ -574,8 +659,7 @@ public class NativeImageGeneratorRunner {
     }
 
     private static void reportUserException(Throwable e, OptionValues parsedHostedOptions, Consumer<String> report) {
-        if (e instanceof UserException) {
-            UserException ue = (UserException) e;
+        if (e instanceof UserException ue) {
             for (String message : ue.getMessages()) {
                 report.accept(message);
             }
