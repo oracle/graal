@@ -27,15 +27,18 @@ module, the following migration steps need to be applied:
    `provides TruffleLanguageProvider with <LanguageClass>Provider` directive.
 3. For each Truffle instrument provided by this module, register an instrument provider using the    
    `provides TruffleInstrumentProvider with <InstrumentClass>Provider` directive.
-4. Any export of a library with a default export lookup enabled `@GenerateLibrary(defaultExportLookupEnabled = true)` now
-   needs to be registered with `@Registration#defaultLibraryExports`.
-5. Any export of an AOT library `@ExportLibrary(useForAOT = true)` now needs to be registered with
-   `@Registration#aotLibraryExports`.
+4. If a library is exported with a default export lookup enabled using `@GenerateLibrary(defaultExportLookupEnabled = true)`,
+   the generated implementation of the `DefaultExportProvider` must be registered in the module descriptor using the provides
+   directive for the `com.oracle.truffle.api.library.provider.DefaultExportProvider` service. If you build your language or instrument using `mx`
+   the provides directive is generated automatically.  
+5. If an AOT library is exported using `@ExportLibrary(useForAOT = true)`, the generated implementation of the `EagerExportProvider`
+   must be registered in the module descriptor using the provides directive for the `com.oracle.truffle.api.library.provider.EagerExportProvider`
+   service. If you build your language or instrument using `mx` the provides directive is generated automatically.
 6. If your language or instrument already has a module descriptor, make sure that it does not provide any implementation
-   of `EagerExportProvider` or `DefaultExportProvider` in the module descriptor. Registering `EagerExportProvider`
-   or `DefaultExportProvider` in the module descriptor will cause an error during creation of a module layer on the
-   closed Truffle. If you build your language or instrument using `mx`, use the [ignoredServiceTypes](https://github.com/graalvm/mx/blob/master/README.md#java-modules-support)
-   attribute to prevent adding `DefaultExportProvider` and `EagerExportProvider` implementations to `provides` clauses.
+   of a deprecated `com.oracle.truffle.api.library.EagerExportProvider` or `com.oracle.truffle.api.library.DefaultExportProvider`
+   interface in the module descriptor. They must be replaced by the `com.oracle.truffle.api.library.provider.EagerExportProvider` and
+   `com.oracle.truffle.api.library.provider.DefaultExportProvider`. Providing these deprecated interfaces in the module descriptor
+   will cause an error during  creation of a module layer on the closed Truffle.
 7. Languages or instruments must not provide JDK services or services from third party libraries in the module descriptor.
    This is needed to avoid languages getting loaded by the JDK or third parties without the necessary dynamic exports.  
 8. Language dependencies that might be commonly used by Java applications, like ICU4J, should be shadowed to avoid

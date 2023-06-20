@@ -84,11 +84,4 @@ public abstract class TruffleInstrumentProvider {
      * @since 23.1
      */
     protected abstract Collection<String> getServicesClassNames();
-
-    /**
-     * Loads implementations of {@code type} service.
-     *
-     * @since 23.1
-     */
-    protected abstract <S> Iterable<S> loadTruffleService(Class<S> type);
 }

@@ -601,8 +601,6 @@ meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
-meth public abstract !hasdefault java.lang.Class<?>[] aotLibraryExports()
-meth public abstract !hasdefault java.lang.Class<?>[] defaultLibraryExports()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
 meth public abstract !hasdefault java.lang.String id()
@@ -1299,10 +1297,10 @@ hfds result,serialVersionUID
 
 CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
 cons protected init()
-meth protected abstract <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
 meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getLanguageClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth protected abstract java.util.List<?> createFileTypeDetectors()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.source.Source
