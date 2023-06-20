@@ -103,7 +103,7 @@ public class ExperimentParser {
     /**
      * The compiler level of graal-compiled methods in the output of proftool.
      */
-    private static final int GRAAL_COMPILER_LEVEL = 4;
+    public static final int GRAAL_COMPILER_LEVEL = 4;
 
     public ExperimentParser(ExperimentFiles experimentFiles, Writer warningWriter) {
         this.experimentFiles = experimentFiles;
