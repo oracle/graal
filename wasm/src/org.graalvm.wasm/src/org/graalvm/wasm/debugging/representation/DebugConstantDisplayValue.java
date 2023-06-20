@@ -58,6 +58,7 @@ public class DebugConstantDisplayValue implements TruffleObject {
     private final Object value;
 
     public DebugConstantDisplayValue(String value) {
+        assert value != null : "the value of a debug constant display value must not be null";
         this.value = value;
     }
 

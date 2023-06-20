@@ -43,4 +43,13 @@ package org.graalvm.wasm.debugging.data;
 
 public class DebugConstants {
     public static final int ADDRESS_LENGTH = 4;
+
+    public static final byte DEFAULT_I8 = 0;
+    public static final short DEFAULT_I16 = 0;
+    public static final int DEFAULT_I32 = 0;
+    public static final long DEFAULT_I64 = 0L;
+    public static final float DEFAULT_F32 = 0f;
+    public static final double DEFAULT_F64 = 0d;
+
+    public static final String DEFAULT_STRING = "";
 }

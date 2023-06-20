@@ -46,8 +46,6 @@ import org.graalvm.wasm.debugging.parser.DebugParserContext;
 import org.graalvm.wasm.debugging.parser.DebugData;
 import org.graalvm.wasm.debugging.encoding.Attributes;
 
-import java.util.Optional;
-
 /**
  * Utility class used for resolving the data of a debug entry.
  */
@@ -55,18 +53,32 @@ public final class DebugDataUtil {
     private DebugDataUtil() {
     }
 
-    public static int[] readPcs(DebugData data, DebugParserContext context) {
-        int lowPc = data.asI32(Attributes.LOW_PC);
-        int highPc;
-        final Optional<Integer> highPcValue = data.tryAsI32(Attributes.HIGH_PC);
-        if (highPcValue.isPresent()) {
-            highPc = highPcValue.get();
+    /**
+     * Extracts the pcs from the given data.
+     * 
+     * @param data the debug data.
+     * @param context the current debug context.
+     * @return the pc values int an int array or null, if the pcs are not present or malformed.
+     */
+    public static int[] readPcsOrNull(DebugData data, DebugParserContext context) {
+        int lowPc = data.asI32OrDefault(Attributes.LOW_PC, -1);
+        if (lowPc == -1) {
+            return null;
+        }
+        int highPc = data.asI32OrDefault(Attributes.HIGH_PC, -1);
+        if (highPc != -1) {
             if (data.isConstant(Attributes.HIGH_PC)) {
                 highPc = lowPc + highPc;
             }
         } else {
-            final int rangeOffset = data.asI32(Attributes.RANGES);
-            final IntArrayList ranges = context.readRangeSection(rangeOffset);
+            final int rangeOffset = data.asI32OrDefault(Attributes.RANGES, -1);
+            if (rangeOffset == -1) {
+                return null;
+            }
+            final IntArrayList ranges = context.readRangeSectionOrNull(rangeOffset);
+            if (ranges == null || ranges.size() < 2) {
+                return null;
+            }
             lowPc = ranges.get(0);
             highPc = ranges.get(ranges.size() - 1);
         }
