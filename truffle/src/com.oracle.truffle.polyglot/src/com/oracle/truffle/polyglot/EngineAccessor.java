@@ -2047,7 +2047,8 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleFile getInternalResource(Object polyglotLanguageContext, Class<? extends InternalResource> resourceType) {
             Path resourceRoot = InternalResourceCache.getInternalResource(((PolyglotLanguageContext) polyglotLanguageContext).getEngine(), resourceType);
-            throw new UnsupportedOperationException("Implement me");
+            Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotLanguageContext, FileSystems.newInternalResourceFileSystem(resourceRoot));
+            return EngineAccessor.LANGUAGE.getTruffleFile("", fsContext);
         }
     }
 

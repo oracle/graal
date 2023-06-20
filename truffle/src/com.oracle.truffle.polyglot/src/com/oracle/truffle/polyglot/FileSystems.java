@@ -170,6 +170,10 @@ final class FileSystems {
         }
     }
 
+    static FileSystem newInternalResourceFileSystem(Path root) {
+        return new InternalResourceFileSystem(root);
+    }
+
     private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {
         String languageHome = language.cache.getLanguageHome();
         if (languageHome == null) {
@@ -1711,6 +1715,285 @@ final class FileSystems {
                 }
             }
             return detectors;
+        }
+    }
+
+    private static final class InternalResourceFileSystem implements PolyglotFileSystem {
+
+        private final FileSystem delegate;
+        private final Path root;
+
+        InternalResourceFileSystem(Path root) {
+            this.delegate = newDefaultFileSystem();
+            this.root = root.normalize();
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            return new InternalResourcePath(delegate.parsePath(path));
+        }
+
+        @Override
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            delegate.checkAccess(normalized, modes, linkOptions);
+        }
+
+        @Override
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(root);
+            delegate.createDirectory(normalized, attrs);
+        }
+
+        @Override
+        public void delete(Path path) throws IOException {
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            delegate.delete(normalized);
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            return delegate.newByteChannel(normalized, options, attrs);
+        }
+
+        @Override
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(root);
+            return delegate.newDirectoryStream(normalized, filter);
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return path.toAbsolutePath();
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) {
+            return toAbsolutePath(path);
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            return delegate.readAttributes(normalized, attributes, options);
+        }
+
+        @Override
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            delegate.setAttribute(normalized, attribute, value, options);
+        }
+
+        @Override
+        public void createLink(Path link, Path existing) throws IOException {
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
+            Path normalizedExisting = ((InternalResourcePath) existing).getNormalizedDelegateAbsolutePath(root);
+            PolyglotFileSystem.super.createLink(normalizedLink, normalizedExisting);
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
+            Path normalizedTarget = ((InternalResourcePath) target).getNormalizedDelegateAbsolutePath(root);
+            PolyglotFileSystem.super.createSymbolicLink(normalizedLink, normalizedTarget, attrs);
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
+            return PolyglotFileSystem.super.readSymbolicLink(normalizedLink);
+        }
+
+        @Override
+        public String getSeparator() {
+            return delegate.getSeparator();
+        }
+
+        @Override
+        public String getPathSeparator() {
+            return delegate.getPathSeparator();
+        }
+
+        @Override
+        public boolean isInternal(AbstractPolyglotImpl polyglot) {
+            return true;
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
+        public boolean isHost() {
+            return false;
+        }
+
+        private static final class InternalResourcePath implements Path {
+
+            private static final Object INVALID = new Object();
+
+            private final Path delegate;
+            /**
+             * Cache for normalized absolute path. The normalized path is used frequently to test if
+             * the TruffleFile did not escape outside the internal resource root.
+             */
+            private volatile Object normalizedAbsolutePath;
+
+            InternalResourcePath(Path delegate) {
+                this.delegate = delegate;
+            }
+
+            @Override
+            public java.nio.file.FileSystem getFileSystem() {
+                return null;
+            }
+
+            @Override
+            public boolean isAbsolute() {
+                return delegate.isAbsolute();
+            }
+
+            @Override
+            public Path getRoot() {
+                return wrap(delegate.getRoot());
+            }
+
+            @Override
+            public Path getFileName() {
+                return wrap(delegate.getFileName());
+            }
+
+            @Override
+            public Path getParent() {
+                return wrap(delegate.getParent());
+            }
+
+            @Override
+            public int getNameCount() {
+                return delegate.getNameCount();
+            }
+
+            @Override
+            public Path getName(int index) {
+                return wrap(delegate.getName(index));
+            }
+
+            @Override
+            public Path subpath(int beginIndex, int endIndex) {
+                return wrap(delegate.subpath(beginIndex, endIndex));
+            }
+
+            @Override
+            public boolean startsWith(Path other) {
+                return delegate.startsWith(((InternalResourcePath) other).delegate);
+            }
+
+            @Override
+            public boolean endsWith(Path other) {
+                return delegate.endsWith(((InternalResourcePath) other).delegate);
+            }
+
+            @Override
+            public Path normalize() {
+                return wrap(delegate.normalize());
+            }
+
+            @Override
+            public Path resolve(Path other) {
+                return wrap(delegate.relativize(((InternalResourcePath) other).delegate));
+            }
+
+            @Override
+            public Path relativize(Path other) {
+                return wrap(delegate.relativize(((InternalResourcePath) other).delegate));
+            }
+
+            @Override
+            public URI toUri() {
+                if (delegate.isAbsolute()) {
+                    return delegate.toUri();
+                } else {
+                    throw new UnsupportedOperationException();
+                }
+            }
+
+            @Override
+            public Path toAbsolutePath() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Path toRealPath(LinkOption... options) throws IOException {
+                if (delegate.isAbsolute()) {
+                    return delegate.toRealPath(options);
+                } else {
+                    throw new UnsupportedOperationException();
+                }
+            }
+
+            @Override
+            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int compareTo(Path other) {
+                return delegate.compareTo(((InternalResourcePath) other).delegate);
+            }
+
+            @Override
+            public String toString() {
+                return delegate.toString();
+            }
+
+            @Override
+            public int hashCode() {
+                return delegate.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (obj == this) {
+                    return true;
+                }
+                if (obj == null || obj.getClass() != InternalResourcePath.class) {
+                    return false;
+                }
+                return delegate.equals(((InternalResourcePath) obj).delegate);
+            }
+
+            /**
+             * Returns the absolute normalized default file system path. If the path after
+             * normalization escaped the internal resource root it throws {@link SecurityException}.
+             */
+            Path getNormalizedDelegateAbsolutePath(Path root) {
+                Object res = normalizedAbsolutePath;
+                if (res == null) {
+                    Path absolutePath = delegate.isAbsolute() ? delegate : root.resolve(delegate);
+                    absolutePath = absolutePath.normalize();
+                    if (absolutePath.startsWith(root)) {
+                        res = absolutePath;
+                    } else {
+                        res = INVALID;
+                    }
+                    normalizedAbsolutePath = res;
+                }
+                if (res == INVALID) {
+                    throw new SecurityException(res.toString());
+                }
+                return (Path) res;
+            }
+
+            private static Path wrap(Path path) {
+                return path == null ? null : new InternalResourcePath(path);
+            }
         }
     }
 
