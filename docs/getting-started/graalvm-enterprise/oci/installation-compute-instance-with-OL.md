@@ -19,8 +19,6 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository. 
 That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
-The following instructions have been tested on an OCI Compute Instance with **Oracle Linux 8** and **VM.Standard.E4.Flex** with 1 OCPU and 16 GB RAM.
-
 Use the following command to connect to the OCI Compute Instance from a Unix-style system:
 
    ```shell
@@ -92,7 +90,7 @@ After installation, the package files are placed in the _/usr/lib64/graalvm_ dir
 
 1. Set the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to Oracle GraalVM with the following commands:
    ```shell
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-jdk-20.0.1" >> ~/.bashrc
+   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java20" >> ~/.bashrc
    ```
    ```shell
    echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
@@ -134,7 +132,7 @@ See the [Features Support list](https://docs.oracle.com/en/graalvm/jdk/20/docs/s
    ```shell
    dnf list graalvm-20*
    ```
-   The printed list is very large. If you are interested in a particular feature, for example, the Python runtime, narrow down the search providing the exact package name:
+   The printed list may be large. If you are interested in a particular feature, for example, the Python runtime, narrow down the search providing the exact package name:
 
    ```shell
    sudo yum list graalvm-20-python*
@@ -142,7 +140,6 @@ See the [Features Support list](https://docs.oracle.com/en/graalvm/jdk/20/docs/s
    ```shell
    dnf list graalvm-20-python*
    ```
-
 
 2. Install the feature to Oracle GraalVM using its `<package_name>`. For example, to install the Python runtime with `yum`, run:
    ```shell

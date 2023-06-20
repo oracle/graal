@@ -46,7 +46,7 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
     ```yml
     env:
     variables:
-        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-jdk-20.0.1"
+        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java20"
     ```
 
 3. Add the command to set the `PATH` environment variable:
