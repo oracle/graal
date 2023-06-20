@@ -9,9 +9,7 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the Oracle Cloud Console and your local development environment. The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
 
-Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. 
-Oracle GraalVM includes a JDK and Natime Image.
-Code Editor's integration with Cloud Shell gives you direct access to it.
+Oracle GraalVM for JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
 > Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
 ## Create and Run a Java Application in OCI Code Editor
@@ -21,14 +19,14 @@ Code Editor's integration with Cloud Shell gives you direct access to it.
 1. [Login to the Oracle Cloud Console and launch Code Editor](https://cloud.oracle.com/?bdcstate=maximized&codeeditor=true).
 2. Open a Terminal in Code Editor, by clicking **New Terminal** from the **Terminal** menu.
 
-### Step 2: Select Oracle GraalVM JDK as the Default JDK
+### Step 2: Select GraalVM JDK as the Default JDK
 
 1. List the installed JDKs using the `csruntimectl java list` command.
 
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell: Oracle GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell: GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
 
 2. Select GraalVM for JDK 17 as the current JDK:
 
@@ -37,7 +35,7 @@ Code Editor's integration with Cloud Shell gives you direct access to it.
     ```
     You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
 
-3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`:
+3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
     ```shell
     echo $JAVA_HOME
     ```
@@ -46,6 +44,9 @@ Code Editor's integration with Cloud Shell gives you direct access to it.
     ```
     ```shell
     java -version
+    ```
+    ```shell
+    native-image --version
     ```
 
 ## Step 3: Setup a Java Project and Run
