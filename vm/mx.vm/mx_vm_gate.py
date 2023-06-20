@@ -84,26 +84,43 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
+def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
-    Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
+    Checks that `compiler_log_file` exists and that its contents matches each regular expression in `expectations`.
     If all checks succeed, `compiler_log_file` is deleted.
     """
+    def append_extra_logs():
+        suffix = ''
+        if extra_log_files:
+            for extra_log_file in extra_log_files:
+                if exists(extra_log_file):
+                    nl = os.linesep
+                    with open(extra_log_file) as fp:
+                        lines = fp.readlines()
+                        if len(lines) > 50:
+                            lines = lines[0:25] + [f'...{nl}', f'<omitted {len(lines) - 50} lines>{nl}', f'...{nl}'] + lines[-50:]
+                    if lines:
+                        suffix += f'{nl}{extra_log_file}:\n' + ''.join(lines)
+        return suffix
+
     in_exception_path = sys.exc_info() != (None, None, None)
     if not exists(compiler_log_file):
-        mx.abort('No output written to ' + compiler_log_file)
+        mx.abort(f'No output written to {compiler_log_file}{append_extra_logs()}')
     with open(compiler_log_file) as fp:
         compiler_log = fp.read()
     if not isinstance(expectations, list) and not isinstance(expectations, tuple):
         expectations = [expectations]
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
-            mx.abort(f'Did not find expected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}')
+            mx.abort(f'Did not find expected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}{append_extra_logs()}')
     if extra_check is not None:
         extra_check(compiler_log)
     if mx.get_opts().verbose or in_exception_path:
         mx.log(compiler_log)
     remove(compiler_log_file)
+    if extra_log_files:
+        for extra_log_file in extra_log_files:
+            remove(extra_log_file)
 
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
@@ -314,6 +331,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
+    truffle_log_file = abspath('truffle-compiler.log')
     G = '-Dgraal.' #pylint: disable=invalid-name
     P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
@@ -330,7 +348,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'{P}TraceCompilation=false',
                   f'{P}CompileImmediately=true',
                   f'{P}BackgroundCompilation=false',
-                  f'-Dpolyglot.log.file={compiler_log_file}',
+                  f'-Dpolyglot.log.file={truffle_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
                    '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_LIBGRAAL_TRUFFLEATTACH>/bin/<lib:truffleattach>'),
@@ -346,7 +364,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
             mx.log(err.data)
 
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
-        _check_compiler_log(compiler_log_file, expectations)
+        _check_compiler_log(compiler_log_file, expectations, extra_log_files=[truffle_log_file])
         if vm_can_exit:
             # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
