@@ -45,7 +45,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.BootLoaderSupport;
+import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ReflectionUtil;
@@ -88,9 +91,10 @@ public class DynamicHubInitializer {
         AnalysisError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Initializing type metadata after analysis for %s.", type.toJavaName(true));
 
         Class<?> javaClass = type.getJavaClass();
-        heapScanner.rescanObject(javaClass.getPackage());
-
         DynamicHub hub = hostVM.dynamicHub(type);
+
+        registerPackage(heapScanner, javaClass, hub);
+
         /*
          * Start by rescanning the hub itself. This ensures the correct scan reason in case this is
          * the first time we see this hub.
@@ -119,6 +123,30 @@ public class DynamicHubInitializer {
                     hub.initEnumConstants(retrieveEnumConstantArray(type, javaClass));
                 }
                 heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
+            }
+        }
+    }
+
+    /**
+     * For reachable classes, register class's package in appropriate class loader.
+     */
+    private static void registerPackage(ImageHeapScanner heapScanner, Class<?> javaClass, DynamicHub hub) {
+        Package packageValue = javaClass.getPackage();
+        heapScanner.rescanObject(packageValue);
+        /*
+         * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
+         * may be different from the class used to load it during native-image generation.
+         */
+        ClassLoader classloader = javaClass.getClassLoader();
+        if (classloader == null) {
+            classloader = BootLoaderSupport.getBootLoader();
+        }
+        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
+        if (runtimeClassLoader != null) {
+            if (packageValue != null) {
+                String packageName = hub.getPackageName();
+                var loaderPackages = ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
+                heapScanner.rescanObject(loaderPackages);
             }
         }
     }
