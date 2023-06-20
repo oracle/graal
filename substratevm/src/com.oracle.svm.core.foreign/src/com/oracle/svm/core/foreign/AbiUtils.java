@@ -30,7 +30,6 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.invoke.MethodType;
 import java.util.Arrays;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -45,11 +44,11 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
-import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
@@ -64,12 +63,14 @@ import jdk.vm.ci.meta.PlatformKind;
  */
 public abstract class AbiUtils {
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public abstract static class Adaptation {
         public abstract Class<?> apply(Class<?> parameter);
 
         public abstract ValueNode apply(ValueNode parameter);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static final class Reinterpret extends Adaptation {
         public final JavaKind to;
 
@@ -88,12 +89,12 @@ public abstract class AbiUtils {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static AbiUtils create() {
         return switch (CABI.current()) {
             case SYS_V -> new ABIs.SysV();
             case WIN_64 -> new ABIs.Win64();
-            case LINUX_AARCH_64, MAC_OS_AARCH_64, WIN_AARCH_64 -> throw unsupportedFeature("Foreign functions are not yet supported on " + CABI.current() + ".");
-            default -> throw unsupportedFeature("Foreign functions are not supported on " + CABI.current() + ".");
+            default -> new ABIs.Unsupported(CABI.current().name());
         };
     }
 
@@ -102,14 +103,12 @@ public abstract class AbiUtils {
         return ImageSingletons.lookup(AbiUtils.class);
     }
 
-    /**
-     * Name of the ABI. Used for error messages.
-     */
-    public abstract String name();
+    public abstract void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
+                    Linker.Option... options);
 
     /**
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
-     * (i.e. C type) of a function from its descriptor.
+     * (i.e. the ABI low-level type) of a function from its descriptor.
      */
     public abstract NativeEntryPointInfo makeEntrypoint(FunctionDescriptor desc, Linker.Option... options);
 
@@ -134,10 +133,52 @@ public abstract class AbiUtils {
     public abstract Adaptation[] adaptArguments(NativeEntryPointInfo nep);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract boolean captureIsSupported(CapturableState cs);
+    public abstract void checkLibrarySupport();
 }
 
 class ABIs {
+    static final class Unsupported extends AbiUtils {
+        private final String name;
+
+        Unsupported(String name) {
+            this.name = name;
+        }
+
+        private <Z> Z fail() {
+            throw unsupportedFeature(name());
+        }
+
+        private String name() {
+            return "Unsupported ABI: " + name;
+        }
+
+        @Override
+        public void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
+                        Linker.Option... options) {
+            fail();
+        }
+
+        @Override
+        public NativeEntryPointInfo makeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
+            return fail();
+        }
+
+        @Override
+        public AssignedLocation[] toMemoryAssignment(VMStorage[] moves, boolean forReturn) {
+            return fail();
+        }
+
+        @Override
+        public Adaptation[] adaptArguments(NativeEntryPointInfo nep) {
+            return fail();
+        }
+
+        @Override
+        public void checkLibrarySupport() {
+            fail();
+        }
+    }
+
     private abstract static class X86_64 extends AbiUtils {
         protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
             return callingSequence.argumentBindings()
@@ -167,7 +208,8 @@ class ABIs {
             return target.canStoreValue(rc, kind);
         }
 
-        private void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
+        @Override
+        public void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
                         Linker.Option... options) {
             if (!SubstrateUtil.assertionsEnabled()) {
                 return;
@@ -184,6 +226,16 @@ class ABIs {
                 throw new AssertionError("Capture buffer address expected: " + methodType);
             }
 
+            /*
+             * This assertion can fail if, the entrypoint is supposed to capture the call state, but
+             * the provided mask is 0, i.e. a capture call state option is provided but with an
+             * empty capture list.
+             */
+            /*
+             * TODO: check for capture more uniformly; either always rely on the presence of the
+             * option (even if empty), or on the non-zeroness of the mask. Note that part of this
+             * mismatch might also be coming from JDK code, in which case we cannot do much.
+             */
             assert firstActualArgument + assignments.length == methodType.parameterCount() : assignments.length + " " + methodType.parameterCount();
             AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
             LinkerOptions optionsSet = LinkerOptions.forDowncall(fd, options);
@@ -226,7 +278,7 @@ class ABIs {
             // NativeEntrypoint.make
             var parametersAssignment = toMemoryAssignment(argMoves, false);
             var returnBuffering = needsReturnBuffer ? toMemoryAssignment(returnMoves, true) : null;
-            methodTypeMatchAssignment(callingSequence.capturedStateMask(), boundaryType, parametersAssignment, returnBuffering, desc, options);
+            AbiUtils.singleton().methodTypeMatchAssignment(callingSequence.capturedStateMask(), boundaryType, parametersAssignment, returnBuffering, desc, options);
             return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition());
         }
 
@@ -281,31 +333,28 @@ class ABIs {
         }
     }
 
-    public static final class SysV extends X86_64 {
+    static final class SysV extends X86_64 {
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.sysv.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
         }
 
         @Override
-        public String name() {
-            return "SystemV (Linux AMD64)";
-        }
-
-        @Override
         @Platforms(Platform.HOSTED_ONLY.class)
         public Adaptation[] adaptArguments(NativeEntryPointInfo nep) {
+            // No adaptations needed
             return new Adaptation[nep.linkMethodType().parameterCount()];
         }
 
         @Override
         @Platforms(Platform.HOSTED_ONLY.class)
-        public boolean captureIsSupported(CapturableState cs) {
-            return cs.equals(CapturableState.ERRNO) && LibC.isSupported();
+        public void checkLibrarySupport() {
+            String name = "SystemV (Linux AMD64)";
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on " + name);
         }
     };
 
-    public static final class Win64 extends X86_64 {
+    static final class Win64 extends X86_64 {
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
             return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
@@ -318,11 +367,6 @@ class ABIs {
             PlatformKind platformKind = target.getPlatformKind(kind);
             return target.canStoreValue(rc, platformKind) || (isVararg &&
                             register.getRegisterCategory().equals(AMD64.CPU) && (kind.equals(JavaKind.Float) || kind.equals(JavaKind.Double)));
-        }
-
-        @Override
-        public String name() {
-            return "Win64 (Windows AMD64)";
         }
 
         /**
@@ -379,8 +423,10 @@ class ABIs {
 
         @Override
         @Platforms(Platform.HOSTED_ONLY.class)
-        public boolean captureIsSupported(CapturableState cs) {
-            return Set.of(CapturableState.ERRNO, CapturableState.GET_LAST_ERROR, CapturableState.WSA_GET_LAST_ERROR).contains(cs) && LibC.isSupported() && WindowsAPIs.isSupported();
+        public void checkLibrarySupport() {
+            String name = "Win64 (Windows AMD64)";
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on" + name);
+            VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on" + name);
         }
     };
 }

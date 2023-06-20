@@ -108,22 +108,23 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
-        if (newThreadStatus != StatusSupport.STATUS_ILLEGAL) {
-            /* Push a JavaFrameAnchor to the thread-local linked list. */
-            JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
-            JavaFrameAnchors.pushFrameAnchor(anchor);
-
-            /*
-             * The content of the new anchor is uninitialized at this point. It is filled as late as
-             * possible, immediately before the C call instruction, so that the pointer map for the
-             * last instruction pointer matches the pointer map of the C call. The thread state
-             * transition into Native state also happens immediately before the C call.
-             */
-
-            return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
-        } else {
+        if (newThreadStatus == StatusSupport.STATUS_ILLEGAL) {
+            /* No transition wanted, so no anchor needed */
             return null;
         }
+
+        /* Push a JavaFrameAnchor to the thread-local linked list. */
+        JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
+        JavaFrameAnchors.pushFrameAnchor(anchor);
+
+        /*
+         * The content of the new anchor is uninitialized at this point. It is filled as late as
+         * possible, immediately before the C call instruction, so that the pointer map for the last
+         * instruction pointer matches the pointer map of the C call. The thread state transition
+         * into Native state also happens immediately before the C call.
+         */
+
+        return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
     }
 
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
@@ -136,26 +137,29 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             callCaptureFunction(captureFunction, statesToCapture, captureBuffer);
         }
 
-        if (oldThreadStatus != StatusSupport.STATUS_ILLEGAL) {
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-                    Safepoint.transitionNativeToJava(true);
-                } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-                    Safepoint.transitionVMToJava(true);
-                } else {
-                    ReplacementsUtil.staticAssert(false, "Unexpected thread status");
-                }
-            } else {
-                JavaFrameAnchors.popFrameAnchor();
-            }
-
-            /*
-             * Ensure that no floating reads are scheduled before we are done with the transition.
-             * All memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
-             * KillMemoryNode since this is the last kill-all node of the snippet.
-             */
-            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+        if (oldThreadStatus == StatusSupport.STATUS_ILLEGAL) {
+            /* No transition was done before the call, so no transition must be done now */
+            return;
         }
+
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
+                Safepoint.transitionNativeToJava(true);
+            } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
+                Safepoint.transitionVMToJava(true);
+            } else {
+                ReplacementsUtil.staticAssert(false, "Unexpected thread status");
+            }
+        } else {
+            JavaFrameAnchors.popFrameAnchor();
+        }
+
+        /*
+         * Ensure that no floating reads are scheduled before we are done with the transition. All
+         * memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
+         * KillMemoryNode since this is the last kill-all node of the snippet.
+         */
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
     }
 
     CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -196,7 +200,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 
     class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
-        private static final ForeignCallDescriptor DUMMY_DESCRIPTOR = new ForeignCallDescriptor("dummy", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
+        private static final ForeignCallDescriptor DUMMY_DESCRIPTOR = new ForeignCallDescriptor("unreachable", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
 
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {

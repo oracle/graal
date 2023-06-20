@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
@@ -40,7 +39,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class DowncallStubsHolder {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(DowncallStubsHolder.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
     /**
@@ -67,6 +66,9 @@ public final class DowncallStubsHolder {
         if (nep.capturesCallState()) {
             builder.append("_c");
         }
+        if (nep.skipsTransition()) {
+            builder.append("_t");
+        }
 
         StringBuilder assignmentsBuilder = new StringBuilder();
         for (var assignment : nep.parametersAssignment()) {
@@ -81,11 +83,7 @@ public final class DowncallStubsHolder {
         }
 
         builder.append('_');
-        builder.append(SubstrateUtil.digest(
-                        assignmentsBuilder.toString()));
-
-        // Can be useful for debugging, but makes name quite long
-        // builder.append("__").append(assignmentsBuilder);
+        builder.append(SubstrateUtil.digest(assignmentsBuilder.toString()));
 
         return builder.toString();
     }

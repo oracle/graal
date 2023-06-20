@@ -33,7 +33,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPo
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
@@ -62,27 +60,33 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * A stub for foreign downcalls. The stubs responsibilities are:
+ * A stub for foreign downcalls. The "work repartition" for downcalls is as follows:
  * <ul>
- * <li>Unbox the arguments;</li>
- * <li>Perform a C-function call :</li>
+ * <li>Transform "high-level" (e.g. structs) arguments into "low-level" arguments (i.e. int, long,
+ * float, double, pointer) which fit in a register --- done by HotSpot's implementation using method
+ * handles (or specialized classes);</li>
+ * <li>Unbox the arguments (the arguments are in an array of Objects, due to funneling through
+ * {@link Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle#linkToNative})
+ * --- done by {@link DowncallStub#adaptArguments};</li>
+ * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
+ * {@link DowncallStub#adaptArguments}, see {@link AbiUtils.Adaptation}</li>
+ * <li>Transform HotSpot's memory moves into ones for SubstrateVM --- done by
+ * {@link AbiUtils#toMemoryAssignment}</li>
+ * <li>Perform a C-function call:</li>
  * <ul>
- * <li>Provide it with a memory assignment for the arguments;</li>
- * <li>If a buffered return is required, provide the return assignment as well.</li>
+ * <li>Setup the frame anchor and capture call state --- Implemented in
+ * {@link CFunctionSnippets#prologueSnippet}, {@link CFunctionSnippets#epilogueSnippet} and
+ * {@link ForeignFunctionsRuntime#captureCallState};</li>
+ * <li>Setup registers, stack and return buffer according to the aforementioned assignments ---
+ * Implemented in the backend, e.g.
+ * {@link com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig#getCallingConvention} and
+ * {@link com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend.SubstrateAMD64NodeLIRBuilder#emitInvoke}</li>
  * </ul>
- * <li>If (part of) the call state must be captured, perform the necessary calls to get said call
- * state and store the result in the appropriate place</li>
+ * <li>If needed, box the return --- done by {@link DowncallStub#adaptReturnValue}.</li>
  * </ul>
- * In particular, this latest point means that not safepoint must be placed between the requested
- * call and the subsequent calls/memory accesses done to capture the call state. This is done by
- * doing said capture in {@link com.oracle.svm.core.nodes.CFunctionEpilogueNode}, which follows the
- * method invocation without interruption. See the associated lowering
- * {@link CFunctionSnippets.CFunctionEpilogueLowering#lower(CFunctionEpilogueNode, LoweringTool)}.
- * <p>
- * Note that the stub *does not* perform most of the argument preprocessing, e.g. if the first
- * argument to the native function is a memory segment which must be split across 3 int registers
- * according to the ABI, this function expects to receive this argument as three integers, not as a
- * memory segment.
+ * Call state capture is done in the call epilogue to prevent the runtime environment from modifying
+ * the call state, which could happen if a safepoint was inserted between the downcall and the
+ * capture.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 class DowncallStub extends NonBytecodeMethod {
@@ -198,7 +202,7 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     private static Pair<List<ValueNode>, ValueNode> adaptArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray, AbiUtils.Adaptation[] adaptations) {
-        var args = kit.liftArray(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);
+        var args = kit.loadArrayElements(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);
         assert adaptations.length == signature.parameterCount() : adaptations.length + " " + signature.parameterCount();
         assert args.size() == signature.parameterCount() + 1 : args.size() + " " + (signature.parameterCount() + 1);
         // We have to drop the NEP, which is the last argument

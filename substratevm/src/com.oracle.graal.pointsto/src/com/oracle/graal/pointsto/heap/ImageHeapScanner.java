@@ -359,6 +359,7 @@ public abstract class ImageHeapScanner {
             ObjectScanner.unsupportedFeatureDuringFieldScan(universe.getBigbang(), field, receiver, e, reason);
             transformedValue = JavaConstant.NULL_POINTER;
         }
+        assert transformedValue != null : field.getDeclaringClass().toJavaName() + "::" + field.getName();
 
         return createImageHeapConstant(transformedValue, reason);
     }

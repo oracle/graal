@@ -61,7 +61,7 @@ public final class RuntimeForeignAccess {
      * 
      * <pre>
      * {@code
-     *          --enable-preview
+     *          --enable-preview -H:+ForeignFunctions
      * }
      * </pre>
      * 

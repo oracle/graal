@@ -41,7 +41,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
@@ -95,9 +94,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     private boolean sealed = false;
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
-    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> stubsToRegister = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Map<NativeEntryPointInfo, ResolvedJavaMethod> stubsToCreate = new HashMap<>();
-    private final Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> generatedMapping = new HashMap<>();
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> downcallsMapping = new HashMap<>();
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -112,13 +110,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> stubsToRegister.add(Pair.create(desc, options)));
+            registerConditionalConfiguration(condition, () -> registeredDowncalls.add(Pair.create(desc, options)));
         }
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of();
     }
 
     @Override
@@ -126,8 +119,18 @@ public class ForeignFunctionsFeature implements InternalFeature {
         return SubstrateOptions.ForeignFunctions.getValue();
     }
 
+    ForeignFunctionsFeature() {
+        /*
+         * We add these exports systematically in the constructor, as to avoid access errors from
+         * plugins when the feature is disabled in the config.
+         */
+        for (var modulePackages : REQUIRES_CONCEALED.entrySet()) {
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ForeignFunctionsFeature.class, false, modulePackages.getKey(), modulePackages.getValue());
+        }
+    }
+
     @Override
-    public void duringSetup(DuringSetupAccess c) {
+    public void duringSetup(DuringSetupAccess a) {
         assert (JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_PREVIEW && isPreviewEnabled()) ||
                         JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
 
@@ -137,6 +140,11 @@ public class ForeignFunctionsFeature implements InternalFeature {
             ImageSingletons.add(AbiUtils.class, AbiUtils.create());
             ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
             ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
+
+            var access = (FeatureImpl.DuringSetupAccessImpl) a;
+            ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
+            ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
+                            ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
         } else {
             if (SubstrateOptions.useLLVMBackend()) {
                 throw UserError.abort("Foreign functions interface is in use, but is not supported together with the LLVM backend.");
@@ -147,22 +155,44 @@ public class ForeignFunctionsFeature implements InternalFeature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        for (var modulePackages : REQUIRES_CONCEALED.entrySet()) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ForeignFunctionsFeature.class, false, modulePackages.getKey(), modulePackages.getValue());
+    public void afterRegistration(AfterRegistrationAccess a) {
+    }
+
+    private int createDowncallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
+        Map<NativeEntryPointInfo, ResolvedJavaMethod> created = new HashMap<>();
+        for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : registeredDowncalls) {
+            NativeEntryPointInfo nepi = AbiUtils.singleton().makeEntrypoint(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
+
+            if (!created.containsKey(nepi)) {
+                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
+                AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
+                access.getBigBang().addRootMethod(analysisStub, false);
+                created.put(nepi, analysisStub);
+                ForeignFunctionsRuntime.singleton().addStubPointer(
+                                nepi,
+                                new MethodPointer(analysisStub));
+                downcallsMapping.put(analysisStub.getName(), new ArrayList<>());
+            }
+
+            String stubName = created.get(nepi).getName();
+            downcallsMapping.get(stubName).add(fdOptionsPair);
+
+            assert created.size() == downcallsMapping.size();
         }
+        registeredDowncalls.clear();
+
+        return created.size();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        sealed = true;
 
-        ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
-                        ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
+        AbiUtils.singleton().checkLibrarySupport();
 
         /*
-         * Specializing the lambda form would define a new class, which is not allowed in
+         * Specializing an adapter would define a new class at runtime, which is not allowed in
          * SubstrateVM
          */
         access.registerFieldValueTransformer(
@@ -172,44 +202,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
                         (receiver, originalValue) -> false);
 
         access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false);
-    }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
-        var access = (FeatureImpl.DuringAnalysisAccessImpl) a;
-
-        boolean updated = false;
-        for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : stubsToRegister) {
-            NativeEntryPointInfo nepi = AbiUtils.singleton().makeEntrypoint(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
-
-            if (!stubsToCreate.containsKey(nepi)) {
-                updated = true;
-                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
-                AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
-                access.getBigBang().addRootMethod(analysisStub, false);
-                stubsToCreate.put(nepi, analysisStub);
-            }
-
-            String stubName = stubsToCreate.get(nepi).getName();
-            generatedMapping.putIfAbsent(stubName, new ArrayList<>());
-            generatedMapping.get(stubName).add(fdOptionsPair);
-        }
-        stubsToRegister.clear();
-
-        if (updated) {
-            access.requireAnalysisIteration();
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess a) {
-        sealed = true;
-        ProgressReporter.singleton().setForeignFunctionsInfo(stubsToCreate.size());
-        for (var nepiStubPair : stubsToCreate.entrySet()) {
-            ForeignFunctionsRuntime.singleton().addStubPointer(
-                            nepiStubPair.getKey(),
-                            new MethodPointer(nepiStubPair.getValue()));
-        }
+        int downcallStubsCount = createDowncallStubs(access);
+        ProgressReporter.singleton().setForeignFunctionsInfo(downcallStubsCount);
     }
 
     @Override
@@ -221,11 +216,11 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     public int getCreatedStubsCount() {
         assert sealed;
-        return stubsToCreate.size();
+        return downcallsMapping.size();
     }
 
     public Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> getCreatedStubsMap() {
         assert sealed;
-        return generatedMapping;
+        return downcallsMapping;
     }
 }

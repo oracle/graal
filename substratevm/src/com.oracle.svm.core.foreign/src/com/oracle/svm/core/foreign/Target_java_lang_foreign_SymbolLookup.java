@@ -27,6 +27,7 @@ package com.oracle.svm.core.foreign;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.util.function.BiFunction;
 
@@ -36,15 +37,20 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.internal.loader.NativeLibrary;
 import jdk.internal.loader.RawNativeLibraries;
 
+/**
+ * Interface allowing looking up symbols from libraries. Currently, only
+ * {@link java.lang.foreign.SymbolLookup#loaderLookup} is supported. Support for the other lookups
+ * ({@link java.lang.foreign.SymbolLookup#libraryLookup} and {@link Linker#defaultLookup()}) will
+ * come later.
+ * <p>
+ * Note that {@link java.lang.foreign.SymbolLookup#loaderLookup} will have a behavior which is
+ * slightly different from the one in the JDK: like loadLibrary, the lookup is classloader agnostic,
+ * which means that loading a library in a classloader and then looking it up from another one will
+ * succeed. See
+ * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
+ */
 @TargetClass(className = "java.lang.foreign.SymbolLookup")
 public final class Target_java_lang_foreign_SymbolLookup {
-    /**
-     * Note that {@link java.lang.foreign.SymbolLookup#loaderLookup} will have a behavior which is
-     * slightly different from the one in the JDK: like loadLibrary, the lookup is classloader
-     * agnostic, which means that loading a library in a classloader and then looking it up from
-     * another one will succeed. See
-     * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
-     */
 
     @Substitute
     private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, Arena libArena) {
