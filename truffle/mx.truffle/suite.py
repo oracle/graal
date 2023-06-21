@@ -1517,6 +1517,7 @@ suite = {
         ],
         "exports" : [
           # Unqualified exports
+          # [GR-46850] Replace with qualified exports.
           "org.graalvm.shadowed.com.ibm.icu.lang",
           "org.graalvm.shadowed.com.ibm.icu.math",
           "org.graalvm.shadowed.com.ibm.icu.number",
