@@ -967,30 +967,40 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
             return True, reason
 
         proj = self.subject
-        if not exists(proj.output_dir()):
-            return (True, "output dir does not exist")
-        if not exists(proj.source_gen_dir()):
-            return (True, "src_gen dir does not exist")
+        for outDir in [proj.output_dir(), proj.source_gen_dir()]:
+            if not exists(outDir):
+                return True, f"{outDir} does not exist"
+
+        suite_py_ts = mx.TimeStampFile.newest([self.subject.suite.suite_py(), __file__])
 
         for dep in proj.shaded_deps():
-            srcFilePath = dep.get_source_path(True)
+            jarFilePath = dep.get_path(False)
+            srcFilePath = dep.get_source_path(False)
+
+            input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
+            if suite_py_ts.isNewerThan(input_ts):
+                input_ts = suite_py_ts
 
             for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
-                with zipfile.ZipFile(zipFilePath, 'r') as zf:
-                    for zi in zf.infolist():
-                        if zi.is_dir():
-                            continue
-
-                        old_filename = zi.filename
-                        if old_filename.endswith('.java'):
-                            filepath = PurePosixPath(old_filename)
-                            if any(glob_match(filepath, i) for i in proj.excluded_paths()):
+                try:
+                    with zipfile.ZipFile(zipFilePath, 'r') as zf:
+                        for zi in zf.infolist():
+                            if zi.is_dir():
                                 continue
-                            new_filename = proj.substitute_path(old_filename)
-                            if old_filename != new_filename:
-                                output_file = join(outDir, new_filename)
-                                if not exists(output_file):
-                                    return True, f'{output_file} does not exist'
+
+                            old_filename = zi.filename
+                            if old_filename.endswith('.java'):
+                                filepath = PurePosixPath(old_filename)
+                                if any(glob_match(filepath, i) for i in proj.excluded_paths()):
+                                    continue
+                                new_filename = proj.substitute_path(old_filename)
+                                if old_filename != new_filename:
+                                    output_file = join(outDir, new_filename)
+                                    output_ts = mx.TimeStampFile(output_file)
+                                    if output_ts.isOlderThan(input_ts):
+                                        return True, f'{output_ts} is older than {input_ts}'
+                except FileNotFoundError:
+                    return True, f"{zipFilePath} does not exist"
 
         return super().needsBuild(newestInput)
 
