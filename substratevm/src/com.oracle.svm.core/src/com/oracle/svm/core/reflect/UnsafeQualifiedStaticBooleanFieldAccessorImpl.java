@@ -23,7 +23,7 @@
  * questions.
  */
 
-package jdk.internal.reflect;
+package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Field;
 

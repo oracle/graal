@@ -23,7 +23,7 @@
  * questions.
  */
 
-package jdk.internal.reflect;
+package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -37,8 +37,8 @@ import java.util.Set;
 
 abstract class UnsafeStaticFieldAccessorImpl extends UnsafeFieldAccessorImpl {
     static {
-        Reflection.registerFieldsToFilter(UnsafeStaticFieldAccessorImpl.class,
-                                          Set.of("base"));
+// Reflection.registerFieldsToFilter(UnsafeStaticFieldAccessorImpl.class,
+// Set.of("base"));
     }
 
     protected final Object base; // base

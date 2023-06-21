@@ -23,13 +23,15 @@
  * questions.
  */
 
-package jdk.internal.reflect;
+package com.oracle.svm.core.reflect;
+
+import jdk.internal.reflect.FieldAccessor;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-class UnsafeFieldAccessorFactory {
-    static FieldAccessor newFieldAccessor(Field field, boolean isReadOnly) {
+public class UnsafeFieldAccessorFactory {
+    public static FieldAccessor newFieldAccessor(Field field, boolean isReadOnly) {
         Class<?> type = field.getType();
         boolean isStatic = Modifier.isStatic(field.getModifiers());
         boolean isFinal = Modifier.isFinal(field.getModifiers());
