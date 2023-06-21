@@ -173,6 +173,41 @@ public class MainTest {
         Assert.assertFalse("method baz() should not be hot", output.contains("40-baz"));
     }
 
+    @Test
+    public void compareJITExperiments() throws IOException {
+        OptimizationLogMock optLog1 = new OptimizationLogMock("profdiff_compare_jit_1");
+        optLog1.addLogFile().addCompilationUnit("foo()", "10-foo")
+                        .addCompilationUnit("bar()", "20-bar");
+        Path logDir1 = optLog1.writeToTempDirectory();
+        ProftoolJITMock proftool1 = new ProftoolJITMock("profdiff_compare_jit_prof_1", "1000");
+        proftool1.addGraalMethod("foo()", "10-foo", 60)
+                        .addGraalMethod("bar()", "20-bar", 40);
+        Path profFile1 = proftool1.writeToTempFile();
+
+        OptimizationLogMock optLog2 = new OptimizationLogMock("profdiff_compare_jit_2");
+        optLog2.addLogFile().addCompilationUnit("foo()", "30-foo")
+                        .addCompilationUnit("baz()", "40-baz");
+        Path logDir2 = optLog2.writeToTempDirectory();
+        ProftoolJITMock proftool2 = new ProftoolJITMock("profdiff_compare_jit_prof_2", "2000");
+        proftool2.addGraalMethod("foo()", "30-foo", 30)
+                        .addGraalMethod("baz()", "40-baz", 70);
+        Path profFile2 = proftool2.writeToTempFile();
+
+        try {
+            String[] args = {"jit-vs-jit", logDir1.toAbsolutePath().toString(), profFile1.toAbsolutePath().toString(),
+                            logDir2.toAbsolutePath().toString(), profFile2.toAbsolutePath().toString()};
+            Profdiff.main(args);
+        } finally {
+            deleteTree(logDir1);
+            Files.delete(profFile1);
+            deleteTree(logDir2);
+            Files.delete(profFile2);
+        }
+        assertNoError();
+        assertOutputContains(optLog1.allCompilationIDs());
+        assertOutputContains(optLog2.allCompilationIDs());
+    }
+
     /**
      * Recursively deletes a file tree.
      *
