@@ -1140,7 +1140,7 @@ class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
         self._svm_ee_supported = self._svm_supported and has_component('svmee', stage1=True)
-        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows() or (mx.is_darwin() and has_component('svmee', stage1=True)))
+        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows())
         self._separate_debuginfo_ext = {
             'linux': '.debug',
             'windows': '.pdb',
@@ -1182,8 +1182,6 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
-        if mx.is_darwin():
-            flags += ['-H:+UseOldDebugInfo']
         if self.generate_separate_debug_info(image_config):
             flags += ['-H:+StripDebugInfo']
         return flags

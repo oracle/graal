@@ -631,7 +631,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
+    static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -642,39 +642,17 @@ public class SubstrateOptions {
     };
 
     private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue()) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
             LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
         }
     }
 
-    @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
-                    deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
-        @Override
-        public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-            GenerateDebugInfo.update(values, newValue);
-        }
-    };
-
-    @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
-
     public static boolean useDebugInfoGeneration() {
-        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
-
-    private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
-        if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
-            throw UserError.abort("The option '%s' can only be used together with '%s'.",
-                            SubstrateOptionsParser.commandArgument(optionKey, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.GenerateDebugInfo, "2"));
-        }
-    }
-
-    @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
-    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
+    static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
     @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
     public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(ModuleSupport.modulePathBuild ? 1 : 0);
