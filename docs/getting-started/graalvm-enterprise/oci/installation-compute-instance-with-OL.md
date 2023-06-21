@@ -8,7 +8,7 @@ permalink: /getting-started/oci/compute-instance/
 This guide describes how to install Oracle GraalVM on an Oracle Cloud Infrastructure (OCI) Compute instance with Oracle Linux 7, 8, and 9.
 For complete beginners, [start with this tutorial to create and launch your first Linux instance](https://docs.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm).
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
+> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
 ### Prerequisites
 
@@ -16,7 +16,11 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 ## Install Oracle GraalVM
 
-For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository. 
+For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
+RPMs for Oracle GraalVM for JDK 17 and Oracle GraalVM for JDK 20 are available with the package names `graalvm-17-native-image` and `graalvm-20-native-image` respectively.
+These Oracle GraalVM distributions include a JDK and Natime Image.
+Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
+
 That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
 Use the following command to connect to the OCI Compute Instance from a Unix-style system:
@@ -27,10 +31,6 @@ Use the following command to connect to the OCI Compute Instance from a Unix-sty
 
 Where `.ssh/id_rsa` is the full path and name of the file containing your private SSH key; `opc` is the default name for the Oracle Linux image; and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
 For more details, refer to the [Connecting to Your Linux Instance Using SSH](https://docs.cloud.oracle.com/iaas/Content/GSG/Tasks/testingconnection.htm) tutorial.
-
-There are Oracle GraalVM RPMs for JDK 20 and JDK 17 with the following package names: `graalvm-17-native-image` and `graalvm-20-native-image`. 
-These Oracle GraalVM distributions include a JDK and Natime Image.
-Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
 
 The installation steps may differ per Oracle Linux version or package manager. 
 
