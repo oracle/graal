@@ -26,8 +26,6 @@
 package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import jdk.internal.misc.Unsafe;
 
 /**
  * Base class for jdk.internal.misc.Unsafe-based FieldAccessors for fields with

@@ -34,42 +34,52 @@ class UnsafeQualifiedStaticCharacterFieldAccessorImpl
         super(field, isReadOnly);
     }
 
+    @Override
     public Object get(Object obj) throws IllegalArgumentException {
         return Character.valueOf(getChar(obj));
     }
 
+    @Override
     public boolean getBoolean(Object obj) throws IllegalArgumentException {
         throw newGetBooleanIllegalArgumentException();
     }
 
+    @Override
     public byte getByte(Object obj) throws IllegalArgumentException {
         throw newGetByteIllegalArgumentException();
     }
 
+    @Override
     public char getChar(Object obj) throws IllegalArgumentException {
         return unsafe.getCharVolatile(base, fieldOffset);
     }
 
+    @Override
     public short getShort(Object obj) throws IllegalArgumentException {
         throw newGetShortIllegalArgumentException();
     }
 
+    @Override
     public int getInt(Object obj) throws IllegalArgumentException {
         return getChar(obj);
     }
 
+    @Override
     public long getLong(Object obj) throws IllegalArgumentException {
         return getChar(obj);
     }
 
+    @Override
     public float getFloat(Object obj) throws IllegalArgumentException {
         return getChar(obj);
     }
 
+    @Override
     public double getDouble(Object obj) throws IllegalArgumentException {
         return getChar(obj);
     }
 
+    @Override
     public void set(Object obj, Object value)
         throws IllegalArgumentException, IllegalAccessException
     {
@@ -86,18 +96,21 @@ class UnsafeQualifiedStaticCharacterFieldAccessorImpl
         throwSetIllegalArgumentException(value);
     }
 
+    @Override
     public void setBoolean(Object obj, boolean z)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(z);
     }
 
+    @Override
     public void setByte(Object obj, byte b)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(b);
     }
 
+    @Override
     public void setChar(Object obj, char c)
         throws IllegalArgumentException, IllegalAccessException
     {
@@ -107,30 +120,35 @@ class UnsafeQualifiedStaticCharacterFieldAccessorImpl
         unsafe.putCharVolatile(base, fieldOffset, c);
     }
 
+    @Override
     public void setShort(Object obj, short s)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(s);
     }
 
+    @Override
     public void setInt(Object obj, int i)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(i);
     }
 
+    @Override
     public void setLong(Object obj, long l)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(l);
     }
 
+    @Override
     public void setFloat(Object obj, float f)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(f);
     }
 
+    @Override
     public void setDouble(Object obj, double d)
         throws IllegalArgumentException, IllegalAccessException
     {

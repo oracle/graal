@@ -1897,7 +1897,8 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 
     @Substitute
-    public FieldAccessor newFieldAccessor(Field field, boolean override) {
+    public FieldAccessor newFieldAccessor(Field field0, boolean override) {
+        Field field = field0;
         Field root = langReflectAccess.getRoot(field);
         if (root != null) {
             // FieldAccessor will use the root unless the modifiers have

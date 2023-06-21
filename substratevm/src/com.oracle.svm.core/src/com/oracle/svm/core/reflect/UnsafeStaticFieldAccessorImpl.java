@@ -26,7 +26,6 @@
 package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Field;
-import java.util.Set;
 
 /** Base class for jdk.internal.misc.Unsafe-based FieldAccessors for static
     fields. The observation is that there are only nine types of

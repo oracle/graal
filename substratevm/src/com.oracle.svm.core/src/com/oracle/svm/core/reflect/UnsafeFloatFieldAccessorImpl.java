@@ -32,43 +32,53 @@ class UnsafeFloatFieldAccessorImpl extends UnsafeFieldAccessorImpl {
         super(field);
     }
 
+    @Override
     public Object get(Object obj) throws IllegalArgumentException {
         return Float.valueOf(getFloat(obj));
     }
 
+    @Override
     public boolean getBoolean(Object obj) throws IllegalArgumentException {
         throw newGetBooleanIllegalArgumentException();
     }
 
+    @Override
     public byte getByte(Object obj) throws IllegalArgumentException {
         throw newGetByteIllegalArgumentException();
     }
 
+    @Override
     public char getChar(Object obj) throws IllegalArgumentException {
         throw newGetCharIllegalArgumentException();
     }
 
+    @Override
     public short getShort(Object obj) throws IllegalArgumentException {
         throw newGetShortIllegalArgumentException();
     }
 
+    @Override
     public int getInt(Object obj) throws IllegalArgumentException {
         throw newGetIntIllegalArgumentException();
     }
 
+    @Override
     public long getLong(Object obj) throws IllegalArgumentException {
         throw newGetLongIllegalArgumentException();
     }
 
+    @Override
     public float getFloat(Object obj) throws IllegalArgumentException {
         ensureObj(obj);
         return unsafe.getFloat(obj, fieldOffset);
     }
 
+    @Override
     public double getDouble(Object obj) throws IllegalArgumentException {
         return getFloat(obj);
     }
 
+    @Override
     public void set(Object obj, Object value)
         throws IllegalArgumentException, IllegalAccessException
     {
@@ -106,42 +116,49 @@ class UnsafeFloatFieldAccessorImpl extends UnsafeFieldAccessorImpl {
         throwSetIllegalArgumentException(value);
     }
 
+    @Override
     public void setBoolean(Object obj, boolean z)
         throws IllegalArgumentException, IllegalAccessException
     {
         throwSetIllegalArgumentException(z);
     }
 
+    @Override
     public void setByte(Object obj, byte b)
         throws IllegalArgumentException, IllegalAccessException
     {
         setFloat(obj, b);
     }
 
+    @Override
     public void setChar(Object obj, char c)
         throws IllegalArgumentException, IllegalAccessException
     {
         setFloat(obj, c);
     }
 
+    @Override
     public void setShort(Object obj, short s)
         throws IllegalArgumentException, IllegalAccessException
     {
         setFloat(obj, s);
     }
 
+    @Override
     public void setInt(Object obj, int i)
         throws IllegalArgumentException, IllegalAccessException
     {
         setFloat(obj, i);
     }
 
+    @Override
     public void setLong(Object obj, long l)
         throws IllegalArgumentException, IllegalAccessException
     {
         setFloat(obj, l);
     }
 
+    @Override
     public void setFloat(Object obj, float f)
         throws IllegalArgumentException, IllegalAccessException
     {
@@ -152,6 +169,7 @@ class UnsafeFloatFieldAccessorImpl extends UnsafeFieldAccessorImpl {
         unsafe.putFloat(obj, fieldOffset, f);
     }
 
+    @Override
     public void setDouble(Object obj, double d)
         throws IllegalArgumentException, IllegalAccessException
     {
