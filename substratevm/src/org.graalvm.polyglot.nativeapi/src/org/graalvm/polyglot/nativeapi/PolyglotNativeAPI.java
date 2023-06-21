@@ -53,6 +53,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
+import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.CHeader;
@@ -1865,24 +1866,27 @@ public final class PolyglotNativeAPI {
         nullCheck(callback, "callback");
         nullCheck(value, "value");
         Context c = fetchHandle(context);
-        ProxyExecutable executable = (Value... arguments) -> {
-            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
-            try {
-                ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
-                for (int i = 0; i < arguments.length; i++) {
-                    handleArgs[i] = createHandle(arguments[i]);
+        ProxyExecutable executable = new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
+                try {
+                    ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
+                    for (int i = 0; i < arguments.length; i++) {
+                        handleArgs[i] = createHandle(arguments[i]);
+                    }
+                    PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
+                    PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
+                    CallbackException ce = exceptionsTL.get();
+                    if (ce != null) {
+                        exceptionsTL.remove();
+                        throw ce;
+                    } else {
+                        return PolyglotNativeAPI.fetchHandle(result);
+                    }
+                } finally {
+                    getHandles().popFramesIncluding(frame);
                 }
-                PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
-                PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
-                CallbackException ce = exceptionsTL.get();
-                if (ce != null) {
-                    exceptionsTL.remove();
-                    throw ce;
-                } else {
-                    return PolyglotNativeAPI.fetchHandle(result);
-                }
-            } finally {
-                getHandles().popFramesIncluding(frame);
             }
         };
         value.write(createHandle(c.asValue(executable)));
@@ -2295,20 +2299,24 @@ public final class PolyglotNativeAPI {
             return poly_ok;
         }
         PolyglotCallbackInfoInternal info = new PolyglotCallbackInfoInternal(new ObjectHandle[0], data);
-        Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, access -> {
-            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
-            try {
-                PolyglotCallbackInfo infoHandle = (PolyglotCallbackInfo) createHandle(info);
-                callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
-                CallbackException ce = exceptionsTL.get();
-                if (ce != null) {
-                    exceptionsTL.remove();
-                    access.throwException(ce);
+        RecurringCallback recurringCallback = new RecurringCallback() {
+            @Override
+            public void run(Threading.RecurringCallbackAccess access) {
+                int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
+                try {
+                    PolyglotCallbackInfo infoHandle = (PolyglotCallbackInfo) createHandle(info);
+                    callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
+                    CallbackException ce = exceptionsTL.get();
+                    if (ce != null) {
+                        exceptionsTL.remove();
+                        access.throwException(ce);
+                    }
+                } finally {
+                    getHandles().popFramesIncluding(frame);
                 }
-            } finally {
-                getHandles().popFramesIncluding(frame);
             }
-        });
+        };
+        Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, recurringCallback);
         return poly_ok;
     }
 
