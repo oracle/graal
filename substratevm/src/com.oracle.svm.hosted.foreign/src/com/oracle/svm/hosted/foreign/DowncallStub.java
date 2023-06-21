@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.invoke.MethodType;
 import java.util.List;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -51,7 +50,6 @@ import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -67,9 +65,9 @@ import jdk.vm.ci.meta.Signature;
  * handles (or specialized classes);</li>
  * <li>Unbox the arguments (the arguments are in an array of Objects, due to funneling through
  * {@link LinkToNativeSupportImpl#linkToNative}) --- done by
- * {@link DowncallStub#adaptArguments};</li>
+ * {@link ForeignGraphKit#unboxAndAdapt};</li>
  * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
- * {@link DowncallStub#adaptArguments}, see {@link AbiUtils.Adaptation}</li>
+ * {@link ForeignGraphKit#unboxAndAdapt}, see {@link AbiUtils.Adaptation}</li>
  * <li>Transform HotSpot's memory moves into ones for SubstrateVM --- done by
  * {@link AbiUtils#toMemoryAssignment}</li>
  * <li>Perform a C-function call:</li>
@@ -82,7 +80,7 @@ import jdk.vm.ci.meta.Signature;
  * {@link com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig#getCallingConvention} and
  * {@link com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend.SubstrateAMD64NodeLIRBuilder#emitInvoke}</li>
  * </ul>
- * <li>If needed, box the return --- done by {@link DowncallStub#adaptReturnValue}.</li>
+ * <li>If needed, box the return --- done by {@link ForeignGraphKit#boxAndReturn}.</li>
  * </ul>
  * Call state capture is done in the call epilogue to prevent the runtime environment from modifying
  * the call state, which could happen if a safepoint was inserted between the downcall and the
@@ -112,18 +110,18 @@ class DowncallStub extends NonBytecodeMethod {
      */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
         List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
         AbiUtils.Adaptation[] adaptations = AbiUtils.singleton().adaptArguments(nep);
 
         assert arguments.size() == 1;
-        var argumentsAndNep = adaptArguments(kit, nep.linkMethodType(), arguments.get(0), adaptations);
-        arguments = argumentsAndNep.getLeft();
+        var argumentsAndNep = kit.unpackArgumentsAndExtractNEP(arguments.get(0), nep.linkMethodType());
+        arguments = kit.unboxAndAdaptAll(argumentsAndNep.getLeft(), nep.linkMethodType(), adaptations);
         ValueNode runtimeNep = argumentsAndNep.getRight();
 
-        MethodType callType = adaptMethodType(nep, adaptations);
+        MethodType callType = kit.adaptMethodType(nep, adaptations);
         assert callType.parameterCount() == arguments.size();
 
         int callAddressIndex = nep.callAddressIndex();
@@ -167,61 +165,8 @@ class DowncallStub extends NonBytecodeMethod {
                         captureMask,
                         captureAddress);
 
-        returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
-
-        kit.createReturn(returnValue, JavaKind.Object);
+        kit.boxAndReturn(returnValue, nep.linkMethodType());
 
         return kit.finalizeGraph();
-    }
-
-    private static ValueNode adaptArgument(HostedGraphKit kit, ValueNode argument, Class<?> type, AbiUtils.Adaptation adaptation) {
-        argument = kit.createUnboxing(argument, JavaKind.fromJavaClass(type));
-        if (adaptation != null) {
-            argument = adaptation.apply(argument);
-        }
-        return argument;
-    }
-
-    private static MethodType adaptMethodType(NativeEntryPointInfo nep, AbiUtils.Adaptation[] adaptations) {
-        MethodType mt = nep.linkMethodType();
-
-        Class<?>[] parameters = new Class<?>[mt.parameterCount()];
-        for (int i = 0; i < mt.parameterCount(); ++i) {
-            Class<?> parameterType = mt.parameterType(i);
-            assert parameterType.isPrimitive() : parameterType;
-
-            AbiUtils.Adaptation adaptation = adaptations[i];
-            if (adaptation != null) {
-                parameterType = adaptation.apply(parameterType);
-            }
-
-            parameters[i] = parameterType;
-        }
-
-        return MethodType.methodType(mt.returnType(), parameters);
-    }
-
-    private static Pair<List<ValueNode>, ValueNode> adaptArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray, AbiUtils.Adaptation[] adaptations) {
-        var args = kit.loadArrayElements(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);
-        assert adaptations.length == signature.parameterCount() : adaptations.length + " " + signature.parameterCount();
-        assert args.size() == signature.parameterCount() + 1 : args.size() + " " + (signature.parameterCount() + 1);
-        // We have to drop the NEP, which is the last argument
-        ValueNode nep = args.remove(args.size() - 1);
-        for (int i = 0; i < args.size(); ++i) {
-            args.set(i, adaptArgument(kit, args.get(i), signature.parameterType(i), adaptations[i]));
-        }
-        return Pair.create(args, nep);
-    }
-
-    private static ValueNode adaptReturnValue(HostedGraphKit kit, MethodType signature, ValueNode invokeValue) {
-        ValueNode returnValue = invokeValue;
-        JavaKind returnKind = JavaKind.fromJavaClass(signature.returnType());
-        if (returnKind.equals(JavaKind.Void)) {
-            return kit.createObject(null);
-        }
-
-        var boxed = kit.getMetaAccess().lookupJavaType(returnKind.toBoxedJavaClass());
-        returnValue = kit.createBoxing(returnValue, returnKind, boxed);
-        return returnValue;
     }
 }

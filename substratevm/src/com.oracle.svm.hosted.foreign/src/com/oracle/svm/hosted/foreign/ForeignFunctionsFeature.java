@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -40,6 +43,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
@@ -56,7 +60,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
-import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
@@ -97,6 +100,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     private boolean sealed = false;
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
+
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> downcallsMapping = new HashMap<>();
 
@@ -148,33 +152,47 @@ public class ForeignFunctionsFeature implements InternalFeature {
         ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
                         ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
-
     }
 
     private int createDowncallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
-        Map<NativeEntryPointInfo, ResolvedJavaMethod> created = new HashMap<>();
-        for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : registeredDowncalls) {
-            NativeEntryPointInfo nepi = AbiUtils.singleton().makeEntrypoint(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
+        this.downcallsMapping.putAll(createStubs(
+                        registeredDowncalls,
+                        access,
+                        AbiUtils.singleton()::makeNativeEntrypoint,
+                        n -> new DowncallStub(n, access.getMetaAccess().getWrapped()),
+                        ForeignFunctionsRuntime.singleton()::addDowncallStubPointer));
+        return downcallsMapping.size();
+    }
+
+    private <S> Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> createStubs(
+                    Set<Pair<FunctionDescriptor, Linker.Option[]>> source,
+                    FeatureImpl.BeforeAnalysisAccessImpl access,
+                    BiFunction<FunctionDescriptor, Linker.Option[], S> stubGenerator,
+                    Function<S, ResolvedJavaMethod> wrapper,
+                    BiConsumer<S, CFunctionPointer> register) {
+        Map<S, ResolvedJavaMethod> created = new HashMap<>();
+        Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> mapping = new HashMap<>();
+
+        for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : source) {
+            S nepi = stubGenerator.apply(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
 
             if (!created.containsKey(nepi)) {
-                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
+                ResolvedJavaMethod stub = wrapper.apply(nepi);
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
-                access.getBigBang().addRootMethod(analysisStub, false, "Foreign downcall stub, registered in " + ForeignFunctionsFeature.class);
+                access.getBigBang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
                 created.put(nepi, analysisStub);
-                ForeignFunctionsRuntime.singleton().addStubPointer(
-                                nepi,
-                                new MethodPointer(analysisStub));
-                downcallsMapping.put(analysisStub.getName(), new ArrayList<>());
+                register.accept(nepi, new MethodPointer(analysisStub));
+                mapping.put(analysisStub.getName(), new ArrayList<>());
             }
 
             String stubName = created.get(nepi).getName();
-            downcallsMapping.get(stubName).add(fdOptionsPair);
+            mapping.get(stubName).add(fdOptionsPair);
 
-            assert created.size() == downcallsMapping.size();
+            assert created.size() == mapping.size();
         }
-        registeredDowncalls.clear();
+        source.clear();
 
-        return created.size();
+        return mapping;
     }
 
     @Override

@@ -35,8 +35,8 @@ import jdk.internal.foreign.abi.VMStorage;
 
 /**
  * Carries information about an entrypoint for foreign function calls.
- * {@link ForeignFunctionsRuntime#getStubPointer} allows getting the associated function pointer at
- * runtime (if it exists).
+ * {@link ForeignFunctionsRuntime#getDowncallStubPointer} allows getting the associated function
+ * pointer at runtime (if it exists).
  * <p>
  * {@link NativeEntryPointInfo#linkMethodType} is of the form (<>: argument; []: optional argument)
  *
@@ -86,7 +86,7 @@ public final class NativeEntryPointInfo {
                     int capturedStateMask,
                     boolean needsTransition) {
         var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
-        long addr = ForeignFunctionsRuntime.singleton().getStubPointer(info).rawValue();
+        long addr = ForeignFunctionsRuntime.singleton().getDowncallStubPointer(info).rawValue();
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr, capturedStateMask);
     }
 

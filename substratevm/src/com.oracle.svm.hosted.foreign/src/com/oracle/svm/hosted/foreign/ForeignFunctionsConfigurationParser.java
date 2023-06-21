@@ -29,6 +29,7 @@ import java.lang.foreign.Linker;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -53,22 +54,24 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     @Override
     public void parseAndRegister(Object json, URI origin) {
         var topLevel = asMap(json, "first level of document must be a map");
-        checkAttributes(topLevel, "foreign methods categories", List.of("downcalls"));
-        for (Object downcall : asList(topLevel.get("downcalls"), "downcalls must be an array of method signatures")) {
-            parseDowncall(downcall);
+        checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls"));
+
+        var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of method signatures");
+        for (Object downcall : downcalls) {
+            parseAndRegisterForeignCall(downcall, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
     }
 
-    private void parseDowncall(Object downcall) {
-        var map = asMap(downcall, "a downcall must be a map");
-        checkAttributes(map, "downcall", List.of("descriptor"), List.of("options"));
-        var descriptor = parseDowncallSignatures(map.get("descriptor"));
+    private void parseAndRegisterForeignCall(Object call, BiConsumer<Object, Object[]> register) {
+        var map = asMap(call, "a foreign call must be a map");
+        checkAttributes(map, "foreign call", List.of("descriptor"), List.of("options"));
+        var descriptor = parseDescriptor(map.get("descriptor"));
         var options = parseOptions(map.get("options", null));
-        accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options.toArray());
+        register.accept(descriptor, options.toArray());
     }
 
-    private FunctionDescriptor parseDowncallSignatures(Object signature) {
-        String input = asString(signature, "downcalls's elements must be function descriptors");
+    private FunctionDescriptor parseDescriptor(Object signature) {
+        String input = asString(signature, "a function descriptor must be a string");
         return FunctionDescriptorParser.parse(input);
     }
 

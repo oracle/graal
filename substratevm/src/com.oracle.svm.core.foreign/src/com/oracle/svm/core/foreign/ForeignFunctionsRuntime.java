@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
 
@@ -51,15 +50,15 @@ public class ForeignFunctionsRuntime {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
-    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> stubs = EconomicMap.create();
+    private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
 
     public ForeignFunctionsRuntime() {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        VMError.guarantee(!stubs.containsKey(nepi), "Multiple stubs generated for " + nepi);
-        stubs.put(nepi, new FunctionPointerHolder(ptr));
+    public void addDowncallStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
+        VMError.guarantee(!downcallStubs.containsKey(nepi), "Seems like multiple stubs were generated for " + nepi);
+        downcallStubs.put(nepi, new FunctionPointerHolder(ptr));
     }
 
     /**
@@ -68,22 +67,20 @@ public class ForeignFunctionsRuntime {
      * {@link jdk.internal.foreign.abi.DowncallLinker#getBoundMethodHandle} and add information
      * about the descriptor there.
      */
-    public CodePointer getStubPointer(NativeEntryPointInfo nep) {
-        FunctionPointerHolder pointer = stubs.get(nep);
+    public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
+        FunctionPointerHolder pointer = downcallStubs.get(nep);
         if (pointer == null) {
-            throw new UnregisteredDowncallStubException(nep);
+            throw new UnregisteredForeignStubException(nep);
         } else {
             return pointer.functionPointer;
         }
     }
 
     @SuppressWarnings("serial")
-    public static class UnregisteredDowncallStubException extends RuntimeException {
-        private final NativeEntryPointInfo nep;
+    public static class UnregisteredForeignStubException extends RuntimeException {
 
-        UnregisteredDowncallStubException(NativeEntryPointInfo nep) {
+        UnregisteredForeignStubException(NativeEntryPointInfo nep) {
             super(generateMessage(nep));
-            this.nep = nep;
         }
 
         private static String generateMessage(NativeEntryPointInfo nep) {
@@ -138,6 +135,6 @@ public class ForeignFunctionsRuntime {
         ++i;
     }
 
-    public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
+    @Platforms(Platform.HOSTED_ONLY.class) public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
                     "captureCallState", false, LocationIdentity.any());
 }
