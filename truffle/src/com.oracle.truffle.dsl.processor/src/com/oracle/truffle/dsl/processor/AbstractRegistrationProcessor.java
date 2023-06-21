@@ -243,6 +243,20 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
+    static void generateCreateInternalResources(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
+        if (detectors.isEmpty()) {
+            builder.startReturn().startStaticCall(context.getType(List.class), "of").end().end();
+        } else {
+            builder.startReturn();
+            builder.startStaticCall(context.getType(List.class), "of");
+            for (TypeMirror detector : detectors) {
+                builder.startGroup().startNew(detector).end(2);
+            }
+            builder.end(2);
+        }
+    }
+
     /**
      * Determines if a given exception is (most likely) caused by
      * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -52,65 +53,72 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
-
-import static com.oracle.truffle.polyglot.PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
-import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET;
-import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex;
 
 final class InternalResourceCache {
 
     private static final ConcurrentHashMap<Path, Lock> pendingUnpackLocks = new ConcurrentHashMap<>();
+    private static volatile Path cacheRoot;
 
-    private InternalResourceCache() {
+    private final String id;
+    private final InternalResource resource;
+    private volatile FileSystem resourceFileSystem;
+
+    InternalResourceCache(String languageId, InternalResource forResource) {
+        this.id = Objects.requireNonNull(languageId);
+        this.resource = Objects.requireNonNull(forResource);
     }
 
-    static Path getInternalResource(PolyglotEngineImpl engine, Class<? extends InternalResource> resourceType) {
-        return getInternalResource(resourceType, (e) -> toHostException(engine, e));
-    }
-
-    static Path getInternalResource(Class<? extends InternalResource> resourceType) {
-        return getInternalResource(resourceType, (e) -> PolyglotLanguageContext.silenceException(RuntimeException.class, e));
-    }
-
-    private static Path getInternalResource(Class<? extends InternalResource> resourceType, Function<Exception, RuntimeException> exceptionHandler) {
-
-        InternalResource internalResource;
-        try {
-            internalResource = resourceType.getDeclaredConstructor().newInstance();
-        } catch (ReflectiveOperationException e) {
-            throw exceptionHandler.apply(e);
+    FileSystem getResourceFileSystem() throws IOException {
+        FileSystem result = resourceFileSystem;
+        if (result == null) {
+            Path root;
+            if (ImageInfo.inImageRuntimeCode()) {
+                root = getResourceRootOnNativeImage();
+            } else {
+                root = getResourceRootOnHotSpot();
+            }
+            result = FileSystems.newInternalResourceFileSystem(root);
+            resourceFileSystem = result;
         }
-        Path cacheRoot = findSystemCacheRoot();
-        Path resourceRoot = cacheRoot.resolve(internalResource.name()).resolve(internalResource.versionHash());
-        Lock unpackLock = pendingUnpackLocks.computeIfAbsent(resourceRoot, (p) -> new ReentrantLock());
+        return result;
+    }
+
+    private Path getResourceRootOnHotSpot() throws IOException {
+        Path root = findCacheRootOnHotSpot();
+        Path target = root.resolve(id).resolve(resource.name()).resolve(resource.versionHash());
+        Lock unpackLock = pendingUnpackLocks.computeIfAbsent(target, (p) -> new ReentrantLock());
         unpackLock.lock();
         try {
-            if (!Files.exists(resourceRoot)) {
-                if (ImageInfo.inImageRuntimeCode()) {
-                    throw new IOException("Missing native image resources " + resourceRoot);
-                } else {
-                    Path tmpDir = Files.createTempDirectory(cacheRoot, null);
-                    internalResource.unpackFiles(tmpDir);
-                    try {
-                        Files.move(tmpDir, resourceRoot, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.COPY_ATTRIBUTES);
-                    } catch (FileAlreadyExistsException existsException) {
-                        // race with other process that already moved the folder
-                        // just unlink the tmp directory
-                        unlink(tmpDir);
-                    }
+            if (!Files.exists(target)) {
+                Path owner = Files.createDirectories(target.getParent());
+                Path tmpDir = Files.createTempDirectory(owner, null);
+                resource.unpackFiles(tmpDir);
+                try {
+                    Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
+                } catch (FileAlreadyExistsException existsException) {
+                    // race with other process that already moved the folder just unlink the tmp
+                    // directory
+                    unlink(tmpDir);
                 }
+            } else {
+                verifyResourceRoot(target);
             }
-            verifyResourceRoot(resourceRoot);
-        } catch (IOException ioe) {
-            throw exceptionHandler.apply(ioe);
         } finally {
             unpackLock.unlock();
+            pendingUnpackLocks.remove(target, unpackLock);
         }
-        return resourceRoot;
+        return target;
+    }
+
+    private Path getResourceRootOnNativeImage() throws IOException {
+        Path root = findCacheRootOnNativeImage();
+        Path target = root.resolve(id).resolve(resource.name());
+        verifyResourceRoot(target);
+        return target;
     }
 
     private static void verifyResourceRoot(Path resourceRoot) throws IOException {
@@ -118,7 +126,7 @@ final class InternalResourceCache {
             throw new IOException("Resource cache root " + resourceRoot + " must be a directory.");
         }
         if (!Files.isReadable(resourceRoot)) {
-            throw new IOException("Resource cache root " + resourceRoot + " must be directory ");
+            throw new IOException("Resource cache root " + resourceRoot + " must be readable.");
         }
     }
 
@@ -133,44 +141,42 @@ final class InternalResourceCache {
         Files.delete(f);
     }
 
-    private static Path findSystemCacheRoot() {
-        if (ImageInfo.inImageRuntimeCode()) {
-            return findSystemCacheRootForNativeImage();
-        } else {
-            return findSystemCacheRootForHotSpot();
+    private static Path findCacheRootOnHotSpot() {
+        Path res = cacheRoot;
+        if (cacheRoot == null) {
+            String userHomeValue = System.getProperty("user.home");
+            if (userHomeValue == null) {
+                throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
+            }
+            Path userHome = Paths.get(userHomeValue);
+            Path container;
+            String os = System.getProperty("os.name");
+            if (os == null) {
+                throw CompilerDirectives.shouldNotReachHere("The 'os.name' system property is not set.");
+            } else if (os.equals("Linux")) {
+                container = userHome.resolve(".cache");
+            } else if (os.equals("Mac OS X") || os.equals("Darwin")) {
+                container = userHome.resolve("Library/Caches");
+            } else if (os.startsWith("Windows")) {
+                container = userHome.resolve("AppData").resolve("Local");
+            } else {
+                // Fallback
+                container = userHome.resolve(".cache");
+            }
+            res = container.resolve("org.graalvm.polyglot");
+            cacheRoot = res;
         }
+        return res;
     }
 
-    private static Path findSystemCacheRootForHotSpot() {
-        String userHomeValue = System.getProperty("user.home");
-        if (userHomeValue == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
+    private static Path findCacheRootOnNativeImage() {
+        Path res = cacheRoot;
+        if (cacheRoot == null) {
+            assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
+            Path executable = Path.of(ProcessProperties.getExecutableName());
+            res = executable.resolve("resources");
+            cacheRoot = res;
         }
-        Path userHome = Paths.get(userHomeValue);
-        Path container;
-        String os = System.getProperty("os.name");
-        if (os == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'os.name' system property is not set.");
-        } else if (os.equals("Linux")) {
-            container = userHome.resolve(".cache");
-        } else if (os.equals("Mac OS X") || os.equals("Darwin")) {
-            container = userHome.resolve("Library/Caches");
-        } else if (os.startsWith("Windows")) {
-            container = userHome.resolve("AppData").resolve("Local");
-        } else {
-            // Fallback
-            container = userHome.resolve(".cache");
-        }
-        return container.resolve("org.graalvm.polyglot");
-    }
-
-    private static Path findSystemCacheRootForNativeImage() {
-        assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
-        Path executable = Path.of(ProcessProperties.getExecutableName());
-        return executable.resolve("resources");
-    }
-
-    private static RuntimeException toHostException(PolyglotEngineImpl engine, Exception e) {
-        return engine.host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), e);
+        return res;
     }
 }

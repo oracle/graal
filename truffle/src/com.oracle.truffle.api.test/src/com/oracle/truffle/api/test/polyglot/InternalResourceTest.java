@@ -41,81 +41,118 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.channels.UnsupportedAddressTypeException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.oracle.truffle.api.TruffleFile;
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 
-public class InternalResourceTest extends AbstractPolyglotTest {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-    static class NFILibraryResource implements InternalResource {
+public class InternalResourceTest {
+
+    static class LibraryResource implements InternalResource {
+
+        static final String[] RESOURCES = {"library"};
+
+        static int unpackedCalled;
 
         @Override
         public void unpackFiles(Path targetDirectory) throws IOException {
-            String osName;
-            switch (OSUtils.getCurrent()) {
-                case Darwin:
-                    osName = "darwin";
-                    break;
-                /* other OS */
-                default:
-                    throw new UnsupportedAddressTypeException();
-            }
-
-            String fileName = System.mapLibraryName("trufflenfi-" + osName + "-" + System.getProperty("os.arch"));
-            try (InputStream stream = getClass().getResourceAsStream(fileName)) {
-                if (stream == null) {
-                    throw new UnsatisfiedLinkError("Could not find platform library: " + fileName);
-                }
-                Path p = targetDirectory.resolve(fileName);
-                Files.copy(stream, p);
-                p.toFile().setExecutable(true);
+            unpackedCalled++;
+            for (String resource : RESOURCES) {
+                Files.createFile(targetDirectory.resolve(resource));
             }
         }
 
         @Override
         public String versionHash() {
-            return ""/* Read unique hash file from jar */;
+            return "1";
         }
 
         @Override
         public String name() {
-            return "trufflenfi";
+            return "native-library";
+        }
+    }
+
+    static class SourcesResource implements InternalResource {
+
+        static final String[] RESOURCES = {"source_1", "source_2", "source_3"};
+
+        static int unpackedCalled;
+
+        @Override
+        public void unpackFiles(Path targetDirectory) throws IOException {
+            unpackedCalled++;
+            for (String resource : RESOURCES) {
+                Files.createFile(targetDirectory.resolve(resource));
+            }
         }
 
+        @Override
+        public String versionHash() {
+            return "1";
+        }
+
+        @Override
+        public String name() {
+            return "sources";
+        }
     }
 
-    static void loadNFILibrary(TruffleLanguage.Env env) {
-        System.load(env.getInternalResource(NFILibraryResource.class).getPath());
+    private static void verifyResources(TruffleFile root, String[] resources) {
+        assertTrue(root.exists());
+        assertTrue(root.isDirectory());
+        assertTrue(root.isReadable());
+        assertFalse(root.isWritable());
+        for (String resource : resources) {
+            TruffleFile file = root.resolve(resource);
+            assertTrue(file.exists());
+            assertTrue(file.isReadable());
+            assertFalse(file.isWritable());
+        }
     }
 
-    @Registration(/* ... */internalResources = NFILibraryResource.class)
-    public static class NFILanguage extends AbstractExecutableTestLanguage {
+    @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestResourcesUnpackedOnce extends AbstractExecutableTestLanguage {
 
-        public static final String ID = TestUtils.getDefaultLanguageId(NFILanguage.class);
+        public static final String ID = TestUtils.getDefaultLanguageId(TestResourcesUnpackedOnce.class);
 
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            loadNFILibrary(env);
+            LibraryResource.unpackedCalled = 0;
+            SourcesResource.unpackedCalled = 0;
+            TruffleFile libRoot1 = env.getInternalResource(LibraryResource.class);
+            verifyResources(libRoot1, LibraryResource.RESOURCES);
+            TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
+            verifyResources(srcRoot1, SourcesResource.RESOURCES);
+            TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
+            assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
+            TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
+            assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
+            assertEquals(1, LibraryResource.unpackedCalled);
+            assertEquals(1, SourcesResource.unpackedCalled);
             return "";
         }
     }
 
     @Test
     public void test() {
-        AbstractExecutableTestLanguage.execute(context, NFILanguage.class);
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestResourcesUnpackedOnce.class);
+        }
     }
 
 }

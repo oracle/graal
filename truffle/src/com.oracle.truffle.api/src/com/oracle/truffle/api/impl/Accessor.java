@@ -1252,6 +1252,8 @@ public abstract class Accessor {
 
         public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
+        public abstract List<InternalResource> createInternalResources(TruffleLanguageProvider provider);
+
     }
 
     public abstract static class InstrumentProviderSupport extends Support {

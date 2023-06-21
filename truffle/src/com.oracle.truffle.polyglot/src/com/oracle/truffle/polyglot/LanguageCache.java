@@ -63,10 +63,13 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -109,6 +112,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
+    private volatile Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
     private int staticIndex;
 
     /*
@@ -608,6 +612,29 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return result;
     }
 
+    InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
+        var cacheByType = internalResources;
+        if (cacheByType == null) {
+            synchronized (this) {
+                cacheByType = internalResources;
+                if (cacheByType == null) {
+                    cacheByType = new HashMap<>();
+                    for (InternalResource internalResource : providerAdapter.createInternalResources()) {
+                        cacheByType.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
+                    }
+                    internalResources = cacheByType;
+                }
+            }
+        }
+        InternalResourceCache cache = cacheByType.get(resourceType);
+        if (cache == null) {
+            throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
+                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+        } else {
+            return cache;
+        }
+    }
+
     @Override
     public String toString() {
         return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
@@ -662,6 +689,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         protected List<TruffleLanguageProvider> createFileTypeDetectors() {
             return List.of();
         }
+
+        @Override
+        protected List<?> createInternalResources() {
+            return List.of();
+        }
     }
 
     private interface ProviderAdapter {
@@ -674,6 +706,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Collection<String> getServicesClassNames();
 
         List<FileTypeDetector> createFileTypeDetectors();
+
+        List<InternalResource> createInternalResources();
     }
 
     /**
@@ -714,6 +748,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         public List<FileTypeDetector> createFileTypeDetectors() {
             return provider.createFileTypeDetectors();
         }
+
+        @Override
+        public List<InternalResource> createInternalResources() {
+            return List.of();
+        }
     }
 
     /**
@@ -751,6 +790,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         @Override
         public List<FileTypeDetector> createFileTypeDetectors() {
             return EngineAccessor.LANGUAGE_PROVIDER.createFileTypeDetectors(provider);
+        }
+
+        @Override
+        public List<InternalResource> createInternalResources() {
+            return EngineAccessor.LANGUAGE_PROVIDER.createInternalResources(provider);
         }
     }
 }

@@ -2046,9 +2046,16 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public TruffleFile getInternalResource(Object polyglotLanguageContext, Class<? extends InternalResource> resourceType) {
-            Path resourceRoot = InternalResourceCache.getInternalResource(((PolyglotLanguageContext) polyglotLanguageContext).getEngine(), resourceType);
-            Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotLanguageContext, FileSystems.newInternalResourceFileSystem(resourceRoot));
-            return EngineAccessor.LANGUAGE.getTruffleFile("", fsContext);
+            try {
+                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+                InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceType);
+                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotLanguageContext, resourceCache.getResourceFileSystem());
+                return EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
+            } catch (IOException ioe) {
+                // TODO: It would be better to throw an IOException from the
+                // Env#getInternalResource().
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
         }
     }
 

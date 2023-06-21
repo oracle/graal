@@ -171,7 +171,7 @@ final class FileSystems {
     }
 
     static FileSystem newInternalResourceFileSystem(Path root) {
-        return new InternalResourceFileSystem(root);
+        return newReadOnlyFileSystem(new InternalResourceFileSystem(root));
     }
 
     private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {
@@ -1450,6 +1450,16 @@ final class FileSystems {
         }
 
         @Override
+        public Path parsePath(final URI uri) {
+            return delegateFileSystem.parsePath(uri);
+        }
+
+        @Override
+        public Path parsePath(final String path) {
+            return delegateFileSystem.parsePath(path);
+        }
+
+        @Override
         public boolean isInternal(AbstractPolyglotImpl polyglot) {
             return polyglot.isInternalFileSystem(delegateFileSystem);
         }
@@ -1721,11 +1731,11 @@ final class FileSystems {
     private static final class InternalResourceFileSystem implements PolyglotFileSystem {
 
         private final FileSystem delegate;
-        private final Path root;
+        private final Path rootDelegate;
 
         InternalResourceFileSystem(Path root) {
-            this.delegate = newDefaultFileSystem();
-            this.root = root.normalize();
+            this.delegate = newDefaultFileSystem(null);
+            this.rootDelegate = root.normalize();
         }
 
         @Override
@@ -1740,37 +1750,41 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.checkAccess(normalized, modes, linkOptions);
         }
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.createDirectory(normalized, attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.delete(normalized);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
             return delegate.newByteChannel(normalized, options, attrs);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(rootDelegate);
             return delegate.newDirectoryStream(normalized, filter);
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return path.toAbsolutePath();
+            if (path.isAbsolute()) {
+                return path;
+            } else {
+                return InternalResourcePath.wrap(rootDelegate.resolve(((InternalResourcePath) path).delegate));
+            }
         }
 
         @Override
@@ -1780,33 +1794,33 @@ final class FileSystems {
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
             return delegate.readAttributes(normalized, attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(root);
+            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.setAttribute(normalized, attribute, value, options);
         }
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
-            Path normalizedExisting = ((InternalResourcePath) existing).getNormalizedDelegateAbsolutePath(root);
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalizedExisting = ((InternalResourcePath) existing).getNormalizedDelegateAbsolutePath(rootDelegate);
             PolyglotFileSystem.super.createLink(normalizedLink, normalizedExisting);
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
-            Path normalizedTarget = ((InternalResourcePath) target).getNormalizedDelegateAbsolutePath(root);
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalizedTarget = ((InternalResourcePath) target).getNormalizedDelegateAbsolutePath(rootDelegate);
             PolyglotFileSystem.super.createSymbolicLink(normalizedLink, normalizedTarget, attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(root);
+            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
             return PolyglotFileSystem.super.readSymbolicLink(normalizedLink);
         }
 
@@ -1896,8 +1910,18 @@ final class FileSystems {
             }
 
             @Override
+            public boolean startsWith(String other) {
+                return delegate.startsWith(other);
+            }
+
+            @Override
             public boolean endsWith(Path other) {
                 return delegate.endsWith(((InternalResourcePath) other).delegate);
+            }
+
+            @Override
+            public boolean endsWith(String other) {
+                return delegate.endsWith(other);
             }
 
             @Override
@@ -1907,7 +1931,22 @@ final class FileSystems {
 
             @Override
             public Path resolve(Path other) {
-                return wrap(delegate.relativize(((InternalResourcePath) other).delegate));
+                return wrap(delegate.resolve(((InternalResourcePath) other).delegate));
+            }
+
+            @Override
+            public Path resolve(String other) {
+                return wrap(delegate.resolve(other));
+            }
+
+            @Override
+            public Path resolveSibling(Path other) {
+                return wrap(delegate.resolveSibling(((InternalResourcePath) other).delegate));
+            }
+
+            @Override
+            public Path resolveSibling(String other) {
+                return wrap(delegate.resolveSibling(other));
             }
 
             @Override
@@ -1926,6 +1965,11 @@ final class FileSystems {
 
             @Override
             public Path toAbsolutePath() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public File toFile() {
                 throw new UnsupportedOperationException();
             }
 

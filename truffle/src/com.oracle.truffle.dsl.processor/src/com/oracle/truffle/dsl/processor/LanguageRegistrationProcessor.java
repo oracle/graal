@@ -75,7 +75,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
 
-    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "fileTypeDetectors");
+    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "fileTypeDetectors", "internalResources");
 
     static String resolveLanguageId(Element annotatedElement, AnnotationMirror registration) {
         String id = ElementUtils.getAnnotationValue(String.class, registration, "id");
@@ -255,6 +255,12 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
                 generateGetServicesClassNames(registration, builder, context);
+                break;
+            }
+            case "createInternalResources": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleLanguage_Registration);
+                generateCreateInternalResources(registration, builder, context);
                 break;
             }
             case "createFileTypeDetectors": {

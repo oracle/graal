@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.provider;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 
@@ -92,4 +93,11 @@ public abstract class TruffleLanguageProvider {
      * @since 23.1
      */
     protected abstract List<?> createFileTypeDetectors();
+
+    /**
+     * Creates {@link InternalResource}s used by this {@link TruffleLanguage}.
+     *
+     * @since 23.1
+     */
+    protected abstract List<?> createInternalResources();
 }
