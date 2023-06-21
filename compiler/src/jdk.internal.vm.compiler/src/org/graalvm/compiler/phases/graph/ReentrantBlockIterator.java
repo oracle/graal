@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,7 +141,7 @@ public final class ReentrantBlockIterator {
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
         while (true) {
             if (compilationAlarm.hasExpired()) {
-                int period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
+                double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
                 if (period > 120) {
                     throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
                 } else {
