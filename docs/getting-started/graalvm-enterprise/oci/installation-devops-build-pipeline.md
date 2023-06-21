@@ -8,10 +8,9 @@ permalink: /getting-started/oci/devops-build-pipeline/
 This guide describes how to use Oracle GraalVM in the Oracle Cloud Infrastructure (OCI) DevOps service. 
 [OCI DevOps](https://www.oracle.com/in/devops/devops-service/) is a continuous integration/continuous delivery (CI/CD) service that enables developers to automate the delivery and deployment of software to OCI compute platforms.
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
+> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
 OCI DevOps service provides build runners with Oracle Linux 7 as the base container image along with a number of [runtimes and tools](https://docs.oracle.com/en-us/iaas/Content/devops/using/runtime_details.htm). 
-Oracle GraalVM is supported.
 
 Oracle GraalVM RPMs are available in the Oracle YUM repository. 
 Each RPM is self-contained and will automatically pull in all its required dependencies.
@@ -23,15 +22,16 @@ You can install and use Oracle GraalVM in DevOps Build Pipelines using the YUM p
 - [OCI Notification Topic](https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/managingtopicsandsubscriptions.htm#createTopic)
 - [OCI DevOps Build Pipeline](https://docs.oracle.com/en-us/iaas/Content/devops/using/create_buildpipeline.htm)
 
-The way to work with a Build Pipeline is to add statements to a [build specification file](https://docs.oracle.com/en-us/iaas/Content/devops/using/build_specs.htm), _build-spec.yml_, then the DevOps CI/CD platform reads the file and runs the commands one by one. 
-You do not run a YUM package manager command manually.
+To work with a Build Pipeline, add statements to a [build specification file](https://docs.oracle.com/en-us/iaas/Content/devops/using/build_specs.htm), _build-spec.yml_. 
+The DevOps CI/CD platform reads the file and runs the commands one by one. 
+You do not need to run a YUM package manager command manually.
 
-There are Oracle GraalVM RPMs for JDK 20 and JDK 17 with the following package names: `graalvm-17-native-image` and `graalvm-20-native-image`. 
-These Oracle GraalVM distributions include a JDK and Natime Image.
+RPMs for Oracle GraalVM for JDK 17 and Oracle GraalVM for JDK 20 are available with the package names `graalvm-17-native-image` and `graalvm-20-native-image` respectively. 
+Each package includes both JDK and Natime Image.
 
-To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as follows:
+To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add the command to install Oracle GraalVM with Native Image and Java Development Kit (JDK):
+1. Add the command to install Oracle GraalVM for JDK 20 with Native Image and Java Development Kit (JDK):
 
     ```yml
     steps:
@@ -41,7 +41,7 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
         yum -y install graalvm-20-native-image
     ```
 
-2. Add the command to set the `JAVA_HOME` environment variable:
+2. Add the command to set the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 20:
 
     ```yml
     env:
@@ -64,7 +64,7 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
         export PATH=$JAVA_HOME/bin:$PATH
     ```
 
-Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec.yaml).
+Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec_oracle_graalvm_jdk20.yaml).
 
 Oracle GraalVM provides more features, each of which can be installed as an add-on.
 Use the `yum list` command to get a list of the available RPMs for your installation.

@@ -11,7 +11,8 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 Oracle GraalVM for JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure (OCI) at no additional cost. The support is included in the Oracle Cloud subscription.
+> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
+
 ## Create and Run a Java Application in OCI Code Editor
 
 ### Step 1: Open a Terminal in Code Editor
