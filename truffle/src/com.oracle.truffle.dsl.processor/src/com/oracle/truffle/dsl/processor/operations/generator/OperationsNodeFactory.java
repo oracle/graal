@@ -2556,9 +2556,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    b.startIf().string("curStack != 0").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle of an operation.\"");
-                    b.end();
+                    // TODO: track stack heights at branch locations and branch labels. validate
+                    // that they agree.
+                    // b.startIf().string("curStack != 0").end().startBlock();
+                    // buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle
+                    // of an operation.\"");
+                    // b.end();
 
                     b.statement("doEmitLeaves(label.declaringOp)");
 
@@ -2650,9 +2653,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                 b.end();
 
-                b.startIf().string("curStack != 0").end().startBlock();
-                buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the middle of an operation.\"");
-                b.end();
+                // b.startIf().string("curStack != 0").end().startBlock();
+                // buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the
+                // middle of an operation.\"");
+                // b.end();
 
                 b.statement("label.index = bci");
                 b.startStatement().startCall("resolveUnresolvedLabels");
