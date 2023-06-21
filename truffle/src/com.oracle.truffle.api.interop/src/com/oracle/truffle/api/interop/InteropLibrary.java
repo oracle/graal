@@ -604,8 +604,8 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver is not a
      *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
-     * @see #fitsInLong(Object)
-     * @since 19.0
+     * @see #fitsInBigInteger(Object)
+     * @since 23.0
      */
     @Abstract(ifExportedAsWarning = "isNumber")
     public BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException {
