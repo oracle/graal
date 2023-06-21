@@ -616,20 +616,31 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
 
         for (HostedMethod method : universe.getMethods()) {
-            /*
-             * Deoptimization target code for deoptimization testing: all methods that are not
-             * blacklisted are possible deoptimization targets. The methods are also flagged so that
-             * all possible deoptimization entry points are emitted.
-             */
-            if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
-                method.compilationInfo.canDeoptForTesting = true;
+            if (parseOnce) {
+                if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
+                    method.compilationInfo.canDeoptForTesting = true;
+                    assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMultiMethod(DEOPT_TARGET_METHOD));
+                }
+            } else {
+                /*
+                 * Deoptimization target code for deoptimization testing: all methods that are not
+                 * blacklisted are possible deoptimization targets. The methods are also flagged so
+                 * that all possible deoptimization entry points are emitted.
+                 */
+                if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
+                    method.compilationInfo.canDeoptForTesting = true;
+                }
             }
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                if (multiMethod.isDeoptTarget()) {
-                    // deoptimization targets are parsed in a later phase
+                HostedMethod hMethod = (HostedMethod) multiMethod;
+                if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
+                    /*
+                     * Deoptimization targets are parsed in a later phase.
+                     * 
+                     * Runtime compiled methods are compiled and encoded in a separate process.
+                     */
                     continue;
                 }
-                HostedMethod hMethod = (HostedMethod) multiMethod;
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureParsed(hMethod, null, new EntryPointReason());
@@ -668,12 +679,14 @@ public class CompileQueue {
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
-                if (method != null) {
-                    return isRegisteredDeoptTarget(method);
+            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
+                if (deoptMethod != null) {
+                    return isRegisteredDeoptTarget(deoptMethod);
                 }
                 return false;
-            }).forEach(method -> ensureParsed(method.getMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
+            }).forEach(deoptMethod -> {
+                ensureParsed(deoptMethod, null, new EntryPointReason());
+            });
         } else {
             /*
              * Deoptimization target code for all methods that were manually marked as
@@ -890,12 +903,16 @@ public class CompileQueue {
     public void scheduleEntryPoints() {
         for (HostedMethod method : universe.getMethods()) {
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                if (multiMethod.isDeoptTarget()) {
-                    // deoptimization targets are compiled in a later phase
+                HostedMethod hMethod = (HostedMethod) multiMethod;
+                if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
+                    /*
+                     * Deoptimization targets are parsed in a later phase.
+                     *
+                     * Runtime compiled methods are compiled and encoded in a separate process.
+                     */
                     continue;
                 }
 
-                HostedMethod hMethod = (HostedMethod) multiMethod;
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureCompiled(hMethod, new EntryPointReason());

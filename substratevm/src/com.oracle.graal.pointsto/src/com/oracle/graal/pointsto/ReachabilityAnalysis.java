@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 /**
@@ -73,13 +74,15 @@ public interface ReachabilityAnalysis {
      * @param aMethod the method to register as root
      * @param invokeSpecial if true only the target method is analyzed, even if it has overrides, or
      *            it is itself an override. If the method is static this flag is ignored.
+     * @param otherRoots other versions of this method to also register as roots.
      */
-    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial);
+    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots);
 
     /**
-     * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean)
+     * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean,
+     *      MultiMethod.MultiMethodKey...)
      */
-    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial);
+    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots);
 
     default void registerAsFrozenUnsafeAccessed(AnalysisField field) {
         field.setUnsafeFrozenTypeState(true);

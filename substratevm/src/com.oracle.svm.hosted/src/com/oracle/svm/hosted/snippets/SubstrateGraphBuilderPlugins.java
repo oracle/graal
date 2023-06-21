@@ -1015,8 +1015,11 @@ public class SubstrateGraphBuilderPlugins {
 
                 ResolvedJavaMethod method = b.getGraph().method();
                 if (SubstrateOptions.parseOnce()) {
-                    throw VMError.unimplemented("Intrinsification of isDeoptimizationTarget not done yet");
-
+                    if (MultiMethod.isDeoptTarget(method)) {
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                    } else {
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                    }
                 } else {
                     if (method instanceof SharedMethod) {
                         if (MultiMethod.isDeoptTarget(method)) {
