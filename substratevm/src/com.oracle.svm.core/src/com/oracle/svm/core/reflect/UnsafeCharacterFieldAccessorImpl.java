@@ -80,8 +80,7 @@ class UnsafeCharacterFieldAccessorImpl extends UnsafeFieldAccessorImpl {
 
     @Override
     public void set(Object obj, Object value)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         ensureObj(obj);
         if (isFinal) {
             throwFinalFieldIllegalAccessException(value);
@@ -98,22 +97,19 @@ class UnsafeCharacterFieldAccessorImpl extends UnsafeFieldAccessorImpl {
 
     @Override
     public void setBoolean(Object obj, boolean z)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(z);
     }
 
     @Override
     public void setByte(Object obj, byte b)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(b);
     }
 
     @Override
     public void setChar(Object obj, char c)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         ensureObj(obj);
         if (isFinal) {
             throwFinalFieldIllegalAccessException(c);
@@ -123,36 +119,31 @@ class UnsafeCharacterFieldAccessorImpl extends UnsafeFieldAccessorImpl {
 
     @Override
     public void setShort(Object obj, short s)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(s);
     }
 
     @Override
     public void setInt(Object obj, int i)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(i);
     }
 
     @Override
     public void setLong(Object obj, long l)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(l);
     }
 
     @Override
     public void setFloat(Object obj, float f)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(f);
     }
 
     @Override
     public void setDouble(Object obj, double d)
-        throws IllegalArgumentException, IllegalAccessException
-    {
+                    throws IllegalArgumentException, IllegalAccessException {
         throwSetIllegalArgumentException(d);
     }
 }

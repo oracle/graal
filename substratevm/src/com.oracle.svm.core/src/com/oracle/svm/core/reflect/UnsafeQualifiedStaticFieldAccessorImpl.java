@@ -27,12 +27,12 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Field;
 
-/** Base class for jdk.internal.misc.Unsafe-based FieldAccessors for final or
-    static volatile fields.  */
+/**
+ * Base class for jdk.internal.misc.Unsafe-based FieldAccessors for final or static volatile fields.
+ */
 
 abstract class UnsafeQualifiedStaticFieldAccessorImpl
-    extends UnsafeStaticFieldAccessorImpl
-{
+                extends UnsafeStaticFieldAccessorImpl {
     protected final boolean isReadOnly;
 
     UnsafeQualifiedStaticFieldAccessorImpl(Field field, boolean isReadOnly) {
