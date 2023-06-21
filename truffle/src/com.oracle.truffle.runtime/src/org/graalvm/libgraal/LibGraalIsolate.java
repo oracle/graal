@@ -153,7 +153,7 @@ public final class LibGraalIsolate {
      * {@link DestroyedIsolateException}. Called by {@code LibGraalFeature#shutdownLibGraal} using
      * JNI.
      */
-    static synchronized void unregister(long isolateId) {
+    public static synchronized void unregister(long isolateId) {
         LibGraalIsolate isolate = isolates.remove(isolateId);
         // The isolates.remove(isolateId) may return null when no LibGraalScope was created for the
         // given isolateId.

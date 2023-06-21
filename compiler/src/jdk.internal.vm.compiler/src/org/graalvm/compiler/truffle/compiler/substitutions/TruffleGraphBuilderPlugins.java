@@ -171,7 +171,7 @@ public class TruffleGraphBuilderPlugins {
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
         final ResolvedJavaType truffleSafepoint = types.TruffleSafepoint;
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(truffleSafepoint));
-        r.register(new RequiredInvocationPlugin("poll", com.oracle.truffle.api.nodes.Node.class) {
+        r.register(new RequiredInvocationPlugin("poll", new ResolvedJavaSymbol(types.Node)) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 if (!TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph())) {
@@ -927,9 +927,6 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    /**
-     * @see com.oracle.truffle.api.nodes.Node
-     */
     public static void registerNodePlugins(InvocationPlugins plugins, KnownTruffleTypes types, MetaAccessProvider metaAccess, boolean canDelayIntrinsification,
                     ConstantReflectionProvider constantReflection) {
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.Node));

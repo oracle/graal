@@ -84,57 +84,60 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
 
-    HSTruffleCompilationTask(JNIMethodScope scope, JObject handle) {
+    private final TruffleFromLibGraalCalls calls;
+
+    HSTruffleCompilationTask(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
         super(scope, handle);
+        this.calls = runtime.calls;
     }
 
     @TruffleFromLibGraal(IsCancelled)
     @Override
     public boolean isCancelled() {
-        return callIsCancelled(env(), getHandle());
+        return callIsCancelled(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(HasNextTier)
     @Override
     public boolean hasNextTier() {
-        return callHasNextTier(env(), getHandle());
+        return callHasNextTier(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(IsLastTier)
     @Override
     public boolean isLastTier() {
-        return callIsLastTier(env(), getHandle());
+        return callIsLastTier(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(GetPosition)
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
         long nodeHandle = LibGraal.translate(node);
-        JObject res = callGetPosition(env(), getHandle(), nodeHandle);
+        JObject res = callGetPosition(calls, env(), getHandle(), nodeHandle);
         if (res.isNull()) {
             return null;
         }
-        return new HSTruffleSourceLanguagePosition(JNIMethodScope.scope(), res);
+        return new HSTruffleSourceLanguagePosition(JNIMethodScope.scope(), res, calls);
     }
 
     @TruffleFromLibGraal(AddTargetToDequeue)
     @Override
     public void addTargetToDequeue(TruffleCompilable target) {
         JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
-        callAddTargetToDequeue(env(), getHandle(), hsCompilable);
+        callAddTargetToDequeue(calls, env(), getHandle(), hsCompilable);
     }
 
     @TruffleFromLibGraal(SetCallCounts)
     @Override
     public void setCallCounts(int total, int inlined) {
-        callSetCallCounts(env(), getHandle(), total, inlined);
+        callSetCallCounts(calls, env(), getHandle(), total, inlined);
     }
 
     @TruffleFromLibGraal(AddInlinedTarget)
     @Override
     public void addInlinedTarget(TruffleCompilable target) {
         JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
-        callAddInlinedTarget(env(), getHandle(), hsCompilable);
+        callAddInlinedTarget(calls, env(), getHandle(), hsCompilable);
     }
 
     @TruffleFromLibGraal(Id.GetDebugProperties)
@@ -142,7 +145,7 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     public Map<String, Object> getDebugProperties(JavaConstant node) {
         long nodeHandle = LibGraal.translate(node);
         JNIEnv env = env();
-        JNI.JByteArray res = callGetDebugProperties(env, getHandle(), nodeHandle);
+        JNI.JByteArray res = callGetDebugProperties(calls, env, getHandle(), nodeHandle);
         byte[] realArray = JNIUtil.createArray(env, res);
         return readDebugMap(BinaryInput.create(realArray));
     }
@@ -163,46 +166,49 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
      */
     private static final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-        HSTruffleSourceLanguagePosition(JNIMethodScope scope, JObject handle) {
+        private final TruffleFromLibGraalCalls calls;
+
+        HSTruffleSourceLanguagePosition(JNIMethodScope scope, JObject handle, TruffleFromLibGraalCalls calls) {
             super(scope, handle);
+            this.calls = calls;
         }
 
         @TruffleFromLibGraal(GetOffsetStart)
         @Override
         public int getOffsetStart() {
-            return callGetOffsetStart(JNIMethodScope.env(), getHandle());
+            return callGetOffsetStart(calls, JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetOffsetEnd)
         @Override
         public int getOffsetEnd() {
-            return callGetOffsetEnd(JNIMethodScope.env(), getHandle());
+            return callGetOffsetEnd(calls, JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetLineNumber)
         @Override
         public int getLineNumber() {
-            return callGetLineNumber(JNIMethodScope.env(), getHandle());
+            return callGetLineNumber(calls, JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetLanguage)
         @Override
         public String getLanguage() {
-            JString res = callGetLanguage(JNIMethodScope.env(), getHandle());
+            JString res = callGetLanguage(calls, JNIMethodScope.env(), getHandle());
             return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetDescription)
         @Override
         public String getDescription() {
-            JString res = callGetDescription(JNIMethodScope.env(), getHandle());
+            JString res = callGetDescription(calls, JNIMethodScope.env(), getHandle());
             return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetURI)
         @Override
         public URI getURI() {
-            JString res = callGetURI(JNIMethodScope.env(), getHandle());
+            JString res = callGetURI(calls, JNIMethodScope.env(), getHandle());
             String stringifiedURI = createString(JNIMethodScope.env(), res);
             return stringifiedURI == null ? null : URI.create(stringifiedURI);
         }
@@ -210,14 +216,14 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
         @TruffleFromLibGraal(GetNodeClassName)
         @Override
         public String getNodeClassName() {
-            JString res = callGetNodeClassName(JNIMethodScope.env(), getHandle());
+            JString res = callGetNodeClassName(calls, JNIMethodScope.env(), getHandle());
             return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetNodeId)
         @Override
         public int getNodeId() {
-            return callGetNodeId(JNIMethodScope.env(), getHandle());
+            return callGetNodeId(calls, JNIMethodScope.env(), getHandle());
         }
     }
 }

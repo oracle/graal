@@ -74,6 +74,7 @@ public @interface TruffleToLibGraal {
         GetSuppliedString,
         GetTargetCodeSize,
         GetTotalFrameSize,
+        InitializeIsolate,
         InitializeCompiler,
         RegisterRuntime,
         ListCompilerOptions,

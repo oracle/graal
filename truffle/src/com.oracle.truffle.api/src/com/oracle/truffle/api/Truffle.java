@@ -136,7 +136,10 @@ public final class Truffle {
 
                 if (access != null) {
                     exportTo(access.getClass());
-                    return access.getRuntime();
+                    TruffleRuntime runtime = access.getRuntime();
+                    if (runtime != null) {
+                        return runtime;
+                    }
                 }
                 return new DefaultTruffleRuntime();
             }

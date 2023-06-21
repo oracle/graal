@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JWeak;
@@ -81,7 +82,8 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
                 return environment;
             }
         }
-        ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(JNIUtil.GetObjectClass(env, runtimeLocalRef));
+        JClass runtimeClass = JNIUtil.GetObjectClass(env, runtimeLocalRef);
+        ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(runtimeClass);
         if (runtimeType == null) {
             throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }
@@ -89,7 +91,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * We do not currently validate the forType. But in the future we want to lookup the runtime
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
-        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType);
+        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, runtimeClass);
         this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         assert JNIUtil.IsSameObject(env, hsRuntime(environment).getHandle(), runtimeLocalRef);
         return environment;
@@ -97,6 +99,20 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
 
     private static HSTruffleCompilerRuntime hsRuntime(TruffleHostEnvironment environment) {
         return (HSTruffleCompilerRuntime) environment.runtime();
+    }
+
+    static JClass lookupPeer(JNIEnv env) {
+        long globalReference = WEAK_TRUFFLE_RUNTIME_INSTANCE.get();
+        if (globalReference == NO_TRUFFLE_REGISTERED) {
+            // fast path if Truffle was not initialized
+            return WordFactory.nullPointer();
+        }
+        JObject runtimeLocalRef = JNIUtil.NewLocalRef(env, WordFactory.pointer(globalReference));
+        if (runtimeLocalRef.isNull()) {
+            // The Truffle runtime was collected by the GC
+            return WordFactory.nullPointer();
+        }
+        return JNIUtil.GetObjectClass(env, runtimeLocalRef);
     }
 
     public static boolean registerRuntime(JNIEnv env, JObject truffleRuntime) {

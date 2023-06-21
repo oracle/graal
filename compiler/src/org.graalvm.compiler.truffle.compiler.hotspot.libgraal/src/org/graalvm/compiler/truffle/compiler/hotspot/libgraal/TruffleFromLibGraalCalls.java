@@ -24,23 +24,30 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+
+import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
-import org.graalvm.jniutils.JNI.JClass;
-import org.graalvm.jniutils.JNI.JNIEnv;
-
 final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
 
-    static final TruffleFromLibGraalCalls INSTANCE = new TruffleFromLibGraalCalls();
+    private static final String ENTRY_POINT_CLASS_NAME = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints";
+    private static final String CLASS_ENTRY_POINT_CLASS_NAME = "Class<" + ENTRY_POINT_CLASS_NAME + ">";
 
-    private TruffleFromLibGraalCalls() {
-        super(Id.class);
+    TruffleFromLibGraalCalls(JNIEnv env, JClass runtimeClass) {
+        super(Id.class, resolvePeer(env, runtimeClass));
     }
 
-    @Override
-    protected JClass resolvePeer(JNIEnv env) {
-        return getJNIClass(env, "com.oracle.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints");
+    private static JClass resolvePeer(JNIEnv env, JClass runtimeClass) {
+        JObject classLoader = JNIUtil.getClassLoader(env, runtimeClass);
+        JClass clazz = JNIUtil.findClass(env, classLoader, ENTRY_POINT_CLASS_NAME);
+        return NewGlobalRef(env, clazz, CLASS_ENTRY_POINT_CLASS_NAME);
     }
+
 }

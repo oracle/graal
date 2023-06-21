@@ -1179,13 +1179,14 @@ libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni.annotation=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.annotate=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
@@ -1193,6 +1194,8 @@ libgraal_build_args = [
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
     '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+        # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
+    '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
@@ -1246,7 +1249,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])

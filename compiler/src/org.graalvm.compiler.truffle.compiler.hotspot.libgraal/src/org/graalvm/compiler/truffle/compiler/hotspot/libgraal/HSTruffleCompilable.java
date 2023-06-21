@@ -80,6 +80,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
 
+    private final TruffleFromLibGraalCalls calls;
     private volatile String cachedName;
 
     /**
@@ -94,8 +95,9 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
      * @param scope the owning scope
      * @param handle the JNI object reference
      */
-    HSTruffleCompilable(JNIMethodScope scope, JObject handle) {
+    HSTruffleCompilable(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
         super(scope, handle);
+        this.calls = runtime.calls;
     }
 
     @TruffleFromLibGraal(GetFailedSpeculationsAddress)
@@ -103,7 +105,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     public SpeculationLog getCompilationSpeculationLog() {
         Long res = cachedFailedSpeculationsAddress;
         if (res == null) {
-            res = callGetFailedSpeculationsAddress(env(), getHandle());
+            res = callGetFailedSpeculationsAddress(calls, env(), getHandle());
             cachedFailedSpeculationsAddress = res;
         }
         return HotSpotGraalServices.newHotSpotSpeculationLog(cachedFailedSpeculationsAddress);
@@ -113,7 +115,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @TruffleFromLibGraal(Id.GetCompilerOptions)
     public Map<String, String> getCompilerOptions() {
         JNIEnv env = env();
-        JNI.JByteArray res = HSTruffleCompilableGen.callGetCompilerOptions(env, getHandle());
+        JNI.JByteArray res = HSTruffleCompilableGen.callGetCompilerOptions(calls, env, getHandle());
         byte[] realArray = JNIUtil.createArray(env, res);
         return readDebugMap(BinaryInput.create(realArray));
     }
@@ -131,25 +133,25 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @Override
     @TruffleFromLibGraal(Id.EngineId)
     public long engineId() {
-        return HSTruffleCompilableGen.callEngineId(env(), getHandle());
+        return HSTruffleCompilableGen.callEngineId(calls, env(), getHandle());
     }
 
     @Override
     @TruffleFromLibGraal(Id.PrepareForCompilation)
     public void prepareForCompilation() {
-        callPrepareForCompilation(env(), getHandle());
+        callPrepareForCompilation(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(IsTrivial)
     @Override
     public boolean isTrivial() {
-        return callIsTrivial(env(), getHandle());
+        return callIsTrivial(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(AsJavaConstant)
     @Override
     public JavaConstant asJavaConstant() {
-        return LibGraal.unhand(JavaConstant.class, callAsJavaConstant(env(), getHandle()));
+        return LibGraal.unhand(JavaConstant.class, callAsJavaConstant(calls, env(), getHandle()));
     }
 
     @TruffleFromLibGraal(CreateStringSupplier)
@@ -160,8 +162,8 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         boolean success = false;
         JNIEnv env = env();
         try {
-            JObject instance = callCreateStringSupplier(env, serializedExceptionHandle);
-            callOnCompilationFailed(env, getHandle(), instance, silent, bailout, permanentBailout, graphTooBig);
+            JObject instance = callCreateStringSupplier(calls, env, serializedExceptionHandle);
+            callOnCompilationFailed(calls, env, getHandle(), instance, silent, bailout, permanentBailout, graphTooBig);
             success = true;
         } finally {
             if (!success) {
@@ -176,7 +178,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         String res = cachedName;
         if (res == null) {
             JNIEnv env = JNIMethodScope.env();
-            JString name = callGetCompilableName(env, getHandle());
+            JString name = callGetCompilableName(calls, env, getHandle());
             res = createString(env, name);
             cachedName = res;
         }
@@ -186,19 +188,19 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @TruffleFromLibGraal(GetNonTrivialNodeCount)
     @Override
     public int getNonTrivialNodeCount() {
-        return callGetNonTrivialNodeCount(env(), getHandle());
+        return callGetNonTrivialNodeCount(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(Id.CountDirectCallNodes)
     @Override
     public int countDirectCallNodes() {
-        return callCountDirectCallNodes(env(), getHandle());
+        return callCountDirectCallNodes(calls, env(), getHandle());
     }
 
     @TruffleFromLibGraal(GetCompilableCallCount)
     @Override
     public int getCallCount() {
-        return callGetCompilableCallCount(env(), getHandle());
+        return callGetCompilableCallCount(calls, env(), getHandle());
     }
 
     private volatile String cachedString;
@@ -209,7 +211,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
         String res = cachedString;
         if (res == null) {
             JNIEnv env = JNIMethodScope.env();
-            JString value = callCompilableToString(env, getHandle());
+            JString value = callCompilableToString(calls, env, getHandle());
             res = createString(env, value);
             cachedString = res;
         }
@@ -221,20 +223,20 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     public boolean cancelCompilation(CharSequence reason) {
         JNIEnv env = env();
         JString jniReason = JNIUtil.createHSString(env, reason.toString());
-        return callCancelCompilation(env, getHandle(), jniReason);
+        return callCancelCompilation(calls, env, getHandle(), jniReason);
     }
 
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
         JObject astHandle = ((HSTruffleCompilable) ast).getHandle();
-        return callIsSameOrSplit(env(), getHandle(), astHandle);
+        return callIsSameOrSplit(calls, env(), getHandle(), astHandle);
     }
 
     @TruffleFromLibGraal(GetKnownCallSiteCount)
     @Override
     public int getKnownCallSiteCount() {
-        return callGetKnownCallSiteCount(env(), getHandle());
+        return callGetKnownCallSiteCount(calls, env(), getHandle());
     }
 
     @Override

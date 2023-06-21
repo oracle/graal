@@ -74,8 +74,11 @@ import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
  */
 final class TruffleToLibGraalCalls {
 
-    @TruffleToLibGraal(InitializeRuntime)
-    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate);
+    /**
+     * Invoked first time the isolate is attached.
+     */
+    @TruffleToLibGraal(Id.InitializeIsolate)
+    static native boolean initializeIsolate(long isolateThreadId, Class<?> runtimeClass);
 
     /**
      * Registers a Truffle runtime. Returns <code>true</code> if this was the first runtime
@@ -84,6 +87,9 @@ final class TruffleToLibGraalCalls {
      */
     @TruffleToLibGraal(RegisterRuntime)
     static native boolean registerRuntime(long isolateThreadId, Object truffleRuntime);
+
+    @TruffleToLibGraal(InitializeRuntime)
+    static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate);
 
     @TruffleToLibGraal(Id.ListCompilerOptions)
     static native byte[] listCompilerOptions(long isolateThreadId);

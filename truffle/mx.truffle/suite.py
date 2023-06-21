@@ -1161,7 +1161,9 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise"
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
+          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
         ],
         "uses" : [
         ],
@@ -1196,7 +1198,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "org.graalvm.compiler.truffle.runtime to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise"
+          "org.graalvm.compiler.truffle.runtime to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder"
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1317,7 +1319,7 @@ suite = {
         "moduleInfo" : "closed",
       }
     },
-
+    
     "TRUFFLE_LIBGRAAL_TRUFFLEATTACH" : {
       "native" : True,
       "platformDependent" : True,
@@ -1624,6 +1626,7 @@ suite = {
        ],
        "distDependencies" : [
          "TRUFFLE_API",
+         "TRUFFLE_RUNTIME",
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",

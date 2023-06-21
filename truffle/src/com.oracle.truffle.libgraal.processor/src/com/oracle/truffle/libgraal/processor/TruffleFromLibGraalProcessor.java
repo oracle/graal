@@ -252,9 +252,9 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
                 out.println("");
                 if (!isPrimitiveOrVoid(rt)) {
                     out.println("    @SuppressWarnings(\"unchecked\")");
-                    out.printf("    static <T extends JObject> T call%s(JNIEnv env", idName);
+                    out.printf("    static <T extends JObject> T call%s(TruffleFromLibGraalCalls calls, JNIEnv env", idName);
                 } else {
-                    out.printf("    static %s call%s(JNIEnv env", toJNIType(rt, false), idName);
+                    out.printf("    static %s call%s(TruffleFromLibGraalCalls calls, JNIEnv env", toJNIType(rt, false), idName);
                 }
                 List<TypeMirror> parameterTypes = id.parameterTypes;
                 for (TypeMirror t : parameterTypes) {
@@ -276,7 +276,7 @@ public class TruffleFromLibGraalProcessor extends AbstractProcessor {
                 } else {
                     returnPrefix = "return ";
                 }
-                out.printf("        %sTruffleFromLibGraalCalls.INSTANCE.call%s(env, %s, args);%n", returnPrefix, toJNIType(rt, true), idName);
+                out.printf("        %scalls.call%s(env, %s, args);%n", returnPrefix, toJNIType(rt, true), idName);
                 out.println("    }");
             }
             out.println("}");

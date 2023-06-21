@@ -59,7 +59,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
@@ -87,7 +86,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
@@ -96,16 +94,12 @@ import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrume
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.jniutils.NativeBridgeSupport;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
 import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
@@ -605,7 +599,7 @@ public class LibGraalFeature implements InternalFeature {
 
     private static boolean isAllowedType(String className) {
         if (className.startsWith("com.oracle.truffle.")) {
-            return className.startsWith("com.oracle.truffle.api.nodes.") || className.startsWith("com.oracle.truffle.compiler.enterprise.");
+            return className.startsWith("com.oracle.truffle.compiler.");
         }
         return true;
     }
@@ -714,42 +708,10 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
         VMRuntime.initialize();
     }
 
+    @SuppressWarnings("unused")
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
-        try {
-            // Unregister this isolate if it was created as a peer
-            if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
-                long offset = runtime.getVMConfig().jniEnvironmentOffset;
-                long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-                JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
-                JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
-                                JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
-                JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
-                JNI.JValue args = StackValue.get(JNI.JValue.class);
-                args.setLong(IsolateUtil.getIsolateID());
-                env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-
-                String callback = LibGraalOptions.OnShutdownCallback.getValue();
-                if (callback != null) {
-                    int lastDot = callback.lastIndexOf('.');
-                    if (lastDot < 1 || lastDot == callback.length() - 1) {
-                        throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
-                    }
-                    String cbClassName = callback.substring(0, lastDot);
-                    String cbMethodName = callback.substring(lastDot + 1);
-                    JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
-                                    JNIUtil.getBinaryName(cbClassName), true);
-                    JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
-                    env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
-                    JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-                }
-            }
-        } catch (Throwable t) {
-            t.printStackTrace(TTY.out);
-        } finally {
-            VMRuntime.shutdown();
-        }
+        VMRuntime.shutdown();
     }
 }
 

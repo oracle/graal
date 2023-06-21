@@ -101,6 +101,7 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalIsolate;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
@@ -129,6 +130,11 @@ final class TruffleFromLibGraalEntryPoints {
 
     static {
         assert checkHotSpotCalls();
+    }
+
+    @TruffleFromLibGraal(Id.OnIsolateShutdown)
+    static void onIsolateShutdown(long isolateId) {
+        LibGraalIsolate.unregister(isolateId);
     }
 
     @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)

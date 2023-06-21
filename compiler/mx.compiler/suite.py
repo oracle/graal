@@ -434,6 +434,7 @@ suite = {
           "jdk.vm.ci.code",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.services",
         ],
       },
       "jacoco" : "exclude", # GR-13965

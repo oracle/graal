@@ -63,6 +63,11 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
 
     private volatile String cachedCompilerConfigurationName;
 
+    public static void initializeIsolate(long isolateThreadId) {
+        runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        TruffleToLibGraalCalls.initializeIsolate(isolateThreadId, LibGraalTruffleCompilationSupport.class);
+    }
+
     /*
      * When migrated to native-bridge this method should be marked @Idempotent instead.
      */

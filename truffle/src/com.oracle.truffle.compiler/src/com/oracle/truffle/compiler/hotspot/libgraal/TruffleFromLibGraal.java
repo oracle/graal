@@ -178,7 +178,9 @@ public @interface TruffleFromLibGraal {
         @Signature({Consumer.class, Object.class, long.class})
         RegisterOptimizedAssumptionDependency,
         @Signature({void.class, Object.class, int.class, int.class})
-        SetCallCounts;
+        SetCallCounts,
+        @Signature({void.class, long.class})
+        OnIsolateShutdown;
         // @formatter:on
 
         private final String signature;

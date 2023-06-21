@@ -1007,15 +1007,24 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
-        ServiceLoader<T> graalLoader = ServiceLoader.load(service, GraalTruffleRuntime.class.getClassLoader());
-        /*
-         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader.
-         * Its module dependencies such as Truffle are supplied via --module-path which means they
-         * are loaded by the app class loader. As such, we need to search the app class loader path
-         * as well.
-         */
-        ServiceLoader<T> appLoader = ServiceLoader.load(service, service.getClassLoader());
-        return Arrays.asList(graalLoader, appLoader);
+        ClassLoader runtimeClassLoader = GraalTruffleRuntime.class.getClassLoader();
+        ClassLoader appClassLoader = service.getClassLoader();
+        ServiceLoader<T> appLoader = ServiceLoader.load(service, appClassLoader);
+        if (runtimeClassLoader.equals(appClassLoader)) {
+            /*
+             * Primary mode of operation for Truffle consumed from the application module path.
+             */
+            return List.of(appLoader);
+        } else {
+            ServiceLoader<T> runtimeLoader = ServiceLoader.load(service, runtimeClassLoader);
+            /*
+             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
+             * loader. Its module dependencies such as Truffle are supplied via --module-path which
+             * means they are loaded by the app class loader. As such, we need to search the app
+             * class loader path as well.
+             */
+            return List.of(runtimeLoader, appLoader);
+        }
     }
 
     @SuppressWarnings("deprecation")

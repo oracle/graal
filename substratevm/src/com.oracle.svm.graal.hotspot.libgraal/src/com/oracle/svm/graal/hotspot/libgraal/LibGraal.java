@@ -2,43 +2,27 @@
  * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * The Universal Permissive License (UPL), Version 1.0
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
- * Subject to the condition set forth below, permission is hereby granted to any
- * person obtaining a copy of this software, associated documentation and/or
- * data (collectively the "Software"), free of charge and under any and all
- * copyright rights in the Software, and any and all patent rights owned or
- * freely licensable by each licensor hereunder covering either (i) the
- * unmodified Software as contributed to or provided by such licensor, or (ii)
- * the Larger Works (as defined below), to deal in both
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
  *
- * (a) the Software, and
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
- * one is included with the Software each a "Larger Work" to which the Software
- * is contributed by such licensors),
- *
- * without restriction, including without limitation the rights to copy, create
- * derivative works of, display, perform, and distribute the Software and make,
- * use, sell, offer for sale, import, export, have made, and have sold the
- * Software and the Larger Work(s), and to sublicense the foregoing rights on
- * either these or other terms.
- *
- * This license is subject to the following condition:
- *
- * The above copyright notice and either this complete permission notice or at a
- * minimum a reference to the UPL must be included in all copies or substantial
- * portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
-package org.graalvm.libgraal;
+package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
@@ -46,14 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.services.Services;
 
@@ -76,12 +53,8 @@ import jdk.vm.ci.services.Services;
  * <li>{@link #unhand(Class, long)}</li>
  * </ul>
  *
- * The typical usage of this class is to {@linkplain #registerNativeMethods link} and call
- * {@link CEntryPoint}s in libgraal. Each call to a {@link CEntryPoint} requires an
- * {@link IsolateThread} argument which can be {@linkplain LibGraalScope#getIsolateThread obtained}
- * from a {@link LibGraalScope}.
  */
-public class LibGraal {
+final class LibGraal {
 
     // NOTE: The use of reflection to access JVMCI API is to support
     // compiling on JDKs with varying versions of JVMCI.
@@ -94,13 +67,9 @@ public class LibGraal {
     private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
     private static final Method translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
     private static final Method registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
-    private static final Method isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
     private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
     private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
     private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
-
-    private static final Method asResolvedJavaType = methodOrNull(HotSpotJVMCIRuntime.class, "asResolvedJavaType", sig(Long.TYPE));
-    private static final Method getJObjectValue = methodIf(asResolvedJavaType, HotSpotJVMCIRuntime.class, "getJObjectValue", sig(HotSpotObjectConstant.class));
 
     /**
      * Determines if libgraal is available for use.
@@ -121,37 +90,6 @@ public class LibGraal {
      */
     public static boolean inLibGraal() {
         return Services.IS_IN_NATIVE_IMAGE;
-    }
-
-    /**
-     * Links each native method in {@code clazz} to a {@link CEntryPoint} in libgraal.
-     *
-     * This cannot be called from {@linkplain #inLibGraal() within} libgraal.
-     *
-     * @throws NullPointerException if {@code clazz == null}
-     * @throws UnsupportedOperationException if libgraal is not enabled (i.e.
-     *             {@code -XX:-UseJVMCINativeLibrary})
-     * @throws IllegalArgumentException if {@code clazz} is {@link Class#isPrimitive()}
-     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
-     *             {@link #inLibGraal()} returns true
-     * @throws UnsatisfiedLinkError if there's a problem linking a native method in {@code clazz}
-     *             (no matching JNI symbol or the native method is already linked to a different
-     *             address)
-     */
-    public static void registerNativeMethods(Class<?> clazz) {
-        if (clazz.isPrimitive()) {
-            throw new IllegalArgumentException();
-        }
-        if (inLibGraal() || !isAvailable()) {
-            throw new IllegalStateException();
-        }
-        try {
-            registerNativeMethods.invoke(runtime(), clazz);
-        } catch (Error e) {
-            throw e;
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
     }
 
     /**
@@ -202,12 +140,11 @@ public class LibGraal {
             return 0L;
         }
         try {
-            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraalScope.class);
+            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraal.class);
             long isolate = javaVMInfo[1];
             return isolate;
         } catch (InvocationTargetException e) {
             if (e.getTargetException() instanceof UnsupportedOperationException) {
-                // libgraal available but not enabled
                 return 0L;
             }
             throw new InternalError(e);
@@ -218,46 +155,6 @@ public class LibGraal {
 
     static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
     static final boolean available = initialIsolate != 0L;
-
-    /**
-     * Determines if the current thread is {@linkplain #attachCurrentThread attached} to the peer
-     * runtime.
-     */
-    static boolean isCurrentThreadAttached() {
-        try {
-            return (boolean) isCurrentThreadAttached.invoke(runtime());
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
-    }
-
-    /**
-     * @see HotSpotJVMCIRuntime#getJObjectValue(HotSpotObjectConstant)
-     */
-    public static <T extends PointerBase> T getJObjectValue(HotSpotObjectConstant constant) {
-        if (getJObjectValue == null) {
-            return WordFactory.nullPointer();
-        }
-        try {
-            return WordFactory.pointer((long) getJObjectValue.invoke(runtime(), constant));
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
-    }
-
-    /**
-     * @see HotSpotJVMCIRuntime#asResolvedJavaType(long)
-     */
-    public static HotSpotResolvedJavaType asResolvedJavaType(PointerBase pointer) {
-        if (asResolvedJavaType == null) {
-            return null;
-        }
-        try {
-            return (HotSpotResolvedJavaType) asResolvedJavaType.invoke(runtime(), pointer.rawValue());
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
-    }
 
     /**
      * Ensures the current thread is attached to the peer runtime.
@@ -308,24 +205,6 @@ public class LibGraal {
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
-    }
-
-    /**
-     * Invokes the method {@code getFailedSpeculationsAddress} on a {@link HotSpotSpeculationLog},
-     * if the method exists.
-     *
-     * @return the address of the pointer to the native failed speculations list.
-     * @exception UnsupportedOperationException if unsupported
-     */
-    public static long getFailedSpeculationsAddress(HotSpotSpeculationLog log) {
-        if (getFailedSpeculationsAddress != null) {
-            try {
-                return (long) getFailedSpeculationsAddress.invoke(log);
-            } catch (Throwable e) {
-                throw new InternalError(e);
-            }
-        }
-        throw new UnsupportedOperationException();
     }
 
     /**

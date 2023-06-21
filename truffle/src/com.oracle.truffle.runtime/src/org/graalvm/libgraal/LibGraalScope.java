@@ -42,6 +42,8 @@ package org.graalvm.libgraal;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
+
 /**
  * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope ensures
  * the current thread is attached to libgraal and {@linkplain #close() closing} the outer most scope
@@ -166,18 +168,24 @@ public final class LibGraalScope implements AutoCloseable {
         }
         id = nextId.getAndIncrement();
         parent = currentScope.get();
+        boolean initializeIsolate;
         if (parent == null) {
             long[] isolateBox = {0};
             boolean firstAttach = LibGraal.attachCurrentThread(false, isolateBox);
             long isolateAddress = isolateBox[0];
             long isolateThread = getIsolateThreadIn(isolateAddress);
             long isolateId = getIsolateId(isolateThread);
+            initializeIsolate = firstAttach;
             LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId, isolateAddress);
             shared = new Shared(firstAttach ? detachAction : null, isolate, isolateThread);
         } else {
             shared = parent.shared;
+            initializeIsolate = false;
         }
         currentScope.set(this);
+        if (initializeIsolate) {
+            LibGraalTruffleCompilationSupport.initializeIsolate(shared.getIsolateThread());
+        }
     }
 
     @Override

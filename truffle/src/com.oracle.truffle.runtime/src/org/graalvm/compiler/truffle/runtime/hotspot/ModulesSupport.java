@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot.java;
+package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
-import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
+final class ModulesSupport {
 
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.compiler.TruffleCompilationSupport;
+    static {
+        loadModulesSupportLibrary();
+    }
 
-public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+    private ModulesSupport() {
+    }
 
-    @Override
-    protected TruffleRuntime createRuntime() {
+    static void addExports(Module m1, String pn, Module m2) {
+
+        addExports0(m1, pn, m2);
+    }
+
+    private static boolean loadModulesSupportLibrary() {
+        String attachLib = System.getProperty("truffle.attach.library");
         try {
-            Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
-            TruffleCompilationSupport compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
-            HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
-            compilationSupport.registerRuntime(rt);
-            return rt;
-        } catch (ReflectiveOperationException e) {
-            throw new InternalError(e);
+            if (attachLib == null) {
+                try {
+                    System.loadLibrary("truffleattach");
+                } catch (UnsatisfiedLinkError invalidLibrary) {
+                    return false;
+                }
+            } else {
+                System.load(attachLib);
+            }
+            return true;
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
         }
     }
 
-    @Override
-    protected int calculatePriority() {
-        return 0;
-    }
+    private static native void addExports0(Module runtimeModule, String packageName, Module compilerModule);
+
 }

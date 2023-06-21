@@ -1090,6 +1090,19 @@ public final class JNIUtil {
         return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
     }
 
+    public static JObject getClassLoader(JNIEnv env, JClass clazz) {
+        if (clazz.isNull()) {
+            throw new NullPointerException();
+        }
+        // Class<Runtime>
+        JClass classClass = GetObjectClass(env, clazz); // Class<Class>
+        JNI.JMethodID getClassLoader = JNIUtil.findMethod(env, classClass, false, "getClassLoader", "()Ljava/lang/ClassLoader;");
+        if (getClassLoader.isNull()) {
+            throw new NullPointerException("getClassLoader() not found");
+        }
+        return env.getFunctions().getCallObjectMethodA().call(env, clazz, getClassLoader, nullPointer());
+    }
+
     /**
      * Returns the {@link ClassLoader#getSystemClassLoader()}.
      */

@@ -52,6 +52,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
@@ -91,20 +92,22 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
     private final ResolvedJavaType classLoaderDelegate;
+    final TruffleFromLibGraalCalls calls;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, JClass peer) {
         /*
          * Note global duplicates may happen if the compiler is initialized by a host compilation.
          */
         super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
+        this.calls = new TruffleFromLibGraalCalls(env, peer);
     }
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
     @Override
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         long methodHandle = LibGraal.translate(method);
-        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetPartialEvaluationMethodInfo(env(), getHandle(), methodHandle);
+        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetPartialEvaluationMethodInfo(calls, env(), getHandle(), methodHandle);
         CCharPointer buffer = StackValue.get(5);
         JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 5, buffer);
         BinaryInput in = BinaryInput.create(buffer, 5);
@@ -120,7 +123,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
     @Override
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
         long methodHandle = LibGraal.translate(method);
-        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetHostMethodInfo(env(), getHandle(), methodHandle);
+        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetHostMethodInfo(calls, env(), getHandle(), methodHandle);
         CCharPointer buffer = StackValue.get(4);
         JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 4, buffer);
         BinaryInput in = BinaryInput.create(buffer, 4);
@@ -141,7 +144,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
             return null;
         }
         JObject hsCompilable = JNIUtil.NewLocalRef(scope.getEnv(), LibGraal.getJObjectValue((HotSpotObjectConstant) constant));
-        return new HSTruffleCompilable(scope, hsCompilable);
+        return new HSTruffleCompilable(scope, hsCompilable, this);
     }
 
     @TruffleFromLibGraal(OnCodeInstallation)
@@ -149,7 +152,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
     public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         long installedCodeHandle = LibGraal.translate(installedCode);
         JNIEnv env = env();
-        callOnCodeInstallation(env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), installedCodeHandle);
+        callOnCodeInstallation(calls, env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), installedCodeHandle);
     }
 
     @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)
@@ -157,14 +160,14 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumption) {
         long optimizedAssumptionHandle = LibGraal.translate(optimizedAssumption);
         JNIEnv env = env();
-        JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(env, getHandle(), optimizedAssumptionHandle);
-        return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer);
+        JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(calls, env, getHandle(), optimizedAssumptionHandle);
+        return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer, calls);
     }
 
     @TruffleFromLibGraal(IsValueType)
     @Override
     public boolean isValueType(ResolvedJavaType type) {
-        return callIsValueType(env(), getHandle(), LibGraal.translate(type));
+        return callIsValueType(calls, env(), getHandle(), LibGraal.translate(type));
     }
 
     @TruffleFromLibGraal(GetConstantFieldInfo)
@@ -189,7 +192,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
                             Arrays.toString(declaredFields)));
         }
         long typeHandle = LibGraal.translate(enclosingType);
-        int rawValue = callGetConstantFieldInfo(env(), getHandle(), typeHandle, isStatic, fieldIndex);
+        int rawValue = callGetConstantFieldInfo(calls, env(), getHandle(), typeHandle, isStatic, fieldIndex);
         if (rawValue == Integer.MIN_VALUE) {
             return null;
         }
@@ -229,7 +232,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
         JNIEnv env = env();
         JString jniLoggerId = JNIUtil.createHSString(env, loggerId);
         JString jniMessage = JNIUtil.createHSString(env, message);
-        callLog(env, getHandle(), jniLoggerId, ((HSTruffleCompilable) compilable).getHandle(), jniMessage);
+        callLog(calls, env, getHandle(), jniLoggerId, ((HSTruffleCompilable) compilable).getHandle(), jniMessage);
     }
 
     @TruffleFromLibGraal(CreateStringSupplier)
@@ -240,8 +243,8 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
         boolean success = false;
         JNIEnv env = env();
         try {
-            JObject instance = callCreateStringSupplier(env, serializedExceptionHandle);
-            boolean res = callIsSuppressedFailure(env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), instance);
+            JObject instance = callCreateStringSupplier(calls, env, serializedExceptionHandle);
+            boolean res = callIsSuppressedFailure(calls, env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), instance);
             success = true;
             return res;
         } finally {
@@ -252,9 +255,11 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
     }
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
+        private final TruffleFromLibGraalCalls calls;
 
-        HSConsumer(JNIMethodScope scope, JObject handle) {
+        HSConsumer(JNIMethodScope scope, JObject handle, TruffleFromLibGraalCalls calls) {
             super(scope, handle);
+            this.calls = calls;
         }
 
         @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
@@ -279,7 +284,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
                 }
                 installedCode = LibGraal.translate(dependency.getInstalledCode());
             }
-            callConsumeOptimizedAssumptionDependency(env(), getHandle(), compilable, installedCode);
+            callConsumeOptimizedAssumptionDependency(calls, env(), getHandle(), compilable, installedCode);
         }
     }
 }

@@ -29,15 +29,16 @@
 return;                                                        \
 }
 
-
-static void openJVMCITo(JNIEnv* jniEnv, jobject callerModule)  {
-    jclass servicesClz = jniEnv->FindClass("jdk/vm/ci/services/Services");
+static void addExports(JNIEnv* jniEnv, jobject m1, jobject pn, jobject m2)  {
+    jclass modulesClass = jniEnv->FindClass("jdk/internal/module/Modules");
     EXCEPTION_CHECK_VOID(jniEnv)
-    jmethodID openJVMCIMethod = jniEnv->GetStaticMethodID(servicesClz, "openJVMCITo", "(Ljava/lang/Module;)V");
+    jmethodID addExports = jniEnv->GetStaticMethodID(modulesClass, "addExports", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V");
     EXCEPTION_CHECK_VOID(jniEnv)
-    jvalue args[2] {};
-    args[0].l = callerModule;
-    jniEnv->CallStaticVoidMethodA(servicesClz, openJVMCIMethod, args);
+    jvalue args[4] {};
+    args[0].l = m1;
+    args[1].l = pn;
+    args[2].l = m2;
+    jniEnv->CallStaticVoidMethodA(modulesClass, addExports, args);
 }
 
 // Library entry points
@@ -46,9 +47,10 @@ static void openJVMCITo(JNIEnv* jniEnv, jobject callerModule)  {
 extern "C" {
 #endif
 
-JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_hotspot_JVMCIOpenSupport_openJVMCITo0(JNIEnv *env, jclass clz, jobject callerModule) {
-    openJVMCITo(env, callerModule);
+JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_hotspot_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
+    addExports(env, m1, pn, m2);
 }
+
 
 #ifdef __cplusplus
 }
