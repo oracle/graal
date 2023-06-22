@@ -683,14 +683,16 @@ public class SubstrateJVM {
         getThreadLocal().setExcluded(thread, excluded);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isExcluded(Thread thread) {
-        return getThreadLocal().isThreadExcluded(thread);
+        if (!thread.equals(Thread.currentThread())) {
+            return false;
+        }
+        return getThreadLocal().isCurrentThreadExcluded();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
-        return isExcluded(Thread.currentThread());
+        return getThreadLocal().isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
