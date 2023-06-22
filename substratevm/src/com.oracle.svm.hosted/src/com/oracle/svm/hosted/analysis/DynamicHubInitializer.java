@@ -47,6 +47,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -131,23 +132,22 @@ public class DynamicHubInitializer {
      * For reachable classes, register class's package in appropriate class loader.
      */
     private static void registerPackage(ImageHeapScanner heapScanner, Class<?> javaClass, DynamicHub hub) {
-        Package packageValue = javaClass.getPackage();
-        heapScanner.rescanObject(packageValue);
         /*
          * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
          * may be different from the class used to load it during native-image generation.
          */
-        ClassLoader classloader = javaClass.getClassLoader();
-        if (classloader == null) {
-            classloader = BootLoaderSupport.getBootLoader();
-        }
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
-        if (runtimeClassLoader != null) {
-            if (packageValue != null) {
-                String packageName = hub.getPackageName();
-                var loaderPackages = ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
-                heapScanner.rescanObject(loaderPackages);
+        Package packageValue = javaClass.getPackage();
+        /* Array types, primitives and void don't have a package. */
+        if (packageValue != null) {
+            ClassLoader classloader = javaClass.getClassLoader();
+            if (classloader == null) {
+                classloader = BootLoaderSupport.getBootLoader();
             }
+            ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
+            VMError.guarantee(runtimeClassLoader != null, "Class loader missing for class %s", hub.getName());
+            String packageName = hub.getPackageName();
+            var loaderPackages = ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
+            heapScanner.rescanObject(loaderPackages);
         }
     }
 
