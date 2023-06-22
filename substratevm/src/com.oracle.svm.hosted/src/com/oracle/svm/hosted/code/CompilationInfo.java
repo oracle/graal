@@ -106,9 +106,13 @@ public class CompilationInfo {
         return compilationGraph;
     }
 
-    @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
-        var graph = new StructuredGraph.Builder(compileOptions, debug)
+        return createGraph(debug, compileOptions, compilationId, decode);
+    }
+
+    @SuppressWarnings("try")
+    public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
+        var graph = new StructuredGraph.Builder(options, debug)
                         .method(method)
                         .recordInlinedMethods(false)
                         .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
