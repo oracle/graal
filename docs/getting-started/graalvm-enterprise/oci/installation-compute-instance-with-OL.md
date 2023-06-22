@@ -114,15 +114,8 @@ Now you have a ready-to-go OCI Compute instance with Oracle GraalVM installed.
 
 ## Install Additional Features
 
-<<<<<<< HEAD
-Oracle GraalVM consists of several features and components&emdash;JDK, Native Image, Javascript runtime, and Node.js runtime&emdash;each of which can be installed separately or as an add-on. 
-See the [Distribution Components List](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#certified-platforms) for more information.
-
-To add additional features to Oracle GraalVM, use the `yum install <package_name>` command. 
-=======
 Oracle GraalVM provides more technologies such as the Javascript runtime, Java on Truffle, etc., each of which can be installed as an add-on. 
 See the [Features Support list](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#features-support) for more information.
->>>>>>> 6fdbfcd0b54 (Rewrite Oracle GraalVM on OCI Compute Instances guide")
 
 1. Check what additional features are available for your current Oracle GraalVM installation:
 
@@ -151,19 +144,7 @@ See the [Features Support list](https://docs.oracle.com/en/graalvm/jdk/20/docs/s
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
-## Update Oracle GraalVM
-
-You can update an existing Oracle GraalVM or replace it with another version. 
-
-1. To replace with another version, for example, from JDK version 20 to 17, run:
-
-   ```shell
-   sudo yum install graalvm-17-native-image
-   ```
-
-2. Confirm that the installed package size is correct by entering `yes` at the prompt.
-
-The **graalvm-17-native-image** package is installed alongside **ggraalvm-20-native-image** in the _/usr/lib64/graalvm_ directory. Note that regardless the version printed to the console, the `PATH` and `JAVA_HOME` environment variables still point to the old version. Reset the variables as described in [Configure Environment Variables](#configure-environment-variables).
+Congratulations! You have installed Oracle GraalVM on the Compute instance with the Oracle Linux image, and can use it as any other Java Development Kit.
 
 ### Related Documentation
 
