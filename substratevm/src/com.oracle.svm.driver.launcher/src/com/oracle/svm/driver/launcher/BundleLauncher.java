@@ -47,6 +47,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
+import static com.oracle.svm.driver.launcher.ContainerSupport.CONTAINER_GRAAL_VM_HOME;
 import static com.oracle.svm.driver.launcher.ContainerSupport.replaceContainerPaths;
 import static com.oracle.svm.driver.launcher.ContainerSupport.mountMappingFor;
 import static com.oracle.svm.driver.launcher.ContainerSupport.TargetPath;
@@ -85,6 +86,8 @@ public class BundleLauncher {
 
     public static ContainerSupport containerSupport;
 
+    public static Map<String, String> launcherEnvironment = new HashMap<>();
+
 
     public static void main(String[] args) {
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
@@ -98,11 +101,9 @@ public class BundleLauncher {
             System.exit(1);
         }
 
-        List<String> command = createLaunchCommand(args);
-        ProcessBuilder pb = new ProcessBuilder(command);
+        ProcessBuilder pb = new ProcessBuilder();
 
         Path environmentFile = stageDir.resolve("environment.json");
-        Map<String, String> launcherEnvironment = new HashMap<>();
         if (Files.isReadable(environmentFile)) {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
                 new BundleEnvironmentParser(launcherEnvironment).parseAndRegister(reader);
@@ -111,19 +112,7 @@ public class BundleLauncher {
                 throw new Error("Failed to read bundle-file " + environmentFile, e);
             }
         }
-
-        if (useContainer()) {
-            Path javaHome = getJavaExecutable().getParent().getParent();
-            replaceContainerPaths(command, javaHome, rootDir);
-
-            Map<Path, TargetPath> mountMapping = mountMappingFor(javaHome, inputDir, outputDir);
-            if (Files.isDirectory(agentOutputDir)) {
-                mountMapping.put(agentOutputDir, TargetPath.of(agentOutputDir, false));
-            }
-
-            containerSupport.initializeContainerImage();
-            command.addAll(0, containerSupport.createContainerCommand(launcherEnvironment, mountMapping));
-        }
+        pb.command(createLaunchCommand(args));
 
         if (verbose) {
             List<String> environmentList = pb.environment()
@@ -134,7 +123,7 @@ public class BundleLauncher {
                     .toList();
             System.out.println("Executing [");
             System.out.println(String.join(" \\\n", environmentList));
-            System.out.println(String.join(" \\\n", command));
+            System.out.println(String.join(" \\\n", pb.command()));
             System.out.println("]");
         }
 
@@ -166,7 +155,21 @@ public class BundleLauncher {
         List<String> command = new ArrayList<>();
 
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
-        command.add(javaExecutable.toString());
+
+        if (useContainer()) {
+            Path javaHome = javaExecutable.getParent().getParent();
+
+            Map<Path, TargetPath> mountMapping = mountMappingFor(javaHome, inputDir, outputDir);
+            if (Files.isDirectory(agentOutputDir)) {
+                mountMapping.put(agentOutputDir, TargetPath.of(agentOutputDir, false));
+            }
+
+            containerSupport.initializeContainerImage();
+            command.addAll(containerSupport.createContainerCommand(launcherEnvironment, mountMapping));
+            command.add(CONTAINER_GRAAL_VM_HOME.resolve(javaHome.relativize(javaExecutable)).toString());
+        } else {
+            command.add(javaExecutable.toString());
+        }
 
         List<String> applicationArgs = new ArrayList<>();
         List<String> launchArgs = parseBundleLauncherArgs(args, applicationArgs);
@@ -176,6 +179,7 @@ public class BundleLauncher {
         if (Files.isDirectory(classPathDir)) {
             try (Stream<Path> walk = Files.walk(classPathDir, 1)) {
                 walk.filter(path -> path.toString().endsWith(".jar") || Files.isDirectory(path))
+                        .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
                         .map(Path::toString)
                         .forEach(classpath::add);
             } catch (IOException e) {
@@ -190,8 +194,8 @@ public class BundleLauncher {
         List<String> modulePath = new ArrayList<>();
         if (Files.isDirectory(modulePathDir)) {
             try (Stream<Path> walk = Files.walk(modulePathDir, 1)) {
-                walk.filter(Files::isDirectory)
-                        .filter(path -> !path.equals(modulePathDir))
+                walk.filter(path -> Files.isDirectory(path) && !path.equals(modulePathDir))
+                        .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
                         .map(Path::toString)
                         .forEach(modulePath::add);
             } catch (IOException e) {
