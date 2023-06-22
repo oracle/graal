@@ -154,7 +154,7 @@ public class ObjectScanner {
                 /* The value is not available yet. */
                 return;
             }
-            JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+            JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);

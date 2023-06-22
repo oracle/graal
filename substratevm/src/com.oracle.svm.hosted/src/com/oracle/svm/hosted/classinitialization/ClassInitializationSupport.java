@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
@@ -93,6 +94,10 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
         return new ProvenSafeClassInitializationSupport(metaAccess, loader);
     }
 
+    public static ClassInitializationSupport singleton() {
+        return (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+    }
+
     ClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
         this.loader = loader;
@@ -139,25 +144,25 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     /**
-     * Returns true if the provided type should be initialized at runtime.
+     * Returns true if the provided type is initialized at image build time.
+     *
+     * If the return value is true, then the class is also guaranteed to be initialized already.
+     * This means that calling this method might trigger class initialization, i.e., execute
+     * arbitrary user code.
      */
-    public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
-        return computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type)) != InitKind.BUILD_TIME;
+    public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
+        return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 
     /**
-     * Returns true if the provided class should be initialized at runtime.
+     * Returns true if the provided type is initialized at image build time.
+     *
+     * If the return value is true, then the class is also guaranteed to be initialized already.
+     * This means that calling this method might trigger class initialization, i.e., execute
+     * arbitrary user code.
      */
-    public boolean shouldInitializeAtRuntime(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz) != InitKind.BUILD_TIME;
-    }
-
-    /**
-     * Initializes the class during image building, unless initialization must be delayed to
-     * runtime.
-     */
-    public void maybeInitializeHosted(ResolvedJavaType type) {
-        computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type));
+    public boolean maybeInitializeAtBuildTime(Class<?> clazz) {
+        return computeInitKindAndMaybeInitializeClass(clazz) == InitKind.BUILD_TIME;
     }
 
     /**
