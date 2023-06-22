@@ -457,21 +457,6 @@ suite = {
       "workingSets" : "Truffle,Codegen",
     },
 
-    "com.oracle.truffle.libgraal.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:ANTLR4"
-      ],
-      "requires" : [
-        "java.compiler",
-        "jdk.management"
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "workingSets" : "Truffle,Codegen",
-    },
-
     "com.oracle.truffle.api.interop" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1128,6 +1113,20 @@ suite = {
         },
       },
     },
+
+    "com.oracle.truffle.libgraal.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:ANTLR4"
+      ],
+      "requires" : [
+        "java.compiler",
+        "jdk.management"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+    },
    },
   },
 
@@ -1167,13 +1166,14 @@ suite = {
         ],
         "uses" : [
         ],
+        "requiresConcealed" : {
+          "jdk.internal.vm.ci" : [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.code",
+          ],
+        },
       },
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-          "jdk.vm.ci.code",
-        ],
-      },
+
       "subDir" : "src",
       "javaCompliance" : "17+",
       "dependencies" : [
@@ -1508,7 +1508,7 @@ suite = {
       "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
       "allowsJavadocWarnings": True,
     },
-
+    
     "TRUFFLE_SL" : {
       "subDir" : "src",
       "moduleInfo" : {

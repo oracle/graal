@@ -346,6 +346,58 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
+    "org.graalvm.jniutils" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "GRAAL_SDK",
+      ],
+      "requires" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+    },
+    "org.graalvm.nativebridge" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JNIUTILS"
+      ],
+      "requires" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+    },
+    "org.graalvm.nativebridge.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "requires" : [
+        "java.compiler"
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Graal",
+    },
+    "org.graalvm.nativebridge.processor.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "NATIVEBRIDGE",
+      ],
+      "annotationProcessors" : [
+        "NATIVEBRIDGE_PROCESSOR",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
     "org.graalvm.toolchain.test" : {
       "class" : "ToolchainTestProject",
       "subDir" : "src",
@@ -470,6 +522,63 @@ suite = {
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
+    },
+    "JNIUTILS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.jniutils",
+        "exports" : [
+          "org.graalvm.jniutils",
+        ],
+        "requiresConcealed" : {
+          "jdk.internal.vm.ci" : [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.code",
+            "jdk.vm.ci.services",
+          ],
+        },
+      },
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.jniutils"],
+      "distDependencies" : ["GRAAL_SDK"],
+      "description" : "Utilities for JNI calls from within native-image.",
+      "allowsJavadocWarnings": True,
+    },
+    "NATIVEBRIDGE" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.nativebridge",
+        "exports" : [
+          "org.graalvm.nativebridge",
+        ],
+        "requiresConcealed" : {
+          "jdk.internal.vm.ci" : [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.code",
+            "jdk.vm.ci.services",
+          ],
+        },
+      },
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.nativebridge"],
+      "distDependencies" : ["JNIUTILS"],
+      "description" : "API and utility classes for nativebridge.",
+      "allowsJavadocWarnings": True,
+    },
+    "NATIVEBRIDGE_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor"
+      ],
+      "distDependencies" : [],
+      "maven": False,
+    },
+    "NATIVEBRIDGE_PROCESSOR_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor.test"
+      ],
+      "distDependencies" : ["NATIVEBRIDGE"],
+      "maven": False,
+      "testDistribution" : True,
     },
     "LLVM_TOOLCHAIN": {
       "native": True,

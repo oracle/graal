@@ -194,8 +194,6 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider",
       ],
       "annotationProcessors" : [
-        "truffle:TRUFFLE_DSL_PROCESSOR",
-        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
         "GRAAL_PROCESSOR"
       ],
       "checkPackagePrefix": "false",
@@ -208,7 +206,6 @@ suite = {
         "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.hotspot.test",
-        "org.graalvm.nativebridge.processor.test",
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.api.directives.test",
         "org.graalvm.compiler.test",
@@ -224,7 +221,6 @@ suite = {
         "org.graalvm.compiler.truffle.test",
       ],
     },
-
 
     "jdk.internal.vm.compiler.processor" : {
       "subDir" : "src",
@@ -288,39 +284,6 @@ suite = {
       "checkstyle" : "jdk.internal.vm.compiler",
       "javaCompliance" : "17+",
       "jacoco" : "exclude",
-    },
-
-    "org.graalvm.nativebridge.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler.processor",
-      ],
-      "requires" : [
-        "java.compiler"
-      ],
-      "annotationProcessors" : [
-      ],
-      "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
-      "workingSets" : "API,Graal",
-    },
-
-    "org.graalvm.nativebridge.processor.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler",
-        "mx:JUNIT",
-      ],
-      "annotationProcessors" : [
-        "GRAAL_NATIVEBRIDGE_PROCESSOR",
-      ],
-      "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
-      "workingSets" : "Graal,Test",
-      "jacoco" : "exclude",
-      "testProject" : True,
     },
 
     "org.graalvm.compiler.management" : {
@@ -486,7 +449,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "jdk.internal.vm.compiler.test",
-        "org.graalvm.nativebridge.processor.test",
         "org.graalvm.compiler.hotspot.jdk20.test",
         "org.graalvm.compiler.hotspot.jdk21.test",
       ],
@@ -511,15 +473,6 @@ suite = {
       "dependencies" : [
         "jdk.internal.vm.compiler.processor",
        ],
-      "maven": False,
-    },
-
-    "GRAAL_NATIVEBRIDGE_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.nativebridge.processor"
-      ],
-      "distDependencies" : ["GRAAL_PROCESSOR"],
       "maven": False,
     },
 
