@@ -86,7 +86,9 @@ public class BundleLauncher {
 
     public static ContainerSupport containerSupport;
 
-    public static Map<String, String> launcherEnvironment = new HashMap<>();
+    private static final List<String> launchArgs = new ArrayList<>();
+    private static final List<String> applicationArgs = new ArrayList<>();
+    private static final Map<String, String> launcherEnvironment = new HashMap<>();
 
 
     public static void main(String[] args) {
@@ -101,6 +103,8 @@ public class BundleLauncher {
             System.exit(1);
         }
 
+        parseBundleLauncherArgs(args);
+
         ProcessBuilder pb = new ProcessBuilder();
 
         Path environmentFile = stageDir.resolve("environment.json");
@@ -112,7 +116,7 @@ public class BundleLauncher {
                 throw new Error("Failed to read bundle-file " + environmentFile, e);
             }
         }
-        pb.command(createLaunchCommand(args));
+        pb.command(createLaunchCommand());
 
         if (verbose) {
             List<String> environmentList = pb.environment()
@@ -151,7 +155,7 @@ public class BundleLauncher {
         return containerSupport != null;
     }
 
-    private static List<String> createLaunchCommand(String[] args) {
+    private static List<String> createLaunchCommand() {
         List<String> command = new ArrayList<>();
 
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
@@ -162,6 +166,7 @@ public class BundleLauncher {
             Map<Path, TargetPath> mountMapping = mountMappingFor(javaHome, inputDir, outputDir);
             if (Files.isDirectory(agentOutputDir)) {
                 mountMapping.put(agentOutputDir, TargetPath.of(agentOutputDir, false));
+                launcherEnvironment.put("LD_LIBRARY_PATH", CONTAINER_GRAAL_VM_HOME.resolve("lib").toString());
             }
 
             containerSupport.initializeContainerImage();
@@ -171,8 +176,6 @@ public class BundleLauncher {
             command.add(javaExecutable.toString());
         }
 
-        List<String> applicationArgs = new ArrayList<>();
-        List<String> launchArgs = parseBundleLauncherArgs(args, applicationArgs);
         command.addAll(launchArgs);
 
         List<String> classpath = new ArrayList<>();
@@ -249,9 +252,8 @@ public class BundleLauncher {
         }
     }
 
-    private static List<String> parseBundleLauncherArgs(String[] args, List<String> applicationArgs) {
+    private static void parseBundleLauncherArgs(String[] args) {
         Deque<String> argQueue = new ArrayDeque<>(Arrays.asList(args));
-        List<String> launchArgs = new ArrayList<>();
 
         while (!argQueue.isEmpty()) {
             String arg = argQueue.removeFirst();
@@ -316,8 +318,6 @@ public class BundleLauncher {
                 }
             }
         }
-
-        return launchArgs;
     }
 
     private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
