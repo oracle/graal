@@ -81,7 +81,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
 
         boolean first = true;
         List<ExecutableElement> expectedPublicInterface = new ArrayList<>();
-        Set<String> expectedPublicMethodNames = new HashSet();
+        Set<String> expectedPublicMethodNames = new HashSet<>();
 
         for (TypeElement builder : builders) {
             Set<String> publicMethodNames = new HashSet<>();

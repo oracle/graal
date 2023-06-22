@@ -54,6 +54,7 @@ import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
+import static javax.lang.model.element.Modifier.VOLATILE;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -277,7 +278,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "constants")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(types.Node), "cachedNodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, VOLATILE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
@@ -1136,7 +1137,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startAssign("result").startCall("createCachedNodes").end(2);
 
         b.lineComment("For thread-safety, ensure that all stores into \"result\" happen before we make \"cachedNodes\" point to it.");
-        b.startStatement().startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end(2);
+        buildFence(b);
         b.startAssign("this.cachedNodes").string("result").end();
         b.startReturn().string("result").end();
 
@@ -1649,7 +1650,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("this.serialization = new SerializationState(builtNodes, buffer, callback)");
 
             b.startTryBlock();
-            b.statement("nodes.getParser().parse(this)");
+
+            b.startStatement().startCall(castParser("nodes.getParser()"), "parse").string("this").end(2);
 
             b.statement("short[][] nodeIndices = new short[builtNodes.size()][]");
             b.startFor().string("int i = 0; i < nodeIndices.length; i ++").end().startBlock();
@@ -1866,7 +1868,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             b.startIf().string("withSource").end().startBlock();
-            b.startStatement().string("nodes.setSources(sources.toArray(new ").type(types.Source).string("[0]))").end();
+
+            TypeMirror sourceArray = arrayOf(types.Source);
+            CodeTree toArray = CodeTreeBuilder.createBuilder().string("sources.toArray(new ").type(types.Source).string("[0])").build();
+            b.declaration(sourceArray, "sourceArray", toArray);
+            buildFence(b);
+            b.startStatement().string("nodes.setSources(sourceArray)").end();
             b.end();
 
             return ex;
@@ -2515,7 +2522,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("buildIndex++");
 
             b.startIf().string("withSource").end().startBlock();
-            b.statement("result.sourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
+            CodeTree copyOf = CodeTreeBuilder.createBuilder().startCall("Arrays.copyOf").string("sourceInfo").string("sourceInfoIndex").end().build();
+            b.declaration(arrayOf(context.getType(int.class)), "sourceInfoArray", copyOf);
+            buildFence(b);
+            b.statement("result.sourceInfo = sourceInfoArray");
             b.end();
 
             b.startIf().string("savedState == null").end().startBlock(); // {
@@ -3516,8 +3526,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationNodesImpl.add(createSetSources());
             operationNodesImpl.add(createGetSources());
 
-            operationNodesImpl.add(createGetParser());
-
             return operationNodesImpl;
         }
 
@@ -3534,6 +3542,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.renameArguments("config", "parse", "nodes");
             CodeTreeBuilder b = ex.createBuilder();
 
+            // When we reparse, we add metadata to the existing nodes. The builder gets them here.
             b.declaration(builder.asType(), "builder",
                             b.create().startNew(builder.asType()).string("this").string("true").string("config").end().build());
             b.startStatement().startCall("builder.builtNodes.addAll");
@@ -3542,18 +3551,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
             b.end(2);
 
-            // TODO: shouldn't we be somehow re-processing the input? Right now this is a no-op.
+            b.startStatement().startCall(castParser("parse"), "parse").string("builder").end(2);
 
-            return ex;
-        }
+            b.startStatement().startCall("builder", "finish").end(2);
 
-        private CodeExecutableElement createGetParser() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE),
-                            parserType, "getParser");
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn();
-            b.cast(parserType).string("parse");
-            b.end();
             return ex;
         }
 
@@ -4419,6 +4420,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
+    private void buildFence(CodeTreeBuilder b) {
+        b.startStatement().startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end(2);
+    }
+
     private void buildThrowIllegalStateException(CodeTreeBuilder b, String reasonCode) {
         buildThrow(b, IllegalStateException.class, reasonCode);
     }
@@ -4453,6 +4458,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
+    }
+
+    private CodeTree castParser(String parser) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startParantheses();
+        b.cast(generic(types.OperationParser, builder.asType()));
+        b.string(parser);
+        b.end();
+        return b.build();
     }
 
     private String localFrame() {

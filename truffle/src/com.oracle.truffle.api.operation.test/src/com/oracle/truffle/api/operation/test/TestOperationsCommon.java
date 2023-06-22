@@ -21,7 +21,7 @@ public class TestOperationsCommon {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends TestOperationsBuilder> OperationNodes<TestOperations> createNode(Class<? extends TestOperations> interpreterClass, OperationConfig config, OperationParser<T> builder) {
+    public static <T extends TestOperationsBuilder> OperationNodes<TestOperations> createNodes(Class<? extends TestOperations> interpreterClass, OperationConfig config, OperationParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
             return (OperationNodes<TestOperations>) create.invoke(null, config, builder);
@@ -41,14 +41,14 @@ public class TestOperationsCommon {
     }
 
     public static <T extends TestOperationsBuilder> TestOperations parseNode(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNode(interpreterClass, OperationConfig.DEFAULT, builder);
+        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
     }
 
     public static <T extends TestOperationsBuilder> TestOperations parseNodeWithSource(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNode(interpreterClass, OperationConfig.WITH_SOURCE, builder);
+        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNodes(interpreterClass, OperationConfig.WITH_SOURCE, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
