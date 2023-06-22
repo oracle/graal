@@ -187,7 +187,7 @@ public class JfrThrottler {
         if (periodNs == 0 || windowDurationNs >= SECOND_IN_NS) {
             return 1;
         }
-        return SECOND_IN_NS/windowDurationNs; // this var isn't available to the class in Hotspot.
+        return SECOND_IN_NS/windowDurationNs;
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {

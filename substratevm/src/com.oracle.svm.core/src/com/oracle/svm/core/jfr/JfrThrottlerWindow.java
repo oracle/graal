@@ -11,6 +11,7 @@ public class JfrThrottlerWindow {
     // Calculated every rotation based on params set by user and results from previous windows
     public volatile long samplingInterval;
     public volatile double projectedPopSize;
+    public volatile double adjustedProjectedPopSize;
 
     // params set by user
     public volatile long samplesPerWindow;
@@ -21,6 +22,7 @@ public class JfrThrottlerWindow {
         windowDurationNs = 0;
         samplesPerWindow = 0;
         projectedPopSize = 0;
+        adjustedProjectedPopSize = 0;
         measuredPopSize = new UninterruptibleUtils.AtomicLong(0);
         endTicks = new UninterruptibleUtils.AtomicLong(JfrTicks.currentTimeNanos() + windowDurationNs);
         samplingInterval = 1;
@@ -40,14 +42,14 @@ public class JfrThrottlerWindow {
         // Stop sampling if we're already over the projected population size, and we're over the
         // samples per window
         if (prevMeasuredPopSize % samplingInterval == 0 &&
-                        (prevMeasuredPopSize < projectedPopSize || prevMeasuredPopSize < samplesPerWindow)) {
+                        (prevMeasuredPopSize < adjustedProjectedPopSize || prevMeasuredPopSize < samplesPerWindow)) {
             return true;
         }
         return false;
     }
 
     public long samplesTaken() {
-        if (measuredPopSize.get() > projectedPopSize) {
+        if (measuredPopSize.get() > adjustedProjectedPopSize) {
             return samplesExpected();
         }
         return measuredPopSize.get() / samplingInterval;
@@ -64,8 +66,9 @@ public class JfrThrottlerWindow {
             samplingInterval = 1;
         } else {
             // It's important to round *up* otherwise we risk violating the upper bound
-            samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected());
+            samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected()); // *** TODO: geometric distribution stuff
         }
+        this.adjustedProjectedPopSize = samplesExpected() * samplingInterval;
         // reset
         measuredPopSize.set(0);
 

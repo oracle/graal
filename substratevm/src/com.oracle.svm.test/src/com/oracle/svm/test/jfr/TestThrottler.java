@@ -31,14 +31,11 @@ import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrThrottler;
 import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
 import org.junit.Test;
-import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -260,30 +257,75 @@ public class TestThrottler extends JfrRecordingTest{
         return new char[length];
     }
 
-    /**
-     * This is a more involved test that checks the sample distribution. It has been mostly copied from
-     * JfrGTestAdaptiveSampling in the OpenJDK
-     */
+
     @Test
-    public void testDistribution(){
+    public void testDistributionUniform(){
         final int maxPopPerWindow = 2000;
         final int minPopPerWindow = 2;
-        final int windowCount = 10000;
+        final int expectedSamplesPerWindow = 50;
+        testDistribution(() -> ThreadLocalRandom.current().nextInt(minPopPerWindow, maxPopPerWindow + 1), expectedSamplesPerWindow, 0.05);
+    }
+
+    @Test
+    public void testDistributionHighRate(){
+        final int maxPopPerWindow = 2000;
+        final int expectedSamplesPerWindow = 50;
+        testDistribution(() -> maxPopPerWindow
+        , expectedSamplesPerWindow, 0.02);
+    }
+    @Test
+    public void testDistributionLowRate(){
+        final int minPopPerWindow = 2;
+        testDistribution(() -> minPopPerWindow, minPopPerWindow, 0.05);
+    }
+    @Test
+    public void testDistributionEarlyBurst(){ // maybe this is 41000 instead of 50000 because projected population size is low
+        final int maxPopPerWindow = 2000;
+        final int expectedSamplesPerWindow = 50;
+        final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
+        AtomicInteger count = new AtomicInteger(1);
+        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 1 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.9);
+    }
+
+    @Test
+    public void testDistributionMidBurst(){
+        final int maxPopPerWindow = 2000;
+        final int expectedSamplesPerWindow = 50;
+        final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
+        AtomicInteger count = new AtomicInteger(1);
+        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 5 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.5);
+    }
+
+    @Test
+    public void testDistributionLateBurst(){ // *** I think its [NOT] bursting every window by accident. windowCount=10000 not 1000
+        final int maxPopPerWindow = 2000;
+        final int expectedSamplesPerWindow = 50;
+        final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
+        AtomicInteger count = new AtomicInteger(1);
+        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 0 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.0);
+    }
+    /**
+     * This is a more involved test that checks the sample distribution. It has been adapted from
+     * JfrGTestAdaptiveSampling in the OpenJDK
+     */
+    private void testDistribution(IncomingPopulation incomingPopulation, int samplePointsPerWindow, double errorFactor){
+        final int distributionSlots = 100;
         final int windowDurationMs = 100;
+        final int windowCount = 10000;
         final int expectedSamplesPerWindow = 50;
         final int expectedSamples = expectedSamplesPerWindow * windowCount;
         final int windowLookBackCount = 50;
-        final double maxSampleBias  =0.11;
+        final double maxSampleBias = 0.11;
         JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(expectedSamplesPerWindow*WINDOWS_PER_PERIOD, windowDurationMs*WINDOWS_PER_PERIOD);
 
-        int[] population = new int[100];
-        int[] sample = new int[100];
+        int[] population = new int[distributionSlots];
+        int[] sample = new int[distributionSlots];
 
         int populationSize = 0;
         int sampleSize = 0;
         for(int t = 0; t < windowCount; t++){
-            int windowPop = ThreadLocalRandom.current().nextInt(minPopPerWindow, maxPopPerWindow + 1);
+            int windowPop = incomingPopulation.getWindowPopulation();
             for(int i =0 ; i < windowPop; i++){
                 populationSize++;
                 int index = ThreadLocalRandom.current().nextInt(0, 100);
@@ -295,12 +337,48 @@ public class TestThrottler extends JfrRecordingTest{
             }
             expireAndRotate(throttler);
         }
-        expectNear(expectedSamples, sampleSize, expectedSamples* 0.05);
+        int targetSampleSize = samplePointsPerWindow * windowCount;
+        System.out.println("Population size:" + populationSize + " Sample size: "+sampleSize);
+        expectNear(targetSampleSize, sampleSize, expectedSamples* errorFactor);
+        assertDistributionProperties(distributionSlots, population, sample, populationSize, sampleSize);
     }
 
-    private static void expectNear(int value1, int value2, double error){
-        System.out.println(value1 +" "+ value2);
-        assertTrue(Math.abs(value1-value2) < error);
+    private static void expectNear(double value1, double value2, double error){
+//        System.out.println(value1 +" "+ value2);
+        assertTrue(Math.abs(value1-value2) <= error);
+    }
+
+    private static void assertDistributionProperties(int distributionSlots, int[] population, int[] sample, int populationSize, int sampleSize ) {
+        int populationSum=0;
+        int sampleSum = 0;
+        for (int i = 0; i < distributionSlots; i++) {
+            populationSum += i * population[i];
+            sampleSum += i * sample[i];
+        }
+
+        double populationMean = populationSum / (double)populationSize;
+        double sampleMean = sampleSum / (double)sampleSize;
+
+        double populationVariance = 0;
+        double sampleVariance = 0;
+        for (int i = 0; i < distributionSlots; i++) {
+            double populationDiff = i - populationMean;
+            populationVariance += population[i] * populationDiff * populationDiff;
+
+            double sampleDiff = i - sampleMean;
+            sampleVariance += sample[i] * sampleDiff * sampleDiff;
+        }
+        populationVariance = populationVariance / (populationSize - 1);
+        sampleVariance = sampleVariance / (sampleSize - 1);
+        double populationStdev = Math.sqrt(populationVariance);
+        double sampleStdev = Math.sqrt(sampleVariance);
+//        System.out.println("populationStdev:"+populationStdev +" sampleStdev:"+sampleStdev );
+        expectNear(populationStdev, sampleStdev, 0.5); // 0.5 value copied from Hotspot test
+        expectNear(populationMean, sampleMean, populationStdev);
+    }
+
+    interface IncomingPopulation{
+        int getWindowPopulation();
     }
 
     /**
