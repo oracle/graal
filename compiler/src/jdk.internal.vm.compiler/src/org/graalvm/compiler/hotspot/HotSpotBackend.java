@@ -277,6 +277,22 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(),
+                    "notify_jvmti_vthread_start", void.class,
+                    Object.class, boolean.class, Word.class);
+
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(),
+                    "notify_jvmti_vthread_end", void.class,
+                    Object.class, boolean.class, Word.class);
+
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(),
+                    "notify_jvmti_vthread_mount", void.class,
+                    Object.class, boolean.class, Word.class);
+
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(),
+                    "notify_jvmti_vthread_unmount", void.class,
+                    Object.class, boolean.class, Word.class);
+
     /**
      * @see VMErrorNode
      */
