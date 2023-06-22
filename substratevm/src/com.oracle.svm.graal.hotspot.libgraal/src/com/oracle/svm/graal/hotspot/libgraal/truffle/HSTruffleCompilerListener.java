@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnCompilationRetry;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnFailure;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnSuccess;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnCompilationRetry;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnFailure;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnSuccess;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
 import static org.graalvm.jniutils.JNIUtil.createHSString;
 
 import java.io.Closeable;

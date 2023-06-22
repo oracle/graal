@@ -22,8 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callConsumeOptimizedAssumptionDependency;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callCreateStringSupplier;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callIsValueType;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callLog;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
@@ -34,14 +42,6 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callConsumeOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callCreateStringSupplier;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsValueType;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIMethodScope.scope;
 import static org.graalvm.jniutils.JNIUtil.getInternalName;

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;

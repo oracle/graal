@@ -22,8 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callAsJavaConstant;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callCancelCompilation;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callCompilableToString;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callCountDirectCallNodes;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callCreateStringSupplier;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callGetCompilableCallCount;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callGetCompilableName;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callGetFailedSpeculationsAddress;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callGetKnownCallSiteCount;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callGetNonTrivialNodeCount;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callIsSameOrSplit;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callIsTrivial;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callOnCompilationFailed;
+import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilableGen.callPrepareForCompilation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
@@ -36,20 +50,6 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callAsJavaConstant;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCancelCompilation;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCompilableToString;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCountDirectCallNodes;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callCreateStringSupplier;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetCompilableCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetCompilableName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetFailedSpeculationsAddress;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetKnownCallSiteCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callGetNonTrivialNodeCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callIsSameOrSplit;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callIsTrivial;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callOnCompilationFailed;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilableGen.callPrepareForCompilation;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
