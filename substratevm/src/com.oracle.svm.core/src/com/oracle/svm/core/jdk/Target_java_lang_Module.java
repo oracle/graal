@@ -63,14 +63,14 @@ final class Target_java_lang_Module {
     @Substitute
     private static void addReads0(Module from, Module to) {
         if (Objects.isNull(from)) {
-            throw new NullPointerException("from_module is null");
+            throw new NullPointerException("The from_module is null");
         }
     }
 
     @Substitute
     private static void addExports0(Module from, String pn, Module to) {
         if (Objects.isNull(to)) {
-            throw new NullPointerException("to_module is null");
+            throw new NullPointerException("The to_module is null");
         }
 
         ModuleUtil.checkFromModuleAndPackageNullability(from, pn);

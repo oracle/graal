@@ -57,7 +57,7 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info
+from mx_javamodules import as_java_module, get_java_module_info, get_module_name
 from mx_sigtest import sigtest
 from mx_unittest import unittest
 
@@ -170,11 +170,13 @@ def _path_args(depNames=None):
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
+    The default Truffle moduleInfo is opened but closed version is deployed into graalvm.
+    To run benchmarks on the graalvm we need to open the closed Truffle packages.
     """
     assert mx.get_jdk().javaCompliance >= '1.9'
     truffle_api_dist = mx.distribution('TRUFFLE_API')
     truffle_api_module_name = truffle_api_dist.moduleInfo['name']
-    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo:open')['exports']
+    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo')['exports']
     args = []
     for export in module_info_open_exports:
         if ' to ' in export: # Qualified exports
@@ -194,24 +196,6 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-
-    # The arguments below are only actually needed if Truffle is deployed as a
-    # module. However, that's determined by the compiler suite which may not
-    # be present. In that case, adding these options results in annoying
-    # but harmless messages from the VM:
-    #
-    #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
-    #
-
-    # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
-
-    # This is required for the call to setAccessible in
-    # TruffleTCK.testValueWithSource to work.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-
-    # Needed for object model tests.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
@@ -235,7 +219,9 @@ def _truffle_gate_runner(args, tasks):
     with Task('Truffle Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast']))
+        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+    with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
+        if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
         with Task('Truffle DSL max state bit tests', tasks) as t:
             if t:
@@ -254,7 +240,7 @@ def _truffle_gate_state_bitwidth_tests():
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
 
-        unittest_args = ['--suite', 'truffle', '--enable-timing', '--fail-fast', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
+        unittest_args = ['--suite', 'truffle', '--enable-timing', '--max-class-failures=25', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
                          'com.oracle.truffle.api.dsl.test', 'com.oracle.truffle.api.library.test', 'com.oracle.truffle.sl.test']
         try:
             mx.build(build_args)
@@ -333,12 +319,44 @@ def _collect_class_path_entries_by_resource(requiredResources, entries_collector
             return False
     _collect_class_path_entries(has_resource, entries_collector, properties_collector)
 
+
+def _collect_class_path_entries_by_module_descriptor(required_services, entries_collector, properties_collector):
+    """
+    Collects class path for JAR distributions providing any service from requiredServices.
+
+    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include
+            distribution class path entries.
+    :param entries_collector: the list to add the class paths entries into.
+    :param properties_collector: the list to add the distribution Java properties into.
+    """
+    required_set = set(required_services)
+
+    def provides_service(dist):
+        if dist.isJARDistribution() and exists(dist.path):
+            module_name = get_module_name(dist)
+            if module_name:
+                jmd = as_java_module(dist, mx.get_jdk())
+                return len(required_set.intersection(jmd.provides.keys())) != 0
+        return False
+    _collect_class_path_entries(provides_service, entries_collector, properties_collector)
+
 def _collect_class_path_entries_by_name(distributionName, entries_collector, properties_collector):
     cp_filter = lambda dist: dist.isJARDistribution() and  dist.name == distributionName and exists(dist.path)
     _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
 
 def _collect_languages(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource(["META-INF/truffle/language", "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider"], entries_collector, properties_collector)
+    _collect_class_path_entries_by_module_descriptor([
+        "com.oracle.truffle.api.provider.TruffleLanguageProvider"],
+        entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource([
+        # GR-46292 Remove the deprecated TruffleLanguage.Provider
+        "META-INF/truffle/language",
+        # GR-46292 Remove the deprecated TruffleLanguage.Provider
+        "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider",
+        # Not all languages are already modularized. For non-modularized languages we require
+        # a registration of the TruffleLanguageProvider in the META-INF/services
+        "META-INF/services/com.oracle.truffle.api.provider.TruffleLanguageProvider"],
+        entries_collector, properties_collector)
 
 def _collect_tck_providers(entries_collector, properties_collector):
     _collect_class_path_entries_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector, properties_collector)
@@ -845,24 +863,46 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
-    name='Truffle',
-    short_name='tfl',
+    name='Truffle API',
+    short_name='tfla',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    jar_distributions=[
-        'truffle:TRUFFLE_DSL_PROCESSOR',
-        'truffle:TRUFFLE_TCK',
-    ],
+    jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
-        'truffle:LOCATOR',
     ],
     stability="supported",
 ))
 
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle',
+    short_name='tfl',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Truffle API',
+        'GraalVM Launcher Common'
+    ],
+    jar_distributions=[],
+    jvmci_parent_jars=[
+        'truffle:LOCATOR',
+    ],
+    stability="supported",
+))
+
+# This component is useful only if `SubstrateVM` is included. However, we do
+# not declare a dependency because:
+# - it should be possible to build a GraalVM that includes this macro and not
+#   `SubstrateVM`, which can be installed via `gu`
+# - we prefer to define this component here rather than in the `substratevm`
+#   suite
+# - The `SubstrateVM` component explicitly depends on this macro, to make sure
+#   that it is always present whenever `SubstrateVM` is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
@@ -870,13 +910,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
     stability="supported",
 ))
 
+# Typically not included in releases
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle DSL Processor',
+    short_name='tflp',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=['truffle:TRUFFLE_DSL_PROCESSOR'],
+    jvmci_parent_jars=[],
+    stability="supported",
+))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+truffle_nfi_component = mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
@@ -889,13 +942,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_nfi_component)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI LIBFFI',
     short_name='nfi-libffi',
-    dir_name='nfi-libffi',
+    dir_name='nfi',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
@@ -914,6 +968,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle'],
     truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
     support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
+    installable=True,
+    standalone=False,
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='ANTLR4',
+    short_name='antlr4',
+    dir_name='antlr4',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['truffle:ANTLR4'],
+    support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
     standalone=False,
     stability="supported",

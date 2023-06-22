@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
@@ -150,6 +151,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    /**
+     * Indicates that this method returns all instantiated types. This is necessary when there are
+     * control flows present which cannot be tracked by analysis, which happens for continuation
+     * support.
+     *
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    private boolean returnsAllInstantiatedTypes;
+
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
@@ -214,6 +225,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
+        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -223,7 +235,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
         String aName = wrapped.getName();
         if (multiMethodKey != ORIGINAL_METHOD) {
-            aName += MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+            aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
     }
@@ -862,10 +874,23 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
+        var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
                         analyzedGraph.trackNodeSourcePosition()).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
+        /*
+         * Since we are merely decoding the graph, the resulting graph should have the same
+         * assumptions as the analyzed graph.
+         */
+        switch (allowAssumptions) {
+            case YES -> {
+                assert analyzedGraph.getAssumptions().equals(result.getAssumptions());
+            }
+            case NO -> {
+                assert analyzedGraph.getAssumptions() == null && result.getAssumptions() == null;
+            }
+        }
         return result;
     }
 
@@ -921,6 +946,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             createAction.accept(newMethod);
             return newMethod;
         });
+    }
+
+    /**
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    public void setReturnsAllInstantiatedTypes() {
+        returnsAllInstantiatedTypes = true;
+    }
+
+    public boolean getReturnsAllInstantiatedTypes() {
+        return returnsAllInstantiatedTypes;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);

@@ -46,12 +46,12 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 public class InstrumentRegistrationTest {
 
-    @ExpectError("Registered instrument class must be at least package protected")
+    @ExpectError("Registered instrument class must be at least package protected.")
     @Registration(id = "NonPublicInstrument")
     private static final class PrivateInstrument extends ProxyInstrument {
     }
 
-    @ExpectError("Registered instrument class must subclass TruffleInstrument")
+    @ExpectError("Registered instrument class must subclass TruffleInstrument.")
     @Registration(id = "WrongSuperClassInstrument")
     public static final class WrongSuperClassInstrument {
     }

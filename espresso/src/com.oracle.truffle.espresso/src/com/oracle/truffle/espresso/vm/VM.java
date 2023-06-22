@@ -129,7 +129,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
@@ -634,7 +634,8 @@ public final class VM extends NativeEnv {
         }
     }
 
-    private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToEspressoNode toEspressoNode, SubstitutionProfiler profiler,
+    private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToEspressoNode.DynamicToEspresso toEspressoNode,
+                    SubstitutionProfiler profiler,
                     char exceptionBranch) {
         assert array.isForeignObject();
         assert array.isArray();
@@ -751,7 +752,8 @@ public final class VM extends NativeEnv {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
+                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), profiler,
+                                exceptionBranch);
             }
             return self.copy(meta.getContext());
         }
@@ -1532,19 +1534,24 @@ public final class VM extends NativeEnv {
     }
 
     private int attachCurrentThread(@SuppressWarnings("unused") @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, boolean daemon) {
-        JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
         StaticObject group = null;
         String name = null;
-        if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
-            group = attachArgs.group();
-            name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+        if (InteropLibrary.getUncached().isNull(argsPtr)) {
+            getLogger().fine("AttachCurrentThread with null args");
         } else {
-            getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
+            if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
+                group = attachArgs.group();
+                name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+            } else {
+                getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
+            }
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
             getContext().getThreadAccess().setDaemon(thread, true);
         }
+        NativeUtils.writeToPointerPointer(getUncached(), penvPtr, jniEnv.getNativePointer());
         return JNI_OK;
     }
 
@@ -2225,17 +2232,14 @@ public final class VM extends NativeEnv {
     }
 
     private static long getLibraryHandle(TruffleObject lib) {
-        // TODO(peterssen): Add a proper API to get native handle for libraries.
         try {
-            // Try NFI internals first.
-            // TODO(peterssen): Expose library handle via interop asPointer?
-            java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
-            f.setAccessible(true);
-            return (long) f.get(lib);
-        } catch (NoSuchFieldException e) {
-            // Probably a Sulong library, cannot get its native handle, create a fake one.
-            return libraryHandles.getAndIncrement();
-        } catch (IllegalAccessException e) {
+            if (InteropLibrary.getUncached().isPointer(lib)) {
+                return InteropLibrary.getUncached().asPointer(lib);
+            } else {
+                // Probably a Sulong library, cannot get its native handle, create a fake one.
+                return libraryHandles.getAndIncrement();
+            }
+        } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }

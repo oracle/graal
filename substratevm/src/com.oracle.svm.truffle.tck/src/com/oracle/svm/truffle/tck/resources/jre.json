@@ -249,5 +249,17 @@
         ]
       }
     ]
+  },
+  {
+    "name": "java.lang.ClassLoader",
+    "methods": [
+      {
+        "name": "getResourceAsStream",
+        "parameterTypes" : [
+          "java.lang.String"
+        ],
+        "justification": "All the resources loaded by this method are registered using ResourcesFeature, so this call is safe."
+      }
+    ]
   }
 ]

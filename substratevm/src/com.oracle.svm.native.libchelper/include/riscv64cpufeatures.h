@@ -23,12 +23,14 @@
  * questions.
  */
 
+#include <stdint.h>
+
 typedef struct {
-  char fI;
-  char fM;
-  char fA;
-  char fF;
-  char fD;
-  char fC;
-  char fV;
+  uint8_t fI;
+  uint8_t fM;
+  uint8_t fA;
+  uint8_t fF;
+  uint8_t fD;
+  uint8_t fC;
+  uint8_t fV;
 } CPUFeatures;

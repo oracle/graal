@@ -148,8 +148,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        protected boolean shouldVerifyFrameStates() {
+            return false;
+        }
+
         @Override
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            if (!shouldVerifyFrameStates()) {
+                startFrameState.disableStateVerification();
+            }
+
             super.build(startInstruction, startFrameState);
 
             if (isMethodDeoptTarget()) {
@@ -378,7 +386,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                /*
+                 * As this invoke will always throw, its state after will not respect the expected
+                 * stack effect.
+                 */
+                boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
                 b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                b.getFrameStateBuilder().setStateVerification(verifyStates);
                 b.add(new LoweredDeadEndNode());
             } else {
                 replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
@@ -403,7 +417,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
             b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
+            b.getFrameStateBuilder().setStateVerification(verifyStates);
             b.add(new LoweredDeadEndNode());
         }
 

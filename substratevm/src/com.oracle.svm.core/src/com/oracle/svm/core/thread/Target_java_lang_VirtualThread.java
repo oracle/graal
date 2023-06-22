@@ -46,6 +46,8 @@ import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
@@ -75,14 +77,28 @@ public final class Target_java_lang_VirtualThread {
     @Substitute
     @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiMount(boolean hide, boolean firstMount) {
+    private void notifyJvmtiStart() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiEnd() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiMount(boolean hide) {
         // unimplemented (GR-45392)
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiUnmount(boolean hide, boolean lastUnmount) {
+    private void notifyJvmtiUnmount(boolean hide) {
         // unimplemented (GR-45392)
     }
 
@@ -165,6 +181,9 @@ public final class Target_java_lang_VirtualThread {
         }
 
         carrier.setCurrentThread(asThread(this));
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
+        }
     }
 
     @Substitute

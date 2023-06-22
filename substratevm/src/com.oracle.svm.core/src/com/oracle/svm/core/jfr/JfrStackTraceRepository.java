@@ -298,7 +298,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     public static final class JfrStackTraceTable extends AbstractUninterruptibleHashtable {
-        private long nextId;
+        private static long nextId;
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

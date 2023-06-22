@@ -95,7 +95,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compile-time constants, e.g., for {@link Method}, {@link MethodHandle}, or {@code VarHandle}
  * instances. This avoids manual registration of these elements using a reflection configuration
  * file.
- * 
+ *
  * One important assumption made in this class is that the return types of all folded methods do not
  * have object identity, i.e., it is allowed to return a cached object instead of creating a new
  * object at every invocation. While the types {@link #ALLOWED_CONSTANT_CLASSES we allow} are not
@@ -123,6 +123,7 @@ public final class ReflectionPlugins {
     private final AnalysisUniverse aUniverse;
     private final ParsingReason reason;
     private final FallbackFeature fallbackFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
@@ -133,6 +134,8 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
+
+        this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -157,12 +160,12 @@ public final class ReflectionPlugins {
      * return only objects of classes that are "immutable enough", i.e., cannot change their
      * meaning. Otherwise, the object could be modified between the intrinsification at image build
      * time and the actual method invocation at run time.
-     * 
+     *
      * Note that many of the classes are not completely immutable because they have lazily
      * initialized caches, or the "accessible" flag of reflection objects. That is OK, because these
      * mutable fields do not affect the outcome of any of the methods that we register for constant
      * folding.
-     * 
+     *
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
@@ -221,7 +224,7 @@ public final class ReflectionPlugins {
             /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
             Object classArg = args[0];
             if (classArg instanceof Class<?>) {
-                if (shouldInitializeAtRuntime((Class<?>) classArg)) {
+                if (classInitializationSupport.shouldInitializeAtRuntime((Class<?>) classArg)) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
@@ -244,7 +247,7 @@ public final class ReflectionPlugins {
             Object fieldArg = args[0];
             if (fieldArg instanceof Field) {
                 Field field = (Field) fieldArg;
-                if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
+                if (isStatic(field) && classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);
@@ -261,7 +264,7 @@ public final class ReflectionPlugins {
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
-        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
+        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
@@ -521,7 +524,7 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(new ReachabilityRegistrationNode(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback)));
+        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;
     }
 
@@ -534,11 +537,6 @@ public final class ReflectionPlugins {
         } catch (LinkageError e) {
             // Ignore, the call should be registered manually
         }
-    }
-
-    private static boolean shouldInitializeAtRuntime(Class<?> classArg) {
-        ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        return classInitializationSupport.shouldInitializeAtRuntime(classArg);
     }
 
     private static boolean isStatic(Field field) {
@@ -596,7 +594,7 @@ public final class ReflectionPlugins {
 
         /* Any other object that is not a Class. */
         Object result = snippetReflection.asObject(Object.class, argConstant);
-        if (ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
+        if (result != null && ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
             return result;
         }
         return null;

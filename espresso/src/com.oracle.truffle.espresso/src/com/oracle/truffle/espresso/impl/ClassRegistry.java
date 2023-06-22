@@ -448,7 +448,7 @@ public abstract class ClassRegistry {
         }
 
         if (superKlass != null) {
-            if (!Klass.checkAccess(superKlass, klass)) {
+            if (!Klass.checkAccess(superKlass, klass, true)) {
                 throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
@@ -458,7 +458,7 @@ public abstract class ClassRegistry {
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null) {
-                if (!Klass.checkAccess(interf, klass)) {
+                if (!Klass.checkAccess(interf, klass, true)) {
                     throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superinterface " + interf.getType());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {

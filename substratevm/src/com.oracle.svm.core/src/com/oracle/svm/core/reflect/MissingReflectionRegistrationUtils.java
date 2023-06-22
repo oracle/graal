@@ -215,7 +215,7 @@ public final class MissingReflectionRegistrationUtils {
                     Constructor.class.getTypeName(), Set.of("newInstance"),
                     "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
                     "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
-                    sun.misc.Unsafe.class.getName(), Set.of("allocateInstance"),
+                    "sun.misc.Unsafe", Set.of("allocateInstance"),
                     /* For jdk.internal.misc.Unsafe.allocateInstance(), which is intrinsified */
                     SubstrateAllocationSnippets.class.getName(), Set.of("instanceHubErrorStub"));
 

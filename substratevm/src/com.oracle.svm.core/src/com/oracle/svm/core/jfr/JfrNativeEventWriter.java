@@ -191,6 +191,17 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putFloat(JfrNativeEventWriterData data, float v) {
+        if (ensureSize(data, Float.BYTES)) {
+            int bits = Float.floatToIntBits(v);
+            putUncheckedByte(data, (byte) (bits >>> 24));
+            putUncheckedByte(data, (byte) (bits >>> 16));
+            putUncheckedByte(data, (byte) (bits >>> 8));
+            putUncheckedByte(data, (byte) (bits));
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putString(JfrNativeEventWriterData data, String string) {
         putString(data, string, null);
     }

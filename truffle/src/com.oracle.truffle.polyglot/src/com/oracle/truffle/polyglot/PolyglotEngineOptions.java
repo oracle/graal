@@ -101,6 +101,10 @@ final class PolyglotEngineOptions {
                     "Print warning when the engine is using a default Truffle runtime (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Print warning when a deprecated option is used (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
+    static final OptionKey<Boolean> WarnOptionDeprecation = new OptionKey<>(true);
+
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
@@ -65,10 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        // Needed to match type flows to invokes so invoked methods can be inlined in runtime
-        // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
         super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS);
-        graph.getGraphState().configureExplicitExceptionsNoDeopt();
     }
 
     @Override

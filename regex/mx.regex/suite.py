@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.27.1",
 
   "name" : "regex",
 
@@ -127,11 +127,6 @@ suite = {
           "java.logging",
           "jdk.unsupported", # sun.misc.Unsafe
         ],
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
-          ],
-        },
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],

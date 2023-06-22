@@ -256,7 +256,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public int[] getSOEHandlerInfo() {
         ArrayList<Integer> toArray = new ArrayList<>();
         for (ExceptionHandler handler : getExceptionHandlers()) {
-            if (handler.getCatchType() == Type.java_lang_StackOverflowError) {
+            if (handler.isCatchAll() //
+                            || handler.getCatchType() == Type.java_lang_StackOverflowError //
+                            || handler.getCatchType() == Type.java_lang_VirtualMachineError //
+                            || handler.getCatchType() == Type.java_lang_Error //
+                            || handler.getCatchType() == Type.java_lang_Throwable) {
                 toArray.add(handler.getStartBCI());
                 toArray.add(handler.getEndBCI());
                 toArray.add(handler.getHandlerBCI());

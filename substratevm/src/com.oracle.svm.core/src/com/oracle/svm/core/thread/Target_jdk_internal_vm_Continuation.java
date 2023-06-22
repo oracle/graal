@@ -187,7 +187,7 @@ public final class Target_jdk_internal_vm_Continuation {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount + 1 == 0) { // unsigned arithmetic
-                throw new IllegalStateException("pin overflow");
+                throw new IllegalStateException("Pin overflow");
             }
             carrier.cont.pinCount++;
         }
@@ -198,7 +198,7 @@ public final class Target_jdk_internal_vm_Continuation {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount == 0) {
-                throw new IllegalStateException("pin underflow");
+                throw new IllegalStateException("Pin underflow");
             }
             carrier.cont.pinCount--;
         }

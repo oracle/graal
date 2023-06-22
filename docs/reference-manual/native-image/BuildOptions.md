@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: build-overview
 link_title: Build Options
 permalink: /reference-manual/native-image/overview/BuildOptions/
@@ -71,7 +71,7 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `--tool:chromeinspector`: add debugging support to a GraalVM-supported language
 * `--tool:insightheap`: snapshot a region of image heap during the execution
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like Visual Studio Code
-* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../embedding/sandbox-options.md)
+* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../../security/polyglot-sandbox.md)
 * `--tool:profiler`: add profiling support to a GraalVM-supported language
 
 The `--language:js` `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`, `--language:wasm`, `--language:llvm`, `--language:regex` (enables the Truffle Regular Expression engine) polyglot macro options become available once the corresponding languages are added to the base GraalVM JDK.

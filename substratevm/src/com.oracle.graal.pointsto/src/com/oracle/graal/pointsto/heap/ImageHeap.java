@@ -77,16 +77,22 @@ public class ImageHeap {
 
     /** Get the constant snapshot from the cache. */
     public Object getSnapshot(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            assert imageHeapConstant.getHostedObject() == null || objectsCache.get(imageHeapConstant.getHostedObject()) == imageHeapConstant;
+            return imageHeapConstant;
+        }
         return objectsCache.get(constant);
     }
 
     /** Record the future computing the snapshot in the heap. */
     public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapConstant> task) {
+        assert !(constant instanceof ImageHeapConstant);
         return objectsCache.putIfAbsent(constant, task);
     }
 
     /** Record the snapshot in the heap. */
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
+        assert !(constant instanceof ImageHeapConstant);
         Object previous = objectsCache.put(constant, value);
         AnalysisError.guarantee(!(previous instanceof ImageHeapConstant), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }

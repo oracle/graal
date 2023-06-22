@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -62,8 +62,6 @@ import argparse
 import shlex
 import json
 
-from io import StringIO
-
 _suite = mx.suite('compiler')
 
 """ Prefix for running the VM. """
@@ -91,19 +89,22 @@ def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
+    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
-    mx.run([jdk.java, source_path], out=out)
+    mx.run([jdk.java, '-Xlog:disable', source_path], out=out)
     global _jdk_jvmci_version
     if out.data:
-        _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
+        try:
+            _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
+        except ValueError:
+            mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
-mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
+mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
 def _get_graal_option(vmargs, name, default=None, prefix='-Dgraal.'):
     """
@@ -147,46 +148,6 @@ def _is_jvmci_enabled(vmargs):
     :param list vmargs: VM arguments to inspect
     """
     return _get_XX_option_value(vmargs, 'EnableJVMCI', mx_sdk_vm.jdk_enables_jvmci_by_default(jdk))
-
-def _nodeCostDump(args, extraVMarguments=None):
-    """list the costs associated with each Node type"""
-    parser = ArgumentParser(prog='mx nodecostdump')
-    parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
-    parser.add_argument('--markdown', action='store_true', help="Format to Markdown table")
-    args, vmargs = parser.parse_known_args(args)
-    additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
-    vmargs.extend([additionalPrimarySuiteClassPath, '-cp', mx.classpath('org.graalvm.compiler.hotspot.test'), '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.test.NodeCostDumpUtil'])
-    out = mx.OutputCapture()
-    regex = ""
-    if args.regex:
-        regex = args.regex
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + [regex], out=out)
-    if args.markdown:
-        stringIO = StringIO(out.data)
-        reader = csv.reader(stringIO, delimiter=';', lineterminator="\n")
-        firstRow = True
-        maxLen = 0
-        for row in reader:
-            for col in row:
-                maxLen = max(maxLen, len(col))
-        stringIO.seek(0)
-        for row in reader:
-            s = '|'
-            if firstRow:
-                firstRow = False
-                nrOfCols = len(row)
-                for col in row:
-                    s = s + col + "|"
-                print(s)
-                s = '|'
-                for _ in range(nrOfCols):
-                    s = s + ('-' * maxLen) + '|'
-            else:
-                for col in row:
-                    s = s + col + "|"
-            print(s)
-    else:
-        print(out.data)
 
 def _ctw_jvmci_export_args(arg_prefix='--'):
     """
@@ -276,8 +237,10 @@ class UnitTestRun:
                     extra_args = []
                 if Task.tags is None or 'coverage' not in Task.tags: # pylint: disable=unsupported-membership-test
                     # If this is a coverage execution, we want maximal coverage
-                    # and thus must not fail fast.
-                    extra_args += ['--fail-fast']
+                    # and thus must not fail fast. Otherwise, stop after the first 25
+                    # failures. This guards against systemic test failure while still
+                    # allowing a gate to reveal numerous failures.
+                    extra_args += ['--max-class-failures=25']
                 if t:
                     tags = {'task' : t.title}
                     unittest(['--suite', suite] + extra_args + self.args +
@@ -397,7 +360,53 @@ def _run_benchmark(suite, name, args, vmargs):
         mx.abort("Gate for {} benchmark '{}' failed!".format(suite, name))
     return exit_code, suite, results
 
+def _check_forbidden_imports(projects, package_substrings, exceptions=None):
+    """
+    Checks Java source files in `projects` to ensure there is no import from
+    a class in a package whose name does not match `package_substrings`
+    of a package whose name matches `package_substrings`.
+
+    :param projects: list of JavaProjects
+    :param package_substrings: package name substrings
+    :param exceptions: set of unqualified Java source file names for which a failing
+                       check produces a warning instead of an abort
+    """
+    # Assumes package name components start with lower case letter and
+    # classes start with upper-case letter
+    importStatementRe = re.compile(r'\s*import\s+(?:static\s+)?([a-zA-Z\d_$\.]+\*?)\s*;\s*')
+    importedRe = re.compile(r'((?:[a-z][a-zA-Z\d_$]*\.)*[a-z][a-zA-Z\d_$]*)\.(?:(?:[A-Z][a-zA-Z\d_$]*)|\*)')
+    for project in projects:
+        for source_dir in project.source_dirs():
+            for root, _, files in os.walk(source_dir):
+                java_sources = [name for name in files if name.endswith('.java') and name != 'module-info.java']
+                if len(java_sources) != 0:
+                    java_package = root[len(source_dir) + 1:].replace(os.sep, '.')
+                    if not any((s in java_package for s in package_substrings)):
+                        for n in java_sources:
+                            java_source = join(root, n)
+                            with open(java_source) as fp:
+                                for i, line in enumerate(fp):
+                                    m = importStatementRe.match(line)
+                                    if m:
+                                        imported = m.group(1)
+                                        m = importedRe.match(imported)
+                                        lineNo = i + 1
+                                        if not m:
+                                            mx.abort(java_source + ':' + str(lineNo) + ': import statement does not match expected pattern:\n' + line)
+                                        imported_package = m.group(1)
+                                        for s in package_substrings:
+                                            if s in imported_package:
+                                                message = f'{java_source}:{lineNo}: forbidden import of a "{s}" package: {imported_package}\n{line}'
+                                                if exceptions and n in exceptions:
+                                                    mx.warn(message)
+                                                else:
+                                                    mx.abort(message)
+
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
+    with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
+        # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
+        if t: _check_forbidden_imports([mx.project('jdk.internal.vm.compiler')], ('hotspot', 'libgraal'))
+
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
@@ -1163,7 +1172,7 @@ def java_base_unittest(args):
     # Remove GRAAL_MANAGEMENT from the module path as it
     # depends on the java.management module which is not in
     # the limited module set
-    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'jdk.unsupported', 'jdk.compiler']
+    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'jdk.unsupported', 'jdk.compiler', 'java.instrument']
     compiler_modules = [as_java_module(d, jdk).name for d in _graal_config().dists if d.name != 'GRAAL_MANAGEMENT']
     root_module_names = base_modules + compiler_modules
     extra_args = ['--limit-modules=' + ','.join(root_module_names)]
@@ -1174,7 +1183,7 @@ def java_base_unittest(args):
     if get_graaljdk().debug_args:
         mx.warn('Ignoring Java debugger arguments because base JDK doesn\'t include jdwp')
     with mx.DisableJavaDebugging():
-        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
+        mx_unittest.unittest(['--suite', 'compiler', '--max-class-failures=25'] + extra_args + args)
 
 def javadoc(args):
     # metadata package was deprecated, exclude it
@@ -1331,7 +1340,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['Truffle'],
+        dependencies=['Truffle API'],
         jar_distributions=[  # Dev jars (annotation processors)
             'compiler:GRAAL_PROCESSOR',
         ],
@@ -1383,7 +1392,6 @@ mx.update_commands(_suite, {
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
-    'nodecostdump' : [_nodeCostDump, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
@@ -1401,5 +1409,6 @@ def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+
     global _vm_prefix
     _vm_prefix = opts.vm_prefix

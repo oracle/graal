@@ -48,6 +48,7 @@ public interface AuxiliaryImageHeap {
 
     boolean walkObjects(ObjectVisitor visitor);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 
     ImageHeapInfo getImageHeapInfo();

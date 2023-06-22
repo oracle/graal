@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.heap;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -45,11 +46,11 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
      */
     private final Object[] arrayElementValues;
 
-    public ImageHeapObjectArray(ResolvedJavaType type, int length) {
+    ImageHeapObjectArray(ResolvedJavaType type, int length) {
         this(type, null, new Object[length]);
     }
 
-    public ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, int length) {
+    ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, int length) {
         this(type, object, new Object[length]);
     }
 
@@ -83,6 +84,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         return value instanceof JavaConstant ? (JavaConstant) value : ((AnalysisFuture<ImageHeapConstant>) value).ensureDone();
     }
 
+    @Override
     public void setElement(int idx, JavaConstant value) {
         arrayHandle.setVolatile(this.arrayElementValues, idx, value);
     }
@@ -106,6 +108,16 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     public JavaConstant uncompress() {
         assert compressed;
         return new ImageHeapObjectArray(type, hostedObject, arrayElementValues, identityHashCode, false);
+    }
+
+    @Override
+    public ImageHeapConstant forObjectClone() {
+        assert type.isCloneableWithAllocation() : "all arrays implement Cloneable";
+
+        Object[] newArrayElementValues = Arrays.copyOf(arrayElementValues, arrayElementValues.length);
+        /* The new constant is never backed by a hosted object, regardless of the input object. */
+        JavaConstant newObject = null;
+        return new ImageHeapObjectArray(type, newObject, newArrayElementValues, createIdentityHashCode(newObject), compressed);
     }
 
     @Override

@@ -44,6 +44,7 @@ public enum JfrType {
     FrameType("jdk.types.FrameType"),
     GCCause("jdk.types.GCCause"),
     GCName("jdk.types.GCName"),
+    GCWhen("jdk.types.GCWhen"),
     VMOperation("jdk.types.VMOperationType"),
     MonitorInflationCause("jdk.types.InflateCause");
 

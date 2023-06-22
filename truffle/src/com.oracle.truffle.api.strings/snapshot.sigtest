@@ -994,7 +994,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString$WithMask$CreateU
 meth public static com.oracle.truffle.api.strings.TruffleString$WithMask$CreateUTF32Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
-CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilder
+CLSS public abstract com.oracle.truffle.api.strings.TruffleStringBuilder
 innr public abstract static AppendByteNode
 innr public abstract static AppendCharUTF16Node
 innr public abstract static AppendCodePointNode
@@ -1004,26 +1004,32 @@ innr public abstract static AppendLongNumberNode
 innr public abstract static AppendStringNode
 innr public abstract static AppendSubstringByteIndexNode
 innr public abstract static ToStringNode
-meth public boolean isEmpty()
-meth public com.oracle.truffle.api.strings.TruffleString toStringUncached()
-meth public int byteLength()
-meth public java.lang.String toString()
+meth public final boolean isEmpty()
+meth public final com.oracle.truffle.api.strings.TruffleString toStringUncached()
+meth public final int byteLength()
+meth public final java.lang.String toString()
+meth public final void appendByteUncached(byte)
+meth public final void appendCharUTF16Uncached(char)
+meth public final void appendCodePointUncached(int)
+meth public final void appendCodePointUncached(int,int)
+meth public final void appendCodePointUncached(int,int,boolean)
+meth public final void appendIntNumberUncached(int)
+meth public final void appendJavaStringUTF16Uncached(java.lang.String)
+meth public final void appendJavaStringUTF16Uncached(java.lang.String,int,int)
+meth public final void appendLongNumberUncached(long)
+meth public final void appendStringUncached(com.oracle.truffle.api.strings.TruffleString)
+meth public final void appendSubstringByteIndexUncached(com.oracle.truffle.api.strings.TruffleString,int,int)
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder create(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder create(com.oracle.truffle.api.strings.TruffleString$Encoding,int)
-meth public void appendByteUncached(byte)
-meth public void appendCharUTF16Uncached(char)
-meth public void appendCodePointUncached(int)
-meth public void appendCodePointUncached(int,int)
-meth public void appendCodePointUncached(int,int,boolean)
-meth public void appendIntNumberUncached(int)
-meth public void appendJavaStringUTF16Uncached(java.lang.String)
-meth public void appendJavaStringUTF16Uncached(java.lang.String,int,int)
-meth public void appendLongNumberUncached(long)
-meth public void appendStringUncached(com.oracle.truffle.api.strings.TruffleString)
-meth public void appendSubstringByteIndexUncached(com.oracle.truffle.api.strings.TruffleString,int,int)
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF16 createUTF16()
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF16 createUTF16(int)
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF32 createUTF32()
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF32 createUTF32(int)
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF8 createUTF8()
+meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF8 createUTF8(int)
 supr java.lang.Object
-hfds buf,codePointLength,codeRange,encoding,length,stride
-hcls AppendArrayIntlNode,AppendCodePointIntlNode
+hfds DEFAULT_INITIAL_CAPACITY,buf,codePointLength,codeRange,encoding,length,stride
+hcls AppendCodePointIntlNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringBuilder$AppendByteNode
  outer com.oracle.truffle.api.strings.TruffleStringBuilder
@@ -1095,8 +1101,16 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderFactory
 cons public init()
 supr java.lang.Object
-hfds COMPACTION_LEVEL_VALUES
-hcls AppendArrayIntlNodeGen,AppendByteNodeGen,AppendCharUTF16NodeGen,AppendCodePointIntlNodeGen,AppendCodePointNodeGen,AppendIntNumberNodeGen,AppendJavaStringUTF16NodeGen,AppendLongNumberNodeGen,AppendStringNodeGen,AppendSubstringByteIndexNodeGen,ToStringNodeGen
+hcls AppendByteNodeGen,AppendCharUTF16NodeGen,AppendCodePointIntlNodeGen,AppendCodePointNodeGen,AppendIntNumberNodeGen,AppendJavaStringUTF16NodeGen,AppendLongNumberNodeGen,AppendStringNodeGen,AppendSubstringByteIndexNodeGen,ToStringNodeGen
+
+CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderUTF16
+supr com.oracle.truffle.api.strings.TruffleStringBuilder
+
+CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderUTF32
+supr com.oracle.truffle.api.strings.TruffleStringBuilder
+
+CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderUTF8
+supr com.oracle.truffle.api.strings.TruffleStringBuilder
 
 CLSS public final com.oracle.truffle.api.strings.TruffleStringFactory
 cons public init()

@@ -106,11 +106,13 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
     }
 
     @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
+    public final JavaConstant boxPrimitive(JavaConstant source) {
+        /*
+         * This method is likely not going to do what you want: sub-integer constants in Graal IR
+         * are usually represented as constants with JavaKind.Integer, which means this method would
+         * give you an Integer box instead of a Byte, Short, ... box.
+         */
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override

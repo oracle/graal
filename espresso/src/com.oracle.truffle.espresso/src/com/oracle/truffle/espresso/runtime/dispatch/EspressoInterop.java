@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
@@ -747,7 +748,7 @@ public class EspressoInterop extends BaseInterop {
         @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
         static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("toEspresso") @Cached ToEspressoNode toEspressoNode,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             EspressoLanguage language = EspressoLanguage.get(receiverLib);
             if (index < 0 || receiver.length(language) <= index) {
@@ -757,7 +758,7 @@ public class EspressoInterop extends BaseInterop {
             StaticObject espressoValue;
             try {
                 Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
-                espressoValue = (StaticObject) toEspressoNode.execute(value, componentType);
+                espressoValue = toEspressoNode.execute(value, componentType);
             } catch (UnsupportedOperationException e) {
                 error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
@@ -908,7 +909,7 @@ public class EspressoInterop extends BaseInterop {
     @ExportMessage
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
-                    @Shared("toEspresso") @Cached ToEspressoNode toEspresso,
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
@@ -917,7 +918,8 @@ public class EspressoInterop extends BaseInterop {
                 error.enter();
                 throw UnsupportedMessageException.create();
             }
-            f.set(receiver, toEspresso.execute(value, f.resolveTypeKlass()));
+            Object espressoValue = toEspressoNode.execute(value, f.resolveTypeKlass());
+            f.set(receiver, espressoValue);
             return;
         }
         error.enter();
@@ -999,7 +1001,7 @@ public class EspressoInterop extends BaseInterop {
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Exclusive @Cached ToEspressoNode toEspressoNode)
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         try {

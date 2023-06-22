@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -98,7 +98,7 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 

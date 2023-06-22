@@ -239,24 +239,22 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return Optional.ofNullable(fieldSubstitutions.get(field));
     }
 
-    public Optional<ResolvedJavaType> findSubstitution(ResolvedJavaType type) {
+    public Optional<ResolvedJavaType> findFullSubstitution(ResolvedJavaType type) {
         /*
          * When a type is substituted there is a mapping from the original type to the substitution
          * type (and another mapping from the annotated type to the substitution type).
          */
-        return Optional.ofNullable(findTypeSubstitution(type));
+        ResolvedJavaType subst = findTypeSubstitution(type);
+        return (subst instanceof SubstitutionType) ? Optional.of(subst) : Optional.empty();
     }
 
     public boolean isAliased(ResolvedJavaType type) {
         /*
-         * When a type is aliased there is a mapping from the alias type to the original type. There
-         * is no mapping from the original type to the annotated type since that would be wrong, the
-         * original type is not substituted by the annotated type.
-         *
-         * If the type is an array type then it's alias is constructed on demand, but there should
-         * be a mapping from the aliased component type to the original component type.
+         * When a type is aliased there is a mapping from the alias type to the original type. If
+         * the type is an array type then its alias is constructed on demand, but there should be a
+         * mapping from the aliased component type to the original component type.
          */
-        if (type instanceof SubstitutionType || type instanceof InjectedFieldsType) {
+        if (type instanceof SubstitutionType) {
             return false;
         }
         return typeSubstitutions.containsValue(type) || typeSubstitutions.containsValue(type.getElementalType());
@@ -327,8 +325,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      */
     public void processComputedValueFields(BigBang bb) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
-            if (field instanceof ComputedValue) {
-                ComputedValue cvField = (ComputedValue) field;
+            if (field instanceof ComputedValueField) {
+                ComputedValueField cvField = (ComputedValueField) field;
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:

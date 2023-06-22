@@ -107,7 +107,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false, false);
                 }
             }
         }

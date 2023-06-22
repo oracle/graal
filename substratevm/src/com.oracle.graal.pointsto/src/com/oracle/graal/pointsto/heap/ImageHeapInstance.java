@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.heap;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Arrays;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
@@ -119,6 +120,18 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     public JavaConstant uncompress() {
         assert compressed;
         return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, false);
+    }
+
+    @Override
+    public ImageHeapConstant forObjectClone() {
+        if (!type.isCloneableWithAllocation()) {
+            return null;
+        }
+
+        Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
+        /* The new constant is never backed by a hosted object, regardless of the input object. */
+        JavaConstant newObject = null;
+        return new ImageHeapInstance(type, newObject, newFieldValues, createIdentityHashCode(newObject), compressed);
     }
 
     @Override

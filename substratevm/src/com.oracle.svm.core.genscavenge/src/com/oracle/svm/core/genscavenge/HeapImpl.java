@@ -192,12 +192,6 @@ public final class HeapImpl extends Heap {
         return walkImageHeapObjects(visitor) && walkCollectedHeapObjects(visitor);
     }
 
-    /** Walk the regions of the heap. */
-    boolean walkMemory(MemoryWalker.Visitor visitor) {
-        VMOperation.guaranteeInProgressAtSafepoint("must only be executed at a safepoint");
-        return walkNativeImageHeapRegions(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && getChunkProvider().walkHeapChunks(visitor);
-    }
-
     /** Tear down the heap and release its memory. */
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
@@ -214,14 +208,20 @@ public final class HeapImpl extends Heap {
         return objectHeaderImpl;
     }
 
-    ObjectHeaderImpl getObjectHeaderImpl() {
-        return objectHeaderImpl;
+    @Fold
+    static ObjectHeaderImpl getObjectHeaderImpl() {
+        return getHeapImpl().objectHeaderImpl;
     }
 
     @Fold
     @Override
     public GC getGC() {
-        return getGCImpl();
+        return getHeapImpl().gcImpl;
+    }
+
+    @Fold
+    static GCImpl getGCImpl() {
+        return getHeapImpl().gcImpl;
     }
 
     @Fold
@@ -233,10 +233,6 @@ public final class HeapImpl extends Heap {
     @Fold
     public HeapAccounting getAccounting() {
         return accounting;
-    }
-
-    GCImpl getGCImpl() {
-        return gcImpl;
     }
 
     @Override
@@ -262,6 +258,7 @@ public final class HeapImpl extends Heap {
         return oldGeneration;
     }
 
+    @Fold
     AtomicReference<PinnedObjectImpl> getPinHead() {
         return pinHead;
     }
@@ -291,6 +288,15 @@ public final class HeapImpl extends Heap {
         log.string("Native image heap boundaries:").indent(true);
         imageHeapInfo.print(log);
         log.indent(false);
+
+        if (AuxiliaryImageHeap.isPresent()) {
+            ImageHeapInfo auxHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+            if (auxHeapInfo != null) {
+                log.string("Auxiliary image heap boundaries:").indent(true);
+                auxHeapInfo.print(log);
+                log.indent(false);
+            }
+        }
     }
 
     /** Log the zap values to make it easier to search for them. */
@@ -466,11 +472,6 @@ public final class HeapImpl extends Heap {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
         ThreadLocalAllocation.disableAndFlushForAllThreads();
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
-    }
-
-    boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
-        return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
-                        (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
     }
 
     @Override
@@ -704,7 +705,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     public long getMillisSinceLastWholeHeapExamined() {
-        return getGCImpl().getMillisSinceLastWholeHeapExamined();
+        return HeapImpl.getGCImpl().getMillisSinceLastWholeHeapExamined();
     }
 
     @Override
@@ -717,6 +718,7 @@ public final class HeapImpl extends Heap {
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer getImageHeapStart() {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         if (imageHeapOffsetInAddressSpace > 0) {
@@ -883,6 +885,7 @@ public final class HeapImpl extends Heap {
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
             log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
+            log.string("Large array threshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).newline();
 
             GCAccounting accounting = gc.getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();

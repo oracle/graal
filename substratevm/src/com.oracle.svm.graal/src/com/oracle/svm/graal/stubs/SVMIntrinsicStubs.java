@@ -44,6 +44,7 @@ import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
@@ -58,6 +59,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 HasNegativesNode.class,
                 EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
+                VectorizedHashCodeNode.class,
                 ArrayRegionEqualsWithMaskNode.class,
                 CalcStringAttributesNode.class,
                 AESNode.class,

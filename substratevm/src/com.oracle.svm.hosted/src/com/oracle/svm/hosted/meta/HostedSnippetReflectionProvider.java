@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -53,20 +52,22 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
     }
 
     @Override
-    public <T> T asObject(Class<T> type, JavaConstant constant) {
+    public <T> T asObject(Class<T> type, JavaConstant c) {
+        JavaConstant constant = c;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            constant = imageHeapConstant.getHostedObject();
+            if (constant == null) {
+                /* Simulated image heap object without a hosted backing object. */
+                return null;
+            }
+        }
+
         if (type == Class.class && constant instanceof SubstrateObjectConstant) {
             /* Only unwrap the DynamicHub if a Class object is required explicitly. */
             if (SubstrateObjectConstant.asObject(constant) instanceof DynamicHub hub) {
                 return type.cast(hub.getHostedJavaClass());
             }
         }
-        if (constant instanceof ImageHeapPrimitiveArray heapArray) {
-            return type.cast(heapArray.getArray());
-        }
-        if (constant instanceof ImageHeapConstant heapConstant) {
-            return super.asObject(type, heapConstant.getHostedObject());
-        }
         return super.asObject(type, constant);
     }
-
 }

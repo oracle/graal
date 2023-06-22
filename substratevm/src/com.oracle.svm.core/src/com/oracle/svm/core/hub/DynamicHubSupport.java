@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -37,8 +38,8 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 @AutomaticallyRegisteredImageSingleton
 public final class DynamicHubSupport {
 
-    private int maxTypeId;
-    @UnknownObjectField(types = {byte[].class}) private byte[] referenceMapEncoding;
+    @UnknownObjectField(availability = AfterHostedUniverse.class) private int maxTypeId;
+    @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHubSupport() {

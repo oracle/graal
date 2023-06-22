@@ -57,12 +57,26 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
         JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Boolean.class, "getBoolean", String.class));
     }
 
+    /**
+     * This method configures reflection metadata only required by a JMX client.
+     * <ul>
+     * <li>Register {@code com.sun.jmx.remote.protocol.rmi.ClientProvider} which can be reflectively
+     * looked up on a code path starting from
+     * {@code javax.management.remote.JMXConnectorFactory#newJMXConnector(JMXServiceURL, Map)}</li>
+     * <li>Register {@code sun.rmi.server.UnicastRef2}, which can be reflectively accessed with
+     * {@code sun.rmi.server.UnicastRef2#getRefClass(ObjectOutput)}.</li>
+     * <li>Register {@code sun.rmi.server.UnicastRef}, which can be reflectively accessed with
+     * {@code sun.rmi.server.UnicastRef#getRefClass(ObjectOutput)}.</li>
+     * </ul>
+     */
     private static void configureReflection(BeforeAnalysisAccess access) {
         RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory"));
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef"));
 
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ClientProvider"));
         RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory").getConstructors());
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef").getConstructors());
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef2").getConstructors());
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ClientProvider").getConstructors());
     }
 }

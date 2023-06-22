@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -185,7 +187,8 @@ final class Target_java_security_Provider_ServiceKey {
 
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
     private static Target_java_security_Provider_ServiceKey previousKey;
 }
 
@@ -291,6 +294,10 @@ final class Target_javax_crypto_JceSecurity {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Map<Provider, Object> verifyingProviders;
 
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrLater.class) //
+    private static ReferenceQueue<Object> queue;
+
     @Substitute
     static void verifyProvider(URL codeBase, Provider p) {
         throw VMError.shouldNotReachHere("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider) is reached at runtime. " +
@@ -307,7 +314,10 @@ final class Target_javax_crypto_JceSecurity {
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
-        Object o = verificationResults.get(new Target_javax_crypto_JceSecurity_IdentityWrapper(p));
+        Object key = JavaVersionUtil.JAVA_SPEC <= 20 ? // JDK-8168469
+                        new Target_javax_crypto_JceSecurity_IdentityWrapper(p) : //
+                        new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
+        Object o = verificationResults.get(key);
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -332,15 +342,20 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper")
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK20OrEarlier.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_IdentityWrapper {
     @Alias //
-    Provider obj;
+    Target_javax_crypto_JceSecurity_IdentityWrapper(Provider obj) {
+    }
+}
+
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = JDK21OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 
     @Alias //
-    Target_javax_crypto_JceSecurity_IdentityWrapper(Provider obj) {
-        this.obj = obj;
+    Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, ReferenceQueue<Object> queue) {
     }
 }
 

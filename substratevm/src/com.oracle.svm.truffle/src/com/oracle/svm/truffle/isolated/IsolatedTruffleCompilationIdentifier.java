@@ -25,7 +25,7 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -43,16 +43,16 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Com
 
     private final String[] descriptions = new String[VERBOSITIES.length];
     private final TruffleCompilationTask task;
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
 
-    IsolatedTruffleCompilationIdentifier(ClientHandle<CompilationIdentifier> handle, TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    IsolatedTruffleCompilationIdentifier(ClientHandle<CompilationIdentifier> handle, TruffleCompilationTask task, TruffleCompilable compilable) {
         super(handle);
         this.task = task;
         this.compilable = compilable;
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return compilable;
     }
 

@@ -66,7 +66,7 @@ public class StringTable {
                 final int index = buffer.position();
                 String s = Utf8.utf8ToString(true, buffer);
                 if (stringMap.containsKey(index)) {
-                    throw new IllegalStateException("offset cannot be re-used");
+                    throw new IllegalStateException("Offset cannot be re-used");
                 }
                 stringMap.put(index, s);
                 stringToIndexMap.put(s, index);

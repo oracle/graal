@@ -374,7 +374,7 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
                 writeByte((byte) value);
                 break;
             default:
-                throw new IllegalArgumentException("can only truncate to powers-of-two <= 8");
+                throw new IllegalArgumentException("Can only truncate to powers-of-two <= 8");
         }
     }
 
@@ -390,7 +390,7 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
             case 1:
                 return readUbyte();
             default:
-                throw new IllegalArgumentException("can only truncate to powers-of-two <= 8");
+                throw new IllegalArgumentException("Can only truncate to powers-of-two <= 8");
         }
     }
 

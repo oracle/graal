@@ -136,7 +136,7 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
          * small value that seems to be in range.
          */
         if (UnsignedMath.aboveOrEqual(numElements, MAX_SIZE) || UnsignedMath.aboveOrEqual(elementSize, MAX_SIZE) || UnsignedMath.aboveOrEqual(numElements * elementSize, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize);
+            throw new PermanentBailoutException("Stack value has illegal size " + numElements + " * " + elementSize);
         }
 
         int sizeInBytes = NumUtil.safeToInt(numElements * elementSize);
@@ -159,7 +159,7 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
 
     public static StackValueNode create(int sizeInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
         if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
+            throw new PermanentBailoutException("Stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
         }
 
         /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */

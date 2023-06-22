@@ -37,6 +37,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -86,6 +87,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
@@ -95,6 +97,7 @@ final class AlignedChunkRememberedSet {
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void enableRememberedSet(AlignedHeader chunk) {
         // Completely clean the card table and the first object table as further objects may be
         // added later on to this chunk.
@@ -110,6 +113,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void clearRememberedSet(AlignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
     }
@@ -118,6 +122,7 @@ final class AlignedChunkRememberedSet {
      * Dirty the card corresponding to the given Object. This has to be fast, because it is used by
      * the post-write barrier.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void dirtyCardForObject(Object object, boolean verifyOnly) {
         Pointer objectPointer = Word.objectToUntrackedPointer(object);
         AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objectPointer);
@@ -130,6 +135,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
@@ -183,6 +189,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, GreyToBlackObjectVisitor visitor) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
@@ -203,6 +210,7 @@ final class AlignedChunkRememberedSet {
     }
 
     /** Return the index of an object within the tables of a chunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getObjectIndex(AlignedHeader chunk, Pointer objectPointer) {
         UnsignedWord offset = AlignedHeapChunk.getObjectOffset(chunk, objectPointer);
         return CardTable.memoryOffsetToIndex(offset);
@@ -260,18 +268,22 @@ final class AlignedChunkRememberedSet {
         return UnsignedUtils.roundUp(tableLimit, alignment);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableStart(AlignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableStart(Pointer chunk) {
         return chunk.add(getCardTableStartOffset());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getFirstObjectTableStart(AlignedHeader chunk) {
         return getFirstObjectTableStart(HeapChunk.asPointer(chunk));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getFirstObjectTableStart(Pointer chunk) {
         return chunk.add(getFirstObjectTableStartOffset());
     }

@@ -75,6 +75,9 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     private final EconomicMap<String, DebugObject> members;
 
     private DebugObjectDisplayValue(DebugContext context, DebugLocation location, String name, EconomicMap<String, DebugObject> members) {
+        assert context != null : "the context provided to a debug object display value must not be null";
+        assert location != null : "the location provided to a debug object display value must not be null";
+        assert members != null : "the list of members provided to a debug object display value must not be null";
         this.context = context;
         this.location = location;
         this.name = name;
@@ -96,11 +99,15 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
 
     @TruffleBoundary
     public static Object fromDebugFunction(DebugFunction function, DebugContext context, MaterializedFrame frame, WasmDataAccess dataAccess, boolean testMode) {
+        final DebugLocation frameBase = function.frameBaseOrNull(frame, dataAccess);
+        if (frameBase == null) {
+            return DebugConstantDisplayValue.UNDEFINED;
+        }
         if (function.hasGlobals() || testMode) {
             final EconomicMap<String, DebugObject> members = EconomicMap.of("globals", function.globals(), "locals", function.locals());
-            return new DebugObjectDisplayValue(context, function.frameBase(frame, dataAccess), "", members);
+            return new DebugObjectDisplayValue(context, frameBase, "", members);
         } else {
-            return fromDebugObject(function.locals(), context, function.frameBase(frame, dataAccess));
+            return fromDebugObject(function.locals(), context, frameBase);
         }
     }
 

@@ -138,7 +138,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private EspressoLanguageCache languageCache;
     // endregion Preinit
 
-    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
+    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
@@ -295,6 +295,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
+        context.ensureThreadsJoined();
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {

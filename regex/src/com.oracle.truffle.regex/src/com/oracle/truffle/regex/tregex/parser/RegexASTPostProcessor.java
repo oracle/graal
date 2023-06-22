@@ -455,7 +455,7 @@ public class RegexASTPostProcessor {
                 // character set is guaranteed to be in BMP range, and its inverse will match all
                 // surrogates
                 CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
-                assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
+                assert !ast.getFlags().isEitherUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
                 if (cc.getCharSet().isEmpty()) {
                     // negative lookaround on a character class that can never match -> no-op
                     return LookAroundOptimization.NO_OP;

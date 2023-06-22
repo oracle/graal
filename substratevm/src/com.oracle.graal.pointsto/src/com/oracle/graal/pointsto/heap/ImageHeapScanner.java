@@ -201,22 +201,15 @@ public abstract class ImageHeapScanner {
             if (universe.sealed()) {
                 throw AnalysisError.shouldNotReachHere("Universe is sealed. New constant reachable: " + javaConstant.toValueString());
             }
-            if (javaConstant instanceof ImageHeapConstant imageHeapConstant) {
-                /* This must be a simulated constant. */
-                assert imageHeapConstant.getHostedObject() == null;
+            AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
+                ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
+                /* When the image heap object is created replace the future in the map. */
                 imageHeap.setValue(javaConstant, imageHeapConstant);
-                existingTask = javaConstant;
-            } else {
-                AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
-                    ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
-                    /* When the image heap object is created replace the future in the map. */
-                    imageHeap.setValue(javaConstant, imageHeapConstant);
-                    return imageHeapConstant;
-                });
-                existingTask = imageHeap.setTask(javaConstant, newTask);
-                if (existingTask == null) {
-                    return newTask.ensureDone();
-                }
+                return imageHeapConstant;
+            });
+            existingTask = imageHeap.setTask(javaConstant, newTask);
+            if (existingTask == null) {
+                return newTask.ensureDone();
             }
         }
         return existingTask instanceof ImageHeapConstant ? (ImageHeapConstant) existingTask : ((AnalysisFuture<ImageHeapConstant>) existingTask).ensureDone();

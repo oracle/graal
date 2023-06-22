@@ -47,6 +47,7 @@ import org.graalvm.util.json.JSONParserException;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -130,7 +131,7 @@ public abstract class ConfigurationParser {
         if (strictConfiguration) {
             throw new JSONParserException(message);
         } else {
-            System.err.println("Warning: " + message);
+            LogUtils.warning(message);
         }
     }
 

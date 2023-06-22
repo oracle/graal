@@ -127,8 +127,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotRemo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveMemberNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotTimeZoneFromIdNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotTimeZoneGetIdNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteFactory.LLVMPolyglotPutMemberNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteFactory.LLVMPolyglotSetArrayElementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWrite.LLVMPolyglotPutMember;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWrite.LLVMPolyglotSetArrayElement;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleDecorateFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToSymbolNodeGen;
@@ -425,9 +425,9 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("polyglot_fits_in_float", (args, nodeFactory) -> LLVMPolyglotBoxedPredicateNodeGen.create(InteropLibrary::fitsInFloat, args.get(1)));
         add("polyglot_fits_in_double", (args, nodeFactory) -> LLVMPolyglotBoxedPredicateNodeGen.create(InteropLibrary::fitsInDouble, args.get(1)));
 
-        add("polyglot_put_member", (args, nodeFactory, language, types) -> LLVMPolyglotPutMemberNodeGen.create(types, args.get(1), args.get(2), args.get(3)));
+        add("polyglot_put_member", (args, nodeFactory, language, types) -> LLVMPolyglotPutMember.create(types, args.get(1), args.get(2), args.get(3)));
 
-        add("polyglot_set_array_element", (args, nodeFactory, language, types) -> LLVMPolyglotSetArrayElementNodeGen.create(types, args.get(1), args.get(2), args.get(3)));
+        add("polyglot_set_array_element", (args, nodeFactory, language, types) -> LLVMPolyglotSetArrayElement.create(types, args.get(1), args.get(2), args.get(3)));
 
         add("polyglot_get_member", (args, nodeFactory) -> LLVMPolyglotGetMemberNodeGen.create(CommonNodeFactory.createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 

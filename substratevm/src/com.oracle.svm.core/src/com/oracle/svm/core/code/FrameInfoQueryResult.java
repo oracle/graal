@@ -184,7 +184,7 @@ public class FrameInfoQueryResult {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
-        encodedBci = 0;
+        encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
         numStack = 0;
@@ -353,6 +353,10 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
+        return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+    }
+
+    public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
         if (sourceClass == null) {
             return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
         }

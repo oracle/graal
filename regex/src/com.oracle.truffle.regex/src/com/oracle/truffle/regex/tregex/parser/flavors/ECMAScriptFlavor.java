@@ -72,7 +72,7 @@ public final class ECMAScriptFlavor extends RegexFlavor {
 
     @Override
     public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getFlags().isUnicode()) {
+        if (ast.getFlags().isEitherUnicode()) {
             return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
         } else {
             return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();

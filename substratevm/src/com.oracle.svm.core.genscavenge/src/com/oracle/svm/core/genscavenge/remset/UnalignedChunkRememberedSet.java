@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -59,6 +60,7 @@ final class UnalignedChunkRememberedSet {
         // The remembered set bit in the header will be set by the code that writes the objects.
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void enableRememberedSet(UnalignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
         // Unaligned chunks don't have a first object table.
@@ -67,6 +69,7 @@ final class UnalignedChunkRememberedSet {
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void clearRememberedSet(UnalignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
     }
@@ -75,6 +78,7 @@ final class UnalignedChunkRememberedSet {
      * Dirty the card corresponding to the given Object. This has to be fast, because it is used by
      * the post-write barrier.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void dirtyCardForObject(Object obj, boolean verifyOnly) {
         UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(obj);
         Pointer cardTableStart = getCardTableStart(chunk);
@@ -86,6 +90,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
@@ -132,10 +137,12 @@ final class UnalignedChunkRememberedSet {
         return WordFactory.zero();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableStart(UnalignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableStart(Pointer chunk) {
         return chunk.add(getCardTableStartOffset());
     }

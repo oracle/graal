@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.nativebridge.BinaryInput;
@@ -101,7 +101,7 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     }
 
     @Override
-    public void addTargetToDequeue(CompilableTruffleAST target) {
+    public void addTargetToDequeue(TruffleCompilable target) {
         ClientHandle<SubstrateCompilableTruffleAST> targetHandle = ((IsolatedCompilableTruffleAST) target).getHandle();
         addTargetToDequeue0(IsolatedCompileContext.get().getClient(), handle, targetHandle);
     }
@@ -112,7 +112,7 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     }
 
     @Override
-    public void addInlinedTarget(CompilableTruffleAST target) {
+    public void addInlinedTarget(TruffleCompilable target) {
         ClientHandle<SubstrateCompilableTruffleAST> targetHandle = ((IsolatedCompilableTruffleAST) target).getHandle();
         addInlinedTarget0(IsolatedCompileContext.get().getClient(), handle, targetHandle);
     }
@@ -233,4 +233,5 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
                     ClientHandle<TruffleSourceLanguagePosition> positionHandle, int lineNumber, int offsetStart, int offsetEnd, int nodeId) {
         return IsolatedCompileContext.get().hand(new IsolatedTruffleSourceLanguagePosition(positionHandle, lineNumber, offsetStart, offsetEnd, nodeId));
     }
+
 }

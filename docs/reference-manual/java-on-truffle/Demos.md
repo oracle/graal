@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: Demo Applications
 permalink: /reference-manual/java-on-truffle/demos/

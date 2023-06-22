@@ -42,7 +42,6 @@ package org.graalvm.wasm.debugging.parser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.wasm.debugging.data.DebugObject;
 
@@ -57,6 +56,7 @@ public final class DebugParserScope {
     private final List<DebugObject> variables;
 
     private DebugParserScope(String name, int startLocation, int endLocation, int fileIndex, List<DebugObject> variables) {
+        assert variables != null : "the list of variables in a debug parser scope must not be null";
         this.name = name;
         this.fileIndex = fileIndex;
         this.startLocation = startLocation;
@@ -99,11 +99,8 @@ public final class DebugParserScope {
     /**
      * @return the name of the current scope.
      */
-    public Optional<String> name() {
-        if (name != null) {
-            return Optional.of(name);
-        }
-        return Optional.empty();
+    public String nameOrNull() {
+        return name;
     }
 
     /**

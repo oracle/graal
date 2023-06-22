@@ -177,6 +177,23 @@ public class LLVMUtils {
         }
     }
 
+    public static class LLVMPendingPtrToInt extends LLVMVariable implements LLVMValueWrapper {
+        private final LLVMGenerator gen;
+        private final LLVMValueRef val;
+
+        public LLVMPendingPtrToInt(LLVMGenerator gen, LLVMValueRef val) {
+            super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
+            this.gen = gen;
+            this.val = val;
+        }
+
+        @Override
+        public LLVMValueRef get() {
+            LLVMIRBuilder builder = gen.getBuilder();
+            return builder.buildPtrToInt(val);
+        }
+    }
+
     public static class LLVMKindTool implements LIRKindTool {
         private LLVMIRBuilder builder;
 

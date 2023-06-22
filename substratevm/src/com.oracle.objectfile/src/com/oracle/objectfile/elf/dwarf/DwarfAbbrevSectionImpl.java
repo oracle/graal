@@ -832,8 +832,13 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
         pos = writeInterfaceReferenceAbbrev(context, buffer, pos);
 
+        pos = writeForeignReferenceAbbrev(context, buffer, pos);
+        pos = writeForeignTypedefAbbrev(context, buffer, pos);
+        pos = writeForeignStructAbbrev(context, buffer, pos);
+
         pos = writeHeaderFieldAbbrev(context, buffer, pos);
-        pos = writeArrayDataTypeAbbrev(context, buffer, pos);
+        pos = writeArrayDataTypeAbbrevs(context, buffer, pos);
+        pos = writeArraySubrangeTypeAbbrev(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
         pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
         pos = writeSuperReferenceAbbrev(context, buffer, pos);
@@ -1243,6 +1248,63 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeForeignReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_pointer, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_pointer_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignTypedefAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_typedef, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_typedef, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignStructAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_struct, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_structure_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
     private int writeHeaderFieldAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
 
@@ -1254,7 +1316,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_data_member_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_accessibility, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         /*
@@ -1265,16 +1327,43 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeArrayDataTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeArrayDataTypeAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeArrayDataTypeAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_array_data_type1, buffer, pos);
+        pos = writeArrayDataTypeAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2, buffer, pos);
+        return pos;
+    }
+
+    private int writeArrayDataTypeAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
         int pos = p;
 
-        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_array_data_type, buffer, pos);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_array_type, buffer, pos);
-        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        boolean hasChildren = (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2);
+        pos = writeFlag((hasChildren ? DwarfDebugInfo.DW_CHILDREN_yes : DwarfDebugInfo.DW_CHILDREN_no), buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+        }
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+
+        return pos;
+    }
+
+    private int writeArraySubrangeTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_array_subrange, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_subrange_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_count, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1354,7 +1443,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * pointer type that is used to type values that need translation to a raw address i.e.
          * values stored in static and instance fields.
          */
-        /* the type ofr an indirect layout that includes address translation info */
+        /* the type for an indirect layout that includes address translation info */
         pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_indirect_layout, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_class_type, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);

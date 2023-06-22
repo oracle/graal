@@ -64,7 +64,7 @@ import com.oracle.svm.core.thread.VMThreads;
  */
 public class HeapDumpUtils {
 
-    @UnknownObjectField(types = {byte[].class}) private byte[] fieldsMap;
+    @UnknownObjectField private byte[] fieldsMap;
 
     /** Extra methods for testing. */
     private final TestingBackDoor testingBackDoor;

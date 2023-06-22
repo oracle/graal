@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
@@ -83,10 +84,12 @@ final class CardTable {
     private CardTable() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void cleanTable(Pointer tableStart, UnsignedWord size) {
         UnmanagedMemoryUtil.fill(tableStart, size, CLEAN_ENTRY);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setDirty(Pointer table, UnsignedWord index) {
         byte valueBefore = table.readByte(index, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
         // Using a likely probability should typically avoid placing the write below at a separate
@@ -96,10 +99,12 @@ final class CardTable {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setClean(Pointer table, UnsignedWord index) {
         table.writeByte(index, CLEAN_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDirty(Pointer table, UnsignedWord index) {
         int entry = readEntry(table, index);
         return entry == DIRTY_ENTRY;
@@ -110,23 +115,28 @@ final class CardTable {
         return entry == CLEAN_ENTRY;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readEntry(Pointer table, UnsignedWord index) {
         return table.readByte(index);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
         return offset.unsignedDivide(BYTES_COVERED_BY_ENTRY);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer cardToHeapAddress(Pointer cardTableStart, Pointer cardAddr, Pointer objectsStart) {
         UnsignedWord offset = cardAddr.subtract(cardTableStart).multiply(CardTable.BYTES_COVERED_BY_ENTRY);
         return objectsStart.add(offset);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord tableSizeForMemorySize(UnsignedWord memorySize) {
         return indexLimitForMemorySize(memorySize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
         UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
         return CardTable.memoryOffsetToIndex(roundedMemory);

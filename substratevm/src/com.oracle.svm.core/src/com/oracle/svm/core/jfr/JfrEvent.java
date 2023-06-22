@@ -36,6 +36,7 @@ import com.oracle.svm.core.Uninterruptible;
 public final class JfrEvent {
     public static final JfrEvent ThreadStart = create("jdk.ThreadStart");
     public static final JfrEvent ThreadEnd = create("jdk.ThreadEnd");
+    public static final JfrEvent ThreadCPULoad = create("jdk.ThreadCPULoad");
     public static final JfrEvent DataLoss = create("jdk.DataLoss");
     public static final JfrEvent ClassLoadingStatistics = create("jdk.ClassLoadingStatistics");
     public static final JfrEvent InitialEnvironmentVariable = create("jdk.InitialEnvironmentVariable");
@@ -60,6 +61,7 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
     public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate");
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
+    public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary");
 
     private final long id;
     private final String name;
