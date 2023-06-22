@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +24,21 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.jniutils.JNI.JClass;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.jniutils.NativeBridgeSupport;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+public class TruffleLibGraalFeature implements Feature {
 
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.libgraal.jni.FromLibGraalCalls;
-
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-
-final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
-
-    private static final String ENTRY_POINT_CLASS_NAME = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints";
-    private static final String CLASS_ENTRY_POINT_CLASS_NAME = "Class<" + ENTRY_POINT_CLASS_NAME + ">";
-
-    TruffleFromLibGraalCalls(JNIEnv env, JClass runtimeClass) {
-        super(Id.class, resolvePeer(env, runtimeClass));
+    @SuppressWarnings({"try", "unchecked"})
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
     }
 
-    private static JClass resolvePeer(JNIEnv env, JClass runtimeClass) {
-        JObject classLoader = JNIUtil.getClassLoader(env, runtimeClass);
-        JClass clazz = JNIUtil.findClass(env, classLoader, ENTRY_POINT_CLASS_NAME);
-        return NewGlobalRef(env, clazz, CLASS_ENTRY_POINT_CLASS_NAME);
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
     }
-
 }

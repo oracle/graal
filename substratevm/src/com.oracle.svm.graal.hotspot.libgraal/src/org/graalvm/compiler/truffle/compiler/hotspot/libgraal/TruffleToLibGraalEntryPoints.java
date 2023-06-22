@@ -523,7 +523,7 @@ final class TruffleToLibGraalEntryPoints {
     static {
         try {
             Class<?> callsClass = Class.forName("org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleToLibGraalCalls");
-            LibGraalUtil.checkToLibGraalCalls(TruffleToLibGraalEntryPoints.class, callsClass, TruffleToLibGraal.class);
+            LibGraalChecker.checkToLibGraalCalls(TruffleToLibGraalEntryPoints.class, callsClass, TruffleToLibGraal.class);
         } catch (ClassNotFoundException e) {
             throw new InternalError(e);
         }

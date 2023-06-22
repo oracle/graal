@@ -1142,6 +1142,7 @@ suite = {
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "17+",
             "annotationProcessors": [
+                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],

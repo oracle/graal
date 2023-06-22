@@ -95,8 +95,6 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocatio
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.NativeBridgeSupport;
-import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
 import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -204,11 +202,6 @@ public class LibGraalFeature implements InternalFeature {
         public boolean getAsBoolean() {
             return ImageSingletons.contains(LibGraalFeature.class);
         }
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
     }
 
     @Override

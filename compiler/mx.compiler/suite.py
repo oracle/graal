@@ -421,31 +421,6 @@ suite = {
 
     # ------------- GraalTruffle -------------
 
-    "org.graalvm.compiler.truffle.compiler.hotspot.libgraal" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler",
-        "truffle:TRUFFLE_COMPILER",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-          "jdk.vm.ci.code",
-          "jdk.vm.ci.runtime",
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.services",
-        ],
-      },
-      "jacoco" : "exclude", # GR-13965
-      "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
-      ],
-    },
-
     "org.graalvm.compiler.truffle.test.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -530,19 +505,6 @@ suite = {
       ],
       "testDistribution" : True,
       "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
-      ],
-
-      "distDependencies" : [
-        "GRAAL",
-      ],
-      "maven": False,
-      "javaCompliance" : "17+",
     },
 
     "GRAAL_PROCESSOR" : {
