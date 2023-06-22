@@ -45,7 +45,6 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
 

@@ -77,6 +77,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
@@ -239,19 +241,11 @@ final class TruffleToLibGraalEntryPoints {
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener, runtime);
                 compiler.doCompile(task, compilable, listener);
             } finally {
-                doReferenceHandling();
+                Heap.getHeap().doReferenceHandling();
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
-    }
-
-    /*
-     * To avoid reference handling threads in the compiler isolate we explicitly call into reference
-     * handling after each compilation.
-     */
-    private static void doReferenceHandling() {
-        // Substituted in LibGraalFeature.
     }
 
     @TruffleToLibGraal(Shutdown)

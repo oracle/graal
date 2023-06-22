@@ -1236,7 +1236,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleLibGraalFeature'],
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,com.oracle.svm.graal.hotspot.libgraal.truffle.TruffleLibGraalFeature'],
             add_to_module='java.base',
             headers=False,
         ),

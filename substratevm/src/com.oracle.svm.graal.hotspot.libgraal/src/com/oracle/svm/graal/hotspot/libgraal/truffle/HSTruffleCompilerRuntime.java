@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;

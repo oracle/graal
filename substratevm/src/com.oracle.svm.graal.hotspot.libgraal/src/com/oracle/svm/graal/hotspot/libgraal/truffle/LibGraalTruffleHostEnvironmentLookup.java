@@ -37,6 +37,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;

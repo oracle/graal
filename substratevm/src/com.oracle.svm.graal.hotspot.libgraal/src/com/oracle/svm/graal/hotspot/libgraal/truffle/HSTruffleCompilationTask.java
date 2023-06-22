@@ -24,21 +24,6 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeClassName;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeId;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callAddInlinedTarget;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callAddTargetToDequeue;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callGetDebugProperties;
@@ -55,6 +40,21 @@ import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilation
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callIsCancelled;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callIsLastTier;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilationTaskGen.callSetCallCounts;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeClassName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeId;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
@@ -71,6 +71,7 @@ import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativebridge.BinaryInput;
 
+import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;

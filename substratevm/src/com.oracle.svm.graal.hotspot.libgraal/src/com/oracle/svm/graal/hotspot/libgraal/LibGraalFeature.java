@@ -186,9 +186,6 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (!LibGraal.isSupported()) {
-            throw new InternalError("LibGraalFeature is not supported by the current JDK");
-        }
         return true;
     }
 
@@ -779,7 +776,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
         GraalServiceThread thread = SubstrateUtil.cast(this, GraalServiceThread.class);
-        if (!LibGraal.attachCurrentThread(thread.isDaemon(), null)) {
+        if (!LibGraal.attachCurrentThread(thread.isDaemon())) {
             throw new InternalError("Couldn't attach to HotSpot runtime");
         }
     }
@@ -810,15 +807,6 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
 @TargetClass(className = "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
 @Delete("shouldn't appear in libgraal")
 final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleToLibGraalEntryPoints", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_compiler_hotspot_libgraal_TruffleToLibGraalEntryPoints {
-    @SuppressWarnings("unused")
-    @Substitute
-    private static void doReferenceHandling() {
-        Heap.getHeap().doReferenceHandling();
-    }
 }
 
 @TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)
