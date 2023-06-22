@@ -1193,12 +1193,11 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
-          "org.graalvm.truffle",
-          "org.graalvm.truffle.compiler",
         ],
         "exports" : [
           # Qualified exports
-          "org.graalvm.compiler.truffle.runtime to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder"
+          "org.graalvm.compiler.truffle.runtime to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "org.graalvm.compiler.truffle.runtime.hotspot to jdk.internal.vm.compiler"
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1209,6 +1208,14 @@ suite = {
           "org.graalvm.compiler.truffle.jfr.EventFactory.Provider",
           "org.graalvm.compiler.truffle.runtime.FloodControlHandler",
           "org.graalvm.home.HomeFinder",
+        ],
+      },
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.code.stack",
+          "jdk.vm.ci.services",
         ],
       },
       "subDir" : "src",
@@ -1262,7 +1269,7 @@ suite = {
 
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1287,10 +1294,10 @@ suite = {
           "com.oracle.truffle.api.instrumentation.provider",
           "com.oracle.truffle.api.library.provider",
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.api.impl to org.graalvm.locator",
-          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime",
+          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler,org.graalvm.locator, org.graalvm.truffle.runtime",
+          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime",
+          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime",
         ],
       },
       "subDir" : "src",

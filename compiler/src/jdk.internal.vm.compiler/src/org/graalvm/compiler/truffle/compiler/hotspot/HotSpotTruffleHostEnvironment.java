@@ -57,7 +57,7 @@ final class HotSpotTruffleHostEnvironment extends TruffleHostEnvironment {
          */
         TruffleCompilerRuntime runtime = runtime();
         try {
-            return (TruffleCompilerImpl) runtime.getClass().getMethod("getCompiler", TruffleCompilable.class).invoke(runtime, compilable);
+            return (TruffleCompilerImpl) runtime.getClass().getMethod("getTruffleCompiler", TruffleCompilable.class).invoke(runtime, compilable);
         } catch (ReflectiveOperationException e) {
             throw GraalError.shouldNotReachHere(e);
         }

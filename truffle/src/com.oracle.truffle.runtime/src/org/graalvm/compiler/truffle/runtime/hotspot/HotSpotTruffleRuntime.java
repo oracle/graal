@@ -228,6 +228,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return l.stackIntrospection;
     }
 
+    /**
+     * This is called reflectively from the compiler side in HotSpotTruffleHostEnvironment.
+     */
     @Override
     public TruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");

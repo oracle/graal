@@ -222,7 +222,6 @@ suite = {
         "org.graalvm.compiler.truffle.jfr.impl",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.truffle.test",
-        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
       ],
     },
 
