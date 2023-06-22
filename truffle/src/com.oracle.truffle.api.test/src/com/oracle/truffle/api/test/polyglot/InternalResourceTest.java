@@ -41,10 +41,14 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -53,10 +57,10 @@ import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class InternalResourceTest {
@@ -125,34 +129,124 @@ public class InternalResourceTest {
     }
 
     @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
-    public static class TestResourcesUnpackedOnce extends AbstractExecutableTestLanguage {
-
-        public static final String ID = TestUtils.getDefaultLanguageId(TestResourcesUnpackedOnce.class);
+    public static class TestLanguageResourcesUnpackedOnce extends AbstractExecutableTestLanguage {
 
         @Override
         @TruffleBoundary
+        @SuppressWarnings("try")
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            LibraryResource.unpackedCalled = 0;
-            SourcesResource.unpackedCalled = 0;
-            TruffleFile libRoot1 = env.getInternalResource(LibraryResource.class);
-            verifyResources(libRoot1, LibraryResource.RESOURCES);
-            TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
-            verifyResources(srcRoot1, SourcesResource.RESOURCES);
-            TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
-            assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
-            TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
-            assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
-            assertEquals(1, LibraryResource.unpackedCalled);
-            assertEquals(1, SourcesResource.unpackedCalled);
-            return "";
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                LibraryResource.unpackedCalled = 0;
+                SourcesResource.unpackedCalled = 0;
+                TruffleFile libRoot1 = env.getInternalResource(LibraryResource.class);
+                verifyResources(libRoot1, LibraryResource.RESOURCES);
+                TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
+                verifyResources(srcRoot1, SourcesResource.RESOURCES);
+                TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
+                assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
+                TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
+                assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
+                assertEquals(1, LibraryResource.unpackedCalled);
+                assertEquals(1, SourcesResource.unpackedCalled);
+                return "";
+            }
         }
     }
 
     @Test
-    public void test() {
+    public void testLanguageResourcesUnpackedOnce() {
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestResourcesUnpackedOnce.class);
+            AbstractExecutableTestLanguage.execute(context, TestLanguageResourcesUnpackedOnce.class);
         }
     }
 
+    @TruffleInstrument.Registration(id = InstrumentWithResources.ID, name = InstrumentWithResources.ID, //
+                    services = InstrumentWithResources.Create.class, internalResources = {LibraryResource.class, SourcesResource.class})
+    public static final class InstrumentWithResources extends TruffleInstrument {
+        static final String ID = "InstrumentWithResources";
+
+        public interface Create {
+        }
+
+        @Override
+        @SuppressWarnings("try")
+        protected void onCreate(Env env) {
+            env.registerService(new Create() {
+            });
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                LibraryResource.unpackedCalled = 0;
+                SourcesResource.unpackedCalled = 0;
+                TruffleFile libRoot1 = env.getInternalResource(LibraryResource.class);
+                verifyResources(libRoot1, LibraryResource.RESOURCES);
+                TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
+                verifyResources(srcRoot1, SourcesResource.RESOURCES);
+                TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
+                assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
+                TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
+                assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
+                assertEquals(1, LibraryResource.unpackedCalled);
+                assertEquals(1, SourcesResource.unpackedCalled);
+            }
+        }
+    }
+
+    @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestInstrumentResourcesUnpackedOnce extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            InstrumentInfo info = env.getInstruments().get(InstrumentWithResources.ID);
+            assertNotNull(info);
+            env.lookup(info, InstrumentWithResources.Create.class);
+            return null;
+        }
+    }
+
+    @Test
+    public void testInstrumentResourcesUnpackedOnce() {
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesUnpackedOnce.class);
+        }
+    }
+
+    private static final class TemporaryResourceCacheRoot implements AutoCloseable {
+
+        private final Path root;
+
+        TemporaryResourceCacheRoot() {
+            try {
+                root = Files.createTempDirectory(null);
+                setCacheRoot(root);
+            } catch (IOException | ClassNotFoundException e) {
+                throw new AssertionError("Failed to set cache root.", e);
+            }
+        }
+
+        @Override
+        public void close() {
+            try {
+                setCacheRoot(null);
+                delete(root);
+            } catch (IOException | ClassNotFoundException e) {
+                throw new AssertionError("Failed to reset cache root.", e);
+            }
+        }
+
+        private static void delete(Path path) throws IOException {
+            if (Files.isDirectory(path)) {
+                try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
+                    for (Path child : children) {
+                        delete(child);
+                    }
+                }
+            }
+            Files.delete(path);
+        }
+
+        private static void setCacheRoot(Path root) throws ClassNotFoundException {
+            Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
+            ReflectionUtils.invokeStatic(internalResourceCacheClass, "setCacheRoot", new Class<?>[]{Path.class}, root);
+        }
+    }
 }

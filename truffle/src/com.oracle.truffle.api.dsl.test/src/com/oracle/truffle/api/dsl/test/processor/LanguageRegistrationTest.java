@@ -42,8 +42,10 @@ package com.oracle.truffle.api.dsl.test.processor;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -200,6 +202,76 @@ public class LanguageRegistrationTest {
         }
     }
 
+    @Registration(id = "languageresource1", name = "languageresource1", internalResources = {
+                    InternalResourceRegistration1.Resource1.class,
+                    InternalResourceRegistration1.Resource2.class
+    })
+    public static class InternalResourceRegistration1 extends ProxyLanguage {
+        public static class Resource1 extends ProxyInternalResource {
+        }
+
+        public static class Resource2 extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration2.Resource must be a static inner-class or a top-level class. " +
+                    "To resolve this, make the Resource static or top-level class.")
+    @Registration(id = "languageresource2", name = "languageresource2", internalResources = {InternalResourceRegistration2.Resource.class})
+    public static class InternalResourceRegistration2 extends ProxyLanguage {
+        public abstract class Resource extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration3.Resource must have a no argument public constructor. " +
+                    "To resolve this, add public Resource() constructor.")
+    @Registration(id = "languageresource3", name = "languageresource3", internalResources = {InternalResourceRegistration3.Resource.class})
+    public static class InternalResourceRegistration3 extends ProxyLanguage {
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            @SuppressWarnings("unused")
+            private Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration4.Resource must be public or package protected " +
+                    "in the com.oracle.truffle.api.dsl.test.processor package. To resolve this, make the " +
+                    "LanguageRegistrationTest.InternalResourceRegistration4.Resource public or move it to the " +
+                    "com.oracle.truffle.api.dsl.test.processor package.")
+    @Registration(id = "languageresource4", name = "languageresource4", internalResources = {InternalResourceRegistration4.Resource.class})
+    public static class InternalResourceRegistration4 extends ProxyLanguage {
+        private static class Resource extends ProxyInternalResource {
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @Registration(id = "languageresource5", name = "languageresource5", internalResources = {InternalResourceRegistration5.Resource.class})
+    public static class InternalResourceRegistration5 extends ProxyLanguage {
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            Resource() {
+            }
+        }
+    }
+
     static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override
@@ -212,6 +284,23 @@ public class LanguageRegistrationTest {
         @SuppressWarnings("unused")
         public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
+        }
+    }
+
+    static class ProxyInternalResource implements InternalResource {
+
+        @Override
+        public void unpackFiles(Path targetDirectory) {
+        }
+
+        @Override
+        public String name() {
+            return "test-resource";
+        }
+
+        @Override
+        public String versionHash() {
+            return "1";
         }
     }
 }

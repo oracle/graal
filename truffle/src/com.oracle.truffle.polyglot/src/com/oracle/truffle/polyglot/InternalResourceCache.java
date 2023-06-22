@@ -179,4 +179,11 @@ final class InternalResourceCache {
         }
         return res;
     }
+
+    /**
+     * Method intended for unit tests only. Used reflectively by {@code InternalResourceTest}.
+     */
+    static void setCacheRoot(Path root) {
+        cacheRoot = root;
+    }
 }

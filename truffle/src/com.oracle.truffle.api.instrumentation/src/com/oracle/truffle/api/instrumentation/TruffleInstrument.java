@@ -1079,15 +1079,7 @@ public abstract class TruffleInstrument {
          * @since 23.1
          */
         public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
-
-            // implementation notes:
-            // cache-dir on Mac = ${user.home}/Library/Caches/org.graalvm.polyglot/
-            // ${cache-dir}/${component-id}/${name()}/${versionHash()}/
-            // directory gets locked on unpacking
-            // native-image: ./resources/${language-id}/${name()}/
-
-            // TODO implement
-            return null;
+            return InstrumentAccessor.engineAccess().getInternalResource(polyglotInstrument, resource);
         }
 
         /**
@@ -1453,6 +1445,8 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        Class<? extends InternalResource>[] internalResources() default {};
     }
 
     /**

@@ -67,6 +67,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -163,6 +164,45 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
+    }
+
+    boolean validateInternalResources(Element annotatedElement, AnnotationMirror mirror) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "internalResources", true);
+        for (TypeMirror internalResource : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "internalResources")) {
+            TypeElement internalResourceElement = ElementUtils.fromTypeMirror(internalResource);
+            PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
+            boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(internalResourceElement));
+            Set<Modifier> modifiers = internalResourceElement.getModifiers();
+            if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
+                                getScopedName(internalResourceElement), targetPackage.getQualifiedName(), getScopedName(internalResourceElement), targetPackage.getQualifiedName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
+            if (internalResourceElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
+                emitError(String.format("The class %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
+                                getScopedName(internalResourceElement), internalResourceElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(internalResourceElement.getEnclosedElements())) {
+                modifiers = constructor.getModifiers();
+                if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError(String.format("The class %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
+                                getScopedName(internalResourceElement), ElementUtils.getSimpleName(internalResourceElement)), annotatedElement, mirror, value);
+                return false;
+            }
+        }
+        return true;
     }
 
     static CodeAnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {

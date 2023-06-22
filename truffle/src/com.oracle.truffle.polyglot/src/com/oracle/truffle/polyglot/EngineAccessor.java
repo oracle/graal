@@ -565,8 +565,10 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemObject) {
-            if (engineFileSystemObject instanceof PolyglotLanguageContext) {
-                return ((PolyglotLanguageContext) engineFileSystemObject).context.engine.getFileTypeDetectorsSupplier().get();
+            if (engineFileSystemObject instanceof PolyglotLanguageContext languageContext) {
+                return languageContext.context.engine.getFileTypeDetectorsSupplier().get();
+            } else if (engineFileSystemObject instanceof PolyglotInstrument polyglotInstrument) {
+                return polyglotInstrument.engine.getFileTypeDetectorsSupplier().get();
             } else if (engineFileSystemObject instanceof EmbedderFileSystemContext) {
                 return ((EmbedderFileSystemContext) engineFileSystemObject).fileTypeDetectors.get();
             } else {
@@ -585,8 +587,15 @@ final class EngineAccessor extends Accessor {
         }
 
         private static LanguageCache getLanguageCache(Object engineObject, String language) throws AssertionError {
-            if (engineObject instanceof PolyglotLanguageContext) {
-                PolyglotLanguage polyglotLanguage = ((PolyglotLanguageContext) engineObject).context.engine.idToLanguage.get(language);
+            if (engineObject instanceof PolyglotLanguageContext languageContext) {
+                PolyglotLanguage polyglotLanguage = languageContext.context.engine.idToLanguage.get(language);
+                if (polyglotLanguage != null) {
+                    return polyglotLanguage.cache;
+                } else {
+                    return null;
+                }
+            } else if (engineObject instanceof PolyglotInstrument polyglotInstrument) {
+                PolyglotLanguage polyglotLanguage = polyglotInstrument.engine.idToLanguage.get(language);
                 if (polyglotLanguage != null) {
                     return polyglotLanguage.cache;
                 } else {
@@ -707,6 +716,10 @@ final class EngineAccessor extends Accessor {
                 polyglotContext = (PolyglotContextImpl) polyglotObject;
             } else if (polyglotObject instanceof PolyglotLanguageContext) {
                 polyglotContext = ((PolyglotLanguageContext) polyglotObject).context;
+            } else if (polyglotObject instanceof PolyglotInstrument polyglotInstrument) {
+                // Instruments are not created during context pre-initialization
+                assert !polyglotInstrument.engine.inEnginePreInitialization;
+                return false;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
@@ -1252,10 +1265,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isInternal(Object engineObject, FileSystem fs) {
             AbstractPolyglotImpl polyglot;
-            if (engineObject instanceof PolyglotLanguageContext) {
-                polyglot = ((PolyglotLanguageContext) engineObject).getImpl();
-            } else if (engineObject instanceof EmbedderFileSystemContext) {
-                polyglot = ((EmbedderFileSystemContext) engineObject).getImpl();
+            if (engineObject instanceof PolyglotLanguageContext languageContext) {
+                polyglot = languageContext.getImpl();
+            } else if (engineObject instanceof PolyglotInstrument polyglotInstrument) {
+                polyglot = polyglotInstrument.getImpl();
+            } else if (engineObject instanceof EmbedderFileSystemContext embedderContext) {
+                polyglot = embedderContext.getImpl();
             } else {
                 throw new AssertionError("Unsupported engine object " + engineObject);
             }
@@ -1264,9 +1279,10 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isSocketIOAllowed(Object engineFileSystemContext) {
-            if (engineFileSystemContext instanceof PolyglotLanguageContext) {
-                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
+            if (engineFileSystemContext instanceof PolyglotLanguageContext languageContext) {
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
+            } else if (engineFileSystemContext instanceof PolyglotInstrument) {
+                return false;
             } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
                 return true;
             } else {
@@ -2045,11 +2061,17 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getInternalResource(Object polyglotLanguageContext, Class<? extends InternalResource> resourceType) {
+        public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) {
+            InternalResourceCache resourceCache;
+            if (owner instanceof PolyglotLanguageContext languageContext) {
+                resourceCache = languageContext.language.cache.getResourceCache(resourceType);
+            } else if (owner instanceof PolyglotInstrument instrument) {
+                resourceCache = instrument.cache.getResourceCache(resourceType);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
+            }
             try {
-                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-                InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceType);
-                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotLanguageContext, resourceCache.getResourceFileSystem());
+                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(owner, resourceCache.getResourceFileSystem());
                 return EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
             } catch (IOException ioe) {
                 // TODO: It would be better to throw an IOException from the

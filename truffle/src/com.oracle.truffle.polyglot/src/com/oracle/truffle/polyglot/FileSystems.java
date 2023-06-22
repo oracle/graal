@@ -138,15 +138,14 @@ final class FileSystems {
 
     static String getRelativePathInLanguageHome(TruffleFile file) {
         Object engineObject = EngineAccessor.LANGUAGE.getFileSystemEngineObject(EngineAccessor.LANGUAGE.getFileSystemContext(file));
-        if (engineObject instanceof PolyglotLanguageContext) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) engineObject;
+        if (engineObject instanceof PolyglotLanguageContext languageContext) {
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
             Path path = EngineAccessor.LANGUAGE.getPath(file);
-            String result = relativizeToLanguageHome(fs, path, context.language);
+            String result = relativizeToLanguageHome(fs, path, languageContext.language);
             if (result != null) {
                 return result;
             }
-            Map<String, LanguageInfo> accessibleLanguages = context.getAccessibleLanguages(true);
+            Map<String, LanguageInfo> accessibleLanguages = languageContext.getAccessibleLanguages(true);
             /*
              * The accessibleLanguages is null for a closed context. The
              * getRelativePathInLanguageHome may be called even for closed context by the compiler
@@ -154,13 +153,16 @@ final class FileSystems {
              */
             if (accessibleLanguages != null) {
                 for (LanguageInfo language : accessibleLanguages.values()) {
-                    PolyglotLanguage lang = context.context.engine.idToLanguage.get(language.getId());
+                    PolyglotLanguage lang = languageContext.context.engine.idToLanguage.get(language.getId());
                     result = relativizeToLanguageHome(fs, path, lang);
                     if (result != null) {
                         return result;
                     }
                 }
             }
+            return null;
+        } else if (engineObject instanceof PolyglotInstrument) {
+            // instrument internal resources are never relative to language homes
             return null;
         } else if (engineObject instanceof EmbedderFileSystemContext) {
             // embedding sources are never relative to language homes

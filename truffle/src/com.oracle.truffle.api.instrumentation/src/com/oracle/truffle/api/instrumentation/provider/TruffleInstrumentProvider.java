@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.api.instrumentation.provider;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.ServiceLoader;
 
 /**
@@ -84,4 +86,11 @@ public abstract class TruffleInstrumentProvider {
      * @since 23.1
      */
     protected abstract Collection<String> getServicesClassNames();
+
+    /**
+     * Creates {@link InternalResource}s used by this {@link TruffleInstrument}.
+     *
+     * @since 23.1
+     */
+    protected abstract List<?> createInternalResources();
 }

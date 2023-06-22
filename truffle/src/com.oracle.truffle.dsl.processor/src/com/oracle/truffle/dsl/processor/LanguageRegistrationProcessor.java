@@ -201,6 +201,10 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
+        if (!validateInternalResources(annotatedElement, registrationMirror)) {
+            return false;
+        }
+
         if (valid) {
             assertNoErrorExpected(annotatedElement);
         }

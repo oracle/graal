@@ -52,9 +52,12 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -76,6 +79,7 @@ final class InstrumentCache {
     private final Set<String> services;
     private final ProviderAdapter providerAdapter;
     private final SandboxPolicy sandboxPolicy;
+    private volatile Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
 
     /**
      * Initializes state for native image generation.
@@ -258,6 +262,29 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
+    InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
+        var cacheByType = internalResources;
+        if (cacheByType == null) {
+            synchronized (this) {
+                cacheByType = internalResources;
+                if (cacheByType == null) {
+                    cacheByType = new HashMap<>();
+                    for (InternalResource internalResource : providerAdapter.createInternalResources()) {
+                        cacheByType.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
+                    }
+                    internalResources = cacheByType;
+                }
+            }
+        }
+        InternalResourceCache cache = cacheByType.get(resourceType);
+        if (cache == null) {
+            throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
+                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+        } else {
+            return cache;
+        }
+    }
+
     String getWebsite() {
         return website;
     }
@@ -279,6 +306,8 @@ final class InstrumentCache {
         String getInstrumentClassName();
 
         Collection<String> getServicesClassNames();
+
+        List<InternalResource> createInternalResources();
     }
 
     /**
@@ -315,6 +344,11 @@ final class InstrumentCache {
         public Collection<String> getServicesClassNames() {
             return provider.getServicesClassNames();
         }
+
+        @Override
+        public List<InternalResource> createInternalResources() {
+            return List.of();
+        }
     }
 
     /**
@@ -348,6 +382,11 @@ final class InstrumentCache {
         @Override
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
+        }
+
+        @Override
+        public List<InternalResource> createInternalResources() {
+            return EngineAccessor.INSTRUMENT_PROVIDER.createInternalResources(provider);
         }
     }
 }
