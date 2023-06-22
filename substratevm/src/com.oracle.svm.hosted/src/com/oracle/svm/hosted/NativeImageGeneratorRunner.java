@@ -193,15 +193,9 @@ public class NativeImageGeneratorRunner {
                         "java.base",
                         "java.management",
                         "jdk.management",
-                        "jdk.management.agent", // READ-BY org.graalvm.nativeimage.builder
-                        "java.management.rmi", // READ-BY jdk.management.agent
-                        "java.rmi",
-                        "java.logging", // READ-BY java.rmi READ-BY java.management.rmi
-                        "java.naming",
-                        "java.security.sasl", // READ-BY java.naming READ-BY java.management.rmi
                         "java.compiler",
-                        "jdk.management.jfr",
-                        "jdk.jfr");
+                        "jdk.jfr",
+                        "jdk.management.jfr");
 
         Set<String> unexpectedBuilderDependencies = modulesBuilderDependsOn.stream().map(Module::getName).collect(Collectors.toSet());
         unexpectedBuilderDependencies.removeAll(expectedBuilderDependencies);
