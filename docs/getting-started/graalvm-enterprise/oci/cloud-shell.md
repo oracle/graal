@@ -9,7 +9,7 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cloudshellintro.htm) is a browser-based terminal accessible from the Oracle Cloud Console. It provides access to a Linux shell with a pre-authenticated OCI Command Line Interface (CLI), preinstalled developer tools, and comes with 5GB of storage.
 
-Oracle GraalVM for JDK 17 with Native Image are preinstalled in Cloud Shell. 
+Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell. 
 
 > Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
