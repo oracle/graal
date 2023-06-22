@@ -75,7 +75,6 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 
 import org.graalvm.home.Version;
-import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -108,6 +107,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -1311,6 +1311,37 @@ public abstract class TruffleLanguage<C> {
      * @since 0.28
      */
     protected void initializeThread(C context, Thread thread) {
+    }
+
+    /**
+     * The behavior of this notification is different for
+     * {@link Env#newTruffleThreadBuilder(Runnable) polyglot threads} and embedder threads.
+     * <p>
+     * For {@link Env#newTruffleThreadBuilder(Runnable) polyglot threads} the
+     * <code>finalizeThread</code> notification is invoked just before the context is left for the
+     * last time in the thread, and it is still safe to run guest code unless the context is
+     * cancelled or hard-exited. This allows the language to perform finalization actions for each
+     * thread and context. Polyglot threads are finalized before or while the context is finalized
+     * and it always holds that <code>thread == Thread.currentThread()</code>.
+     * <p>
+     * Embedder threads are finalized after the context is finalized, but before it is disposed.
+     * <code>thread == Thread.currentThread()</code> holds only for the embedder thread that
+     * performed the context finalization. Finalization of other embedder threads is invoked in the
+     * context finalization thread as well, and so <code>thread != Thread.currentThread()</code>. It
+     * is still safe to run guest code in <code>finalizeThread</code> for an embedder thread unless
+     * the context is cancelled or hard-exited, but it is not allowed to initialize new language
+     * contexts or create polyglot threads. A language context initialization or creation of a
+     * polyglot thread in <code>finalizeThread</code> for an embedder thread results in
+     * {@link IllegalStateException}. Please note that embedder threads may be collected by the
+     * garbage collector before they can be finalized and may therefore not be finalized.
+     * <p>
+     * Thread finalization is invoked before {@link #disposeThread(Object, Thread) thread disposal}.
+     *
+     * @see #initializeThread(Object, Thread) For usage details.
+     * @since 23.1
+     */
+    @SuppressWarnings("unused")
+    protected void finalizeThread(C context, Thread thread) {
     }
 
     /**
