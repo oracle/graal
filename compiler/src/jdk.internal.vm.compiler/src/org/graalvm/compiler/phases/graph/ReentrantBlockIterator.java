@@ -33,7 +33,6 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -142,11 +141,7 @@ public final class ReentrantBlockIterator {
         while (true) {
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
-                if (period > 120) {
-                    throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
-                } else {
-                    throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
-                }
+                throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
             }
             HIRBlock next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
