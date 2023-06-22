@@ -82,16 +82,33 @@ class Instance {
         }
     }
 
+    private static boolean isImplicitDeoptEntry(LIRFrameState state) {
+        BytecodeFrame frame = state.topFrame;
+        if (frame.duringCall) {
+            /*
+             * A state is an implicit deoptimization entrypoint if it corresponds to a call which is
+             * valid for deoptimization and is registered as a deopt entry.
+             *
+             * Note unless we backport GR-40960 we cannot accurately determine implicit deopt
+             * entries.
+             */
+            return ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+        }
+
+        return false;
+    }
+
     private void doState(DebugContext debug, FrameMap frameMap, LIRInstruction op, LIRFrameState state) {
         SubstrateReferenceMap refMap = (SubstrateReferenceMap) state.debugInfo().getReferenceMap();
 
         /*
-         * We want to verify explicit deoptimization entry points, and implicit deoptimization entry
-         * points at call sites. Unfortunately, just checking isDeoptEntry gives us false positives
-         * for some runtime calls that re-use a state (which is not marked as "during call").
+         * We want to verify explicit deoptimization entry points and implicit deoptimization entry
+         * points at call sites.
+         *
+         * Explicit deoptimization entrypoints are represented with a DeoptEntryOp whereas implicit
+         * entry points must query the compilation information.
          */
-        boolean isDeoptEntry = ((HostedMethod) state.topFrame.getMethod()).compilationInfo.isDeoptEntry(state.topFrame.getBCI(), state.topFrame.duringCall, state.topFrame.rethrowException);
-        if (op instanceof DeoptEntryOp || (state.topFrame.duringCall && isDeoptEntry)) {
+        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state)) {
             BytecodeFrame frame = state.topFrame;
 
             Map<Integer, Object> allUsedRegisters = refMap.getDebugAllUsedRegisters();

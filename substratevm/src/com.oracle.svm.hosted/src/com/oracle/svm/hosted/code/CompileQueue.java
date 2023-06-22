@@ -149,7 +149,6 @@ import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Constant;
 
 public class CompileQueue {
@@ -1036,6 +1035,45 @@ public class CompileQueue {
         lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
+    public static boolean isDeoptEntry(HostedMethod method, Infopoint infopoint) {
+        BytecodeFrame topFrame = infopoint.debugInfo.frame();
+        BytecodeFrame rootFrame = topFrame;
+        while (rootFrame.caller() != null) {
+            rootFrame = rootFrame.caller();
+        }
+        assert rootFrame.getMethod().equals(method);
+
+        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
+        if (isBciDeoptEntry) {
+            /*
+             * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
+             * necessarily mean that the infopoint itself is for a deoptimization entrypoint. This
+             * is because the infopoint can also be for present debugging purposes and happen to
+             * have the same bci. Further checks are needed to determine actual deoptimization
+             * entrypoints.
+             */
+            assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
+            if (topFrame.duringCall) {
+                assert infopoint instanceof Call : "Unexpected info type: " + infopoint;
+                /*
+                 * During call entrypoints must always be linked to a call.
+                 *
+                 * Note this check is not completely accurate. It is possible for a bytecode
+                 * exception call to share the same bci as a real deopt entry. This will only be
+                 * corrected if GR-40960 is backported.
+                 */
+                return true;
+            } else {
+                /*
+                 * Other deoptimization entrypoints correspond to an DeoptEntryOp.
+                 */
+                return infopoint instanceof DeoptEntryInfopoint;
+            }
+        }
+
+        return false;
+    }
+
     private static boolean verifyDeoptTarget(HostedMethod method, CompilationResult result) {
         Map<Long, BytecodeFrame> encodedBciMap = new HashMap<>();
 
@@ -1055,39 +1093,24 @@ public class CompileQueue {
                 if (!debugInfo.hasFrame()) {
                     continue;
                 }
-                BytecodeFrame topFrame = debugInfo.frame();
 
-                BytecodeFrame rootFrame = topFrame;
-                while (rootFrame.caller() != null) {
-                    rootFrame = rootFrame.caller();
-                }
-                assert rootFrame.getMethod().equals(method);
+                if (isDeoptEntry(method, infopoint)) {
+                    BytecodeFrame frame = debugInfo.frame();
+                    if (frame.duringCall) {
+                        /*
+                         * Unless we backport GR-40960, we cannot validate implicit deopt entries.
+                         */
+                        continue;
+                    }
+                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
 
-                boolean isDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
-                if (infopoint instanceof DeoptEntryInfopoint) {
-                    assert isDeoptEntry;
-                } else if (rootFrame.duringCall && isDeoptEntry) {
-                    assert infopoint instanceof Call || isSingleSteppingInfopoint(infopoint);
-                } else {
-                    continue;
+                    BytecodeFrame previous = encodedBciMap.put(encodedBci, frame);
+                    assert previous == null : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " found.\n\n" + frame + "\n\n" + previous;
                 }
-
-                long encodedBci = FrameInfoEncoder.encodeBci(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
-                if (encodedBciMap.containsKey(encodedBci)) {
-                    assert encodedBciMap.get(encodedBci).equals(rootFrame) : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " with different debug info:\n\n" + rootFrame +
-                                    "\n\n" + encodedBciMap.get(encodedBci);
-                }
-                encodedBciMap.put(encodedBci, rootFrame);
             }
         }
 
         return true;
-    }
-
-    private static boolean isSingleSteppingInfopoint(Infopoint infopoint) {
-        return infopoint.reason == InfopointReason.METHOD_START ||
-                        infopoint.reason == InfopointReason.METHOD_END ||
-                        infopoint.reason == InfopointReason.BYTECODE_POSITION;
     }
 
     /**
