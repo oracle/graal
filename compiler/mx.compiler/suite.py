@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.20.1",
+  "mxversion": "6.27.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -203,6 +203,29 @@ suite = {
       "checkstyleVersion" : "10.7.0",
       "javaCompliance" : "17+",
       "workingSets" : "API,Graal",
+      "jacoco" : "include",
+      "jacocoExcludePackages" : [
+        "jdk.internal.vm.compiler.test",
+        "org.graalvm.libgraal.jni",
+        "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.compiler.replacements.test",
+        "org.graalvm.compiler.api.directives.test",
+        "org.graalvm.compiler.test",
+        "org.graalvm.compiler.core.test",
+        "org.graalvm.compiler.nodes.test",
+        "org.graalvm.compiler.loop.test",
+        "org.graalvm.compiler.core.aarch64.test",
+        "org.graalvm.compiler.jtt",
+        "org.graalvm.compiler.truffle.options",
+        "org.graalvm.compiler.truffle.jfr",
+        "org.graalvm.compiler.truffle.jfr.impl",
+        "org.graalvm.compiler.truffle.runtime",
+        "org.graalvm.compiler.truffle.test",
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
+      ],
     },
 
     "jdk.internal.vm.compiler.truffle.jfr" : {
@@ -280,6 +303,7 @@ suite = {
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
       "javaCompliance" : "17+",
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.nativebridge.processor" : {
@@ -341,7 +365,6 @@ suite = {
         "jdk.internal.vm.compiler.test",
       ],
       "requires" : [
-        "jdk.incubator.concurrent",
         "jdk.jfr",
       ],
       "requiresConcealed" : {
@@ -356,6 +379,24 @@ suite = {
       "javaCompliance" : "20+",
       "javaPreviewNeeded": "20+",
       "javac.lint.overrides": "none",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk21.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "jdk.internal.vm.compiler.test",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.util",
+        ],
+      },
+      "checkstyle": "jdk.internal.vm.compiler",
+      "javaCompliance" : "21+",
+      "javaPreviewNeeded": "21+",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -417,6 +458,34 @@ suite = {
       ],
     },
 
+    "org.graalvm.compiler.truffle.libgraal.truffleattach" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "truffleattach",
+      "use_jdk_headers" : True,
+      "buildDependencies" : [
+      ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11"]
+          }
+        },
+        "linux" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+      },
+    },
+
     "org.graalvm.compiler.truffle.test.jdk19" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -432,6 +501,7 @@ suite = {
       "javaCompliance" : "19+",
       "javaPreviewNeeded": "19+",
       "checkPackagePrefix" : "false",
+      "jacoco": "exclude",
       "testProject" : True,
     },
 
@@ -484,6 +554,8 @@ suite = {
       "dependencies" : [
         "jdk.internal.vm.compiler.test",
         "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.compiler.hotspot.jdk20.test",
+        "org.graalvm.compiler.hotspot.jdk21.test",
       ],
       "distDependencies" : [
         "GRAAL",
@@ -555,16 +627,13 @@ suite = {
           """* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base,
           org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise""",
           "org.graalvm.compiler.java                   to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
-          "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
-          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
-          "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.core.common            to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
+          "org.graalvm.compiler.debug                  to org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
-          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
+          "org.graalvm.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
-          "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
-          "org.graalvm.util                            to jdk.internal.vm.compiler.management",
           "org.graalvm.util.json                       to org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.driver",
         ],
         "uses" : [
@@ -670,6 +739,33 @@ suite = {
           },
         },
       },
+    },
+
+    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH" : {
+      "native" : True,
+      "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+      ],
+      "layout" : {
+        "bin/" : "dependency:org.graalvm.compiler.truffle.libgraal.truffleattach",
+      },
+      "description" : "Contains a library to attach Truffle runtime to jvmci runtime.",
+      "maven": True,
+    },
+
+    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : ["dependency:org.graalvm.compiler.truffle.libgraal.truffleattach"],
+      },
+      "description" : "Truffle attach library support distribution for the GraalVM",
+      "maven" : False,
     },
 
     "GRAAL_PROFDIFF": {

@@ -24,13 +24,6 @@
  */
 package org.graalvm.libgraal.jni;
 
-import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -38,6 +31,13 @@ import java.lang.reflect.Type;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 public final class LibGraalUtil {
 
@@ -103,9 +103,12 @@ public final class LibGraalUtil {
                                 hsExpect = long[].class;
                             } else if (libgraal == JNI.JObjectArray.class) {
                                 hsExpect = Object[].class;
-                            } else {
-                                check(libgraal == JNI.JObject.class, "must be");
+                            } else if (libgraal == JNI.JObject.class) {
                                 hsExpect = Object.class;
+                            } else if (libgraal == JNI.JClass.class) {
+                                hsExpect = Class.class;
+                            } else {
+                                throw fail("Method %s must only use supported parameters but uses unsupported class %s", libGraalMethod, libgraal.getName());
                             }
                         }
                         check(hsExpect.isAssignableFrom(hs), "HotSpot parameter %d (%s) incompatible with libgraal parameter %d (%s): %s", j, hs.getName(), i, libgraal.getName(), hsMethod);
@@ -122,8 +125,13 @@ public final class LibGraalUtil {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void check(boolean condition, String format, Object... args) {
         if (!condition) {
-            throw new InternalError(String.format(format, args));
+            throw fail(format, args);
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static InternalError fail(String format, Object... args) {
+        return new InternalError(String.format(format, args));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

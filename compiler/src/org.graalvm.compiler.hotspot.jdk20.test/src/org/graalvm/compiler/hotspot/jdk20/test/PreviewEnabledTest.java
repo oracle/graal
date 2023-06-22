@@ -27,8 +27,10 @@ package org.graalvm.compiler.hotspot.jdk20.test;
 import java.io.IOException;
 
 import org.graalvm.compiler.api.test.ModuleSupport;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assume;
@@ -50,20 +52,13 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
         CarrierThreadTest.test();
     }
 
-    public void testScopedValue() {
-        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-
-        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-    }
-
     public void testJFR() {
         try {
             // resolve class, profile exceptions
             VirtualThreadsJFRTest.test();
             Class<?> clazz = Class.forName("java.lang.VirtualThread");
-            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true, getInitialOptions());
+            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true,
+                            new OptionValues(getInitialOptions(), GraalOptions.RemoveNeverExecutedCode, false));
             assertTrue(code.isValid());
             VirtualThreadsJFRTest.test();
             assertTrue(code.isValid());
@@ -75,13 +70,11 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
     public void testBody() {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
         testGetCarrierThread();
-        testScopedValue();
         testJFR();
     }
 
     @Test
     public void testInSubprocess() throws IOException, InterruptedException {
-        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview", "--add-modules=jdk.incubator.concurrent",
-                        "--add-opens=jdk.incubator.concurrent/jdk.incubator.concurrent=ALL-UNNAMED");
+        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview");
     }
 }

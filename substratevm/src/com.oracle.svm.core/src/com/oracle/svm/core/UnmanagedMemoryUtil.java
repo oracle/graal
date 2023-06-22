@@ -216,6 +216,43 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareLongs(Pointer x, Pointer y, UnsignedWord size) {
+        assert size.unsignedRemainder(8).equal(0);
+        UnsignedWord offset = WordFactory.zero();
+        while (offset.belowThan(size)) {
+            if (x.readLong(offset) != y.readLong(offset)) {
+                return offset;
+            }
+            offset = offset.add(Long.BYTES);
+        }
+        return offset;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareBytes(Pointer x, Pointer y, UnsignedWord size) {
+        UnsignedWord offset = WordFactory.zero();
+        while (offset.belowThan(size)) {
+            if (x.readByte(offset) != y.readByte(offset)) {
+                return offset;
+            }
+            offset = offset.add(1);
+        }
+        return offset;
+    }
+
+    /**
+     * Compares two memory areas. Returns the number of bytes from the beginning which are
+     * equivalent, which, if a difference is found, is the offset of the first different byte.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord compare(Pointer x, Pointer y, UnsignedWord size) {
+        UnsignedWord alignBits = WordFactory.unsigned(0x7);
+        UnsignedWord alignedSize = size.and(alignBits.not());
+        UnsignedWord offset = compareLongs(x, y, alignedSize);
+        return offset.add(compareBytes(x.add(offset), y.add(offset), size.subtract(offset)));
+    }
+
     /**
      * Set the bytes of a memory area to a given value. Does *NOT* guarantee any size for the
      * individual read/write operations and therefore does not guarantee any atomicity.

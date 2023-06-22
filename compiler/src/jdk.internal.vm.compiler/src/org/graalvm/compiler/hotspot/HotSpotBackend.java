@@ -155,7 +155,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     Object.class);
 
     public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompress", void.class, Word.class,
-                    Object.class);
+                    Object.class, int.class);
 
     public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", int.class, Word.class,
                     Object.class, int.class, int.class);
@@ -198,14 +198,14 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private static native int sha5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
     public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompressMB", int.class, Word.class,
-                    Object.class, int.class, int.class);
+                    Object.class, int.class, int.class, int.class);
 
-    public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
-        return shaImplCompressMBStub(HotSpotBackend.SHA3_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
+    public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int blockSize, int ofs, int limit) {
+        return sha3ImplCompressMBStub(HotSpotBackend.SHA3_IMPL_COMPRESS_MB, bufAddr, stateAddr, blockSize, ofs, limit);
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
+    private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int blockSize, int ofs, int limit);
 
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);

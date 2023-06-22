@@ -35,6 +35,7 @@ import org.junit.Test;
 
 public class CompilationResultTest {
 
+    @SuppressWarnings("unlikely-arg-type")
     @Test
     public void testCodeComment() {
         CodeComment comment = new CodeComment(0, "test");
@@ -47,6 +48,7 @@ public class CompilationResultTest {
         assertTrue(comment.toString().length() > 0); // test for NPE
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     @Test
     public void testJumpTable() {
         JumpTable table = new JumpTable(0, 0, 8, JumpTable.EntryFormat.OFFSET_ONLY);
@@ -59,6 +61,7 @@ public class CompilationResultTest {
         assertTrue(table.toString().length() > 0); // test for NPE
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     @Test
     public void testCompilationResult() {
         CompilationResult result = new CompilationResult("testresult");
@@ -88,6 +91,7 @@ public class CompilationResultTest {
         }
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     @Test
     public void testCodeMark() {
         CompilationResult.MarkId id = new TestMarkId();

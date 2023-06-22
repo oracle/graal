@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
@@ -37,9 +37,9 @@ import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdentifier implements TruffleCompilationIdentifier {
 
     private final TruffleCompilationTask task;
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
 
-    public HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    public HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, TruffleCompilationTask task, TruffleCompilable compilable) {
         super(request);
         this.task = task;
         this.compilable = compilable;
@@ -51,7 +51,7 @@ public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilatio
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return compilable;
     }
 

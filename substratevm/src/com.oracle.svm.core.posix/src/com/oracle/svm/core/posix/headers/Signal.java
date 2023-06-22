@@ -76,9 +76,9 @@ public class Signal {
     }
 
     /**
-     * Warning: use {@link #sigaction} or {@link PosixUtils#installSignalHandler}. Do NOT introduce
-     * calls to {@code signal} or {@code sigset}, which are not portable, and when running in
-     * HotSpot, signal chaining (libjsig) will print warnings.
+     * Warning: use {@link PosixUtils#installSignalHandler}. Do NOT introduce calls to
+     * {@code signal} or {@code sigset}, which are not portable, and when running in HotSpot, signal
+     * chaining (libjsig) will print warnings.
      */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
@@ -179,7 +179,7 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
-    /** @param signum from {@link SignalEnum#getCValue()} */
+    /** Don't call this function directly, see {@link PosixUtils#sigaction}. */
     @CFunction
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
 

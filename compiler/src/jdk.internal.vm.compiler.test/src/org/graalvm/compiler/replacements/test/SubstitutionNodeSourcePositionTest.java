@@ -91,6 +91,7 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
         checkMappings("methodPlugin", false, GraalDirectives.class, "blackhole");
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     private void checkMappings(String snippetMethod, boolean hasBytecodes, Class<?> boundaryClass, String boundaryMethod) {
         List<SourceMapping> mappings = getSourceMappings(snippetMethod);
         ResolvedJavaType resolvedJavaType = getMetaAccess().lookupJavaType(boundaryClass);

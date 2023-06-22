@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -191,18 +192,45 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.add(new ArrayLengthNode(x));
     }
 
+    /**
+     * Computes the address of an array element. The {@code array} is expected to be a byte[] while
+     * the {@code kind} may be some larger primitive type.
+     */
+    public ValueNode arrayElementPointerScaled(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, true, false);
+    }
+
+    /**
+     * Computes the address of an array element. The {@code kind} is expected to match type of the
+     * {@code array}.
+     */
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, false, false);
+    }
+
+    /**
+     * Unsafe variant of {@link #arrayElementPointer(ValueNode, JavaKind, ValueNode)}.
+     */
+    public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean skipComponentTypeCheck) {
+        return arrayElementPointer(array, kind, index, false, skipComponentTypeCheck);
+    }
+
+    private ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean scaled, boolean skipComponentTypeCheck) {
+        // Permit scaled addressing within byte arrays
+        JavaKind actualKind = scaled ? JavaKind.Byte : kind;
         // The visible type of the stamp should either be array type or Object. It's sometimes
         // Object because of cycles that hide the underlying type.
         ResolvedJavaType type = StampTool.typeOrNull(array);
-        assert type == null || (type.isArray() && type.getComponentType().getJavaKind() == kind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
+        assert skipComponentTypeCheck || type == null || (type.isArray() && type.getComponentType().getJavaKind() == actualKind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
-        ValueNode offset = ConstantNode.forInt(arrayBaseOffset);
+        ValueNode offset = ConstantNode.forIntegerKind(wordKind, arrayBaseOffset);
         if (index != null) {
-            offset = add(offset, scale(index, kind));
+            ValueNode scaledIndex = shl(asWord(index), CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind)));
+            offset = add(offset, scaledIndex);
         }
 
-        return b.add(new ComputeObjectAddressNode(array, asWord(offset)));
+        GraalError.guarantee(offset.getStackKind() == wordKind, "should have been promoted to word: %s", index);
+        return b.add(new ComputeObjectAddressNode(array, offset));
     }
 
     /**
@@ -210,14 +238,6 @@ public class InvocationPluginHelper implements DebugCloseable {
      */
     public ValueNode arrayStart(ValueNode array, JavaKind kind) {
         return arrayElementPointer(array, kind, null);
-    }
-
-    /**
-     * Shifts {@code index} by the proper amount based on the element kind.
-     */
-    public ValueNode scale(ValueNode index, JavaKind kind) {
-        int arrayIndexShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind));
-        return shl(index, arrayIndexShift);
     }
 
     /**
@@ -251,6 +271,7 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
+        GraalError.guarantee(!canonicalizedCondition.mustNegate(), "negate is unhandled: %s", canonicalizedCondition);
         return createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
     }
 
@@ -264,8 +285,11 @@ public class InvocationPluginHelper implements DebugCloseable {
                     return IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
                 }
             case LT:
-                assert x.getStackKind() != JavaKind.Object;
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
                 return IntegerLessThanNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
+            case BT:
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
+                return IntegerBelowNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
             default:
                 throw GraalError.shouldNotReachHere("Unexpected condition: " + cond); // ExcludeFromJacocoGeneratedReport
         }
@@ -310,6 +334,28 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.intrinsicRangeCheck(compare, canonicalizedCondition.mustNegate());
     }
 
+    /**
+     * Check that all indexes in the half open range [{@code index}, {@code index + offset}) are
+     * within {@code array}.
+     */
+    public void intrinsicArrayRangeCheck(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        intrinsicRangeCheck(add(index, offset), Condition.AT, length);
+    }
+
+    /**
+     * Check that all indexes in the half open range [{@code 2 * index},
+     * {@code 2 * (index + offset)}) are within {@code array}. To avoid overflow issues, the
+     * underlying length is divided by 2.
+     */
+    public void intrinsicArrayRangeCheckScaled(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        ValueNode shiftedLength = shr(length, 1);
+        intrinsicRangeCheck(add(index, offset), Condition.AT, shiftedLength);
+    }
+
     public AbstractBeginNode emitReturnIf(LogicNode condition, ValueNode returnValue, double returnProbability) {
         return emitReturnIf(condition, false, returnValue, returnProbability);
     }
@@ -348,21 +394,22 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Emits the {@code origReturnValue} and connects it to any other return values emitted before.
+     * Emits the {@code returnValue} and connects it to any other return values emitted before.
      * <p/>
      *
      * This will add the return value to the graph if necessary. If the return value is a
      * {@link StateSplit}, it should <em>not</em> be added to the graph using
      * {@link GraphBuilderContext#add(ValueNode)} before calling this method.
      */
-    public void emitFinalReturn(JavaKind kind, ValueNode origReturnValue) {
-        ValueNode returnValue = origReturnValue;
+    public void emitFinalReturn(JavaKind kind, ValueNode returnValue) {
         assert !emittedReturn : "must only have one final return";
-        if (returnValue.isUnregistered()) {
-            returnValue = b.append(returnValue);
-        }
+        assert kind == returnKind : "mismatch in return kind";
+        b.addPush(kind, returnValue);
 
         if (returns.size() > 0) {
+            // Restore the previous frame state
+            b.pop(returnKind);
+
             EndNode end = b.append(new EndNode());
             addReturnValue(end, kind, returnValue);
             MergeNode returnMerge = b.append(new MergeNode());
@@ -379,9 +426,8 @@ public class InvocationPluginHelper implements DebugCloseable {
                     assert r.returnValue == null;
                 }
             }
-            returnValue = returnPhi.singleValueOrThis();
+            b.addPush(returnKind, returnPhi.singleValueOrThis());
         }
-        b.addPush(returnKind, returnValue);
         emittedReturn = true;
     }
 

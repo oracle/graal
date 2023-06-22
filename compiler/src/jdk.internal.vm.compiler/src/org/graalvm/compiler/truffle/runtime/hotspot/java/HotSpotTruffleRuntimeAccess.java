@@ -25,16 +25,31 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
+import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
-import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
 
 @ServiceProvider(TruffleRuntimeAccess.class)
-public class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+public final class HotSpotTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new HotSpotTruffleRuntime();
+        try {
+            Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
+            TruffleCompilationSupport compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
+            HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
+            compilationSupport.registerRuntime(rt);
+            return rt;
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+    }
+
+    @Override
+    protected int calculatePriority() {
+        return 0;
     }
 }

@@ -399,9 +399,7 @@ public class DeoptimizationUtils {
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
              */
-            if (n instanceof Invoke) {
-                Invoke invoke = (Invoke) n;
-
+            if (n instanceof Invoke invoke) {
                 /*
                  * The FrameState for the invoke (which is visited by the above loop) is the state
                  * after the call (where deoptimization that happens after the call has returned

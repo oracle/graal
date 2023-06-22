@@ -151,7 +151,7 @@ public final class TruffleStackTrace extends Exception {
      * AbstractTruffleException constructor}.
      *
      * @param throwable the {@link Throwable} instance to look for guest language frames
-     * @throws NullPointerException if the {@link Throwable} is null
+     * @throws NullPointerException if the {@link Throwable} is <code>null</code>
      * @since 19.0
      */
     @TruffleBoundary

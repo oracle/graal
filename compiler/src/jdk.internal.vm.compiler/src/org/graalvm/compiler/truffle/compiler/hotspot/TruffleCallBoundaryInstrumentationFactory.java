@@ -33,7 +33,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
  * the beginning of a
- * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod)
+ * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod, org.graalvm.compiler.truffle.common.TruffleCompilable)
  * call boundary method}. The injected code tests the {@code entryPoint} field of the
  * {@code installedCode} field of the receiver and tail calls it if it is non-zero:
  *

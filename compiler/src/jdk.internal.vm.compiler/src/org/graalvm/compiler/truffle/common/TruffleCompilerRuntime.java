@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -139,6 +140,15 @@ public interface TruffleCompilerRuntime {
     }
 
     /**
+     * Notifies this runtime once {@code installedCode} has been installed in the code cache. On
+     * SubstrateVM this callback is currently unused.
+     *
+     * @param compilable the {@link TruffleCompilable compilable} to install code into
+     * @param installedCode code that has just been installed in the code cache
+     */
+    void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
+
+    /**
      * Returns Truffle related method information during host compilation. Do not call this method
      * directly use PartialEvaluator#getMethodInfo instead.
      *
@@ -173,17 +183,12 @@ public interface TruffleCompilerRuntime {
     ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
 
     /**
-     * Gets the {@link CompilableTruffleAST} represented by {@code constant}.
+     * Gets the {@link TruffleCompilable} represented by {@code constant}.
      *
-     * @return {@code null} if {@code constant} does not represent a {@link CompilableTruffleAST} or
-     *         it cannot be converted to a {@link CompilableTruffleAST} in the calling context
+     * @return {@code null} if {@code constant} does not represent a {@link TruffleCompilable} or it
+     *         cannot be converted to a {@link TruffleCompilable} in the calling context
      */
-    CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant);
-
-    /**
-     * Gets the compiler constant representing the target of {@code callNode}.
-     */
-    JavaConstant getCallTargetForCallNode(JavaConstant callNode);
+    TruffleCompilable asCompilableTruffleAST(JavaConstant constant);
 
     /**
      * Registers some dependent code on an assumption.
@@ -202,7 +207,7 @@ public interface TruffleCompilerRuntime {
 
     /**
      * {@linkplain #formatEvent(int, String, int, String, int, Map, int) Formats} a Truffle event
-     * and writes it to the {@linkplain #log(CompilableTruffleAST, String) log output}.
+     * and writes it to the {@linkplain #log(TruffleCompilable, String) log output}.
      *
      * @param compilable the currently compiled AST used as a subject
      * @param depth nesting depth of the event
@@ -210,13 +215,13 @@ public interface TruffleCompilerRuntime {
      * @param properties name/value pairs describing properties relevant to the event
      * @since 20.1.0
      */
-    default void logEvent(CompilableTruffleAST compilable, int depth, String event, Map<String, Object> properties) {
+    default void logEvent(TruffleCompilable compilable, int depth, String event, Map<String, Object> properties) {
         logEvent(compilable, depth, event, compilable.toString(), properties, null);
     }
 
     /**
      * {@linkplain #formatEvent(int, String, int, String, int, Map, int) Formats} a Truffle event
-     * and writes it to the {@linkplain #log(CompilableTruffleAST, String) log output}.
+     * and writes it to the {@linkplain #log(TruffleCompilable, String) log output}.
      *
      * @param compilable the currently compiled AST
      * @param depth nesting depth of the event
@@ -226,7 +231,7 @@ public interface TruffleCompilerRuntime {
      * @param message optional additional message appended to the formatted event
      * @since 20.1.0
      */
-    default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
+    default void logEvent(TruffleCompilable compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
         String formattedMessage = formatEvent(depth, event, 12, subject, 60, properties, 0);
         if (message != null) {
             formattedMessage = String.format("%s%n%s", formattedMessage, message);
@@ -240,11 +245,11 @@ public interface TruffleCompilerRuntime {
      * @param compilable the currently compiled AST
      * @param message message to log
      */
-    default void log(CompilableTruffleAST compilable, String message) {
+    default void log(TruffleCompilable compilable, String message) {
         log("engine", compilable, message);
     }
 
-    void log(String loggerId, CompilableTruffleAST compilable, String message);
+    void log(String loggerId, TruffleCompilable compilable, String message);
 
     /**
      * Formats a message describing a Truffle event as a single line of text. A representative event
@@ -327,15 +332,6 @@ public interface TruffleCompilerRuntime {
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
 
     /**
-     * Gets the Graal option values for this runtime in an instance of {@code type}.
-     *
-     * @throws IllegalArgumentException if this runtime does not support {@code type}
-     */
-    default <T> T getGraalOptions(Class<T> type) {
-        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
-    }
-
-    /**
      * Determines if {@code type} is a value type. Reference comparisons (==) between value type
      * instances have undefined semantics and can either return true or false.
      */
@@ -345,6 +341,6 @@ public interface TruffleCompilerRuntime {
      * Determines if the exception which happened during the compilation is suppressed and should be
      * silent.
      */
-    boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
+    boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException);
 
 }

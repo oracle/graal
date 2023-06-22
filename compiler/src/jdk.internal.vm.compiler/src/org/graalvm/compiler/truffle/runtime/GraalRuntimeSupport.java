@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.CompilerOptionsDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -48,8 +48,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import jdk.vm.ci.services.Services;
 
 final class GraalRuntimeSupport extends RuntimeSupport {
 
@@ -130,10 +128,10 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
             if (metadata == null) {
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                if (callTarget.engine.compilation && callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                if (callTarget.engine.compilation && callTarget.getOptionValue(OptimizedRuntimeOptions.OSR)) {
                     metadata = new BytecodeOSRMetadata(osrNode,
-                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold),
-                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRMaxCompilationReAttempts));
+                                    callTarget.getOptionValue(OptimizedRuntimeOptions.OSRCompilationThreshold),
+                                    callTarget.getOptionValue(OptimizedRuntimeOptions.OSRMaxCompilationReAttempts));
                 } else {
                     metadata = BytecodeOSRMetadata.DISABLED;
                 }
@@ -184,8 +182,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public OptionDescriptors getEngineOptionDescriptors() {
-        return GraalTruffleRuntime.getRuntime().getEngineOptionDescriptors();
+    public OptionDescriptors getRuntimeOptionDescriptors() {
+        return GraalTruffleRuntime.getRuntime().getOptionDescriptors();
     }
 
     @Override
@@ -215,11 +213,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public String getSavedProperty(String key) {
-        return Services.getSavedProperties().get(key);
-    }
-
-    @Override
     public void reportPolymorphicSpecialize(Node source) {
         final RootNode rootNode = source.getRootNode();
         final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
@@ -238,7 +231,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         try {
             return optimizedCallTarget.callInlined(callNode, arguments);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, null, t, null);
+            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, null, t, null);
             throw OptimizedCallTarget.rethrow(t);
         }
     }
@@ -289,8 +282,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        return new EngineData(options, loggerFactory);
+    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
+        return new EngineData(engine, engineOptions, loggerFactory);
     }
 
     @Override
@@ -299,8 +292,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        ((EngineData) runtimeData).onEnginePatch(options, loggerFactory);
+    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory);
     }
 
     @Override
@@ -336,6 +329,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public int getBaseInstanceSize(Class<?> type) {
         return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+    }
+
+    @Override
+    public boolean isLegacyCompilerOption(String key) {
+        return CompilerOptionsDescriptors.isLegacyOption(key);
     }
 
     @Override

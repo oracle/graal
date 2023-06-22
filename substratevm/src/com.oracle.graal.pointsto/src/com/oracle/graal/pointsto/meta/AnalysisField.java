@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -120,6 +121,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     protected final AnalysisType declaringClass;
     protected final AnalysisType fieldType;
 
+    /**
+     * Marks a field whose value is computed during image building, in general derived from other
+     * values, and it cannot be constant-folded or otherwise optimized.
+     */
+    protected final FieldValueComputer fieldValueComputer;
+
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
@@ -145,6 +152,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
+
+        fieldValueComputer = universe.hostVM().createFieldValueComputer(this);
     }
 
     @Override
@@ -417,6 +426,25 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
+    public boolean isValueAvailable() {
+        if (fieldValueComputer != null) {
+            return fieldValueComputer.isAvailable();
+        }
+        return true;
+    }
+
+    public boolean isComputedValue() {
+        return fieldValueComputer != null;
+    }
+
+    public Class<?>[] computedValueTypes() {
+        return fieldValueComputer.types();
+    }
+
+    public boolean computedValueCanBeNull() {
+        return fieldValueComputer.canBeNull();
+    }
+
     public void setCanBeNull(boolean canBeNull) {
         this.canBeNull = canBeNull;
         notifyUpdateAccessInfo();
@@ -489,6 +517,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(wrapped);
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return getUniverse().lookup(getWrapped().getConstantValue());
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 @SuppressWarnings("unused")
 public interface InliningPolicy {
@@ -55,7 +55,7 @@ public interface InliningPolicy {
 
     /**
      * Checks if the {@link CallNode} should be compiled. The
-     * {@link PolyglotCompilerOptions#InlineOnly InlineOnly} options are used to determine if the
+     * {@link TruffleCompilerOptions#InlineOnly InlineOnly} options are used to determine if the
      * root node should be compiled.
      */
     static boolean acceptForInline(CallNode rootNode, String inlineOnly) {
@@ -89,7 +89,7 @@ public interface InliningPolicy {
     }
 
     /**
-     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#InlineOnly}
+     * Returns the include and exclude sets for the {@link TruffleCompilerOptions#InlineOnly}
      * option. The {@link Pair#getLeft() left} value is the include set and the
      * {@link Pair#getRight() right} value is the exclude set.
      */

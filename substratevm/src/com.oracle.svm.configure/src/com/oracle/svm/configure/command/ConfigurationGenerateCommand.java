@@ -48,6 +48,7 @@ import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.util.LogUtils;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
     @Override
@@ -296,7 +297,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         }
 
         if (outputCollection.isEmpty()) {
-            System.err.println("Warning: no outputs specified, validating inputs only.");
+            LogUtils.warning("No outputs specified, validating inputs only.");
         }
         for (URI uri : outputCollection.getReflectConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {

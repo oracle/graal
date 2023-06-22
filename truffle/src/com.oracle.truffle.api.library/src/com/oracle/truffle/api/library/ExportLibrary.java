@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 
 /**
  * Allows to export messages of Truffle libraries. The exported library {@link ExportLibrary#value()
@@ -368,8 +369,8 @@ public @interface ExportLibrary {
      * <p>
      * All exported libraries with AOT enabled are loaded and initialized eagerly when a library
      * that supports AOT is used for the first time. In order for this to work the exported library
-     * automatically generates subclass of {@link EagerExportProvider} and registers it in the
-     * meta-inf directory as a service provider. When the language is compiled using native-image
+     * automatically generates subclass of {@link EagerExportProvider}, that must be registered in
+     * the module descriptor as a provided service. When the language is compiled using native-image
      * then this is not necessary as native-image compilation discovers all AOT exports for a
      * library during native image generation.
      *

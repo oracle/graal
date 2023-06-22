@@ -43,7 +43,9 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -67,8 +69,10 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -79,6 +83,7 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.compiler.JDTCompiler;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
@@ -93,7 +98,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
-    @SuppressWarnings({"deprecation", "unchecked"})
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
@@ -161,13 +165,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
-    final void emitWarning(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(e, msg)) {
-            return;
-        }
-        processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
-    }
-
     static CodeAnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
         CodeAnnotationMirror res = new CodeAnnotationMirror(mirror.getAnnotationType());
         for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet()) {
@@ -186,11 +183,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         };
         TypeElement providerElement = context.getTypeElement(getProviderClass());
         CodeTypeElement providerClass = GeneratorUtils.createClass(model, null, EnumSet.of(Modifier.PUBLIC),
-                        createProviderSimpleName(annotatedElement), null);
+                        createProviderSimpleName(annotatedElement), providerElement.asType());
         providerClass.getModifiers().add(Modifier.FINAL);
-        providerClass.getImplements().add(providerElement.asType());
-        for (Element method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
-            CodeExecutableElement implementedMethod = CodeExecutableElement.clone((ExecutableElement) method);
+        for (ExecutableElement method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
+            CodeExecutableElement implementedMethod = CodeExecutableElement.clone(method);
             implementedMethod.getModifiers().remove(Modifier.ABSTRACT);
             implementMethod(annotatedElement, implementedMethod);
             providerClass.add(implementedMethod);
@@ -224,11 +220,26 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         String filename = "META-INF/truffle-registrations/" + providerClassName;
         try {
             FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
-            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), StandardCharsets.UTF_8));
             writer.println(serviceClassName);
             writer.close();
         } catch (IOException e) {
             handleIOError(e, env, originatingElements[0]);
+        }
+    }
+
+    static void generateGetServicesClassNames(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
+        if (services.isEmpty()) {
+            builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
+        } else {
+            Types types = context.getEnvironment().getTypeUtils();
+            builder.startReturn();
+            builder.startStaticCall(context.getType(Arrays.class), "asList");
+            for (TypeMirror service : services) {
+                builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
+            }
+            builder.end(2);
         }
     }
 
@@ -265,8 +276,8 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         Collections.sort(providerClassNames);
         if (!providerClassNames.isEmpty()) {
             try {
-                FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, providerRegistrations.values().toArray(new Element[providerRegistrations.size()]));
-                try (PrintWriter out = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"))) {
+                FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, providerRegistrations.values().toArray(new Element[0]));
+                try (PrintWriter out = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), StandardCharsets.UTF_8))) {
                     for (String providerClassName : providerClassNames) {
                         out.println(providerClassName);
                     }
@@ -275,6 +286,19 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 handleIOError(e, env, providerRegistrations.values().iterator().next());
             }
         }
+    }
+
+    static String getScopedName(TypeElement element) {
+        StringBuilder name = new StringBuilder();
+        Element current = element;
+        while (current.getKind().isClass() || current.getKind().isInterface()) {
+            if (name.length() > 0) {
+                name.insert(0, '.');
+            }
+            name.insert(0, ElementUtils.getSimpleName((TypeElement) current));
+            current = current.getEnclosingElement();
+        }
+        return name.toString();
     }
 
     private static void handleIOError(IOException e, ProcessingEnvironment env, Element element) {
@@ -290,5 +314,4 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     static boolean shouldGenerateProviderFiles(Element currentElement) {
         return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
-
 }

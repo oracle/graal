@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
@@ -47,7 +47,7 @@ final class SubstrateTruffleHostEnvironment extends TruffleHostEnvironment {
     }
 
     @Override
-    protected TruffleCompilerImpl createCompiler(CompilableTruffleAST compilable) {
+    protected TruffleCompilerImpl createCompiler(TruffleCompilable compilable) {
         throw new UnsupportedOperationException("Creating a truffle compiler during SVM host compilation is not supported.");
     }
 

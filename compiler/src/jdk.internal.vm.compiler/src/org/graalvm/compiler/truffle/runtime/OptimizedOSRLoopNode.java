@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -326,7 +325,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (engine.compilation && engineOptions.get(PolyglotCompilerOptions.OSR)) {
+        if (engine.compilation && engineOptions.get(OptimizedRuntimeOptions.OSR)) {
             return createDefault(repeat, engineOptions);
         } else {
             return OptimizedLoopNode.create(repeat);
@@ -335,8 +334,8 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     private static LoopNode createDefault(RepeatingNode repeatableNode, OptionValues options) {
         return new OptimizedDefaultOSRLoopNode(repeatableNode,
-                        options.get(PolyglotCompilerOptions.OSRCompilationThreshold),
-                        options.get(PolyglotCompilerOptions.FirstTierBackedgeCounts));
+                        options.get(OptimizedRuntimeOptions.OSRCompilationThreshold),
+                        options.get(OptimizedRuntimeOptions.FirstTierBackedgeCounts));
     }
 
     /**

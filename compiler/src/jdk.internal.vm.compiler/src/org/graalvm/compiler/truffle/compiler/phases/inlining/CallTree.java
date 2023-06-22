@@ -30,8 +30,8 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class CallTree extends Graph {
 
@@ -50,7 +50,7 @@ public final class CallTree extends Graph {
         this.policy = policy;
         this.context = context;
         this.graphManager = new GraphManager(partialEvaluator, postPartialEvaluationSuite, context);
-        useSize = context.options.get(PolyglotCompilerOptions.InliningUseSize);
+        this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(context.compilerOptions);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(context, this);
     }
@@ -80,8 +80,8 @@ public final class CallTree extends Graph {
     }
 
     void trace() {
-        Boolean details = context.options.get(PolyglotCompilerOptions.TraceInliningDetails);
-        if (context.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
+        Boolean details = TruffleCompilerOptions.TraceInliningDetails.getValue(context.compilerOptions);
+        if (TruffleCompilerOptions.TraceInlining.getValue(context.compilerOptions) || details) {
             TruffleCompilerRuntime runtime = context.runtime();
             runtime.logEvent(root.getDirectCallTarget(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
@@ -130,7 +130,7 @@ public final class CallTree extends Graph {
     }
 
     private boolean loggingInlinedTargets() {
-        return context.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || context.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                        context.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+        return context.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) ||
+                        TruffleCompilerOptions.LogInlinedTargets.getValue(context.compilerOptions);
     }
 }

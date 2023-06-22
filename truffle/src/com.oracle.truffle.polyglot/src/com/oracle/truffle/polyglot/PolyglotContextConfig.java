@@ -57,6 +57,7 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
@@ -120,11 +121,13 @@ final class PolyglotContextConfig {
         final IOAccess ioAccess;
         final FileSystem fileSystem;
         final FileSystem internalFileSystem;
+        final String hostTmpDir;
 
-        FileSystemConfig(IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem) {
+        FileSystemConfig(IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem, String hostTmpDir) {
             this.ioAccess = ioAccess;
             this.fileSystem = publicFileSystem;
             this.internalFileSystem = internalFileSystem;
+            this.hostTmpDir = hostTmpDir;
         }
 
         static FileSystemConfig createPatched(FileSystemConfig preInitialized, FileSystemConfig patch) {
@@ -132,7 +135,7 @@ final class PolyglotContextConfig {
             preInitFs.onLoadPreinitializedContext(patch.fileSystem);
             PreInitializeContextFileSystem preInitInternalFs = (PreInitializeContextFileSystem) preInitialized.internalFileSystem;
             preInitInternalFs.onLoadPreinitializedContext(patch.internalFileSystem);
-            return new FileSystemConfig(patch.ioAccess, preInitFs, preInitInternalFs);
+            return new FileSystemConfig(patch.ioAccess, preInitFs, preInitInternalFs, patch.hostTmpDir);
         }
     }
 
@@ -301,6 +304,8 @@ final class PolyglotContextConfig {
         for (String id : onlyLanguages) {
             addConfiguredLanguage(engine, languages, engine.idToLanguage.get(id));
         }
+        List<OptionDescriptor> deprecatedOptions = null;
+
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
             if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
@@ -332,8 +337,15 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+            OptionDescriptor d = targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+            if (d != null && d.isDeprecated()) {
+                if (deprecatedOptions == null) {
+                    deprecatedOptions = new ArrayList<>();
+                }
+                deprecatedOptions.add(d);
+            }
         }
+
         if (sandboxPolicy != SandboxPolicy.TRUSTED) {
             for (String language : allowedPublicLanguages) {
                 engine.idToLanguage.get(language).validateSandbox(sandboxPolicy);
@@ -352,6 +364,7 @@ final class PolyglotContextConfig {
         this.onExited = onExited;
         this.onClosed = onClosed;
 
+        engine.printDeprecatedOptionsWarning(deprecatedOptions);
     }
 
     boolean isCodeSharingForced() {

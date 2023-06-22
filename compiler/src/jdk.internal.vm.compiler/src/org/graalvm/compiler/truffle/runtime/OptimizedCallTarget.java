@@ -36,9 +36,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -57,7 +56,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -106,7 +104,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * </pre>
  */
 @SuppressWarnings({"hiding"})
-public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
+public abstract class OptimizedCallTarget implements TruffleCompilable, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     private static final String VALID_ROOT_ASSUMPTION_NAME = "validRootAssumption";
@@ -135,8 +133,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * The call threshold is counted up for each real call until it reaches a
-     * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * {@link OptimizedRuntimeOptions#FirstTierCompilationThreshold first tier} or
+     * {@link OptimizedRuntimeOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
      * real call to the call target.
      */
@@ -144,19 +142,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
-     * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * {@link OptimizedRuntimeOptions#FirstTierCompilationThreshold first tier} or
+     * {@link OptimizedRuntimeOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
      * real call to the call target.
      */
     private int callAndLoopCount;
     private int highestCompiledTier = 0;
 
-    public void compiledTier(int tier) {
+    final void compiledTier(int tier) {
         highestCompiledTier = Math.max(highestCompiledTier, tier);
     }
 
-    public int highestCompiledTier() {
+    public final int highestCompiledTier() {
         return highestCompiledTier;
     }
 
@@ -357,6 +355,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         id = idCounter.getAndIncrement();
     }
 
+    protected OptimizedCallTarget(EngineData engine) {
+        this.speculationLog = null;
+        this.rootNode = null;
+        this.engine = engine;
+        this.resetCompilationProfile();
+        this.uninitializedNodeCount = 0;
+        this.sourceCallTarget = null;
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
+        // node(s).
+        id = idCounter.getAndIncrement();
+    }
+
     private int uninitializedNodeCount(RootNode rootNode) {
         if (isOSR()) {
             return -1;
@@ -368,6 +378,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final void prepareForCompilation() {
+        if (rootNode == null) {
+            throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
+        }
         if (nodeRewritingAssumption == null) {
             initializeNodeRewritingAssumption();
         }
@@ -419,7 +432,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private Assumption initializeAssumption(AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> updater, String name) {
-        Assumption newAssumption = runtime().createAssumption(!getOptionValue(PolyglotCompilerOptions.TraceAssumptions) ? name : name + " of " + rootNode);
+        Assumption newAssumption = runtime().createAssumption(!getOptionValue(OptimizedRuntimeOptions.TraceAssumptions) ? name : name + " of " + rootNode);
         if (updater.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
         } else { // if CAS failed, assumption is already initialized; cannot be null after that.
@@ -470,7 +483,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return callIndirect(prev, args);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(prev, null, t, null);
             throw rethrow(t);
         } finally {
             encapsulating.set(prev);
@@ -502,17 +515,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
-            try {
-                Object result;
-                profileArguments(args);
-                result = doInvoke(args);
-                if (CompilerDirectives.inCompiledCode()) {
-                    result = injectReturnValueProfile(result);
-                }
-                return result;
-            } catch (Throwable t) {
-                throw rethrow(profileExceptionType(t));
+            profileArguments(args);
+            Object result = doInvoke(args);
+            if (CompilerDirectives.inCompiledCode()) {
+                result = injectReturnValueProfile(result);
             }
+            return result;
         } finally {
             // this is needed to keep the values from being cleared as non-live locals
             Reference.reachabilityFence(location);
@@ -722,12 +730,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             Object toRet = rootNode.execute(frame);
             TruffleSafepoint.poll(rootNode);
             return toRet;
-        } catch (ControlFlowException t) {
-            throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = profileExceptionType(t);
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
-            throw rethrow(profiledT);
+            throw handleException(frame, t);
         } finally {
             if (CompilerDirectives.inInterpreter() && tier != CompilationState.INTERPRETED) {
                 notifyDeoptimized(frame);
@@ -737,6 +741,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             Reference.reachabilityFence(this);
             Reference.reachabilityFence(tier);
         }
+    }
+
+    private RuntimeException handleException(VirtualFrame frame, Throwable t) {
+        Throwable profiledT = profileExceptionType(t);
+        GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
+        throw rethrow(profiledT);
     }
 
     private void notifyDeoptimized(VirtualFrame frame) {
@@ -791,7 +801,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * <code>false</code>.
      */
     final boolean acceptForCompilation() {
-        return engine.acceptForCompilation(getRootNode());
+        // We use #toString here (rather than rootNode.getName) since that is what is printed in the
+        // compilation logs
+        return engine.acceptForCompilation(this);
     }
 
     final boolean isCompilationFailed() {
@@ -810,7 +822,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return true;
         }
         if (!isSubmittedForCompilation()) {
-            if (!engine.acceptForCompilation(getRootNode())) {
+            if (!acceptForCompilation()) {
                 // do not try to compile again
                 compilationFailed = true;
                 return false;
@@ -920,7 +932,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Gets the speculation log used to collect all failed speculations in the compiled code for
      * this call target. Note that this may differ from the speculation log
-     * {@linkplain CompilableTruffleAST#getCompilationSpeculationLog() used for compilation}.
+     * {@linkplain TruffleCompilable#getCompilationSpeculationLog() used for compilation}.
      */
     public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
@@ -944,7 +956,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public final boolean isSameOrSplit(TruffleCompilable ast) {
         if (!(ast instanceof OptimizedCallTarget)) {
             return false;
         }
@@ -1025,6 +1037,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             compilationFailed = true;
             action = silent ? ExceptionAction.Silent : engine.compilationFailureAction;
         }
+
         if (action == ExceptionAction.Throw) {
             final InternalError error = new InternalError(serializedException.get());
             throw new OptimizationFailedException(error, this);
@@ -1035,15 +1048,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             properties.put("AST", getNonTrivialNodeCount());
             rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
-                String reason;
-                if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
-                    reason = "engine.CompilationFailureAction=ExitVM";
-                } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
-                    reason = "engine.CompilationExceptionsAreFatal=true";
-                } else {
-                    reason = "engine.PerformanceWarningsAreFatal=true";
-                }
-                log(String.format("Exiting VM due to %s", reason));
+                log(String.format("Exiting VM due to %s", "engine.CompilationFailureAction=ExitVM"));
                 System.exit(-1);
             }
         }
@@ -1800,6 +1805,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
+    }
+
+    @Override
+    public long engineId() {
+        return engine.id;
+    }
+
+    @Override
+    public Map<String, String> getCompilerOptions() {
+        return engine.getCompilerOptions();
     }
 
 }

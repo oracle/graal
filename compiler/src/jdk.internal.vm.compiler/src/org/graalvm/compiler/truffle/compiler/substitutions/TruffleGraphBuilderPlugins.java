@@ -101,6 +101,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.nodes.AnyExtendNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
@@ -120,7 +121,6 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSwapNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BailoutException;
@@ -173,8 +173,16 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("poll", com.oracle.truffle.api.nodes.Node.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                if (arg.isConstant()) {
-                    assert TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph()) : "TruffleSafepoint.poll only expected to be removed in Truffle compilations.";
+                if (!TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph())) {
+                    if (!canDelayIntrinsification) {
+                        /*
+                         * TruffleSafepoint.poll only expected to be removed in Truffle
+                         * compilations.
+                         */
+                        throw failPEConstant(b, arg);
+                    }
+                    return false;
+                } else if (arg.isConstant()) {
                     return true;
                 } else if (canDelayIntrinsification) {
                     return false;

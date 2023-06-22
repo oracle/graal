@@ -47,8 +47,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -80,6 +83,7 @@ import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -178,6 +182,16 @@ public abstract class RuntimeCompilationFeature {
 
     public interface RuntimeCompilationCandidatePredicate {
         boolean allowRuntimeCompilation(ResolvedJavaMethod method);
+    }
+
+    public interface AllowInliningPredicate {
+        enum InlineDecision {
+            INLINE,
+            INLINING_DISALLOWED,
+            NO_DECISION
+        }
+
+        InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target);
     }
 
     public abstract static class AbstractCallTreeNode implements Comparable<AbstractCallTreeNode> {
@@ -513,10 +527,24 @@ public abstract class RuntimeCompilationFeature {
 
     public abstract void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator);
 
+    public abstract void registerAllowInliningPredicate(AllowInliningPredicate predicate);
+
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
     protected final void afterAnalysisHelper() {
         ProgressReporter.singleton().setNumRuntimeCompiledMethods(getRuntimeCompiledMethods().size());
+    }
+
+    /**
+     * Checks if any illegal nodes are present within the graph. Runtime Compiled methods should
+     * never have explicit BytecodeExceptions; instead they should have deoptimizations.
+     */
+    protected static boolean verifyNodes(StructuredGraph graph) {
+        for (var node : graph.getNodes()) {
+            boolean invalidNodeKind = node instanceof BytecodeExceptionNode || node instanceof ThrowBytecodeExceptionNode;
+            assert !invalidNodeKind : "illegal node in graph: " + node + " method: " + graph.method();
+        }
+        return true;
     }
 
     protected final void beforeCompilationHelper() {
@@ -613,7 +641,7 @@ public abstract class RuntimeCompilationFeature {
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
-        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
+        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);

@@ -205,8 +205,8 @@ public class ContextPreInitializationNativeImageTest {
     @TruffleLanguage.Registration(id = LANGUAGE, name = LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
     public static final class Language extends TruffleLanguage<TestContext> {
 
-        final ContextThreadLocal<Integer> threadLocal = createContextThreadLocal((c, t) -> 42);
-        final ContextLocal<Integer> contextLocal = createContextLocal((c) -> 42);
+        final ContextThreadLocal<Integer> threadLocal = locals.createContextThreadLocal((c, t) -> 42);
+        final ContextLocal<Integer> contextLocal = locals.createContextLocal((c) -> 42);
         private static final ContextReference<TestContext> CONTEXT_REF = ContextReference.create(Language.class);
         private static final LanguageReference<Language> LANGUAGE_REF = LanguageReference.create(Language.class);
 

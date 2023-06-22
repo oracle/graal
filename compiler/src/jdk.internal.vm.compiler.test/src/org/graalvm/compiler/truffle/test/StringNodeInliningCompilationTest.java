@@ -71,7 +71,7 @@ public class StringNodeInliningCompilationTest {
     public void test() {
         assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").option(
-                        "engine.CompilationFailureAction", "Throw").option("engine.MaximumGraalGraphSize", "1000").build();
+                        "engine.CompilationFailureAction", "Throw").option("compiler.MaximumGraalGraphSize", "1000").build();
         c.enter();
         try {
             OptimizedCallTarget callTarget = (OptimizedCallTarget) new StringTestRootNode().getCallTarget();

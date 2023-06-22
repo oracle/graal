@@ -58,13 +58,13 @@ public abstract class AbstractKnownTruffleTypes {
         this.metaAccess = metaAccess;
     }
 
-    protected final ResolvedJavaType lookupType(String className) {
+    public final ResolvedJavaType lookupType(String className) {
         ResolvedJavaType type = runtime.resolveType(metaAccess, className);
         onTypeLookup(type);
         return type;
     }
 
-    protected final ResolvedJavaType lookupTypeOptional(String className) {
+    public final ResolvedJavaType lookupTypeOptional(String className) {
         ResolvedJavaType type = runtime.resolveType(metaAccess, className, false);
         onTypeLookup(type);
         return type;

@@ -81,7 +81,7 @@ public interface TruffleCompilationTask {
      * compilation.
      */
     @SuppressWarnings("unused")
-    default void addTargetToDequeue(CompilableTruffleAST target) {
+    default void addTargetToDequeue(TruffleCompilable target) {
         // not supported -> do nothing
     }
 
@@ -99,7 +99,7 @@ public interface TruffleCompilationTask {
      *
      * @param target register this target as inlined.
      */
-    default void addInlinedTarget(CompilableTruffleAST target) {
+    default void addInlinedTarget(TruffleCompilable target) {
         // not supported -> discard
     }
 

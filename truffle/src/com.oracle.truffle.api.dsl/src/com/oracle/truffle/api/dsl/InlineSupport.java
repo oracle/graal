@@ -1165,12 +1165,13 @@ public final class InlineSupport {
             CompilerAsserts.partialEvaluationConstant(this);
             CompilerAsserts.partialEvaluationConstant(node);
             Object value;
-            if (receiverClass.isInstance(node)) {
+            // trigger implicit NPE here
+            if (node.getClass() == receiverClass) {
                 // fast common path
                 value = node;
             } else {
                 // slow path with parent resolve
-                value = resolveReceiverWithParents(node);
+                value = resolveReceiverSlow(node);
             }
             return receiverClass.cast(value);
         }
@@ -1180,7 +1181,14 @@ public final class InlineSupport {
          * receiver.
          */
         @ExplodeLoop
-        private Object resolveReceiverWithParents(Object node) {
+        private Object resolveReceiverSlow(Object node) {
+            if (receiverClass.isInstance(node)) {
+                /*
+                 * if the receiver type does not happen to be exact, handle this here to not slow
+                 * down the fast-path.
+                 */
+                return node;
+            }
             Node receiver = (Node) node;
             while (receiver != null) {
                 assert validateForParentLookup(node, receiver);

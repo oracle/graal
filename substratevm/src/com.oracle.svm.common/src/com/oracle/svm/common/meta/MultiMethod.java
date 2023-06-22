@@ -34,11 +34,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public interface MultiMethod {
 
-    String MULTI_METHOD_KEY_SEPARATOR = "%%";
+    static boolean isOriginalMethod(ResolvedJavaMethod method) {
+        if (method instanceof MultiMethod multiMethod) {
+            return multiMethod.isOriginalMethod();
+        }
+        return false;
+    }
 
     static boolean isDeoptTarget(ResolvedJavaMethod method) {
-        if (method instanceof MultiMethod) {
-            return ((MultiMethod) method).isDeoptTarget();
+        if (method instanceof MultiMethod multiMethod) {
+            return multiMethod.isDeoptTarget();
         }
         return false;
     }

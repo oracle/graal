@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 
 import com.oracle.truffle.api.TruffleRuntime;
@@ -32,15 +33,18 @@ import com.oracle.truffle.api.TruffleRuntime;
 /**
  * Access to a {@link TruffleRuntime} that uses libgraal for compilation.
  */
-public class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
+public final class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeAccess {
 
     @Override
     protected TruffleRuntime createRuntime() {
-        return new LibGraalTruffleRuntime();
+        LibGraalTruffleCompilationSupport compilationSupport = new LibGraalTruffleCompilationSupport();
+        HotSpotTruffleRuntime runtime = new HotSpotTruffleRuntime(compilationSupport);
+        compilationSupport.registerRuntime(runtime);
+        return runtime;
     }
 
     @Override
-    public int getPriority() {
+    protected int calculatePriority() {
         if (LibGraal.isAvailable()) {
             return Integer.MAX_VALUE;
         }

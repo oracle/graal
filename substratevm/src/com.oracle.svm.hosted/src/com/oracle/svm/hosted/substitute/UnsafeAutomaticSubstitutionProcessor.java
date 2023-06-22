@@ -84,6 +84,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -92,6 +93,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -317,8 +319,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      */
     void processComputedValueFields(DuringAnalysisAccessImpl access) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
-            if (field instanceof ComputedValue) {
-                ComputedValue cvField = (ComputedValue) field;
+            if (field instanceof ComputedValueField) {
+                ComputedValueField cvField = (ComputedValueField) field;
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
@@ -367,7 +369,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             return;
         }
 
-        if (annotationSubstitutions.findSubstitution(hostType).isPresent()) {
+        if (annotationSubstitutions.findFullSubstitution(hostType).isPresent()) {
             /* If the class is substituted clinit will be eliminated, so bail early. */
             reportSkippedSubstitution(hostType);
             return;
@@ -670,7 +672,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      *          byteArrayIndexShift = 31 - Integer.numberOfLeadingZeros(byteArrayIndexScale);
      *      }
      * </code>
-     * 
+     *
      * It is important that constant folding is not enabled for the byteArrayIndexScale load because
      * it would break the link between the scale and shift computations.
      */
@@ -938,7 +940,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     /**
      * Try to register the automatic substitution for a field. Bail if the field was deleted or
      * another substitution is detected.
-     * 
+     *
      * @param field stores the value of the recomputation, i.e., an offset, array idx scale or shift
      */
     private boolean tryAutomaticRecomputation(ResolvedJavaField field, Kind kind, Supplier<ComputedValueField> substitutionSupplier) {
@@ -1007,9 +1009,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     private static void reportSkippedSubstitution(ResolvedJavaType type) {
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= DEBUG_LEVEL) {
-            String msg = "Warning: Skipped automatic unsafe substitutions analysis for type " + type.getName() +
-                            ". The entire type is substituted, therefore its class initializer is eliminated.";
-            System.out.println(msg);
+            LogUtils.warning("Skipped automatic unsafe substitutions analysis for type " + type.getName() +
+                            ". The entire type is substituted, therefore its class initializer is eliminated.");
         }
     }
 
@@ -1019,12 +1020,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String kindStr = RecomputeFieldValue.class.getSimpleName() + "." + kind;
             String annotatedFieldStr = computedSubstitutionField.getAnnotated().format("%H.%n");
             String offsetFieldStr = offsetField.format("%H.%n");
-
-            String msg = "Warning: Detected unnecessary " + kindStr + " " + annotatedFieldStr + " substitution field for " + offsetFieldStr + ". ";
-            msg += "The annotated field can be removed. This " + kind + " computation can be detected automatically. ";
-            msg += "Use option -H:+" + Options.UnsafeAutomaticSubstitutionsLogLevel.getName() + "=" + INFO_LEVEL + " to print all automatically detected substitutions. ";
-
-            System.out.println(msg);
+            String optionStr = SubstrateOptionsParser.commandArgument(Options.UnsafeAutomaticSubstitutionsLogLevel, "+");
+            LogUtils.warning(
+                            "Detected unnecessary %s %s substitution field for %s. The annotated field can be removed. This %s computation can be detected automatically. Use option -H:+%s=%s to print all automatically detected substitutions.",
+                            kindStr, annotatedFieldStr, offsetFieldStr, kind, optionStr, INFO_LEVEL);
         }
     }
 
@@ -1032,9 +1031,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= INFO_LEVEL) {
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
             String substitutedFieldStr = substitutedField.format("%H.%n");
-
-            String msg = "Info:" + substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
-            System.out.println(msg);
+            LogUtils.info("%s substitution automatically registered for %s, target element %s.", substitutionKindStr, substitutedFieldStr, target);
         }
     }
 
@@ -1044,11 +1041,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String overwrittenKindStr = RecomputeFieldValue.class.getSimpleName() + "." + overwrittenKind;
             String offsetFieldStr = offsetField.format("%H.%n");
             String overwrittenFieldStr = overwrittenField.format("%H.%n");
-
-            String msg = "Info: The " + overwrittenKindStr + " " + overwrittenFieldStr + " substitution was overwritten. ";
-            msg += "A " + newKindStr + " substitution for " + offsetFieldStr + " was automatically registered.";
-
-            System.out.println(msg);
+            LogUtils.info("The %s %s substitution was overwritten. A %s substitution for %s was automatically registered.", overwrittenKindStr, overwrittenFieldStr, newKindStr, offsetFieldStr);
         }
     }
 
@@ -1056,12 +1049,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             String fieldStr = field.format("%H.%n");
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
-
-            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
-            msg += "Conflicting substitution: " + conflictingSubstitution;
-            msg += "Add a " + substitutionKindStr + " manual substitution for " + fieldStr + ". ";
-
-            System.out.println(msg);
+            LogUtils.warning(
+                            "The %s substitution for %s could not be recomputed automatically because a conflicting substitution was detected. Conflicting substitution: %s. Add a %s manual substitution for %s.",
+                            substitutionKindStr, fieldStr, conflictingSubstitution, substitutionKindStr, fieldStr);
         }
     }
 
@@ -1069,11 +1059,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             String fieldStr = field.format("%H.%n");
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
-
-            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
-            msg += "Conflicting substitution: " + conflictingSubstitution;
-
-            System.out.println(msg);
+            LogUtils.warning("The %s substitution for %s could not be recomputed automatically because a conflicting substitution was detected. Conflicting substitution: %s.",
+                            substitutionKindStr, fieldStr, conflictingSubstitution);
         }
     }
 
@@ -1108,15 +1095,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 } else if (isAliased(type)) {
                     msg += "is aliased";
                 } else {
-                    ResolvedJavaType substitutionType = findSubstitutionType(type);
-                    msg += "is substituted by " + substitutionType.toJavaName();
+                    ResolvedJavaType substitutionType = findFullSubstitutionType(type);
+                    msg += "is fully substituted by " + substitutionType.toJavaName();
                 }
                 msg += ".)";
             }
         }
 
         if (!msg.isEmpty()) {
-            System.out.println("Warning: " + msg);
+            LogUtils.warning(msg);
         }
     }
 
@@ -1138,15 +1125,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     private boolean suppressWarningsFor(ResolvedJavaType type) {
-        return warningsAreWhiteListed(type) || isAliased(type) || findSubstitutionType(type) != null;
+        return warningsAreWhiteListed(type) || isAliased(type) || findFullSubstitutionType(type) != null;
     }
 
     private boolean warningsAreWhiteListed(ResolvedJavaType type) {
         return suppressWarnings.contains(type);
     }
 
-    private ResolvedJavaType findSubstitutionType(ResolvedJavaType type) {
-        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findSubstitution(type);
+    private ResolvedJavaType findFullSubstitutionType(ResolvedJavaType type) {
+        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findFullSubstitution(type);
         return substTypeOptional.orElse(null);
     }
 

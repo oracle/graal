@@ -76,11 +76,13 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -159,8 +161,18 @@ public class GraphDecoder {
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 maxFixedNodeOrderId = reader.getUVInt();
-                graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
-                graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
+                GraphState.GuardsStage guardsStage = (GraphState.GuardsStage) readObject(this);
+                EnumSet<StageFlag> stageFlags = (EnumSet<StageFlag>) readObject(this);
+                if (callerLoopScope == null) {
+                    /**
+                     * Only propagate stage flags in non-inlining scenarios. If the caller scope has
+                     * not been guard lowered yet (or is a runtime compilation) while we inline
+                     * something that has been guard lowered already (or is an encoded hosted graph
+                     * like a snippet) do not advance stage flags or guards stage.
+                     */
+                    graph.getGraphState().setGuardsStage(guardsStage);
+                    graph.getGraphState().getStageFlags().addAll(stageFlags);
+                }
 
                 var decoderPair = InliningLogCodec.maybeDecode(graph, readObject(this));
                 if (decoderPair != null) {
@@ -535,6 +547,7 @@ public class GraphDecoder {
     @SuppressWarnings("try")
     public final void decode(EncodedGraph encodedGraph, Iterable<EncodedNodeReference> nodeReferences) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
+            recordGraphElements(encodedGraph);
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
             decode(loopScope);
@@ -559,6 +572,27 @@ public class GraphDecoder {
             }
         } catch (Throwable ex) {
             debug.handle(ex);
+        }
+    }
+
+    protected void recordGraphElements(EncodedGraph encodedGraph) {
+        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
+        if (inlinedMethods != null) {
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
+        }
+        Assumptions assumptions = graph.getAssumptions();
+        Assumptions inlinedAssumptions = encodedGraph.getAssumptions();
+        if (assumptions != null) {
+            if (inlinedAssumptions != null) {
+                assumptions.record(inlinedAssumptions);
+            }
+        } else {
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
+        }
+        if (encodedGraph.hasUnsafeAccess()) {
+            graph.markUnsafeAccess();
         }
     }
 

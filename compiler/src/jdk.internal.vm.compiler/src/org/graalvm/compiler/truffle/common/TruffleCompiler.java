@@ -24,21 +24,17 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import java.util.Map;
-
 /**
- * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
+ * A compiler that partially evaluates and compiles a {@link TruffleCompilable} to machine code.
  */
 public interface TruffleCompiler {
+
     String FIRST_TIER_COMPILATION_SUFFIX = "#1";
     String SECOND_TIER_COMPILATION_SUFFIX = "#2";
-    int FIRST_TIER_INDEX = 1;
-    int LAST_TIER_INDEX = 2;
 
     /**
      * Initializes the compiler before the first compilation.
      *
-     * @param options the options for initialization
      * @param compilable the Truffle AST that triggered the initialization
      * @param firstInitialization first initialization. For a multi-isolate compiler the
      *            {@code firstInitialization} must be {@code true} for an initialization in the
@@ -46,24 +42,19 @@ public interface TruffleCompiler {
      *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options, CompilableTruffleAST compilable, boolean firstInitialization);
+    void initialize(TruffleCompilable compilable, boolean firstInitialization);
 
     /**
      * Compiles {@code compilable} to machine code.
      *
-     * @param options option values relevant to compilation
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, Map<String, Object> options, TruffleCompilerListener listener);
-
-    /**
-     * Returns a unique name for the configuration in use by this compiler.
-     */
-    String getCompilerConfigurationName();
+    void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
      * finalization tasks. This is typically performed when the process exits.
      */
     void shutdown();
+
 }

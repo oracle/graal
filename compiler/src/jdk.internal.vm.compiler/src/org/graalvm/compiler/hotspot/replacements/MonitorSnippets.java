@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.STACK_INSPECTABLE_LEAF;
@@ -44,7 +45,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockPattern;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.epochMaskInPlace;
@@ -53,6 +53,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockDisplacedMarkOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorMask;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorCxqOffset;
@@ -236,6 +237,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
           lineStart = 474,
           lineEnd   = 932,
+          ignore    = "GR-46070",
           commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
           sha1      = "156f7ed664c43a213c5eb3c417c8c5c29432cd2e")
 // @formatter:on
@@ -274,7 +276,7 @@ public class MonitorSnippets implements Snippets {
             }
         }
 
-        if (useBiasedLocking(INJECTED_VMCONFIG)) {
+        if (probability(NOT_LIKELY_PROBABILITY, JDK < 18) && useBiasedLocking(INJECTED_VMCONFIG)) {
             if (tryEnterBiased(object, hub, lock, mark, thread, trace, counters)) {
                 return;
             }
@@ -347,7 +349,7 @@ public class MonitorSnippets implements Snippets {
         // whether the epoch is still valid.
         // Note that the runtime guarantees sufficient alignment of JavaThread
         // pointers to allow age to be placed into low bits.
-        final Word biasableLockBits = mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG));
+        final Word biasableLockBits = mark.and(lockMaskInPlace(INJECTED_VMCONFIG));
 
         // Check whether the bias pattern is present in the object's mark word
         // and the bias owner and the epoch are both still current.
@@ -376,7 +378,7 @@ public class MonitorSnippets implements Snippets {
             // If the low three bits in the xor result aren't clear, that means
             // the prototype header is no longer biasable and we have to revoke
             // the bias on this object.
-            if (probability(FREQUENT_PROBABILITY, tmp.and(biasedLockMaskInPlace(INJECTED_VMCONFIG)).equal(0))) {
+            if (probability(FREQUENT_PROBABILITY, tmp.and(lockMaskInPlace(INJECTED_VMCONFIG)).equal(0))) {
                 // Biasing is still enabled for object's type. See whether the
                 // epoch of the current bias is still valid, meaning that the epoch
                 // bits of the mark word are equal to the epoch bits of the
@@ -393,7 +395,7 @@ public class MonitorSnippets implements Snippets {
                     // fails we will go in to the runtime to revoke the object's bias.
                     // Note that we first construct the presumed unbiased header so we
                     // don't accidentally blow away another thread's valid bias.
-                    Word unbiasedMark = mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG) | ageMaskInPlace(INJECTED_VMCONFIG) | epochMaskInPlace(INJECTED_VMCONFIG));
+                    Word unbiasedMark = mark.and(lockMaskInPlace(INJECTED_VMCONFIG) | ageMaskInPlace(INJECTED_VMCONFIG) | epochMaskInPlace(INJECTED_VMCONFIG));
                     Word biasedMark = unbiasedMark.or(thread);
                     trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                     trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
@@ -533,7 +535,7 @@ public class MonitorSnippets implements Snippets {
                     @ConstantParameter Counters counters) {
         Word thread = registerAsWord(threadRegister);
         trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
-        if (useBiasedLocking(INJECTED_VMCONFIG)) {
+        if (probability(NOT_LIKELY_PROBABILITY, JDK < 18) && useBiasedLocking(INJECTED_VMCONFIG)) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.
             // First, the interpreter checks for IllegalMonitorStateException at
@@ -542,7 +544,7 @@ public class MonitorSnippets implements Snippets {
             // the bias bit would be clear.
             final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
             trace(trace, "             mark: 0x%016lx\n", mark);
-            if (probability(FREQUENT_PROBABILITY, mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG)).equal(WordFactory.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
+            if (probability(FREQUENT_PROBABILITY, mark.and(lockMaskInPlace(INJECTED_VMCONFIG)).equal(WordFactory.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object, false);

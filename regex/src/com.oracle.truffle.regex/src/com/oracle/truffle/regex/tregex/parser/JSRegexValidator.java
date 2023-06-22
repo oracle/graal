@@ -43,12 +43,14 @@ package com.oracle.truffle.regex.tregex.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 
 public class JSRegexValidator implements RegexValidator {
 
@@ -59,7 +61,7 @@ public class JSRegexValidator implements RegexValidator {
     public JSRegexValidator(RegexSource source) {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
+        this.lexer = new JSRegexLexer(source, flags, new CompilationBuffer(source.getEncoding()));
     }
 
     @Override
@@ -116,6 +118,7 @@ public class JSRegexValidator implements RegexValidator {
                 case nonWordBoundary:
                 case backReference:
                 case charClass:
+                case classSet:
                     curTermState = CurTermState.Other;
                     break;
                 case quantifier:
@@ -123,7 +126,7 @@ public class JSRegexValidator implements RegexValidator {
                         case Null:
                             throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                         case LookAheadAssertion:
-                            if (flags.isUnicode()) {
+                            if (flags.isEitherUnicode()) {
                                 throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                             }
                             break;
@@ -167,6 +170,8 @@ public class JSRegexValidator implements RegexValidator {
                             break;
                     }
                     break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         if (!syntaxStack.isEmpty()) {

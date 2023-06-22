@@ -36,6 +36,8 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Allows a custom callback to be executed when this node is reachable.
@@ -65,14 +67,19 @@ import com.oracle.svm.core.BuildPhaseProvider;
  * </ol>
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class ReachabilityRegistrationNode extends FixedWithNextNode implements Canonicalizable {
+public final class ReachabilityRegistrationNode extends FixedWithNextNode implements Canonicalizable {
     public static final NodeClass<ReachabilityRegistrationNode> TYPE = NodeClass.create(ReachabilityRegistrationNode.class);
 
     private final AnalysisFuture<Void> registrationTask;
 
-    public ReachabilityRegistrationNode(Runnable registrationHandler) {
+    protected ReachabilityRegistrationNode(Runnable registrationHandler) {
         super(TYPE, StampFactory.forVoid());
         this.registrationTask = new AnalysisFuture<>(registrationHandler, null);
+    }
+
+    public static ReachabilityRegistrationNode create(Runnable registrationHandler, ParsingReason reason) {
+        VMError.guarantee(reason.duringAnalysis() && reason != ParsingReason.JITCompilation);
+        return new ReachabilityRegistrationNode(registrationHandler);
     }
 
     public AnalysisFuture<Void> getRegistrationTask() {

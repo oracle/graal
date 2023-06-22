@@ -77,6 +77,7 @@ public class DebugState {
     private final List<Path> filePaths;
 
     public DebugState(boolean initialIsStatement, int lineBase, int lineRange, int opcodeBase, int minInstrLength, int maxOpsPerInstr, int length, List<Path> filePaths) {
+        assert filePaths.size() > 1;
         this.initialIsStatement = initialIsStatement;
         this.lineBase = lineBase;
         this.lineRange = lineRange;

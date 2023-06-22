@@ -25,22 +25,16 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.Closeable;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.AccessControlContext;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.WeakHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import jdk.internal.loader.Resource;
 
 @TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
@@ -61,16 +55,6 @@ final class Target_jdk_internal_loader_URLClassPath {
     /* Reset acc to null, since contexts in image heap are replaced */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private AccessControlContext acc;
-
-    @Substitute
-    public Resource getResource(String name, boolean check) {
-        return ResourcesHelper.nameToResource(name);
-    }
-
-    @Substitute
-    public Enumeration<Resource> getResources(final String name, final boolean check) {
-        return ResourcesHelper.nameToResources(name);
-    }
 }
 
 @TargetClass(URLClassLoader.class)
@@ -79,9 +63,4 @@ final class Target_java_net_URLClassLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = WeakHashMap.class)//
     private WeakHashMap<Closeable, Void> closeables;
-
-    @Substitute
-    public InputStream getResourceAsStream(String name) throws IOException {
-        return Resources.createInputStream(name);
-    }
 }

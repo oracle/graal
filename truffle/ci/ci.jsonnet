@@ -159,6 +159,7 @@
       ],
       targets: ["weekly"],
       notify_groups:: ["truffle"],
+      timelimit: "45:00",
     },
 
     # BENCHMARKS

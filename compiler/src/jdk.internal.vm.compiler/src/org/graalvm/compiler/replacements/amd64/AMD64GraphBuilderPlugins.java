@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -94,6 +95,7 @@ import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -130,6 +132,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerStrictMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
+                registerArraysSupportPlugins(invocationPlugins, arch, replacements);
             }
         });
     }
@@ -413,9 +416,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:off
                 //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len |>| src.length) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex * 2 + len * 2 > dest.length)) {
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len |>| dest.length >> 1)) {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
@@ -426,19 +429,11 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.GT, srcLength);
-
-                    ValueNode scaledDestIndex = helper.scale(destIndex, JavaKind.Char);
-                    helper.intrinsicRangeCheck(scaledDestIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode end = helper.add(scaledDestIndex, helper.scale(len, JavaKind.Char));
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(end, Condition.GT, destLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheckScaled(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
-                    ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, scaledDestIndex);
+                    ValueNode destPointer = helper.arrayElementPointerScaled(dest, JavaKind.Char, destIndex);
                     b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, JavaKind.Byte));
                 }
                 return true;
@@ -451,9 +446,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:off
                 //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len |>| src.length) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len |>| dest.length)) {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
@@ -464,15 +459,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.GT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode end = helper.add(destIndex, len);
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(end, Condition.GT, destLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Char, destIndex);
@@ -511,31 +499,23 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:off
                 //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length >> 1) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len |>| src.length >> 1) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len |>| dest.length)) {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
-                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * 2 * byteArrayIndexScale(INJECTED));
+                //        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
                 //        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
                 //        return StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
                 // @formatter:on
 
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicArrayRangeCheckScaled(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
-                    ValueNode scaledSrcIndex = helper.scale(srcIndex, JavaKind.Char);
-                    helper.intrinsicRangeCheck(scaledSrcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode end = helper.add(scaledSrcIndex, helper.scale(len, JavaKind.Char));
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(end, Condition.GT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.GT, destLength);
-
-                    ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, scaledSrcIndex);
+                    ValueNode srcPointer = helper.arrayElementPointerScaled(src, JavaKind.Char, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
                     b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, JavaKind.Byte));
                 }
@@ -549,9 +529,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:off
                 //         if (injectBranchProbability(SLOWPATH_PROBABILITY, len < 0) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len > src.length) ||
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, srcIndex + len |>| src.length) ||
                 //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex < 0) ||
-                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len > dest.length)) {
+                //                        injectBranchProbability(SLOWPATH_PROBABILITY, destIndex + len |>| dest.length)) {
                 //            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
                 //        }
                 //
@@ -561,15 +541,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode end = helper.add(srcIndex, len);
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(end, Condition.GT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.GT, destLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Char, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
@@ -577,6 +550,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
                 return true;
             }
+
         });
 
         r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
@@ -695,4 +669,45 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
     }
+
+    // Sync with ArraysSupport.java
+    public static final int T_BOOLEAN = 4;
+    public static final int T_CHAR = 5;
+    public static final int T_BYTE = 8;
+    public static final int T_SHORT = 9;
+    public static final int T_INT = 10;
+
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
+        Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InvocationPlugin("vectorizedHashCode", Object.class, int.class, int.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                                ValueNode array, ValueNode fromIndex, ValueNode length, ValueNode initialValue, ValueNode basicType) {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        if (basicType.isConstant()) {
+                            ValueNode arrayStart;
+                            int basicTypeAsInt = basicType.asJavaConstant().asInt();
+                            JavaKind componentType = switch (basicTypeAsInt) {
+                                case T_BOOLEAN -> JavaKind.Boolean;
+                                case T_CHAR -> JavaKind.Char;
+                                case T_BYTE -> JavaKind.Byte;
+                                case T_SHORT -> JavaKind.Short;
+                                case T_INT -> JavaKind.Int;
+                                default -> throw GraalError.shouldNotReachHere("Unsupported kind " + basicTypeAsInt);
+                            };
+
+                            // for T_CHAR, the intrinsic accepts both byte[] and char[]
+                            arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
+                            b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
 }

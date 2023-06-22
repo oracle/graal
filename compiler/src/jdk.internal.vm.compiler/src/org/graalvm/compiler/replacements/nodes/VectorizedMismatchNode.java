@@ -50,6 +50,9 @@ public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<VectorizedMismatchNode> TYPE = NodeClass.create(VectorizedMismatchNode.class);
 
+    public static final ForeignCallDescriptor STUB = ForeignCalls.pureFunctionForeignCallDescriptor("vectorizedMismatch",
+                    int.class, Pointer.class, Pointer.class, int.class, int.class);
+
     /**
      * Direct pointer to memory region A.
      */
@@ -96,7 +99,7 @@ public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode {
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return VectorizedMismatchForeignCalls.STUB;
+        return STUB;
     }
 
     @Override

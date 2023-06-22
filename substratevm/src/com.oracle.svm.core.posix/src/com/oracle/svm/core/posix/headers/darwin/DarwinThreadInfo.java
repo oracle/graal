@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -33,6 +32,8 @@ import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 // Checkstyle: stop
 

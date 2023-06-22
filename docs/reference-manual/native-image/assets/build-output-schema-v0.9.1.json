@@ -58,12 +58,18 @@
             "march": {
               "type": "string",
               "default": "",
-              "title": "The marchine type targeted by Graal"
+              "title": "The machine type targeted by Graal"
             },
             "pgo": {
-              "type": ["string", "null"],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": "",
+                "enum": ["instrument", "user-provided", "ML-inferred"],
+                "title": "The name of the enabled PGO mode"
+              },
               "default": null,
-              "title": "The name of the PGO mode (or null if PGO is not used) (Oracle GraalVM only)"
+              "title": "The names of the enabled PGO modes (or null if PGO is not used) (Oracle GraalVM only)"
             }
           },
           "title": "Information about the Graal compiler"
@@ -84,7 +90,6 @@
           "name": "helloworld",
           "graalvm_version": "GraalVM CE 17.0.7+4.1",
           "graal_compiler": {
-            "pgo": false,
             "march": "x86-64-v3",
             "optimization_level": "0"
           },

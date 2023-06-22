@@ -117,7 +117,12 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
         public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(20);
 
+        @Option(help = "Minimum relative frequency for calls to get inlined. Default 0.001 on HotSpot and no minimum frequency on SVM.")//
+        public static final OptionKey<Double> TruffleHostInliningMinFrequency = new OptionKey<>(DEFAULT_MIN_FREQUENCY);
+
     }
+
+    private static final double DEFAULT_MIN_FREQUENCY = 0.001d;
 
     static final String INDENT = "  ";
     private static final int TRIVIAL_SIZE = 30;
@@ -126,8 +131,15 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
     protected final CanonicalizerPhase canonicalizer;
 
+    private final double defaultMinProfiledFrequency;
+
     public HostInliningPhase(CanonicalizerPhase canonicalizer) {
+        this(canonicalizer, DEFAULT_MIN_FREQUENCY);
+    }
+
+    public HostInliningPhase(CanonicalizerPhase canonicalizer, double defaultMinProfiledFrequency) {
         this.canonicalizer = canonicalizer;
+        this.defaultMinProfiledFrequency = defaultMinProfiledFrequency;
     }
 
     protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
@@ -172,6 +184,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         if (env == null) {
             return;
         }
+        if (graph.isOSR()) {
+            return;
+        }
         if (!isEnabledFor(env, method)) {
             /*
              * Make sure this method only applies to interpreter methods. We check this early as we
@@ -181,7 +196,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        runImpl(new InliningPhaseContext(highTierContext, graph, env, isBytecodeInterpreterSwitch(env, method)));
+        runImpl(new InliningPhaseContext(highTierContext, graph, env, isBytecodeInterpreterSwitch(env, method), this.defaultMinProfiledFrequency));
     }
 
     private void runImpl(InliningPhaseContext context) {
@@ -302,7 +317,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                     }
                 });
 
-                // ORDER BY call.subTreeFastPathInvokes ASC, call.subTreeCost ASC
+                // ORDER BY frequency DESC or call.subTreeFastPathInvokes ASC, call.subTreeCost ASC
                 Collections.sort(toProcess);
 
                 /*
@@ -348,9 +363,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
                 /*
                  * The call tree is very convenient to debug host inlining decisions in addition to
-                 * IGV. To use pass
-                 * -H:Log=TruffleHostInliningPhase,~TruffleHostInliningPhase.CanonicalizerPhase to
-                 * filter noise by canonicalization.
+                 * IGV. To use pass -H:Log=HostInliningPhase,~HostInliningPhase.CanonicalizerPhase
+                 * to filter noise by canonicalization.
                  */
                 debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining: %n%s", round, beforeGraphSize, graphSize,
                                 printCallTree(context, root));
@@ -405,7 +419,6 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * interpreter.
          */
         for (HIRBlock block : reversePostOrder) {
-
             if (block.getEndNode() instanceof IfNode) {
                 /*
                  * Calls protected by inInterpreter within if conditions must mark all false
@@ -496,7 +509,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(context.env, invoke.getTargetMethod());
 
-                CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline);
+                double frequency = context.isFrequencyCutoffEnabled() ? block.getRelativeFrequency() : 1.0d;
+                CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline, frequency);
                 children.add(callee);
 
                 if (forceShallowInline) {
@@ -932,6 +946,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
             /*
              * Always force inline bytecode switches into bytecode switches.
              */
+            if (call.frequency <= context.minimumFrequency) {
+                call.reason = "frequency < minimumFrequency";
+                return false;
+            }
             return true;
         }
 
@@ -1020,6 +1038,12 @@ public class HostInliningPhase extends AbstractInliningPhase {
              * behind is designed for Truffle partial evaluation.
              */
             call.reason = boundary;
+            return false;
+        }
+
+        double frequency = call.frequency;
+        if (frequency <= context.minimumFrequency) {
+            call.reason = "frequency < minimumFrequency";
             return false;
         }
 
@@ -1348,6 +1372,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
         final boolean isBytecodeSwitch;
         final int maxSubtreeInvokes;
         final boolean printExplored;
+        final double minimumFrequency;
 
         /**
          * Caches graphs for a single run of this phase. This is not just a performance optimization
@@ -1356,7 +1381,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          */
         final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
 
-        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeSwitch) {
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeSwitch, double defaultMinimumFrequency) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
@@ -1364,10 +1389,25 @@ public class HostInliningPhase extends AbstractInliningPhase {
             this.isBytecodeSwitch = isBytecodeSwitch;
             this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
             this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);
+            if (Options.TruffleHostInliningMinFrequency.hasBeenSet(options)) {
+                this.minimumFrequency = Options.TruffleHostInliningMinFrequency.getValue(options);
+            } else {
+                /*
+                 * The default minimum frequency differs depending on the platform. On SVM we do not
+                 * want to a use frequency based cut-off as we have more time to compile. On HotSpot
+                 * compile time is more precious and can lead to significant warmup regressions if
+                 * there is no frequency cutoff.
+                 */
+                this.minimumFrequency = defaultMinimumFrequency;
+            }
         }
 
         TruffleKnownHostTypes types() {
             return env.types();
+        }
+
+        boolean isFrequencyCutoffEnabled() {
+            return minimumFrequency > 0.0D;
         }
 
     }
@@ -1470,9 +1510,11 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
         int exploredIndex = -1;
 
+        final double frequency;
         final int depth;
 
-        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean unwind, boolean inInterpreter, boolean forceShallowInline) {
+        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean unwind, boolean inInterpreter, boolean forceShallowInline,
+                        double relativeFrequency) {
             this.invoke = invoke;
             this.deoptimized = deoptimized;
             this.unwind = unwind;
@@ -1482,6 +1524,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             this.forceShallowInline = forceShallowInline;
             this.depth = parent.depth + 1;
             Objects.requireNonNull(cachedTargetMethod);
+            this.frequency = relativeFrequency * parent.frequency;
         }
 
         CallTree(ResolvedJavaMethod root) {
@@ -1492,6 +1535,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             this.forceShallowInline = false;
             this.cachedTargetMethod = root;
             this.parent = null;
+            this.frequency = 1.0;
             this.depth = 0;
         }
 
@@ -1527,8 +1571,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Override
         public int compareTo(CallTree o) {
             assert subTreeFastPathInvokes != -1 && subTreeCost != -1 : "unexpected comparison";
-
-            int compare = Integer.compare(subTreeFastPathInvokes, o.subTreeFastPathInvokes);
+            int compare = Double.compare(frequency, o.frequency);
+            if (compare == 0) {
+                compare = Integer.compare(subTreeFastPathInvokes, o.subTreeFastPathInvokes);
+            }
             if (compare == 0) {
                 return Integer.compare(subTreeCost, o.subTreeCost);
             }
@@ -1553,19 +1599,25 @@ public class HostInliningPhase extends AbstractInliningPhase {
                 boolean fastPathInvoke = isFastPathInvoke(this);
                 return String.format(
                                 "%-" + maxIndent +
-                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, unwind %5s, inInterpreter %5s, propagates %7s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, unwind %5s, inInterpreter %5s, propagates %7s, invoke %5s, " +
+                                                "frequency %s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
                                 indent + buildLabel(),
                                 formatOptionalInt(hasCutoffParent() ? -1 : inlinedIndex),
                                 formatOptionalInt(exploredIndex),
                                 monomorphicTargetMethod != null,
                                 deoptimized, unwind, inInterpreter, propagates,
                                 fastPathInvoke,
+                                formatFrequency(frequency),
                                 formatOptionalInt(cost),
                                 formatOptionalInt(subTreeCost),
                                 formatOptionalInt(subTreeFastPathInvokes),
                                 explorationIncomplete,
                                 reason);
             }
+        }
+
+        private static String formatFrequency(double frequency) {
+            return String.format("%.5f", frequency);
         }
 
         private String buildLabel() {

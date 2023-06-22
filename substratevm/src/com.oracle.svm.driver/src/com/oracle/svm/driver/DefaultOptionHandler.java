@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import com.oracle.svm.util.LogUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -133,7 +134,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case noServerOption:
                 args.poll();
-                NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+                LogUtils.warning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
             case "--enable-preview":
                 args.poll();
@@ -459,7 +460,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHName + jarFileNameBase, origin));
         }
         Path finalFilePath = nativeImage.useBundle() ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
-        if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleMainClassAttribute)) {
+        if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleManifestFileAttributes)) {
             NativeImage.showError("No manifest in " + finalFilePath);
         }
         nativeImage.addCustomImageClasspath(finalFilePath);

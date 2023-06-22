@@ -269,7 +269,9 @@ public class ReportUtils {
         msg.append(String.format("%n"));
     }
 
-    private static final String stackTraceTruncationSentinel = "WARNING: Parsing context is truncated because its depth exceeds a reasonable limit for ";
+    // Checkstyle: Allow raw info or warning printing - begin
+    private static final String stackTraceTruncationSentinel = "Warning: Parsing context is truncated because its depth exceeds a reasonable limit for ";
+    // Checkstyle: Allow raw info or warning printing - end
 
     private static boolean isStackTraceTruncationSentinel(StackTraceElement element) {
         return element.getClassName().startsWith(stackTraceTruncationSentinel);

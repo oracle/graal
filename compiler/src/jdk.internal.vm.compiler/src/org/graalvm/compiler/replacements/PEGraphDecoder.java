@@ -136,7 +136,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -213,6 +212,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public boolean isInlinedMethod() {
             return caller != null;
+        }
+
+        public ValueNode[] getArguments() {
+            return arguments;
         }
 
         /**
@@ -875,27 +878,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return new PEMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
     }
 
-    private void recordGraphElements(EncodedGraph encodedGraph) {
-        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
-        if (inlinedMethods != null) {
-            for (ResolvedJavaMethod other : inlinedMethods) {
-                graph.recordMethod(other);
-            }
-        }
-        Assumptions assumptions = graph.getAssumptions();
-        Assumptions inlinedAssumptions = encodedGraph.getAssumptions();
-        if (assumptions != null) {
-            if (inlinedAssumptions != null) {
-                assumptions.record(inlinedAssumptions);
-            }
-        } else {
-            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
-        }
-        if (encodedGraph.hasUnsafeAccess()) {
-            graph.markUnsafeAccess();
-        }
-    }
-
     @Override
     protected void cleanupGraph(MethodScope methodScope) {
         super.cleanupGraph(methodScope);
@@ -1230,6 +1212,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
+        predecessor = afterMethodScopeCreation(inlineScope, predecessor);
+
         LoopScope inlineLoopScope = createInitialLoopScope(inlineScope, predecessor);
 
         /*
@@ -1249,6 +1233,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
          */
         return inlineLoopScope;
+    }
+
+    protected FixedWithNextNode afterMethodScopeCreation(@SuppressWarnings("unused") PEMethodScope inlineScope, FixedWithNextNode predecessor) {
+        return predecessor;
     }
 
     @Override
@@ -1371,7 +1359,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         /*
-         * Usage the handles that we have on the return value and the exception to update the
+         * Use the handles that we have on the return value and the exception to update the
          * orderId->Node table.
          */
         registerNode(loopScope, invokeData.invokeOrderId, returnValue, true, true);

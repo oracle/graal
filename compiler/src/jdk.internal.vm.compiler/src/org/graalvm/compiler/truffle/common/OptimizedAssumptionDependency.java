@@ -44,7 +44,7 @@ public interface OptimizedAssumptionDependency {
     /**
      * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
      */
-    default CompilableTruffleAST getCompilable() {
+    default TruffleCompilable getCompilable() {
         return null;
     }
 

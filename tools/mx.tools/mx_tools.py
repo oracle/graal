@@ -192,10 +192,7 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-
-    # This is required for the call to setAccessible in
-    # TruffleTCK.testValueWithSource to work.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -204,7 +201,7 @@ def _tools_gate_runner(args, tasks):
     with Task('Tools Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
+        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--max-class-failures=25'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 

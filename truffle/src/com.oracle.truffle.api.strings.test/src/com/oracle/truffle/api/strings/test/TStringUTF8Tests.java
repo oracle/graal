@@ -46,6 +46,8 @@ import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF8;
 import org.graalvm.shadowed.org.jcodings.specific.UTF8Encoding;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -227,5 +229,11 @@ public class TStringUTF8Tests extends TStringTestBase {
         TruffleStringIterator it = asTString(byteArray(' ', 'a', 'b', 'c', ' ', 0x80)).createBackwardCodePointIteratorUncached(UTF_8);
         it.previousUncached();
         Assert.assertEquals(5, it.getByteIndex());
+    }
+
+    @Test(expected = OutOfMemoryError.class)
+    public void testStringBuilderAppendCodePoint() {
+        TruffleStringBuilderUTF8 sb = TruffleStringBuilder.createUTF8();
+        sb.appendCodePointUncached(Character.MAX_CODE_POINT, Integer.MAX_VALUE - 10, false);
     }
 }

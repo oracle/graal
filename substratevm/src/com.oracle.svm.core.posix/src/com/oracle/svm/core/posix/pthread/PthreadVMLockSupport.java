@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.pthread;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -37,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -147,12 +149,10 @@ final class PthreadVMLockFeature implements InternalFeature {
 
 public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = PthreadVMMutex[].class)//
-    PthreadVMMutex[] mutexes;
+    @UnknownObjectField(availability = ReadyForCompilation.class) PthreadVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = PthreadVMCondition[].class)//
-    PthreadVMCondition[] conditions;
+    @UnknownObjectField(availability = ReadyForCompilation.class) PthreadVMCondition[] conditions;
 
     /**
      * Raw memory for the pthread lock structures. Since we know that native image objects are never
@@ -160,8 +160,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
      * into this array is stored in {@link PthreadVMMutex#structOffset} and
      * {@link PthreadVMCondition#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] pthreadStructs;
+    @UnknownObjectField(availability = ReadyForCompilation.class) byte[] pthreadStructs;
 
     @Fold
     public static PthreadVMLockSupport singleton() {
@@ -228,6 +227,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
 
 final class PthreadVMMutex extends VMMutex {
 
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -280,6 +280,7 @@ final class PthreadVMMutex extends VMMutex {
 
 final class PthreadVMCondition extends VMCondition {
 
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)

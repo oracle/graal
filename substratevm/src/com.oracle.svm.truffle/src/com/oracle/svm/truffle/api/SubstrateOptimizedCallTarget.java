@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -62,6 +63,13 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     @SuppressWarnings("this-escape")
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
+        this.installedCode = createInitializationInstalledCode();
+        assert this.installedCode != null : "Must never be null";
+    }
+
+    @SuppressWarnings("this-escape")
+    public SubstrateOptimizedCallTarget(EngineData engine) {
+        super(engine);
         this.installedCode = createInitializationInstalledCode();
         assert this.installedCode != null : "Must never be null";
     }

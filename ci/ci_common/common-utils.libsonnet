@@ -26,6 +26,9 @@
   else
     build,
 
+  # Returns true if `str` contains `needle` as a substring.
+  contains(str, needle):: std.findSubstr(needle, str) != [],
+
   # std.get is not available in all versions
   std_get(o, f, default=null, inc_hidden=true)::
     local objectHas = if inc_hidden then std.objectHasAll else std.objectHas;

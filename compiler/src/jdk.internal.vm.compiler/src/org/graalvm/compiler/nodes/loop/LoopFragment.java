@@ -25,22 +25,17 @@
 package org.graalvm.compiler.nodes.loop;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -200,74 +195,10 @@ public abstract class LoopFragment {
             duplicationMap = graph().addDuplicates(nodesIterable, graph(), nodesIterable.count(), dr);
             finishDuplication();
             nodes = new NodeBitMap(graph());
-
-            Iterable<Node> duplicationNodes = duplicationMap.getValues();
-            try {
-                nodes.markAll(duplicationNodes);
-            } catch (Throwable t) {
-                StructuredGraph graph = graph();
-                if (duplicationMap instanceof NodeMap<?>) {
-                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count());
-                    NodeMap<?> nm = (NodeMap<?>) duplicationMap;
-                    Object[] rawValues = nm.rawValues();
-                    int nullEntries = 0;
-                    for (int i = 0; i < rawValues.length; i++) {
-                        if (rawValues[i] == null) {
-                            nullEntries++;
-                        }
-                    }
-                    TTY.printf("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
-                    if (rawValues.length < 1000) {
-                        TTY.printf("GR-42126 data:%s%n", Arrays.toString(rawValues));
-                    }
-                } else {
-                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
-                                    duplicationMap.size(),
-                                    duplicationMap.getClass());
-                }
-                checkNoNulls(duplicationNodes);
-                checkNoNulls(duplicationMap);
-                graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
-                throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-            }
+            nodes.markAll(duplicationMap.getValues());
             nodesReady = true;
         } else {
             // TODO (gd) apply fix ?
-        }
-    }
-
-    private static void checkNoNulls(Iterable<Node> nodes) {
-        for (Node value : nodes) {
-            GraalError.guarantee(value != null, "Must not see null value in %s", nodes);
-        }
-    }
-
-    private void checkNoNulls(EconomicMap<Node, Node> dupMap) {
-        List<Node> keyListByIterationOrder = new ArrayList<>();
-        List<Node> valueListByIterationOrder = new ArrayList<>();
-        List<Node> valueListByIterationOrderVALUEAPI = new ArrayList<>();
-
-        MapCursor<Node, Node> c = dupMap.getEntries();
-        while (c.advance()) {
-            keyListByIterationOrder.add(c.getKey());
-            valueListByIterationOrder.add(c.getValue());
-            GraalError.guarantee(c.getKey() != null, "key == null in %s", this);
-            GraalError.guarantee(c.getValue() != null, "Value == null for %s in %s", c.getKey(), this);
-        }
-
-        for (Node value : dupMap.getValues()) {
-            valueListByIterationOrderVALUEAPI.add(value);
-        }
-
-        final int keyListSize = keyListByIterationOrder.size();
-        final int valueListSize = valueListByIterationOrder.size();
-        final int valueListSizeVALUEAPI = valueListByIterationOrderVALUEAPI.size();
-        GraalError.guarantee(keyListSize == valueListSize, "%d != %d", keyListSize, valueListSize);
-        GraalError.guarantee(keyListSize == valueListSizeVALUEAPI, " %d != %d", keyListSize, valueListSizeVALUEAPI);
-
-        for (int i = 0; i < valueListSize; i++) {
-            GraalError.guarantee(valueListByIterationOrder.get(i) == valueListByIterationOrderVALUEAPI.get(i), "%s != %s for %d", valueListByIterationOrder.get(i),
-                            valueListByIterationOrderVALUEAPI.get(i), i);
         }
     }
 

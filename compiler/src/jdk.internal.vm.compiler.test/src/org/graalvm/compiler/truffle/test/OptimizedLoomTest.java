@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;

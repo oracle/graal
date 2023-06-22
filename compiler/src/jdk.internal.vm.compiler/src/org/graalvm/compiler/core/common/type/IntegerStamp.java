@@ -390,39 +390,43 @@ public final class IntegerStamp extends PrimitiveStamp {
      */
     private static long computeLowerBound(int bits, long lowerBound, long mustBeSet, long mayBeSet, boolean canBeZero) {
         long newLowerBound = minValueForMasks(bits, mustBeSet, mayBeSet);
+        final long optionalBits = mayBeSet & ~mustBeSet & CodeUtil.mask(bits - 1);
         if (newLowerBound < lowerBound) {
-            // First find the largest value which is less the current bound
-            final long optionalBits = mayBeSet & ~mustBeSet & CodeUtil.mask(bits - 1);
-            for (int position = bits - 1; position >= 0; position--) {
-                long bit = 1L << position;
-                if ((bit & optionalBits) != 0) {
-                    if (newLowerBound + bit <= lowerBound) {
-                        newLowerBound += bit;
-                    }
-                }
-            }
-            GraalError.guarantee(newLowerBound <= lowerBound, "should have been sufficient");
-            if (newLowerBound < lowerBound) {
-                // Increment the first optional bit and then adjust the bits upward until it's
-                // compatible with the masks
-                boolean incremented = false;
-                for (int position = 0; position < bits - 1; position++) {
+            if (optionalBits == 0) {
+                newLowerBound = 0;
+            } else {
+                // First find the largest value which is less than or equal to the current bound
+                for (int position = bits - 1; position >= 0; position--) {
                     long bit = 1L << position;
-                    if (incremented) {
-                        // We have to propagate any carried bit that changed any bits which must
-                        // be set or cleared.
-                        if ((bit & mustBeSet) != 0 && (newLowerBound & bit) == 0) {
-                            // A mustBeSet bit has been cleared so set it
-                            newLowerBound |= bit;
-                        }
-                        if ((bit & mayBeSet) == 0 && (newLowerBound & bit) != 0) {
-                            // A bit has carried into the clear section so it needs to propagate
-                            // into an mayBeSet bit.
+                    if ((bit & optionalBits) != 0) {
+                        if (newLowerBound + bit <= lowerBound) {
                             newLowerBound += bit;
                         }
-                    } else if ((bit & optionalBits) != 0) {
-                        newLowerBound += bit;
-                        incremented = true;
+                    }
+                }
+                GraalError.guarantee(newLowerBound <= lowerBound, "should have been sufficient");
+                if (newLowerBound < lowerBound) {
+                    // Increment the first optional bit and then adjust the bits upward until it's
+                    // compatible with the masks
+                    boolean incremented = false;
+                    for (int position = 0; position < bits - 1; position++) {
+                        long bit = 1L << position;
+                        if (incremented) {
+                            // We have to propagate any carried bit that changed any bits which must
+                            // be set or cleared.
+                            if ((bit & mustBeSet) != 0 && (newLowerBound & bit) == 0) {
+                                // A mustBeSet bit has been cleared so set it
+                                newLowerBound |= bit;
+                            }
+                            if ((bit & mayBeSet) == 0 && (newLowerBound & bit) != 0) {
+                                // A bit has carried into the clear section so it needs to propagate
+                                // into an mayBeSet bit.
+                                newLowerBound += bit;
+                            }
+                        } else if ((bit & optionalBits) != 0) {
+                            newLowerBound += bit;
+                            incremented = true;
+                        }
                     }
                 }
             }
@@ -2138,7 +2142,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return create(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
+                            long lowerBound = Math.max(x.lowerBound(), y.lowerBound());
+                            long upperBound = Math.max(x.upperBound(), y.upperBound());
+                            long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                            long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                            return create(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -2168,7 +2176,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return create(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
+                            long lowerBound = Math.min(x.lowerBound(), y.lowerBound());
+                            long upperBound = Math.min(x.upperBound(), y.upperBound());
+                            long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                            long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                            return create(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -2198,8 +2210,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
-                                            NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                            if (x.sameSignBounds() && y.sameSignBounds()) {
+                                long lowerBound = NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound());
+                                long upperBound = NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound());
+                                long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                                long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                                return StampFactory.forUnsignedInteger(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
+                            } else {
+                                return x.meet(y);
+                            }
                         }
 
                         @Override
@@ -2228,8 +2247,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
-                                            NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                            if (x.sameSignBounds() && y.sameSignBounds()) {
+                                long lowerBound = NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound());
+                                long upperBound = NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound());
+                                long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                                long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                                return StampFactory.forUnsignedInteger(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
+                            } else {
+                                return x.meet(y);
+                            }
                         }
 
                         @Override

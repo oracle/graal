@@ -159,14 +159,14 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
+                    String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         PolyglotContextImpl context = receiver.createContext(sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
                         allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
-                        currentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
+                        currentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit);
         return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
     }
 

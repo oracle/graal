@@ -52,7 +52,7 @@ public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
 
         if (field.location == HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT) {
             return true;
-        } else if (!field.wrapped.isWritten()) {
+        } else if (!field.isWritten() && field.isValueAvailable()) {
             return true;
         }
         return super.isFinalField(field, tool);

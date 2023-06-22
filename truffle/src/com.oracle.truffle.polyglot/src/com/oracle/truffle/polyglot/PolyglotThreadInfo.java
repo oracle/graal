@@ -67,7 +67,6 @@ final class PolyglotThreadInfo {
      */
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
-    private boolean enteredForCancellingOrExiting;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
@@ -146,14 +145,6 @@ final class PolyglotThreadInfo {
 
     void setLeaveAndEnterInterrupter(TruffleSafepoint.Interrupter interrupter) {
         this.leaveAndEnterInterrupter = interrupter;
-    }
-
-    boolean isEnteredForCancellingOrExiting() {
-        return enteredForCancellingOrExiting;
-    }
-
-    void setEnteredForCancellingOrExiting(boolean enteredForCancellingOrExiting) {
-        this.enteredForCancellingOrExiting = enteredForCancellingOrExiting;
     }
 
     /**
@@ -265,7 +256,7 @@ final class PolyglotThreadInfo {
 
     @Override
     public String toString() {
-        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + ", enteredForCancellingOrExiting=" + enteredForCancellingOrExiting +
+        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled +
                         ", leaveAndEnterInterrupted=" + leaveAndEnterInterrupted + "]";
     }
 

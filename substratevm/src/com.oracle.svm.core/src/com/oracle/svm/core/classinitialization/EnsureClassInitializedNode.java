@@ -40,11 +40,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
@@ -97,9 +97,9 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
         return true;
     }
 
-    public ResolvedJavaType constantTypeOrNull(CoreProviders providers) {
+    public ResolvedJavaType constantTypeOrNull(ConstantReflectionProvider constantReflection) {
         if (hub.isConstant()) {
-            return providers.getConstantReflection().asJavaType(hub.asConstant());
+            return constantReflection.asJavaType(hub.asConstant());
         } else {
             return null;
         }
@@ -107,7 +107,7 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ResolvedJavaType type = constantTypeOrNull(tool);
+        ResolvedJavaType type = constantTypeOrNull(tool.getConstantReflection());
         if (type != null) {
             for (FrameState cur = stateAfter; cur != null; cur = cur.outerFrameState()) {
                 if (!needsRuntimeInitialization(cur.getMethod().getDeclaringClass(), type)) {

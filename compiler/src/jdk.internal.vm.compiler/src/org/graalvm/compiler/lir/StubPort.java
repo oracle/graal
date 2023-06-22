@@ -60,4 +60,8 @@ public @interface StubPort {
      */
     String sha1();
 
+    /**
+     * Reason for ignoring this StubPort.
+     */
+    String ignore() default "";
 }

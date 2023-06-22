@@ -37,12 +37,12 @@ public class JfrFrameTypeSerializer implements JfrSerializer {
 
     @Override
     public void write(JfrChunkWriter writer) {
-        writer.writeCompressedLong(JfrType.FrameType.getId());
         JfrFrameType[] values = JfrFrameType.values();
+        writer.writeCompressedLong(JfrType.FrameType.getId());
         writer.writeCompressedLong(values.length);
-        for (int i = 0; i < values.length; i++) {
-            writer.writeCompressedInt(i);
-            writer.writeString(values[i].getText());
+        for (JfrFrameType value : values) {
+            writer.writeCompressedLong(value.getId());
+            writer.writeString(value.getText());
         }
     }
 }

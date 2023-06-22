@@ -27,10 +27,9 @@ package org.graalvm.compiler.nodes.spi;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
- * This interface marks nodes whose result is the same as one of their inputs. Such nodes are used
- * to add type information, to introduce scheduling restrictions, etc.
- *
- * For some algorithms it is necessary or advantageous to see through these proxies.
+ * Special implementation of {@link LimitedValueProxy} that adds a guard to this value. Use in
+ * situations where the value itself should be guarded by another invariant expressed as a
+ * {@link GuardingNode}.
  */
 public interface ValueProxy extends LimitedValueProxy {
     GuardingNode getGuard();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,26 +65,26 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         return execute(method, receiver, arguments, false);
     }
 
-    public static ToEspressoNode[] createToEspresso(long argsLength) {
-        ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
-        for (int i = 0; i < argsLength; i++) {
-            toEspresso[i] = ToEspressoNodeGen.create();
-        }
-        return toEspresso;
-    }
-
     static DirectCallNode createDirectCallNode(CallTarget callTarget) {
         return DirectCallNode.create(callTarget);
     }
 
     abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted) throws ArityException, UnsupportedTypeException;
 
+    public static ToEspressoNode[] createToEspresso(Method.MethodVersion methodVersion) {
+        Klass[] parameterKlasses = methodVersion.getMethod().resolveParameterKlasses();
+        ToEspressoNode[] toEspresso = new ToEspressoNode[parameterKlasses.length];
+        for (int i = 0; i < parameterKlasses.length; i++) {
+            toEspresso[i] = ToEspressoNode.createToEspresso(parameterKlasses[i], parameterKlasses[i].getMeta());
+        }
+        return toEspresso;
+    }
+
     @ExplodeLoop
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
                     @Cached("method") Method.MethodVersion cachedMethod,
-                    @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
-                    @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
+                    @Cached("createToEspresso(cachedMethod)") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getMethod().getCallTarget())") DirectCallNode directCallNode,
                     @Cached InitCheck initCheck,
                     @Cached BranchProfile badArityProfile)
@@ -101,7 +101,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         Object[] convertedArguments = argsConverted ? arguments : new Object[expectedArity];
         if (!argsConverted) {
             for (int i = 0; i < expectedArity; i++) {
-                convertedArguments[i] = toEspressoNodes[i].execute(arguments[i], parameterKlasses[i]);
+                convertedArguments[i] = toEspressoNodes[i].execute(arguments[i]);
             }
         }
 
@@ -117,7 +117,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
 
     @Specialization(replaces = "doCached")
     Object doGeneric(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedTypeException {
 

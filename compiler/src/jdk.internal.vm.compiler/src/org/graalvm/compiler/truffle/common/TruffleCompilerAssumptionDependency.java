@@ -39,9 +39,9 @@ import jdk.vm.ci.code.InstalledCode;
 public final class TruffleCompilerAssumptionDependency implements OptimizedAssumptionDependency {
 
     private final InstalledCode installedCode;
-    private final WeakReference<CompilableTruffleAST> compilableRef;
+    private final WeakReference<TruffleCompilable> compilableRef;
 
-    public TruffleCompilerAssumptionDependency(CompilableTruffleAST compilation, InstalledCode code) {
+    public TruffleCompilerAssumptionDependency(TruffleCompilable compilation, InstalledCode code) {
         Objects.requireNonNull(code);
         this.installedCode = code;
         this.compilableRef = new WeakReference<>(compilation);
@@ -57,7 +57,7 @@ public final class TruffleCompilerAssumptionDependency implements OptimizedAssum
         } else {
             assert !isAlive() : "Cannot be valid but not alive";
         }
-        CompilableTruffleAST ast = compilableRef.get();
+        TruffleCompilable ast = compilableRef.get();
         if (ast != null) {
             ast.onInvalidate(source, reason, wasActive);
         }
@@ -68,7 +68,7 @@ public final class TruffleCompilerAssumptionDependency implements OptimizedAssum
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return this.compilableRef.get();
     }
 

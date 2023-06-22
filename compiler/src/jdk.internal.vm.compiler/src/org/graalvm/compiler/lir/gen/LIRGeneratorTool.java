@@ -160,6 +160,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitMove(Value input);
 
+    Variable emitMove(ValueKind<?> dst, Value src);
+
     void emitMove(AllocatableValue dst, Value src);
 
     Variable emitReadRegister(Register register, ValueKind<?> kind);
@@ -224,6 +226,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     @SuppressWarnings("unused")
     default Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
         throw GraalError.unimplemented("vectorizedMismatch substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+        throw GraalError.unimplemented("vectorizedHashCode substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
@@ -543,8 +550,13 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }
 
-    default Value emitTimeStampWithProcid() {
-        throw new GraalError("Emitting code to return the current value of the timestamp counter with procid is not currently supported on %s", target().arch);
+    default Value emitTimeStamp() {
+        throw new GraalError("Emitting code to return the current value of the timestamp counter is not currently supported on %s", target().arch);
+    }
+
+    @SuppressWarnings("unused")
+    default void emitProcid(AllocatableValue dst) {
+        throw new GraalError("Emitting code to return the current value of the procid is not currently supported on %s", target().arch);
     }
 
     default Value emitReadCallerStackPointer(Stamp wordStamp) {

@@ -1546,7 +1546,9 @@ final class BreakpointInterceptor {
             return null;
         }
         Breakpoint bp = new Breakpoint(br, clazz, method);
-        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: %s", bp);
+        if (map.put(method.rawValue(), bp) != null) {
+            throw VMError.shouldNotReachHere("Duplicate breakpoint: " + bp);
+        }
         return bp;
     }
 

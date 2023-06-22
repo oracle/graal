@@ -40,6 +40,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -94,7 +95,7 @@ import com.oracle.svm.core.util.coder.Pack200Coder;
  */
 public class HeapDumpMetadata {
     private final ComputeHubDataVisitor computeHubDataVisitor;
-    @UnknownObjectField(types = {byte[].class}) private byte[] data;
+    @UnknownObjectField(availability = AfterCompilation.class) private byte[] data;
 
     private int fieldNameCount;
     private int classInfoCount;

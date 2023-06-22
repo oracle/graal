@@ -130,11 +130,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         Arrays.fill(values, null);
     }
 
-    // remove after GR-42126 is resolved
-    public Object[] rawValues() {
-        return values;
-    }
-
     @Override
     public Iterable<Node> getKeys() {
         return new Iterable<>() {
@@ -220,12 +215,11 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     @Override
     public Iterable<T> getValues() {
         return new Iterable<>() {
-
             @Override
             public Iterator<T> iterator() {
                 return new Iterator<>() {
 
-                    int i = 0;
+                    int i;
 
                     @Override
                     public boolean hasNext() {

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -47,8 +48,7 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    @UnknownObjectField(types = GCCause[].class) //
-    protected static GCCause[] GCCauses;
+    @UnknownObjectField(availability = ReadyForCompilation.class) protected static GCCause[] GCCauses;
 
     private final int id;
     private final String name;

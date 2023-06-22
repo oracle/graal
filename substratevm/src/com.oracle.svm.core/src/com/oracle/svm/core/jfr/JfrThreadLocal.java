@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
@@ -48,6 +49,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -125,6 +128,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             SubstrateJVM.getThreadRepo().registerThread(javaThread);
+            ThreadCPULoadEvent.initWallclockTime(isolateThread);
             ThreadStartEvent.emit(javaThread);
         }
     }
@@ -134,11 +138,13 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
+            ThreadCPULoadEvent.emit(isolateThread);
         }
 
         /*
-         * Try to free the Java-level JFR buffer, no matter if recording is currently active or not
-         * because the thread could still reference a retired buffer.
+         * The thread may still reference a retired Java-level JFR buffer that needs to be freed
+         * (i.e., a buffer that couldn't be freed when recording was stopped). So, we always try to
+         * free the Java-level JFR buffer, no matter if recording is currently active or not.
          */
         stopRecording(isolateThread, true);
     }
@@ -221,7 +227,7 @@ public class JfrThreadLocal implements ThreadListener {
      * moment, only the current thread may be excluded/included. See GR-44616.
      */
     public void setExcluded(Thread thread, boolean excluded) {
-        if (!thread.equals(Thread.currentThread())) {
+        if (thread == null || !thread.equals(Thread.currentThread())) {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
@@ -233,8 +239,19 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
+    /**
+     * Allocation JFR events can be emitted along the allocation slow path. In some cases, when the
+     * slow path may be taken, a {@link Thread} object may not yet be assigned to the current thread
+     * See {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where a
+     * {@link Thread} object must be created before it can be assigned to the current thread. This
+     * may happen during shutdown in {@link JavaMainWrapper}. Therefore, this method must account
+     * for the case where {@link Thread#currentThread()} returns null.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
+        if (Thread.currentThread() == null) {
+            return true;
+        }
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }

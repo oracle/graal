@@ -777,4 +777,26 @@ public class IntegerStampTest extends GraphTest {
         IntegerStamp union = (IntegerStamp) stampWithZero.meet(stampWithoutZero);
         assertCanBeZero(union);
     }
+
+    /**
+     * Check that a stamp that only allows the high bit to be set properly handles a range that
+     * crosses 0 but doesn't include the min value.
+     */
+    @Test
+    public void testHighBitOnly() {
+        for (int shift = 0, initialBits = 8; shift < 4; shift++) {
+            int bits = initialBits << shift;
+            long lo = CodeUtil.minValue(bits) + 1;
+            long mustBeSet = 0L;
+            long mayBeSet = 1L << ((bits) - 1);
+            for (long hi = -1; hi < 1; hi++) {
+                IntegerStamp s = IntegerStamp.create(bits, lo, hi, mustBeSet, mayBeSet, true);
+                if (hi == 0) {
+                    Assert.assertTrue("Stamp = " + s, s.contains(0L));
+                } else {
+                    Assert.assertTrue("Stamp = " + s, s.isEmpty());
+                }
+            }
+        }
+    }
 }

@@ -89,7 +89,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Before
     public void setUp() {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("engine.InstrumentBranches", "true").build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("compiler.InstrumentBranches", "true").build());
     }
 
     @Test

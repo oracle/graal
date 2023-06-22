@@ -65,6 +65,10 @@ public class AMD64ReadTimestampCounterWithProcid extends AMD64LIRInstruction {
         return lowResult;
     }
 
+    public AllocatableValue getProcidResult() {
+        return procidResult;
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         masm.rdtscp();

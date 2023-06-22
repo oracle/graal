@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -69,6 +70,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
+
+    private static final Set<String> WRAPPER_CLASSES = Set.of(Boolean.class.getName(), Byte.class.getName(), Character.class.getName(), Float.class.getName(), Integer.class.getName(),
+                    Long.class.getName(), Short.class.getName(), Double.class.getName());
 
     protected CompilationResult lastCompilationResult;
     DebugContext lastDebug;
@@ -293,8 +297,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 }
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compiler.getConfig().runtime(), compilable.getOptionValues())) {
-                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
+                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                                    compiler.getOrCreateCompilerOptions(compilable),
+                                    debug, compilable,
+                                    partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
@@ -312,7 +320,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptionValues getGraalOptions() {
-        OptionValues options = getTruffleCompiler().getConfig().runtime().getGraalOptions(OptionValues.class);
+        OptionValues options = getTruffleCompiler().getOrCreateCompilerOptions(getInitCallTarget());
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }
@@ -346,7 +354,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 Constant constant = ((ConstantNode) node).getValue();
                 if (constant instanceof JavaConstant) {
                     ResolvedJavaType type = getMetaAccess().lookupJavaType((JavaConstant) constant);
-                    if (((JavaConstant) constant).getJavaKind() == JavaKind.Object && type != null) {
+                    if (((JavaConstant) constant).getJavaKind() == JavaKind.Object && type != null && !WRAPPER_CLASSES.contains(type.toJavaName())) {
                         node.replaceAtUsages(graph.unique(ConstantNode.defaultForKind(JavaKind.Object)));
                         node.safeDelete();
                     }

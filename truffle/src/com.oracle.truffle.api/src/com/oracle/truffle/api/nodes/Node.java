@@ -205,6 +205,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChildren != null) {
             for (Node newChild : newChildren) {
                 adoptHelper(newChild);
+                assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
             }
         }
         return newChildren;
@@ -222,7 +223,12 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final <T extends Node> T insert(final T newChild) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (newChild != null) {
+            // TODO GR-46607 consider removing after GR-46607 is fixed.
+            if (newChild.isAdoptable()) {
+                ((Node) newChild).parent = this;
+            }
             adoptHelper(newChild);
+            assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
         }
         return newChild;
     }
@@ -257,6 +263,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         NodeUtil.adoptChildrenHelper(this);
+        assert checkSameLanguageOfChildren();
     }
 
     final void adoptHelper(final Node newChild) {
@@ -265,15 +272,16 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         if (newChild.isAdoptable()) {
-            assert checkSameLanguages(newChild);
-            newChild.parent = this;
             NodeUtil.adoptChildrenHelper(newChild);
+            newChild.parent = this;
         }
     }
 
     int adoptChildrenAndCount() {
         CompilerAsserts.neverPartOfCompilation();
-        return 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+        int count = 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+        assert checkSameLanguageOfChildren();
+        return count;
     }
 
     int adoptAndCountHelper(Node newChild) {
@@ -283,11 +291,27 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         int count = 1;
         if (newChild.isAdoptable()) {
-            assert checkSameLanguages(newChild);
-            newChild.parent = this;
             count += NodeUtil.adoptChildrenAndCountHelper(newChild);
+            newChild.parent = this;
         }
         return count;
+    }
+
+    private static final NodeVisitor SAME_LANGUAGE_CHECK_VISITOR = new NodeVisitor() {
+        @Override
+        public boolean visit(Node node) {
+            if (node.isAdoptable()) {
+                assert node.parent.checkSameLanguages(node);
+                return true;
+            } else {
+                return false;
+            }
+        };
+    };
+
+    boolean checkSameLanguageOfChildren() {
+        NodeUtil.forEachChild(this, SAME_LANGUAGE_CHECK_VISITOR);
+        return true;
     }
 
     private boolean checkSameLanguages(final Node newChild) {

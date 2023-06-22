@@ -87,8 +87,9 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
         } else if (holderQualified.equals("org.graalvm.compiler.hotspot.JVMCIVersionCheck") && caller.getName().equals("main")) {
             // The main method in JVMCIVersionCheck is only called from the shell
             return;
-        } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot") || packageName.startsWith("org.graalvm.home")) {
-            // Truffle and SDK do not depend on JVMCI so they cannot use
+        } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot") ||
+                        packageName.startsWith("org.graalvm.home") || packageName.equals("org.graalvm.compiler.truffle.runtime.hotspot")) {
+            // Truffle, SDK and Truffle runtime do not depend on JVMCI so they cannot use
             // Services.getSavedProperties()
             return;
         } else if (packageName.startsWith("com.oracle.svm")) {
@@ -109,9 +110,8 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             ResolvedJavaMethod callee = t.targetMethod();
             if (callee.getDeclaringClass().equals(systemType)) {
                 if (callee.getName().equals("getProperty") || callee.getName().equals("getProperties")) {
-                    throw new VerificationError("Call to %s at callsite %s is prohibited. Call Services.getSavedProperties().get(String) instead.",
-                                    callee.format("%H.%n(%p)"),
-                                    caller.format("%H.%n(%p)"));
+                    throw new VerificationError(t, "call to %s is prohibited. Call Services.getSavedProperties().get(String) instead.",
+                                    callee.format("%H.%n(%p)"));
                 }
             } else {
                 for (int i = 0; i < boxTypes.length; i++) {
@@ -119,9 +119,8 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
                     if (callee.getDeclaringClass().equals(boxType)) {
                         String simpleName = boxType.toJavaName(false);
                         if (callee.getName().equals("get" + simpleName)) {
-                            throw new VerificationError("Call to %s at callsite %s is prohibited. Call %s.parse%s(Services.getSavedProperties().get(String)) instead.",
+                            throw new VerificationError(t, "call to %s is prohibited. Call %s.parse%s(Services.getSavedProperties().get(String)) instead.",
                                             callee.format("%H.%n(%p)"),
-                                            caller.format("%H.%n(%p)"),
                                             simpleName, simpleName);
                         }
                     }

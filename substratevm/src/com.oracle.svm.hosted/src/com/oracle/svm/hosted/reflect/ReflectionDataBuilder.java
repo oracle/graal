@@ -88,6 +88,7 @@ import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -673,9 +674,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForGenericSignature(Type[] types) {
+        registerTypesForGenericSignature(types, 0);
+    }
+
+    private void registerTypesForGenericSignature(Type[] types, int dimension) {
         if (types != null) {
             for (Type type : types) {
-                registerTypesForGenericSignature(type);
+                registerTypesForGenericSignature(type, dimension);
             }
         }
     }
@@ -721,19 +726,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
-            registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds));
+            registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);
         } else if (type instanceof GenericArrayType) {
-            registerTypesForGenericSignature(((GenericArrayType) type).getGenericComponentType(), dimension + 1);
+            registerTypesForGenericSignature(queryGenericInfo(((GenericArrayType) type)::getGenericComponentType), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
-            registerTypesForGenericSignature(parameterizedType.getActualTypeArguments());
-            registerTypesForGenericSignature(parameterizedType.getRawType(), dimension);
-            registerTypesForGenericSignature(parameterizedType.getOwnerType());
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getActualTypeArguments));
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getRawType), dimension);
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getOwnerType));
         } else if (type instanceof WildcardType) {
             /* Bounds are reified lazily. */
             WildcardType wildcardType = (WildcardType) type;
-            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getLowerBounds));
-            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getUpperBounds));
+            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getLowerBounds), dimension);
+            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getUpperBounds), dimension);
         }
     }
 
@@ -894,7 +899,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
+        LogUtils.warning("Could not register complete reflection metadata for %s. Reason(s): %s.", clazz.getTypeName(), messages);
     }
 
     protected void afterAnalysis() {

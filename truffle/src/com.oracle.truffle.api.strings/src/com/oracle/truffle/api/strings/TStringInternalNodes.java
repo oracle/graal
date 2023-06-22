@@ -1518,7 +1518,7 @@ final class TStringInternalNodes {
                 if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
                     return TStringConstants.getSingleByte(Encoding.UTF_16, TStringOps.readFromByteArray(arrayJS, 1, charOffset));
                 }
-                if (length == javaString.length()) {
+                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && length == javaString.length()) {
                     codePointLength = -1;
                     codeRange = TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
                 } else {
@@ -1527,7 +1527,7 @@ final class TStringInternalNodes {
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
             }
-            if (!copy || length == javaString.length()) {
+            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (!copy || length == javaString.length())) {
                 stride = strideJS;
                 offset = offsetJS;
                 array = arrayJS;
@@ -1561,7 +1561,7 @@ final class TStringInternalNodes {
                         @Cached InlinedConditionProfile reuseProfile) {
             assert TSCodeRange.is7Or8Bit(a.codeRange()) || TSCodeRange.isPrecise(a.codeRange());
             assert a.isLooselyCompatibleTo(Encoding.UTF_16);
-            final int stride = Stride.fromCodeRangeUTF16(a.codeRange());
+            final int stride = TStringUnsafe.COMPACT_STRINGS_ENABLED ? Stride.fromCodeRangeUTF16(a.codeRange()) : 1;
             final byte[] bytes;
             if (reuseProfile.profile(node, a instanceof TruffleString && arrayA instanceof byte[] && a.length() << a.stride() == ((byte[]) arrayA).length && a.stride() == stride)) {
                 assert a.offset() == 0;

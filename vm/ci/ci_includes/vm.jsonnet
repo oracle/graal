@@ -9,10 +9,12 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
-  vm_java_21:: graal_common.oraclejdk21 + vm_common.vm_env_mixin('21'),
+  vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
+  vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
 
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
   vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
+  vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',
@@ -186,6 +188,18 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      name: 'daily-deploy-vm-maven-windows-amd64',
      notify_groups:: ['deploy'],
     },
+
+    #
+    # Update the `stable` mx branch with the currently imported revision
+    #
+    vm_common.postmerge_vm_linux_amd64 + {
+      run: [
+        ['set-export', 'BRANCH_NAME', ['git', 'rev-parse', '--abbrev-ref', 'HEAD']],
+        ['bash', '-c', 'if [[ ${BRANCH_NAME} == master ]] || [[ ${BRANCH_NAME} == release/* ]] || [[ ${BRANCH_NAME} == cpu/* ]]; then git -C ${MX_HOME} push origin +HEAD:refs/heads/graal/${BRANCH_NAME}; fi']
+      ],
+        name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+    },
+
 
     #
     # Deploy GraalVM Base and Installables

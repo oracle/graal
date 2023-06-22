@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.File;
-import java.io.InputStream;
 import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
@@ -89,24 +88,14 @@ public final class Target_java_lang_ClassLoader {
     @Delete
     private static native void initSystemClassLoader();
 
-    @Substitute
-    private URL getResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
+    @Alias
+    public native Enumeration<URL> findResources(String name);
 
     @Substitute
     private Enumeration<URL> getResources(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        return Resources.createInputStream(name);
-    }
-
-    @Substitute
-    public static InputStream getSystemResourceAsStream(String name) {
-        return Resources.createInputStream(name);
+        /* Every class loader sees every resource, so we still need this substitution (GR-19998). */
+        Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(name);
+        return urls.hasMoreElements() ? urls : findResources(name);
     }
 
     @Substitute

@@ -50,9 +50,9 @@ import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
  * {@link #get(TruffleContext, Thread)}. Context thread locals can be created for languages and
  * instruments. See links below for usage examples.
  *
- * @see TruffleLanguage#createContextThreadLocal(com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory)
+ * @see TruffleLanguage.ContextLocalProvider#createContextThreadLocal(com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory)
  *      Usage with languages.
- * @see com.oracle.truffle.api.instrumentation.TruffleInstrument#createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextThreadLocalFactory)
+ * @see com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalProvider#createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextThreadLocalFactory)
  *      Usage with instruments.
  * @since 20.3
  */

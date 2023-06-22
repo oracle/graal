@@ -25,9 +25,6 @@
  */
 package com.oracle.svm.hosted.reflect.serialize;
 
-import static com.oracle.svm.hosted.reflect.serialize.SerializationFeature.capturingClasses;
-import static com.oracle.svm.hosted.reflect.serialize.SerializationFeature.warn;
-
 import java.io.Externalizable;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -59,8 +56,10 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -92,6 +91,8 @@ import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -105,7 +106,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class SerializationFeature implements InternalFeature {
-    static final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
+    final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -143,7 +144,10 @@ public class SerializationFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
+    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, OptionValues options) {
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
+        DebugContext debug = new DebugContext.Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).description(description).build();
+
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .method(method)
@@ -211,9 +215,9 @@ public class SerializationFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static void registerLambdasFromMethod(ResolvedJavaMethod method, DebugContext debug) {
+    private static void registerLambdasFromMethod(ResolvedJavaMethod method, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
-        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, debug);
+        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
         registerLambdasFromConstantNodesInGraph(graph);
     }
 
@@ -227,6 +231,7 @@ public class SerializationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        OptionValues options = impl.getBigBang().getOptions();
         serializationBuilder.flushConditionalConfiguration(access);
 
         /*
@@ -240,7 +245,7 @@ public class SerializationFeature implements InternalFeature {
                         .map(metaAccess::lookupJavaType)
                         .flatMap(SerializationFeature::allExecutablesDeclaredInClass)
                         .filter(m -> m.getCode() != null)
-                        .forEach(m -> registerLambdasFromMethod(m, impl.getDebugContext()));
+                        .forEach(m -> registerLambdasFromMethod(m, options));
 
         capturingClasses.clear();
     }
@@ -258,10 +263,6 @@ public class SerializationFeature implements InternalFeature {
                 throw serializationFallback;
             }
         }
-    }
-
-    static void warn(String str) {
-        System.err.println("Warning: " + str);
     }
 
     private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
@@ -325,7 +326,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
         boolean denied = deniedClasses.containsKey(clazz);
         if (denied && deniedClasses.get(clazz)) {
             deniedClasses.put(clazz, false); /* Warn only once */
-            warn("Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
+            LogUtils.warning("Serialization deny list contains %s. Image will not support serialization/deserialization of this class.", clazz.getName());
         }
         return !denied;
     }
@@ -386,13 +387,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             return;
         } else if (access.findSubclasses(clazz).size() > 1) {
             // The classes returned from access.findSubclasses API including the base class itself
-            warn("Class " + targetClassName + " has subclasses. No classes were registered for object serialization.\n");
+            LogUtils.warning("Class %s has subclasses. No classes were registered for object serialization.", targetClassName);
             return;
         }
         try {
             clazz.getDeclaredMethod("writeObject", ObjectOutputStream.class);
-            warn("Class " + targetClassName +
-                            " implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.\n");
+            LogUtils.warning("Class %s implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.", targetClassName);
             return;
         } catch (NoSuchMethodException e) {
             // Expected case. Do nothing
@@ -442,12 +442,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         if (ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class) == null) {
-            warn("Could not register " + serializationTargetClass + " for lambda serialization as it does not capture any serializable lambda.");
+            LogUtils.warning("Could not register %s for lambda serialization as it does not capture any serializable lambda.", serializationTargetClass);
             return;
         }
 
         registerConditionalConfiguration(condition, () -> {
-            capturingClasses.add(serializationTargetClass);
+            ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(serializationTargetClass);
             RuntimeReflection.register(serializationTargetClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
         });
@@ -505,13 +505,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 if (!customTargetConstructorClass.isAssignableFrom(serializationTargetClass)) {
-                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
-                                    " is not a superclass of the serialization target " + serializationTargetClass + ".");
+                    LogUtils.warning("The given customTargetConstructorClass %s is not a superclass of the serialization target %s.", customTargetConstructorClass.getName(), serializationTargetClass);
                     return;
                 }
                 if (ReflectionUtil.lookupConstructor(true, customTargetConstructorClass) == null) {
-                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
-                                    " does not declare a parameterless constructor.");
+                    LogUtils.warning("The given customTargetConstructorClass %s does not declare a parameterless constructor.", customTargetConstructorClass.getName());
                     return;
                 }
             }
