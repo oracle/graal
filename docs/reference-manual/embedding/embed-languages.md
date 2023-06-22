@@ -838,16 +838,12 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     /* Everything below is generic and does not need to change */
     /***********************************************************/
 
-    final Engine graalEngine = Engine.newBuilder().build();
-    final Language lang = graalEngine.getLanguages().get(LANGUAGE_ID);
-
-    private final List<String> extensions = new ArrayList<>();
-    private final List<String> mimeTypes = new ArrayList<>();
-    private final List<String> names = new ArrayList<>();
+    private final Engine polyglotEngine = Engine.newBuilder().build();
+    private final Language language = polyglotEngine.getLanguages().get(LANGUAGE_ID);
 
     @Override
     public String getEngineName() {
-        return lang.getImplementationName();
+        return language.getImplementationName();
     }
 
     @Override
@@ -857,38 +853,27 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
 
     @Override
     public List<String> getExtensions() {
-        if (extensions.isEmpty()) {
-            extensions.add(LANGUAGE_ID);
-        }
-        return Collections.unmodifiableList(extensions);
+        return List.of(LANGUAGE_ID);
     }
 
     @Override
     public List<String> getMimeTypes() {
-        if (mimeTypes.isEmpty()) {
-            mimeTypes.addAll(lang.getMimeTypes());
-        }
-        return Collections.unmodifiableList(mimeTypes);
+        return List.copyOf(language.getMimeTypes());
     }
 
     @Override
     public List<String> getNames() {
-        if (names.isEmpty()) {
-            names.add(lang.getName());
-            names.add(LANGUAGE_ID);
-            names.add(lang.getImplementationName());
-        }
-        return Collections.unmodifiableList(names);
+        return List.of(language.getName(), LANGUAGE_ID, language.getImplementationName());
     }
 
     @Override
     public String getLanguageName() {
-        return lang.getName();
+        return language.getName();
     }
 
     @Override
     public String getLanguageVersion() {
-        return lang.getVersion();
+        return language.getVersion();
     }
 
     @Override
@@ -929,8 +914,8 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     }
 
     private static final class PolyglotEngine implements ScriptEngine, Compilable {
-        final ScriptEngineFactory factory;
-        PolyglotContext defaultContext;
+        private final ScriptEngineFactory factory;
+        private PolyglotContext defaultContext;
 
         PolyglotEngine(ScriptEngineFactory factory) {
             this.factory = factory;
@@ -970,7 +955,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
                     throw new ScriptException(e);
                 }
             } else {
-                throw new ScriptException("invalid context");
+                throw new ClassCastException("invalid context");
             }
         }
 
@@ -1046,14 +1031,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
 
         @Override
         public void setContext(ScriptContext context) {
-            if (context instanceof PolyglotContext) {
-                PolyglotContext c = (PolyglotContext) context;
-                if (c.factory == factory) {
-                    this.defaultContext = c;
-                    return;
-                }
-            }
-            throw new IllegalArgumentException("The context of a Polyglot ScriptEngine must be created from that same engine");
+            throw new UnsupportedOperationException("The context of a Polyglot ScriptEngine cannot be modified.");
         }
 
         @Override
@@ -1064,7 +1042,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
 
     private static final class PolyglotContext implements ScriptContext {
         private Context context;
-        final ScriptEngineFactory factory;
+        private final ScriptEngineFactory factory;
         private final PolyglotReader in;
         private final PolyglotWriter out;
         private final PolyglotWriter err;
@@ -1083,7 +1061,6 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
                     .in(this.in)
                     .out(this.out)
                     .err(this.err)
-                    .allowExperimentalOptions(true)
                     .allowAllAccess(true);
                 for (Entry<String, Object> entry : getBindings(ScriptContext.GLOBAL_SCOPE).entrySet()) {
                     Object value = entry.getValue();
@@ -1211,7 +1188,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         }
 
         private static final class PolyglotReader extends InputStream {
-            private Reader reader;
+            private volatile Reader reader;
 
             public PolyglotReader(InputStreamReader inputStreamReader) {
                 this.reader = inputStreamReader;
@@ -1224,7 +1201,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         }
 
         private static final class PolyglotWriter extends OutputStream {
-            private Writer writer;
+            private volatile Writer writer;
 
             public PolyglotWriter(OutputStreamWriter outputStreamWriter) {
                 this.writer = outputStreamWriter;
@@ -1238,8 +1215,8 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     }
 
     private static final class PolyglotCompiledScript extends CompiledScript {
-        final Source source;
-        final ScriptEngine engine;
+        private final Source source;
+        private final ScriptEngine engine;
 
         public PolyglotCompiledScript(Source src, ScriptEngine engine) {
             this.source = src;
@@ -1261,10 +1238,10 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     }
 
     private static final class PolyglotBindings implements Bindings {
-        private Value langBindings;
+        private Value languageBindings;
 
-        PolyglotBindings(Value langBindings) {
-            this.langBindings = langBindings;
+        PolyglotBindings(Value languageBindings) {
+            this.languageBindings = languageBindings;
         }
 
         @Override
@@ -1296,7 +1273,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
 
         @Override
         public Set<String> keySet() {
-            return langBindings.getMemberKeys();
+            return languageBindings.getMemberKeys();
         }
 
         @Override
@@ -1335,7 +1312,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         @Override
         public Object put(String name, Object value) {
             Object previous = get(name);
-            langBindings.putMember(name, value);
+            languageBindings.putMember(name, value);
             return previous;
         }
 
@@ -1349,7 +1326,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         @Override
         public boolean containsKey(Object key) {
             if (key instanceof String) {
-                return langBindings.hasMember((String) key);
+                return languageBindings.hasMember((String) key);
             } else {
                 return false;
             }
@@ -1358,9 +1335,9 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         @Override
         public Object get(Object key) {
             if (key instanceof String) {
-                Value value = langBindings.getMember((String) key);
+                Value value = languageBindings.getMember((String) key);
                 if (value != null) {
-                    return value.asHostObject();
+                    return value.as(Object.class);
                 }
             }
             return null;
@@ -1370,7 +1347,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         public Object remove(Object key) {
             Object prev = get(key);
             if (prev != null) {
-                langBindings.removeMember((String) key);
+                languageBindings.removeMember((String) key);
                 return prev;
             } else {
                 return null;
