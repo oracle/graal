@@ -68,6 +68,7 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.operation.tracing.TracingMetadata.SpecializationNames;
 
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true)),
@@ -75,10 +76,10 @@ import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Vari
                 @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, enableBaselineInterpreter = true)),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "test_operations_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, decisionsFile = "test_operations_decisions.json"))
+                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, //
+                                decisionsFile = "test_operations_decisions.json"))
 })
 @GenerateAOT
-@OperationProxy(SomeOperationNode.class)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
 public abstract class TestOperations extends RootNode implements OperationRootNode {
@@ -280,6 +281,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         }
     }
 
+    @Operation
     public static final class ToBoolean {
         @Specialization
         public static boolean doLong(long l) {
@@ -294,6 +296,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         @Specialization
         public static boolean doString(String s) {
             return s != null;
+        }
+    }
+
+    @Operation
+    public static final class GetSourcePosition {
+        @Specialization
+        public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {
+            return ((TestOperations) rootNode).getSourceSectionAtBci(bci);
         }
     }
 }
@@ -320,16 +330,5 @@ class Association {
     @NeverDefault
     public Assumption getAssumption() {
         return Assumption.ALWAYS_VALID;
-    }
-}
-
-@GenerateNodeFactory
-abstract class SomeOperationNode extends Node {
-
-    abstract int execute();
-
-    @Specialization
-    public static int doMagic() {
-        return 1337;
     }
 }

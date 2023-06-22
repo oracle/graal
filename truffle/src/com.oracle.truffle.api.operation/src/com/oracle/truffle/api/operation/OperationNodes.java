@@ -50,9 +50,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
-    protected final OperationParser<? extends OperationBuilder> parse;
+    private final OperationParser<? extends OperationBuilder> parse;
     @CompilationFinal(dimensions = 1) protected T[] nodes;
-    @CompilationFinal(dimensions = 1) protected Source[] sources;
+    @CompilationFinal(dimensions = 1) protected volatile Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
     protected OperationNodes(OperationParser<? extends OperationBuilder> parse) {
@@ -75,6 +75,10 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
 
     public boolean hasInstrumentation() {
         return hasInstrumentation;
+    }
+
+    public OperationParser<? extends OperationBuilder> getParser() {
+        return parse;
     }
 
     private boolean checkNeedsWork(OperationConfig config) {
@@ -121,5 +125,4 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
             reparse(OperationConfig.COMPLETE);
         }
     }
-
 }
