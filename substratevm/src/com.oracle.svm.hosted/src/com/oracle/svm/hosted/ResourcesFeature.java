@@ -65,6 +65,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -311,8 +312,8 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void registerIOException(Module module, String resourceName, IOException e) {
-            Resources.singleton().registerIOException(module, resourceName, e);
+        public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
+            Resources.singleton().registerIOException(module, resourceName, e, linkAtBuildTime);
         }
 
         @Override
@@ -332,13 +333,12 @@ public final class ResourcesFeature implements InternalFeature {
 
         DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
-        for (ResourcePattern resourcePattern : includePatterns) {
-            Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            for (ResourcePattern resourcePattern : includePatterns) {
+                Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+            }
         }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
-        for (ResourcePattern resourcePattern : excludePatterns) {
-            Resources.singleton().registerExcludePattern(resourcePattern.moduleName, resourcePattern.pattern);
-        }
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
         try {

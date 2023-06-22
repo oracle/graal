@@ -150,7 +150,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 try (InputStream is = content.get()) {
                     resourceCollector.addResource(info.module, resName, is, false);
                 } catch (IOException resourceException) {
-                    resourceCollector.registerIOException(info.module, resName, resourceException);
+                    resourceCollector.registerIOException(info.module, resName, resourceException, LinkAtBuildTimeSupport.singleton().moduleLinkAtBuildTime(info.module.getName()));
                 }
             }
         } catch (IOException e) {
@@ -187,14 +187,14 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     }
                     filtered.forEach(queue::push);
                 } catch (IOException resourceException) {
-                    collector.registerIOException(null, relativeFilePath, resourceException);
+                    collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         collector.addResource(null, relativeFilePath, is, false);
                     } catch (IOException resourceException) {
-                        collector.registerIOException(null, relativeFilePath, resourceException);
+                        collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                     }
                 }
             }
@@ -233,7 +233,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         try (InputStream is = jf.getInputStream(entry)) {
                             collector.addResource(null, entry.getName(), is, true);
                         } catch (IOException resourceException) {
-                            collector.registerIOException(null, entry.getName(), resourceException);
+                            collector.registerIOException(null, entry.getName(), resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(entry.getName()));
                         }
                     }
                 }

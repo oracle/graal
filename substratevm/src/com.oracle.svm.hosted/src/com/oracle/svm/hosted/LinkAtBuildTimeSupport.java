@@ -89,6 +89,14 @@ public final class LinkAtBuildTimeSupport {
         return isIncluded(clazz) != null;
     }
 
+    public boolean moduleLinkAtBuildTime(String module) {
+        return classFilter.isModuleIncluded(module) != null;
+    }
+
+    public boolean packageOrClassAtBuildTime(String packageName) {
+        return classFilter.isPackageOrClassIncluded(packageName) != null;
+    }
+
     private Object isIncluded(Class<?> clazz) {
         if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
             return "system default";

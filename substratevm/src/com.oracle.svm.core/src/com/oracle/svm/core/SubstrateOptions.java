@@ -945,6 +945,9 @@ public class SubstrateOptions {
     public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
                     ReportingMode.Throw);
 
+    @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
+    public static final HostedOptionKey<Boolean> ThrowLinkAtBuildTimeIOExceptions = new HostedOptionKey<>(false);
+
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 

@@ -31,13 +31,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
@@ -58,6 +59,7 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * Support for resources on Substrate VM. All resources that need to be available at run time need
@@ -83,8 +85,7 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, Object> resources = ImageHeapMap.create();
-    private final List<Pair<String, Pattern>> includePatterns = new ArrayList<>();
-    private final List<Pair<String, Pattern>> excludePatterns = new ArrayList<>();
+    private final List<Pair<String, String>> includePatterns = new ArrayList<>();
 
     /**
      * The object used to mark a resource as reachable according to the metadata. It can be obtained
@@ -157,6 +158,7 @@ public final class Resources {
             lastModifiedTime = new Date().getTime();
         }
     }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private Object addEntry(Module module, String resourceName, Object newEntry, boolean isDirectory, boolean fromJar) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
@@ -232,21 +234,24 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIOException(String resourceName, IOException e) {
-        registerIOException(null, resourceName, e);
+    public void registerIOException(String resourceName, IOException e, boolean linkAtBuildTime) {
+        registerIOException(null, resourceName, e, linkAtBuildTime);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIOException(Module module, String resourceName, IOException e) {
+    public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
+        if (linkAtBuildTime) {
+            if (SubstrateOptions.ThrowLinkAtBuildTimeIOExceptions.getValue()) {
+                throw new RuntimeException("Resource " + resourceName + " from module " + module.getName() + " produced an IOException.", e);
+            } else {
+                LogUtils.warning("Resource " + resourceName + " from module " + module.getName() + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
+            }
+        }
         Pair<Module, String> key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
             resources.put(key, e);
         }
-    }
-
-    public void registerNegativeQueryRuntime(String resourceName) {
-        addEntry(null, resourceName, NEGATIVE_QUERY, false, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -259,31 +264,18 @@ public final class Resources {
         addEntry(module, resourceName, NEGATIVE_QUERY, false, false);
     }
 
-    private void registerPattern(List<Pair<String, Pattern>> patterns, String module, Pattern pattern) {
-        synchronized (patterns) {
-            updateTimeStamp();
-            patterns.add(Pair.create(module, pattern));
-        }
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIncludePattern(Pattern pattern) {
+    public void registerIncludePattern(String pattern) {
         registerIncludePattern(null, pattern);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIncludePattern(String module, Pattern pattern) {
-        registerPattern(includePatterns, module, pattern);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExcludePattern(Pattern pattern) {
-        registerExcludePattern(null, pattern);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExcludePattern(String module, Pattern pattern) {
-        registerPattern(excludePatterns, module, pattern);
+    public void registerIncludePattern(String module, String pattern) {
+        assert MissingRegistrationUtils.throwMissingRegistrationErrors();
+        synchronized (includePatterns) {
+            updateTimeStamp();
+            includePatterns.add(Pair.create(module, pattern));
+        }
     }
 
     /**
@@ -323,13 +315,8 @@ public final class Resources {
         Object entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (Pair<String, Pattern> pattern : excludePatterns) {
-                    if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
-                        return missingMetadata(resourceName, throwOnMissing);
-                    }
-                }
-                for (Pair<String, Pattern> pattern : includePatterns) {
-                    if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
+                for (Pair<String, String> pattern : includePatterns) {
+                    if (Objects.equals(moduleName, pattern.getLeft()) && (matchResource(pattern.getRight(), resourceName) || matchResource(pattern.getRight(), canonicalResourceName))) {
                         return null;
                     }
                 }
@@ -481,6 +468,38 @@ public final class Resources {
         for (int index = 0; index < numberOfResources; index++) {
             resourcesURLs.add(createURL(module, canonicalResourceName, index));
         }
+    }
+
+    private static boolean matchResource(String pattern, String resource) {
+        if (pattern.equals(resource)) {
+            return true;
+        }
+
+        if (!pattern.contains("*")) {
+            return false;
+        }
+
+        if (pattern.endsWith("*")) {
+            return resource.startsWith(pattern.substring(0, pattern.length() - 1));
+        }
+
+        String[] parts = pattern.split("\\*");
+
+        int i = parts.length - 1;
+        boolean found = false;
+        while (i > 0 && !found) {
+            found = !parts[i - 1].endsWith("\\");
+            i--;
+        }
+
+        if (!found) {
+            return false;
+        }
+
+        String start = String.join("*", Arrays.copyOfRange(parts, 0, i + 1));
+        String end = String.join("*", Arrays.copyOfRange(parts, i + 1, parts.length));
+
+        return resource.startsWith(start) && resource.endsWith(end);
     }
 }
 

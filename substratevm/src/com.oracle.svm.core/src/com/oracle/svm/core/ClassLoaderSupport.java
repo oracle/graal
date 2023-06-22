@@ -60,7 +60,7 @@ public abstract class ClassLoaderSupport {
 
         void registerNegativeQuery(Module module, String resourceName);
 
-        void registerIOException(Module module, String resourceName, IOException e);
+        void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);
