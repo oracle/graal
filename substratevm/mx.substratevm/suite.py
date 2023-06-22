@@ -283,9 +283,6 @@ suite = {
                 "jdk.management": [
                     "com.sun.management.internal"
                 ],
-                "jdk.management.agent": [
-                    "jdk.internal.agent",
-                ],
                 "jdk.jfr": [
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
@@ -1327,7 +1324,6 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
-                    "jdk.management.agent",
                     "jdk.management.jfr",
                 ],
                 "uses" : [
