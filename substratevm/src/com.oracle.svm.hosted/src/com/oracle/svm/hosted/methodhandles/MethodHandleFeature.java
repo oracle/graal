@@ -109,6 +109,16 @@ public class MethodHandleFeature implements InternalFeature {
     private Class<?> classSpecializerClass;
     private Class<?> arrayAccessorClass;
 
+    /**
+     * A new {@link MethodType} interning table which contains only objects that are already part of
+     * the image. We cannot replace it with an empty table like we do for other caches because the
+     * method handle code uses reference comparisons on {@link MethodType} objects and assumes that
+     * unidentical objects are not equal. This breaks if an object is created at runtime because an
+     * equivalent image heap object is not part of the table and subsequently fails a comparison.
+     */
+    private Object runtimeMethodTypeInternTable;
+    private Method concurrentWeakInternSetAdd;
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         seenMethodHandles = ConcurrentHashMap.newKeySet();
@@ -145,7 +155,11 @@ public class MethodHandleFeature implements InternalFeature {
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
         classSpecializerCache = ReflectionUtil.lookupField(classSpecializerClass, "cache");
 
-        access.registerObjectReplacer(this::registerMethodHandle);
+        Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
+        runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
+        concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
+
+        access.registerObjectReplacer(this::registerSeenObject);
     }
 
     @Override
@@ -229,6 +243,9 @@ public class MethodHandleFeature implements InternalFeature {
                                 return analysisType.isPresent() && analysisType.get().isReachable();
                             }
                         });
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
+                        (receiver, originalValue) -> runtimeMethodTypeInternTable);
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -327,11 +344,23 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-    private Object registerMethodHandle(Object obj) {
+    private Object registerSeenObject(Object obj) {
         if (!BuildPhaseProvider.isAnalysisFinished()) {
-            registerMethodHandleRecurse(obj);
+            if (obj instanceof MethodType) {
+                registerMethodType(obj);
+            } else {
+                registerMethodHandleRecurse(obj);
+            }
         }
         return obj;
+    }
+
+    private void registerMethodType(Object obj) {
+        try {
+            concurrentWeakInternSetAdd.invoke(runtimeMethodTypeInternTable, obj);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     private void registerMethodHandleRecurse(Object obj) {
@@ -423,6 +452,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.rescanRoot(lambdaFormNFIdentity);
         access.rescanRoot(lambdaFormNFZero);
         access.rescanRoot(typedAccessors);
+        access.rescanObject(runtimeMethodTypeInternTable);
     }
 
     private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
