@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.JavaThreads;
 
 public class ObjectAllocationSampleEvent {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
@@ -53,7 +54,7 @@ public class ObjectAllocationSampleEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Class<?> clazz) {
         if (JfrEvent.ObjectAllocationSample.shouldEmit()) {
-            long currentAllocationSize = PlatformThreads.getThreadAllocatedBytes(com.oracle.svm.core.thread.JavaThreads.getCurrentThreadId());
+            long currentAllocationSize = PlatformThreads.getThreadAllocatedBytes(JavaThreads.getCurrentThreadId());
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);

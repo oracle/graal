@@ -27,6 +27,8 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
+import static java.lang.Math.log;
+
 public class JfrThrottlerWindow {
     // reset every rotation
     public UninterruptibleUtils.AtomicLong measuredPopSize; // already volatile
@@ -83,15 +85,14 @@ public class JfrThrottlerWindow {
 
     public void configure(long debt, double projectedPopSize) {
         this.debt = debt;
-        if (projectedPopSize <= samplesPerWindow) {
+        if (projectedPopSize <= samplesExpected()) {
             samplingInterval = 1;
         } else {
             // It's important to round *up* otherwise we risk violating the upper bound
-            samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected()); // ***
-                                                                                                // TODO:
-                                                                                                // geometric
-                                                                                                // distribution
-                                                                                                // stuff
+            // TODO geometric
+// samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected());
+            double projectedProbability = (double) samplesExpected() / projectedPopSize;
+            samplingInterval = nextGeometric(projectedProbability, Math.random());
         }
         // activeWindowSampleLimit is either projectedPopSize or samplesExpected() (if
         // projectedPopSize < samplesPerWindow)
@@ -106,6 +107,15 @@ public class JfrThrottlerWindow {
             endTicks.set(JfrTicks.currentTimeNanos() + windowDurationNs);
         }
 
+    }
+
+    long nextGeometric(double p, double u) { // *** is P is larger, then its more likely sampling
+                                             // interval is smaller
+        if (u == 0.0) {
+            u = 0.01;
+        }
+        // Inverse CDF for the geometric distribution.
+        return (long) Math.ceil(log(1.0 - u) / log(1.0 - p));
     }
 
     public boolean isExpired() {

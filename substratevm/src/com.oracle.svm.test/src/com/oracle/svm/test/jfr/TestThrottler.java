@@ -176,6 +176,45 @@ public class TestThrottler extends JfrRecordingTest {
      * Window lookback for this test is 25. Window duration is 1 second. Window divisor is default
      * of 5.
      */
+// @Test
+// public void testDebt() {
+// final long samplesPerWindow = 10;
+// final long actualSamplesPerWindow = 50;
+// JfrThrottler throttler = new JfrThrottler(mutex);
+// throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD *
+// WINDOW_DURATION_MS);
+//
+// for (int p = 0; p < 50; p++) {
+// for (int i = 0; i < actualSamplesPerWindow; i++) {
+// throttler.sample();
+// }
+// expireAndRotate(throttler);
+// }
+// // now the sampling interval must be 50 / 10 = 5
+// assertTrue("Sampling interval is incorrect:" + throttler.getActiveWindowSamplingInterval(),
+// throttler.getActiveWindowSamplingInterval() == 5);
+//
+// // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 10 -
+// // (20/5) = 6
+// // samples
+// for (int i = 0; i < 20; i++) {
+// throttler.sample();
+// }
+// expireAndRotate(throttler);
+// assertTrue("Should have debt from under sampling.", throttler.getActiveWindowDebt() == 6);
+// // sampling interval should be 3 now. Take no samples and rotate. Results in accumulated
+// // debt 6 + 10
+// expireAndRotate(throttler);
+// assertTrue("Should have accumulated debt from under sampling consecutively.",
+// throttler.getActiveWindowDebt() == 16);
+// expireAndRotate(throttler);
+// expireAndRotate(throttler);
+// assertTrue("Debt is so high we should not skip any samples now.",
+// throttler.getActiveWindowSamplingInterval() == 1);
+// expireAndRotate(throttler);
+// assertTrue("Debt should be forgiven at beginning of new period.", throttler.getActiveWindowDebt()
+// == 0);
+// }
     @Test
     public void testDebt() {
         final long samplesPerWindow = 10;
@@ -189,26 +228,36 @@ public class TestThrottler extends JfrRecordingTest {
             }
             expireAndRotate(throttler);
         }
-        // now the sampling interval must be 50 / 10 = 5
-        assertTrue("Sampling interval is incorrect:" + throttler.getActiveWindowSamplingInterval(), throttler.getActiveWindowSamplingInterval() == 5);
 
-        // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 10 -
-        // (20/5) = 6
-        // samples
-        for (int i = 0; i < 20; i++) {
+        // Do not sample for this window. Rotate.
+        expireAndRotate(throttler);
+
+        // Debt should be at least 10 because we took no samples last window.
+        long debt = throttler.getActiveWindowDebt();
+        assertTrue("Should have debt from under sampling.", debt >= 10);
+
+        // Limit max potential samples to half samplesPerWindow. Meaning debt must increase by at
+        // least samplesPerWindow/2.
+        for (int i = 0; i < samplesPerWindow / 2; i++) {
             throttler.sample();
         }
         expireAndRotate(throttler);
-        assertTrue("Should have debt from under sampling.", throttler.getActiveWindowDebt() == 6);
-        // sampling interval should be 3 now. Take no samples and rotate. Results in accumulated
-        // debt 6 + 10
+        assertTrue("Should have debt from under sampling.", throttler.getActiveWindowDebt() >= debt + samplesPerWindow / 2);
+
+        // Window lookback is 25. Do not sample for 25 windows.
+        for (int i = 0; i < 25; i++) {
+            expireAndRotate(throttler);
+        }
+
+        // At this point sampling interval must be 1 because the projected population must be 0.
+        for (int i = 0; i < (samplesPerWindow + samplesPerWindow * WINDOWS_PER_PERIOD); i++) {
+            throttler.sample();
+        }
+
+        assertFalse(throttler.sample());
+
         expireAndRotate(throttler);
-        assertTrue("Should have accumulated debt from under sampling consecutively.", throttler.getActiveWindowDebt() == 16);
-        expireAndRotate(throttler);
-        expireAndRotate(throttler);
-        assertTrue("Debt is so high we should not skip any samples now.", throttler.getActiveWindowSamplingInterval() == 1);
-        expireAndRotate(throttler);
-        assertTrue("Debt should be forgiven at beginning of new period.", throttler.getActiveWindowDebt() == 0);
+        assertTrue(throttler.getActiveWindowDebt() == 0);
     }
 
     /**
@@ -241,13 +290,9 @@ public class TestThrottler extends JfrRecordingTest {
         assertTrue(throttler.sample());
 
         // Test applying throttling settings to an in-progress recording
-        Recording recording = startRecording(new String[]{}, null, new HashMap<>()); // don't use
-                                                                                     // default
-                                                                                     // configuration
-                                                                                     // because it
-                                                                                     // includes
-                                                                                     // ObjectAllocationSample
-                                                                                     // by default
+        // Avoid using default configuration becuase it enables ObjectAllocationSample events by
+        // default
+        Recording recording = startRecording(new String[]{}, null, new HashMap<>());
         recording.enable(JfrEvent.ObjectAllocationSample.getName()).with("throttle", "0/s");
         final int alignedHeapChunkSize = com.oracle.svm.core.util.UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
         allocateCharArray(alignedHeapChunkSize);
@@ -323,8 +368,7 @@ public class TestThrottler extends JfrRecordingTest {
         final int windowCount = 10000;
         final int expectedSamplesPerWindow = 50;
         final int expectedSamples = expectedSamplesPerWindow * windowCount;
-        final int windowLookBackCount = 50;
-        final double maxSampleBias = 0.11;
+
         JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(expectedSamplesPerWindow * WINDOWS_PER_PERIOD, windowDurationMs * WINDOWS_PER_PERIOD);
 
@@ -347,13 +391,11 @@ public class TestThrottler extends JfrRecordingTest {
             expireAndRotate(throttler);
         }
         int targetSampleSize = samplePointsPerWindow * windowCount;
-        System.out.println("Population size:" + populationSize + " Sample size: " + sampleSize);
         expectNear(targetSampleSize, sampleSize, expectedSamples * errorFactor);
         assertDistributionProperties(distributionSlots, population, sample, populationSize, sampleSize);
     }
 
     private static void expectNear(double value1, double value2, double error) {
-// System.out.println(value1 +" "+ value2);
         assertTrue(Math.abs(value1 - value2) <= error);
     }
 
@@ -381,7 +423,6 @@ public class TestThrottler extends JfrRecordingTest {
         sampleVariance = sampleVariance / (sampleSize - 1);
         double populationStdev = Math.sqrt(populationVariance);
         double sampleStdev = Math.sqrt(sampleVariance);
-// System.out.println("populationStdev:"+populationStdev +" sampleStdev:"+sampleStdev );
         expectNear(populationStdev, sampleStdev, 0.5); // 0.5 value copied from Hotspot test
         expectNear(populationMean, sampleMean, populationStdev);
     }
