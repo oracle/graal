@@ -295,9 +295,17 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return parent.resolveVariable(variable);
                 }
 
-                // should have more specific type
-                if (name.equals("this") || name.equals("$root")) {
+                /**
+                 * TODO: This is a hack to suppress build failures for now. The Operation
+                 * implementation for SL modifies the existing AST nodes, also binding $root and
+                 * $bci, which causes build errors when they are processed as regular Truffle DSL
+                 * nodes. This hack patches in values to avoid build failures, but we should
+                 * actually fix the SL implementation.
+                 */
+                if (name.equals("$root")) {
                     return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
+                } else if (name.equals("$bci")) {
+                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
                 }
 
                 return null;

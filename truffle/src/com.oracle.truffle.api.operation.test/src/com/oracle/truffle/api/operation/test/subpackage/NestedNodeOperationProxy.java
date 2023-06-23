@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("truffle-inlining")
 public abstract class NestedNodeOperationProxy extends Node {
     public abstract Object execute(VirtualFrame frame, Object obj);
 
@@ -20,7 +21,7 @@ public abstract class NestedNodeOperationProxy extends Node {
         }
 
         @Specialization
-        static Object doNull(Object obj) {
+        static Object doNull(@SuppressWarnings("unused") Object obj) {
             return null;
         }
     }

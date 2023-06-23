@@ -330,6 +330,18 @@ public class ErrorTests {
             }
         }
 
+        @Operation
+        public static final class BadFallbackOperation {
+            @Specialization
+            public static void doInts(int a, int b) {
+            }
+
+            @Fallback
+            public static void doFallback(Object a,
+                            @ExpectError("Value parameters to @Fallback specializations of Operation nodes must have type Object.") int b) {
+            }
+        }
+
         @ExpectError("Operation class name cannot contain underscores.")
         @Operation
         public static final class Underscored_Operation {

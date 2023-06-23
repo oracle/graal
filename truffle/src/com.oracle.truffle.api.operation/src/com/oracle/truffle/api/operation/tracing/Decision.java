@@ -65,7 +65,7 @@ abstract class Decision {
 
     protected abstract String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue);
 
-    protected String createsInstruction(OperationRootNodeStatistics stats) {
+    protected String createsInstruction(@SuppressWarnings("unused") OperationRootNodeStatistics stats) {
         return null;
     }
 
