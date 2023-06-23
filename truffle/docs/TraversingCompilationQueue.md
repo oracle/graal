@@ -13,7 +13,7 @@ This document gives motivation and an overview of this approach.
 
 During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count").
 Once this counter reaches a certain threshold the call target is deemed "hot" and scheduled for compilation.
-In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/jdk.internal.vm.compiler/[…]rg/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
+In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
 The Truffle runtime spawns several compiler threads (`--engine.CompilerThreads`) that take tasks from the queue and compile the specified call targets.
 
 The initial implementation of the compilation queue in Truffle was a straightforward FIFO queue.
