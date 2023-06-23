@@ -224,6 +224,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         buildRuntimeMetadata(threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
     }
+
     private Path getBitcodePath(int id) {
         return basePath.resolve(getBitcodeFilename(id));
     }
