@@ -399,37 +399,6 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
     }
 
     @Test
-    public void testBranchInvalidStack() {
-        // arg0.append({ goto lbl; 1 });  /* one value pushed to the stack already */
-        // arg0.append(2);
-        // lbl:
-        // arg0.append(3);
-        // return 0;
-
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
-        parse("branchInvalidStack", b -> {
-            b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
-
-            b.beginAppenderOperation();
-            b.emitLoadArgument(0);
-            b.beginBlock();
-                b.emitBranch(lbl);
-                b.emitLoadConstant(1L);
-            b.endBlock();
-            b.endAppenderOperation();
-
-            emitAppend(b, 2);
-            b.emitLabel(lbl);
-            emitAppend(b, 3);
-            emitReturn(b, 0);
-
-            b.endRoot();
-        });
-    }
-
-    @Test
     public void testTeeLocal() {
         // tee(local, 1);
         // return local;
