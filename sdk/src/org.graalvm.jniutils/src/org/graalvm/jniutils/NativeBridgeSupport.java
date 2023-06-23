@@ -40,6 +40,9 @@
  */
 package org.graalvm.jniutils;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
 /**
@@ -64,6 +67,8 @@ public interface NativeBridgeSupport {
      * Logs the message.
      */
     void trace(String message);
+
+    <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> onCreate, Consumer<T> onTerminate);
 
     /**
      * Returns a {@code NativeBridgeSupport} instance registered in the {@link ImageSingletons}.

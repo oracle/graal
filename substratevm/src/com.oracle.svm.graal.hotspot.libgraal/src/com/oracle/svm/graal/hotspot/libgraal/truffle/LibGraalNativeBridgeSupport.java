@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
-import jdk.vm.ci.services.Services;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.NativeBridgeSupport;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import jdk.vm.ci.services.Services;
 
 public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
 
@@ -60,7 +65,14 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
         if (!inTrace.get()) {
             inTrace.set(true);
             try {
-                TTY.println(message);
+                StringBuilder sb = new StringBuilder();
+                sb.append('[').append(IsolateUtil.getIsolateID()).append(':').append(Thread.currentThread().getName()).append(']');
+                JNIMethodScope scope = JNIMethodScope.scopeOrNull();
+                if (scope != null) {
+                    sb.append(new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' '));
+                }
+                sb.append(message);
+                TTY.println(sb.toString());
             } finally {
                 inTrace.remove();
             }
@@ -84,5 +96,10 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
             traceLevel.set(res);
         }
         return res;
+    }
+
+    @Override
+    public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onTerminate) {
+        return Services.createTerminatingThreadLocal(initialValue, onTerminate);
     }
 }

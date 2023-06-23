@@ -42,10 +42,10 @@ package org.graalvm.jniutils;
 
 import static org.graalvm.jniutils.JNIUtil.getFeatureName;
 
+import java.util.Objects;
+
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
-
-import java.util.Objects;
 
 /**
  * Scope of a call from HotSpot to native method. This also provides access to the {@link JNIEnv}
@@ -163,7 +163,7 @@ public class JNIMethodScope implements AutoCloseable {
         }
     }
 
-    int depth() {
+    public final int depth() {
         int depth = 0;
         JNIMethodScope ancestor = parent;
         while (ancestor != null) {

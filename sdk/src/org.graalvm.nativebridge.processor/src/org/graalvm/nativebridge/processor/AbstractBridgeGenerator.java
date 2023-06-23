@@ -114,7 +114,7 @@ abstract class AbstractBridgeGenerator {
 
     abstract void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName);
 
-    abstract MarshallerSnippets marshallerSnippets(MarshallerData marshallerData);
+    abstract MarshallerSnippet marshallerSnippets(MarshallerData marshallerData);
 
     void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
     }
@@ -152,11 +152,11 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    final CacheSnippets cacheSnippets() {
+    final CacheSnippet cacheSnippets() {
         if (definitionData.hasCustomDispatch()) {
-            return CacheSnippets.customDispatch(types, parser.typeCache);
+            return CacheSnippet.customDispatch(types, parser.typeCache);
         } else {
-            return CacheSnippets.standardDispatch(types, parser.typeCache);
+            return CacheSnippet.standardDispatch(types, parser.typeCache);
         }
     }
 
@@ -262,7 +262,7 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippets cacheSnippets) {
+    void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippet cacheSnippets) {
         for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
@@ -273,7 +273,7 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateCacheFieldsInit(CodeBuilder builder, CacheSnippets cacheSnippets) {
+    void generateCacheFieldsInit(CodeBuilder builder, CacheSnippet cacheSnippets) {
         for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
@@ -437,7 +437,7 @@ abstract class AbstractBridgeGenerator {
         return isBinaryMarshallable(marshaller, type, hostToIsolate) && marshaller.out != null;
     }
 
-    abstract static class MarshallerSnippets {
+    abstract static class MarshallerSnippet {
 
         private final NativeBridgeProcessor processor;
         private final AbstractTypeCache cache;
@@ -445,7 +445,7 @@ abstract class AbstractBridgeGenerator {
         final MarshallerData marshallerData;
         final Types types;
 
-        MarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache, BinaryNameCache binaryNameCache) {
+        MarshallerSnippet(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache, BinaryNameCache binaryNameCache) {
             this.processor = processor;
             this.marshallerData = marshallerData;
             this.types = types;
@@ -905,12 +905,12 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    abstract static class CacheSnippets {
+    abstract static class CacheSnippet {
 
         final Types types;
         final AbstractTypeCache cache;
 
-        CacheSnippets(Types type, AbstractTypeCache cache) {
+        CacheSnippet(Types type, AbstractTypeCache cache) {
             this.types = type;
             this.cache = cache;
         }
@@ -925,15 +925,15 @@ abstract class AbstractBridgeGenerator {
 
         abstract CharSequence writeCache(CodeBuilder currentBuilder, CharSequence cacheField, CharSequence receiver, CharSequence value);
 
-        static CacheSnippets standardDispatch(Types types, AbstractTypeCache cache) {
+        static CacheSnippet standardDispatch(Types types, AbstractTypeCache cache) {
             return new StandardDispatch(types, cache);
         }
 
-        static CacheSnippets customDispatch(Types types, AbstractTypeCache cache) {
+        static CacheSnippet customDispatch(Types types, AbstractTypeCache cache) {
             return new CustomDispatch(types, cache);
         }
 
-        private static final class StandardDispatch extends CacheSnippets {
+        private static final class StandardDispatch extends CacheSnippet {
 
             StandardDispatch(Types types, AbstractTypeCache cache) {
                 super(types, cache);
@@ -965,7 +965,7 @@ abstract class AbstractBridgeGenerator {
             }
         }
 
-        private static final class CustomDispatch extends CacheSnippets {
+        private static final class CustomDispatch extends CacheSnippet {
 
             CustomDispatch(Types type, AbstractTypeCache cache) {
                 super(type, cache);

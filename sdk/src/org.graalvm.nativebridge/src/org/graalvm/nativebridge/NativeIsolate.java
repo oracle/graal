@@ -40,8 +40,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -52,7 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.services.Services;
+import org.graalvm.jniutils.NativeBridgeSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
@@ -64,7 +63,6 @@ public final class NativeIsolate {
     private static final long NULL = 0L;
     private static final Map<Long, NativeIsolate> isolates = new ConcurrentHashMap<>();
     private static final AtomicInteger UUIDS = new AtomicInteger(0);
-    private static final Method createTerminatingThreadLocal = methodOrNull(Services.class, "createTerminatingThreadLocal", Supplier.class, Consumer.class);
 
     private final long uuid;
     private final long isolateId;
@@ -83,8 +81,8 @@ public final class NativeIsolate {
         this.config = config;
         this.cleaners = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.threads = new ArrayList<>();
-        this.attachedIsolateThread = createTerminatingThreadLocal != null ? NativeIsolate.invoke(createTerminatingThreadLocal, null,
-                        (Supplier<NativeIsolateThread>) () -> null, (Consumer<NativeIsolateThread>) this::detachThread) : new ThreadLocal<>();
+        this.attachedIsolateThread = ImageSingletons.lookup(NativeBridgeSupport.class).createTerminatingThreadLocal((Supplier<NativeIsolateThread>) () -> null,
+                        (Consumer<NativeIsolateThread>) this::detachThread);
         this.state = State.ACTIVE;
     }
 
@@ -302,23 +300,6 @@ public final class NativeIsolate {
     private synchronized void detachThread(NativeIsolateThread nativeIsolateThread) {
         if (state.isValid() && nativeIsolateThread != null && !nativeIsolateThread.isNativeThread()) {
             config.detachThread(nativeIsolateThread.isolateThread);
-        }
-    }
-
-    private static Method methodOrNull(Class<?> enclosingClass, String methodName, Class<?>... parameterTypes) {
-        try {
-            return enclosingClass.getDeclaredMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException e) {
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> T invoke(Method method, Object receiver, Object... args) {
-        try {
-            return (T) method.invoke(receiver, args);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new InternalError(e);
         }
     }
 

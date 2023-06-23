@@ -529,13 +529,6 @@ suite = {
         "exports" : [
           "org.graalvm.jniutils",
         ],
-        "requiresConcealed" : {
-          "jdk.internal.vm.ci" : [
-            "jdk.vm.ci.meta",
-            "jdk.vm.ci.code",
-            "jdk.vm.ci.services",
-          ],
-        },
       },
       "subDir" : "src",
       "dependencies" : ["org.graalvm.jniutils"],
@@ -549,13 +542,6 @@ suite = {
         "exports" : [
           "org.graalvm.nativebridge",
         ],
-        "requiresConcealed" : {
-          "jdk.internal.vm.ci" : [
-            "jdk.vm.ci.meta",
-            "jdk.vm.ci.code",
-            "jdk.vm.ci.services",
-          ],
-        },
       },
       "subDir" : "src",
       "dependencies" : ["org.graalvm.nativebridge"],

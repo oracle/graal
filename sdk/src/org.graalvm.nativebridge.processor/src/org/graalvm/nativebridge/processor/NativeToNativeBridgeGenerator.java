@@ -105,7 +105,7 @@ final class NativeToNativeBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     @Override
-    MarshallerSnippets marshallerSnippets(AbstractBridgeParser.MarshallerData marshallerData) {
+    MarshallerSnippet marshallerSnippets(AbstractBridgeParser.MarshallerData marshallerData) {
         throw new UnsupportedOperationException("Should not reach here");
     }
 

@@ -48,7 +48,6 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNI.JArray;
 import org.graalvm.jniutils.JNI.JBooleanArray;
 import org.graalvm.jniutils.JNI.JByteArray;
@@ -1191,13 +1190,7 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (tracingAt(level)) {
-            StringBuilder sb = new StringBuilder();
-            sb.append('[').append(IsolateUtil.getIsolateID()).append(':').append(Thread.currentThread().getName()).append(']');
-            JNIMethodScope scope = JNIMethodScope.scopeOrNull();
-            if (scope != null) {
-                sb.append(new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' '));
-            }
-            NativeBridgeSupport.getInstance().trace(sb.append(String.format(format, args)).toString());
+            NativeBridgeSupport.getInstance().trace(String.format(format, args));
         }
     }
 

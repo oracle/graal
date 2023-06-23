@@ -51,9 +51,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -65,8 +65,6 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
-
-import jdk.vm.ci.services.Services;
 
 public final class JNI {
 
@@ -1098,7 +1096,7 @@ public final class JNI {
         }
 
         private static Path[] findJNIHeaders() {
-            Path javaHome = Paths.get(Services.getSavedProperties().get("java.home"));
+            Path javaHome = Paths.get(System.getProperty("java.home"));
             Path includeFolder = javaHome.resolve("include");
             if (!Files.exists(includeFolder)) {
                 Path parent = javaHome.getParent();
