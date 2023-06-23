@@ -2673,7 +2673,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         self.main_comp_dir_name = component.dir_name
 
         name = '_'.join([component.installable_id, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
-        self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
+        dir_name = component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else component.standalone_dir_name
+        self.base_dir_name = graalvm.string_substitutions.substitute(dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
