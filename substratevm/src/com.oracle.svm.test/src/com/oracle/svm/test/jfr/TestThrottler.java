@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,19 +44,19 @@ import static org.junit.Assert.assertTrue;
 
 import com.oracle.svm.core.locks.VMMutex;
 
-public class TestThrottler extends JfrRecordingTest{
+public class TestThrottler extends JfrRecordingTest {
 
     // Based on hardcoded value in the throttler class.
-    private final long WINDOWS_PER_PERIOD = 5;
+    private static final long WINDOWS_PER_PERIOD = 5;
     // Arbitrary. It doesn't matter what this is.
-    private final long WINDOW_DURATION_MS = 200;
-    private final long SAMPLES_PER_WINDOW = 10;
+    private static final long WINDOW_DURATION_MS = 200;
+    private static final long SAMPLES_PER_WINDOW = 10;
+    private static final long SECOND_IN_MS = 1000;
     private static final VMMutex mutex = new VMMutex("testThrottler");
 
-
     /**
-     * This is the simplest test that ensures that sampling stops after the cap is hit. Single thread.
-     * All sampling is done within the first window. No rotations.
+     * This is the simplest test that ensures that sampling stops after the cap is hit. Single
+     * thread. All sampling is done within the first window. No rotations.
      */
     @Test
     public void testCapSingleThread() {
@@ -145,37 +145,36 @@ public class TestThrottler extends JfrRecordingTest{
     }
 
     /**
-     * This test checks that the projected population and sampling interval after a window rotation
-     * is as expected. Window lookback for this test is 5.
-     *
-     * Will be low rate, which results in lookback of 5, because window duration is period.
+     * This test checks the projected population after a window rotation. This is a test of the EWMA
+     * calculation. Window lookback is 25 and windowDuration is un-normalized because period is not
+     * greater than 1s.
      */
     @Test
     public void testEWMA() {
-        final long samplesPerWindow = 100;
+        // Results in 50 samples per second
+        final long samplesPerWindow = 10;
         JfrThrottler throttler = new JfrThrottler(mutex);
-        // Samples per second is low (<10) resulting in a windowDuration being un-normalized (1 min) resulting in a window lookback of 5.0
-        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD,  60 * 1000);
-        assertTrue(throttler.getWindowLookback() == 5.0);
-
-        int[] population = {21, 41, 61, 31, 91, 42, 77, 29, 88, 64, 22, 11, 33, 59}; // Arbitrary
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, SECOND_IN_MS);
+        assertTrue(throttler.getWindowLookback() == 25.0);
+        // Arbitrarily chosen
+        int[] population = {310, 410, 610, 310, 910, 420, 770, 290, 880, 640, 220, 110, 330, 590};
         // Used EWMA calculator to confirm actualProjections
-        double[] actualProjections = {4.2, 11.56, 21.44, 23.35, 36.88, 37.90, 45.72, 42.38, 51.50, 54.00, 47.60, 40.28, 38.82, 42.86};
-
+        int[] actualProjections = {12, 28, 51, 61, 95, 108, 135, 141, 170, 189, 190, 187, 193, 209};
         for (int p = 0; p < population.length; p++) {
             for (int i = 0; i < population[p]; i++) {
                 throttler.sample();
             }
             expireAndRotate(throttler);
             double projectedPopulation = throttler.getActiveWindowProjectedPopulationSize();
-            assertTrue((int) actualProjections[p] == (int) projectedPopulation);
+            assertTrue(actualProjections[p] == (int) projectedPopulation);
         }
     }
 
     /**
      * Note: computeAccumulatedDebtCarryLimit depends on window duration.
      *
-     * Window lookback for this test is 25. Window duration is 1 second. Window divisor is default of 5.
+     * Window lookback for this test is 25. Window duration is 1 second. Window divisor is default
+     * of 5.
      */
     @Test
     public void testDebt() {
@@ -191,9 +190,10 @@ public class TestThrottler extends JfrRecordingTest{
             expireAndRotate(throttler);
         }
         // now the sampling interval must be 50 / 10 = 5
-        assertTrue("Sampling interval is incorrect:"+ throttler.getActiveWindowSamplingInterval(), throttler.getActiveWindowSamplingInterval() == 5);
+        assertTrue("Sampling interval is incorrect:" + throttler.getActiveWindowSamplingInterval(), throttler.getActiveWindowSamplingInterval() == 5);
 
-        // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 10 - (20/5) = 6
+        // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 10 -
+        // (20/5) = 6
         // samples
         for (int i = 0; i < 20; i++) {
             throttler.sample();
@@ -217,31 +217,37 @@ public class TestThrottler extends JfrRecordingTest{
     @Test
     public void testNormalization() {
         long sampleSize = 10 * 600;
-        long periodMs = 60*1000;
+        long periodMs = 60 * SECOND_IN_MS;
         JfrThrottler throttler = new JfrThrottler(mutex);
         throttler.beginTest(sampleSize, periodMs);
-        assertTrue(throttler.getPeriodNs()+" "+ throttler.getEventSampleSize(),throttler.getEventSampleSize()==sampleSize/60 && throttler.getPeriodNs() == 1000000000);
+        assertTrue(throttler.getPeriodNs() + " " + throttler.getEventSampleSize(), throttler.getEventSampleSize() == sampleSize / 60 && throttler.getPeriodNs() == 1000000 * SECOND_IN_MS);
 
-        sampleSize = 10*3600;
-        periodMs = 3600*1000;
+        sampleSize = 10 * 3600;
+        periodMs = 3600 * SECOND_IN_MS;
         throttler.setThrottle(sampleSize, periodMs);
-        assertTrue(throttler.getPeriodNs()+" "+ throttler.getEventSampleSize(), throttler.getEventSampleSize()==sampleSize/3600 && throttler.getPeriodNs() == 1000000000);
+        assertTrue(throttler.getPeriodNs() + " " + throttler.getEventSampleSize(), throttler.getEventSampleSize() == sampleSize / 3600 && throttler.getPeriodNs() == 1000000 * SECOND_IN_MS);
     }
 
     /**
      * Checks that no ObjectAllocationSample events are emitted when the sampling rate is 0.
      */
     @Test
-    public void testZeroRate() throws Throwable{
+    public void testZeroRate() throws Throwable {
         // Test throttler in isolation
         JfrThrottler throttler = new JfrThrottler(mutex);
-        throttler.setThrottle(0, 2000);
+        throttler.setThrottle(0, 2 * SECOND_IN_MS);
         assertFalse(throttler.sample());
-        throttler.setThrottle(10, 2000);
+        throttler.setThrottle(10, 2 * SECOND_IN_MS);
         assertTrue(throttler.sample());
 
         // Test applying throttling settings to an in-progress recording
-        Recording recording = startRecording(new String[]{}, null, new HashMap<>()); // don't use default configuration because it includes ObjectAllocationSample by default
+        Recording recording = startRecording(new String[]{}, null, new HashMap<>()); // don't use
+                                                                                     // default
+                                                                                     // configuration
+                                                                                     // because it
+                                                                                     // includes
+                                                                                     // ObjectAllocationSample
+                                                                                     // by default
         recording.enable(JfrEvent.ObjectAllocationSample.getName()).with("throttle", "0/s");
         final int alignedHeapChunkSize = com.oracle.svm.core.util.UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
         allocateCharArray(alignedHeapChunkSize);
@@ -249,7 +255,7 @@ public class TestThrottler extends JfrRecordingTest{
         recording.stop();
         recording.close();
 
-        assertTrue(getEvents(recording.getDestination(),new String[]{JfrEvent.ObjectAllocationSample.getName()}).size()==0);
+        assertTrue(getEvents(recording.getDestination(), new String[]{JfrEvent.ObjectAllocationSample.getName()}).size() == 0);
     }
 
     @NeverInline("Prevent escape analysis.")
@@ -257,9 +263,8 @@ public class TestThrottler extends JfrRecordingTest{
         return new char[length];
     }
 
-
     @Test
-    public void testDistributionUniform(){
+    public void testDistributionUniform() {
         final int maxPopPerWindow = 2000;
         final int minPopPerWindow = 2;
         final int expectedSamplesPerWindow = 50;
@@ -267,48 +272,52 @@ public class TestThrottler extends JfrRecordingTest{
     }
 
     @Test
-    public void testDistributionHighRate(){
+    public void testDistributionHighRate() {
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
-        testDistribution(() -> maxPopPerWindow
-        , expectedSamplesPerWindow, 0.02);
+        testDistribution(() -> maxPopPerWindow, expectedSamplesPerWindow, 0.02);
     }
+
     @Test
-    public void testDistributionLowRate(){
+    public void testDistributionLowRate() {
         final int minPopPerWindow = 2;
         testDistribution(() -> minPopPerWindow, minPopPerWindow, 0.05);
     }
+
     @Test
-    public void testDistributionEarlyBurst(){ // maybe this is 41000 instead of 50000 because projected population size is low
+    public void testDistributionEarlyBurst() { // maybe this is 41000 instead of 50000 because
+                                               // projected population size is low
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
         final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
         AtomicInteger count = new AtomicInteger(1);
-        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 1 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.9);
+        testDistribution(() -> count.getAndIncrement() % accumulatedDebtCarryLimit == 1 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.9);
     }
 
     @Test
-    public void testDistributionMidBurst(){
+    public void testDistributionMidBurst() {
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
         final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
         AtomicInteger count = new AtomicInteger(1);
-        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 5 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.5);
+        testDistribution(() -> count.getAndIncrement() % accumulatedDebtCarryLimit == 5 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.5);
     }
 
     @Test
-    public void testDistributionLateBurst(){ // *** I think its [NOT] bursting every window by accident. windowCount=10000 not 1000
+    public void testDistributionLateBurst() { // *** I think its [NOT] bursting every window by
+                                              // accident. windowCount=10000 not 1000
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
         final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
         AtomicInteger count = new AtomicInteger(1);
-        testDistribution(() ->count.getAndIncrement() % accumulatedDebtCarryLimit == 0 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.0);
+        testDistribution(() -> count.getAndIncrement() % accumulatedDebtCarryLimit == 0 ? maxPopPerWindow : 0, expectedSamplesPerWindow, 0.0);
     }
+
     /**
      * This is a more involved test that checks the sample distribution. It has been adapted from
      * JfrGTestAdaptiveSampling in the OpenJDK
      */
-    private void testDistribution(IncomingPopulation incomingPopulation, int samplePointsPerWindow, double errorFactor){
+    private void testDistribution(IncomingPopulation incomingPopulation, int samplePointsPerWindow, double errorFactor) {
         final int distributionSlots = 100;
         final int windowDurationMs = 100;
         final int windowCount = 10000;
@@ -317,47 +326,47 @@ public class TestThrottler extends JfrRecordingTest{
         final int windowLookBackCount = 50;
         final double maxSampleBias = 0.11;
         JfrThrottler throttler = new JfrThrottler(mutex);
-        throttler.beginTest(expectedSamplesPerWindow*WINDOWS_PER_PERIOD, windowDurationMs*WINDOWS_PER_PERIOD);
+        throttler.beginTest(expectedSamplesPerWindow * WINDOWS_PER_PERIOD, windowDurationMs * WINDOWS_PER_PERIOD);
 
         int[] population = new int[distributionSlots];
         int[] sample = new int[distributionSlots];
 
         int populationSize = 0;
         int sampleSize = 0;
-        for(int t = 0; t < windowCount; t++){
+        for (int t = 0; t < windowCount; t++) {
             int windowPop = incomingPopulation.getWindowPopulation();
-            for(int i =0 ; i < windowPop; i++){
+            for (int i = 0; i < windowPop; i++) {
                 populationSize++;
                 int index = ThreadLocalRandom.current().nextInt(0, 100);
                 population[index] += 1;
-                if (throttler.sample()){
+                if (throttler.sample()) {
                     sampleSize++;
-                    sample[index] +=1;
+                    sample[index] += 1;
                 }
             }
             expireAndRotate(throttler);
         }
         int targetSampleSize = samplePointsPerWindow * windowCount;
-        System.out.println("Population size:" + populationSize + " Sample size: "+sampleSize);
-        expectNear(targetSampleSize, sampleSize, expectedSamples* errorFactor);
+        System.out.println("Population size:" + populationSize + " Sample size: " + sampleSize);
+        expectNear(targetSampleSize, sampleSize, expectedSamples * errorFactor);
         assertDistributionProperties(distributionSlots, population, sample, populationSize, sampleSize);
     }
 
-    private static void expectNear(double value1, double value2, double error){
-//        System.out.println(value1 +" "+ value2);
-        assertTrue(Math.abs(value1-value2) <= error);
+    private static void expectNear(double value1, double value2, double error) {
+// System.out.println(value1 +" "+ value2);
+        assertTrue(Math.abs(value1 - value2) <= error);
     }
 
-    private static void assertDistributionProperties(int distributionSlots, int[] population, int[] sample, int populationSize, int sampleSize ) {
-        int populationSum=0;
+    private static void assertDistributionProperties(int distributionSlots, int[] population, int[] sample, int populationSize, int sampleSize) {
+        int populationSum = 0;
         int sampleSum = 0;
         for (int i = 0; i < distributionSlots; i++) {
             populationSum += i * population[i];
             sampleSum += i * sample[i];
         }
 
-        double populationMean = populationSum / (double)populationSize;
-        double sampleMean = sampleSum / (double)sampleSize;
+        double populationMean = populationSum / (double) populationSize;
+        double sampleMean = sampleSum / (double) sampleSize;
 
         double populationVariance = 0;
         double sampleVariance = 0;
@@ -372,21 +381,21 @@ public class TestThrottler extends JfrRecordingTest{
         sampleVariance = sampleVariance / (sampleSize - 1);
         double populationStdev = Math.sqrt(populationVariance);
         double sampleStdev = Math.sqrt(sampleVariance);
-//        System.out.println("populationStdev:"+populationStdev +" sampleStdev:"+sampleStdev );
+// System.out.println("populationStdev:"+populationStdev +" sampleStdev:"+sampleStdev );
         expectNear(populationStdev, sampleStdev, 0.5); // 0.5 value copied from Hotspot test
         expectNear(populationMean, sampleMean, populationStdev);
     }
 
-    interface IncomingPopulation{
+    interface IncomingPopulation {
         int getWindowPopulation();
     }
 
     /**
-     * Helper method that expires and rotates a throttler's active window
+     * Helper method that expires and rotates a throttler's active window.
      */
     private static void expireAndRotate(JfrThrottler throttler) {
         throttler.expireActiveWindow();
-        assertTrue("should be expired", throttler.IsActiveWindowExpired());
+        assertTrue("should be expired", throttler.isActiveWindowExpired());
         assertFalse("Should have rotated not sampled!", throttler.sample());
     }
 }

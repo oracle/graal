@@ -76,7 +76,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.jfr.events.ObjectAllocationSampleEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called

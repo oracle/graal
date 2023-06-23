@@ -1,3 +1,29 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -18,22 +44,21 @@ public class JfrThrottler {
     private static final long SECOND_IN_NS = 1000000000;
     private static final long SECOND_IN_MS = 1000;
     private static final long MINUTE_IN_NS = SECOND_IN_NS * 60;
-//    private static final long MINUTE_IN_MS = SECOND_IN_MS *60;
-//    private static final long HOUR_IN_MS = MINUTE_IN_MS * 60;
-//    private static final long HOUR_IN_NS = MINUTE_IN_NS * 60;
-//    private static final long DAY_IN_MS = HOUR_IN_MS * 24;
-//    private static final long DAY_IN_NS = HOUR_IN_NS * 24;
-//    private static final long TEN_PER_S_IN_MINUTES = 600;
-//    private static final long TEN_PER_S_IN_HOURS = 36000;
-//    private static final long TEN_PER_S_IN_DAYS = 864000;
-    // Copied from hotspot
+// private static final long MINUTE_IN_MS = SECOND_IN_MS *60;
+// private static final long HOUR_IN_MS = MINUTE_IN_MS * 60;
+// private static final long HOUR_IN_NS = MINUTE_IN_NS * 60;
+// private static final long DAY_IN_MS = HOUR_IN_MS * 24;
+// private static final long DAY_IN_NS = HOUR_IN_NS * 24;
+// private static final long TEN_PER_S_IN_MINUTES = 600;
+// private static final long TEN_PER_S_IN_HOURS = 36000;
+// private static final long TEN_PER_S_IN_DAYS = 864000;
+// Copied from hotspot
     private static final int WINDOW_DIVISOR = 5;
     private static final int EVENT_THROTTLER_OFF = -2;
 
     // Can't use reentrant lock because it allocates
-//    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
+// private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
     private final VMMutex mutex;
-
 
     public UninterruptibleUtils.AtomicBoolean disabled; // Already volatile
     private JfrThrottlerWindow window0;
@@ -52,8 +77,8 @@ public class JfrThrottler {
         accumulatedDebtCarryCount = 0;
         reconfigure = false;
         disabled = new UninterruptibleUtils.AtomicBoolean(true);
-//        lock = new UninterruptibleUtils.AtomicPointer<>(); // I assume this is initially
-                                                           // WordFactorynullPointer()
+// lock = new UninterruptibleUtils.AtomicPointer<>(); // I assume this is initially
+// WordFactorynullPointer()
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
         activeWindow = window0; // same as hotspot. Unguarded is ok because all throttler instances
@@ -62,40 +87,39 @@ public class JfrThrottler {
     }
 
     /**
-     * Convert rate to samples/second if possible.
-     * Want to avoid long period with large windows with a large number of samples per window
-     * in favor of many smaller windows.
-     * This is in the critical section because setting the sample size and period must be done together atomically.
+     * Convert rate to samples/second if possible. Want to avoid long period with large windows with
+     * a large number of samples per window in favor of many smaller windows. This is in the
+     * critical section because setting the sample size and period must be done together atomically.
      * Otherwise, we risk a window's params being set with only one of the two updated.
      */
-//    private void normalize1(long eventSampleSize, long periodMs){
-//        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
-//        // Do we want more than 10samples/s ? If so convert to samples/s
-//        if (periodMs <= SECOND_IN_MS){
-//            //nothing
-//        } else if (periodMs <= MINUTE_IN_MS) {
-//            if (eventSampleSize >= TEN_PER_S_IN_MINUTES) {
-//                eventSampleSize /= 60;
-//                periodMs /= 60;
-//            }
-//        } else if (periodMs <= HOUR_IN_MS) {
-//            if (eventSampleSize >=TEN_PER_S_IN_HOURS) {
-//                eventSampleSize /= 3600;
-//                periodMs /= 3600;
-//            }
-//        } else if (periodMs <= DAY_IN_MS) {
-//            if (eventSampleSize >=TEN_PER_S_IN_DAYS) {
-//                eventSampleSize /= 86400;
-//                periodMs /= 86400;
-//            }
-//        }
-//        this.eventSampleSize = eventSampleSize;
-//        this.periodNs = periodMs * 1000000;
-//    }
-    private void normalize(long samplesPerPeriod, double periodMs){
+// private void normalize1(long eventSampleSize, long periodMs){
+// VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
+// // Do we want more than 10samples/s ? If so convert to samples/s
+// if (periodMs <= SECOND_IN_MS){
+// //nothing
+// } else if (periodMs <= MINUTE_IN_MS) {
+// if (eventSampleSize >= TEN_PER_S_IN_MINUTES) {
+// eventSampleSize /= 60;
+// periodMs /= 60;
+// }
+// } else if (periodMs <= HOUR_IN_MS) {
+// if (eventSampleSize >=TEN_PER_S_IN_HOURS) {
+// eventSampleSize /= 3600;
+// periodMs /= 3600;
+// }
+// } else if (periodMs <= DAY_IN_MS) {
+// if (eventSampleSize >=TEN_PER_S_IN_DAYS) {
+// eventSampleSize /= 86400;
+// periodMs /= 86400;
+// }
+// }
+// this.eventSampleSize = eventSampleSize;
+// this.periodNs = periodMs * 1000000;
+// }
+    private void normalize(long samplesPerPeriod, double periodMs) {
         VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         // Do we want more than 10samples/s ? If so convert to samples/s
-        double periodsPerSecond = 1000.0/ periodMs;
+        double periodsPerSecond = 1000.0 / periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
         if (samplesPerSecond >= 10 && periodMs > SECOND_IN_MS) {
             this.periodNs = SECOND_IN_NS;
@@ -187,7 +211,7 @@ public class JfrThrottler {
         if (periodNs == 0 || windowDurationNs >= SECOND_IN_NS) {
             return 1;
         }
-        return SECOND_IN_NS/windowDurationNs;
+        return SECOND_IN_NS / windowDurationNs;
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
@@ -206,25 +230,26 @@ public class JfrThrottler {
     /**
      * Handles the case where the sampling rate is very low.
      */
-//    private void setSamplePointsAndWindowDuration1(){
-//        VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
-//        VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
-//        JfrThrottlerWindow next = getNextWindow();
-//        long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
-//        long windowDurationNs = periodNs / WINDOW_DIVISOR;
-//        if (eventSampleSize < 10
-//        || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
-//        || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
-//        || periodNs >= DAY_IN_NS && eventSampleSize < TEN_PER_S_IN_DAYS){
-//            samplesPerWindow = eventSampleSize;
-//            windowDurationNs = periodNs;
-//        }
-//        activeWindow.samplesPerWindow = samplesPerWindow;
-//        activeWindow.windowDurationNs = windowDurationNs;
-//        next.samplesPerWindow = samplesPerWindow;
-//        next.windowDurationNs = windowDurationNs;
-//    }
-    private void setSamplePointsAndWindowDuration(){
+// private void setSamplePointsAndWindowDuration1(){
+// VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
+// VMError.guarantee(reconfigure, "Should only modify sample size and window duration during
+// reconfigure.");
+// JfrThrottlerWindow next = getNextWindow();
+// long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
+// long windowDurationNs = periodNs / WINDOW_DIVISOR;
+// if (eventSampleSize < 10
+// || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
+// || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
+// || periodNs >= DAY_IN_NS && eventSampleSize < TEN_PER_S_IN_DAYS){
+// samplesPerWindow = eventSampleSize;
+// windowDurationNs = periodNs;
+// }
+// activeWindow.samplesPerWindow = samplesPerWindow;
+// activeWindow.windowDurationNs = windowDurationNs;
+// next.samplesPerWindow = samplesPerWindow;
+// next.windowDurationNs = windowDurationNs;
+// }
+    private void setSamplePointsAndWindowDuration() {
         VMError.guarantee(mutex.isOwner(), "Throttler lock must be acquired in critical section.");
         VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
         JfrThrottlerWindow next = getNextWindow();
@@ -232,7 +257,7 @@ public class JfrThrottler {
         long windowDurationNs = periodNs / WINDOW_DIVISOR;
         // If period isn't 1s, then we're effectively taking under 10 samples/s
         // because the values have already undergone normalization.
-        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS){
+        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS) {
             samplesPerWindow = eventSampleSize;
             windowDurationNs = periodNs;
         }
@@ -276,38 +301,39 @@ public class JfrThrottler {
         return avgPopulationSize;
     }
 
-    private static double exponentiallyWeightedMovingAverage(double Y, double alpha, double S) {
-        return alpha * Y + (1 - alpha) * S;
+    private static double exponentiallyWeightedMovingAverage(double currentMeasurement, double alpha, double prevEwma) {
+        return alpha * currentMeasurement + (1 - alpha) * prevEwma;
     }
 
-//    /** Basic spin lock */
-//    private void lock() {
-//        while (!tryLock()) {
-//            PauseNode.pause();
-//        }
-//    }
+// /** Basic spin lock */
+// private void lock() {
+// while (!tryLock()) {
+// PauseNode.pause();
+// }
+// }
 //
-//    private boolean tryLock() {
-//        return lock.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread());
-//    }
+// private boolean tryLock() {
+// return lock.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread());
+// }
 //
-//    private void unlock() {
-////        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
-//        lock.set(WordFactory.nullPointer());
-//    }
+// private void unlock() {
+//// VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be
+// acquired in critical section.");
+// lock.set(WordFactory.nullPointer());
+// }
 
     /** Visible for testing. */
     public void beginTest(long eventSampleSize, long periodMs) {
         window0.isTest = true;
         window1.isTest = true;
-        window0.testCurrentNanos = 0;
-        window1.testCurrentNanos = 0;
+        window0.currentTestNanos = 0;
+        window1.currentTestNanos = 0;
         setThrottle(eventSampleSize, periodMs);
     }
 
     /** Visible for testing. */
     public double getActiveWindowProjectedPopulationSize() {
-        return activeWindow.projectedPopSize;
+        return avgPopulationSize;
     }
 
     /** Visible for testing. */
@@ -325,24 +351,27 @@ public class JfrThrottler {
     }
 
     /** Visible for testing. */
-    public boolean IsActiveWindowExpired() {
+    public boolean isActiveWindowExpired() {
         return activeWindow.isExpired();
     }
+
     /** Visible for testing. */
     public long getPeriodNs() {
         return periodNs;
     }
+
     /** Visible for testing. */
     public long getEventSampleSize() {
         return eventSampleSize;
     }
+
     /** Visible for testing. */
     public void expireActiveWindow() {
-        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS){
-            window0.testCurrentNanos += periodNs;
-            window1.testCurrentNanos += periodNs;
+        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS) {
+            window0.currentTestNanos += periodNs;
+            window1.currentTestNanos += periodNs;
         }
-        window0.testCurrentNanos += periodNs / WINDOW_DIVISOR;
-        window1.testCurrentNanos += periodNs / WINDOW_DIVISOR;
+        window0.currentTestNanos += periodNs / WINDOW_DIVISOR;
+        window1.currentTestNanos += periodNs / WINDOW_DIVISOR;
     }
 }

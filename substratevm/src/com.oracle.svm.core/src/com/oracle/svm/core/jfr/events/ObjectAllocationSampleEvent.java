@@ -34,7 +34,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.StackValue;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.thread.PlatformThreads;

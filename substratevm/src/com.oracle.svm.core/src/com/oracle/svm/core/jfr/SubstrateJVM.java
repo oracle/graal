@@ -45,7 +45,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.JfrThrottlerSupport;
 
 import jdk.internal.event.Event;
 import jdk.jfr.Configuration;
