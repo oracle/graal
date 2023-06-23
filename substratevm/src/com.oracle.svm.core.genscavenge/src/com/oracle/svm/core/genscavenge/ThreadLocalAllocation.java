@@ -62,7 +62,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -75,7 +75,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.events.ObjectAllocationSampleEvent;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -238,8 +237,7 @@ public final class ThreadLocalAllocation {
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
-            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub));
+            JfrAllocationEvents.emit(startTicks, DynamicHub.toClass(hub), LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -318,8 +316,7 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, tlabSize);
-            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub));
+            JfrAllocationEvents.emit(startTicks, DynamicHub.toClass(hub), size, tlabSize);
             DeoptTester.enableDeoptTesting();
         }
     }

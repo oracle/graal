@@ -31,14 +31,14 @@ import static java.lang.Math.log;
 
 public class JfrThrottlerWindow {
     // reset every rotation
-    public UninterruptibleUtils.AtomicLong measuredPopSize; // already volatile
-    public UninterruptibleUtils.AtomicLong endTicks; // already volatile
+    public UninterruptibleUtils.AtomicLong measuredPopSize;
+    public UninterruptibleUtils.AtomicLong endTicks;
 
     // Calculated every rotation based on params set by user and results from previous windows
     public volatile long samplingInterval;
-    public volatile double activeWindowSampleLimit;
+    public volatile double maxSampleablePopulation;
 
-    // params set by user
+    // Set by user
     public volatile long samplesPerWindow;
     public volatile long windowDurationNs;
     public volatile long debt;
@@ -46,7 +46,7 @@ public class JfrThrottlerWindow {
     public JfrThrottlerWindow() {
         windowDurationNs = 0;
         samplesPerWindow = 0;
-        activeWindowSampleLimit = 0;
+        maxSampleablePopulation = 0;
         measuredPopSize = new UninterruptibleUtils.AtomicLong(0);
         endTicks = new UninterruptibleUtils.AtomicLong(JfrTicks.currentTimeNanos() + windowDurationNs);
         samplingInterval = 1;
@@ -63,17 +63,17 @@ public class JfrThrottlerWindow {
         // Guarantees only one thread can record the last event of the window
         long prevMeasuredPopSize = measuredPopSize.getAndIncrement();
 
-        // Stop sampling if we're already over the projected population size, and we're over the
-        // samples per window
+        // Stop sampling if we're already over maxSampleablePopulation and we're over the expected
+        // samples per window.
         if (prevMeasuredPopSize % samplingInterval == 0 &&
-                        (prevMeasuredPopSize < activeWindowSampleLimit)) {
+                        (prevMeasuredPopSize < maxSampleablePopulation)) {
             return true;
         }
         return false;
     }
 
     public long samplesTaken() {
-        if (measuredPopSize.get() > activeWindowSampleLimit) {
+        if (measuredPopSize.get() > maxSampleablePopulation) {
             return samplesExpected();
         }
         return measuredPopSize.get() / samplingInterval;
@@ -88,15 +88,13 @@ public class JfrThrottlerWindow {
         if (projectedPopSize <= samplesExpected()) {
             samplingInterval = 1;
         } else {
-            // It's important to round *up* otherwise we risk violating the upper bound
-            // TODO geometric
-// samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected());
+
             double projectedProbability = (double) samplesExpected() / projectedPopSize;
             samplingInterval = nextGeometric(projectedProbability, Math.random());
         }
-        // activeWindowSampleLimit is either projectedPopSize or samplesExpected() (if
-        // projectedPopSize < samplesPerWindow)
-        this.activeWindowSampleLimit = samplesExpected() * samplingInterval;
+
+        this.maxSampleablePopulation = samplesExpected() * samplingInterval;
+
         // reset
         measuredPopSize.set(0);
 
@@ -106,11 +104,13 @@ public class JfrThrottlerWindow {
         } else {
             endTicks.set(JfrTicks.currentTimeNanos() + windowDurationNs);
         }
-
     }
 
-    long nextGeometric(double p, double u) { // *** is P is larger, then its more likely sampling
-                                             // interval is smaller
+    /**
+     * This method is essentially the same as jfrAdaptiveSampler::next_geometric(double, double) in
+     * the OpenJDK.
+     */
+    private long nextGeometric(double p, double u) {
         if (u == 0.0) {
             u = 0.01;
         }

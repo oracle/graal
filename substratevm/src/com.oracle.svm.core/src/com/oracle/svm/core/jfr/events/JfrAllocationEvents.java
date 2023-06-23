@@ -26,33 +26,62 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.JavaThreads;
 
-public class ObjectAllocationSampleEvent {
+public class JfrAllocationEvents {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
-    public static void emit(long startTicks, Class<?> clazz) {
+
+    public static void emit(long startTicks, Class<?> clazz, UnsignedWord allocationSize, UnsignedWord tlabSize) {
         if (HasJfrSupport.get()) {
-            // TODO: consider moving this to after the isRecording check in emit0 to avoid duplicate checks. Might be a pain to deal with uninterruptibility though. Also we want to minimize uninterruptible code usage.
-            // Doesn't hurt to check twice, might save us some time doing the sampling
-            if (SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
-                emit0(startTicks, clazz);
+            emitObjectAllocationInNewTLAB(startTicks, clazz, allocationSize, tlabSize);
+
+            if (shouldEmitObjectAllocationSample() && SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
+                emitObjectAllocationSample(startTicks, clazz);
             }
         }
     }
 
+    /**
+     * This method exists as a slight optimization to avoid entering the sampler code if
+     * unnecessary. We'll have to check {@link JfrEvent.shouldEmit()} again if a sample ends up
+     * being taken.
+     */
+    @Uninterruptible(reason = "Needed for JfrEvent.shouldEmit().")
+    private static boolean shouldEmitObjectAllocationSample() {
+        return JfrEvent.ObjectAllocationSample.shouldEmit();
+    }
+
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(long startTicks, Class<?> clazz) {
+    private static void emitObjectAllocationInNewTLAB(long startTicks, Class<?> clazz, UnsignedWord allocationSize, UnsignedWord tlabSize) {
+        if (JfrEvent.ObjectAllocationInNewTLAB.shouldEmit()) {
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationInNewTLAB);
+            JfrNativeEventWriter.putLong(data, startTicks);
+            JfrNativeEventWriter.putEventThread(data);
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationInNewTLAB, 0));
+            JfrNativeEventWriter.putClass(data, clazz);
+            JfrNativeEventWriter.putLong(data, allocationSize.rawValue());
+            JfrNativeEventWriter.putLong(data, tlabSize.rawValue());
+            JfrNativeEventWriter.endSmallEvent(data);
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emitObjectAllocationSample(long startTicks, Class<?> clazz) {
         if (JfrEvent.ObjectAllocationSample.shouldEmit()) {
             long currentAllocationSize = PlatformThreads.getThreadAllocatedBytes(JavaThreads.getCurrentThreadId());
 
@@ -61,7 +90,7 @@ public class ObjectAllocationSampleEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationSample);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0)); //This causes problems during JFR shutdown
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0));
             JfrNativeEventWriter.putClass(data, clazz);
             JfrNativeEventWriter.putLong(data, currentAllocationSize - lastAllocationSize.get());
             JfrNativeEventWriter.endSmallEvent(data);
