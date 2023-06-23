@@ -1340,7 +1340,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
-        CodeTypeElement nodePool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "NodePool");
+        CodeTypeElement bytecodeLocation = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "BytecodeLocation");
+
+        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.OperationLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
 
         // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
         // On exit, they are restored.
@@ -1353,7 +1355,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
-                        new CodeVariableElement(Set.of(PRIVATE), generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels")));
+                        new CodeVariableElement(Set.of(PRIVATE), unresolvedLabelsType, "unresolvedLabels")));
 
         // This state is shared across all contexts for a given root node. It does not get
         // saved/restored when entering/leaving a FinallyTry.
@@ -1445,7 +1447,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "handlerMaxStack"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "handlerUnresolvedLabelsByIndex")));
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "handlerUnresolvedBranchLabels"),
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
+                                                "handlerUnresolvedBranchStackHeights")));
                 if (model.enableTracing) {
                     handlerFields.add(new CodeVariableElement(context.getType(boolean[].class), "handlerBasicBlockBoundary"));
                 }
@@ -1547,6 +1551,21 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
+        class BytecodeLocationFactory {
+            private CodeTypeElement create() {
+                List<CodeVariableElement> fields = List.of(
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "bci"),
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sp"));
+
+                bytecodeLocation.addAll(fields);
+
+                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), bytecodeLocation, null);
+                bytecodeLocation.add(ctor);
+
+                return bytecodeLocation;
+            }
+        }
+
         class DeserializerContextImplFactory {
             private CodeTypeElement create() {
                 deserializerContextImpl.setEnclosingElement(operationNodeGen);
@@ -1583,6 +1602,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(new OperationStackEntryFactory().create());
             builder.add(new FinallyTryContextFactory().create());
             builder.add(new ConstantPoolFactory().create());
+            builder.add(new BytecodeLocationFactory().create());
 
             builder.add(createOperationNames());
 
@@ -1610,8 +1630,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createCreateLocal());
             builder.add(createCreateLabel());
             builder.add(createRegisterUnresolvedLabel());
-            builder.add(createResolveUnresolvedLabels());
-            builder.add(createReverseLabelMapping());
+            builder.add(createResolveUnresolvedLabel());
+            builder.add(createCreateBranchLabelMapping());
+            builder.add(createCreateBranchStackHeightMapping());
 
             for (OperationModel operation : model.getOperations()) {
                 if (operation.hasChildren()) {
@@ -1946,44 +1967,65 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
             ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "immediateBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
             CodeTreeBuilder b = ex.createBuilder();
-
-            b.statement("int[] sites = unresolvedLabels.getOrDefault(label, new int[0])");
-            b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
-            b.statement("sites[sites.length-1] = immediateBci");
-            b.statement("unresolvedLabels.put(label, sites)");
+            b.declaration(generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()), "locations", "unresolvedLabels.computeIfAbsent(label, k -> new ArrayList<>())");
+            b.statement("locations.add(new BytecodeLocation(immediateBci, stackHeight))");
 
             return ex;
         }
 
-        private CodeExecutableElement createResolveUnresolvedLabels() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "resolveUnresolvedLabels");
+        private CodeExecutableElement createResolveUnresolvedLabel() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "resolveUnresolvedLabel");
             ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("OperationLabelImpl impl = (OperationLabelImpl) label");
             b.statement("assert impl.isDefined()");
-            b.statement("int[] sites = unresolvedLabels.remove(impl)");
+            b.declaration(generic(List.class, bytecodeLocation.asType()), "sites", "unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
-            b.startFor().string("int site : sites").end().startBlock();
-            b.statement(writeBc("site", "(short) impl.index"));
+            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : sites").end(2).startBlock();
+
+            b.startIf().string("stackHeight != site.sp").end().startBlock();
+            buildThrowIllegalStateException(b, "\"OperationLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.\"");
+            b.end();
+            b.statement(writeBc("site.bci", "(short) impl.bci"));
             b.end(2);
 
             return ex;
         }
 
-        private CodeExecutableElement createReverseLabelMapping() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "reverseLabelMapping");
-            ex.addParameter(new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"));
+        private CodeExecutableElement createCreateBranchLabelMapping() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
+                            "createBranchLabelMapping");
+            ex.addParameter(new CodeVariableElement(unresolvedLabelsType, "unresolvedLabels"));
 
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("HashMap<Integer, OperationLabel> result = new HashMap<>()");
             b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().string("int site : unresolvedLabels.get(lbl)").end().startBlock();
+            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
             b.statement("assert !result.containsKey(site)");
-            b.statement("result.put(site, lbl)");
+            b.statement("result.put(site.bci, lbl)");
+            b.end(2);
+            b.startReturn().string("result").end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createCreateBranchStackHeightMapping() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
+                            "createBranchStackHeightMapping");
+            ex.addParameter(new CodeVariableElement(unresolvedLabelsType, "unresolvedLabels"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("HashMap<Integer, Integer> result = new HashMap<>()");
+            b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
+            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
+            b.statement("assert !result.containsKey(site)");
+            b.statement("result.put(site.bci, site.sp)");
             b.end(2);
             b.startReturn().string("result").end();
 
@@ -2572,13 +2614,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    // TODO: track stack heights at branch locations and branch labels. validate
-                    // that they agree.
-                    // b.startIf().string("curStack != 0").end().startBlock();
-                    // buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle
-                    // of an operation.\"");
-                    // b.end();
-
                     b.statement("doEmitLeaves(label.declaringOp)");
 
                     b.startIf().string("label.isDefined()").end().startBlock();
@@ -2589,6 +2624,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("label");
                     b.string("bci + 1");
+                    b.string("curStack");
                     b.end(2);
                     b.newLine();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
@@ -2669,14 +2705,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                 b.end();
 
-                // b.startIf().string("curStack != 0").end().startBlock();
-                // buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the
-                // middle of an operation.\"");
-                // b.end();
-
-                b.statement("label.index = bci");
-                b.startStatement().startCall("resolveUnresolvedLabels");
+                b.statement("label.bci = bci");
+                b.startStatement().startCall("resolveUnresolvedLabel");
                 b.string("label");
+                b.string("curStack");
                 b.end(2);
             } else if (operation.instruction != null) {
                 buildEmitOperationInstruction(b, operation);
@@ -2959,17 +2991,28 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case FINALLY_TRY_NO_EXCEPT:
                         b.startIf().string("childIndex == 0").end().startBlock();
 
+                        /**
+                         * Each time we emit the handler, we need to keep track of any branches that
+                         * haven't yet been resolved. We create reverse mappings for efficient
+                         * lookup of the unknown label and the stack height at the branch
+                         * instruction.
+                         */
                         b.declaration(
                                         generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
-                                        "unresolvedLabelsByIndex",
-                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "reverseLabelMapping").string("unresolvedLabels").end());
+                                        "unresolvedBranchLabels",
+                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
+                        b.declaration(
+                                        generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
+                                        "unresolvedBranchStackHeights",
+                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
 
                         b.startStatement().startCall("finallyTryContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
                         b.string("maxStack");
                         b.string("withSource ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
                         b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
-                        b.string("unresolvedLabelsByIndex");
+                        b.string("unresolvedBranchLabels");
+                        b.string("unresolvedBranchStackHeights");
                         if (model.enableTracing) {
                             b.string("basicBlockBoundary");
                         }
@@ -3078,11 +3121,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                             // Mark branch target as unresolved, if necessary.
                             b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
                             b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
-                            b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(branchIdx)");
+                            b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
+                            b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
                             b.statement("assert !lbl.isDefined()");
                             b.startStatement().startCall("registerUnresolvedLabel");
                             b.string("lbl");
                             b.string("offsetBci + branchIdx");
+                            b.string("curStack + sp");
                             b.end(3);
                         }
 
@@ -4128,7 +4173,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationLabelImpl.setEnclosingElement(operationNodeGen);
 
             operationLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
-            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "index"));
+            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
 
@@ -4143,7 +4188,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createIsDefined() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "isDefined");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("index != ").staticReference(operationBuilderType, BuilderFactory.UNINIT).end();
+            b.startReturn().string("bci != ").staticReference(operationBuilderType, BuilderFactory.UNINIT).end();
             return ex;
         }
 

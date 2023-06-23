@@ -128,7 +128,7 @@ public class TestOperationsBranchTest extends AbstractTestOperationsTest {
         // return 0;
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
+        thrown.expectMessage("OperationLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.");
         parse("branchOutwardInvalid", b -> {
             b.beginRoot(LANGUAGE);
 
@@ -181,27 +181,62 @@ public class TestOperationsBranchTest extends AbstractTestOperationsTest {
     }
 
     @Test
-    public void testInvalidLabelDeclaration() {
-        // return 1 + {lbl: 2}
+    public void testBranchBalancedStack() {
+        // return 40 + {
+        //   local result;
+        //   if arg0 < 0 branch x
+        //   result = 3
+        //   branch y
+        //   x:
+        //   result = 2
+        //   y:
+        //   result
+        // };
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("OperationLabel cannot be emitted in the middle of an operation.");
-        parse("invalidLabelDeclaration", b -> {
+        RootCallTarget root = parse("branchInvalidStack", b -> {
             b.beginRoot(LANGUAGE);
-
             b.beginReturn();
             b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.beginBlock();
-                OperationLabel lbl = b.createLabel();
-              b.emitLabel(lbl);
-              b.emitLoadConstant(2L);
-            b.endBlock();
+
+                b.emitLoadConstant(40L);
+
+                b.beginBlock();
+                    OperationLocal result = b.createLocal();
+                    OperationLabel x = b.createLabel();
+                    OperationLabel y = b.createLabel();
+                    b.beginIfThen();
+                        b.beginLessThanOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(0L);
+                        b.endLessThanOperation();
+
+                        b.emitBranch(x);
+                    b.endIfThen();
+
+                    b.beginStoreLocal(result);
+                    b.emitLoadConstant(3L);
+                    b.endStoreLocal();
+
+                    b.emitBranch(y);
+
+                    b.emitLabel(x);
+
+                    b.beginStoreLocal(result);
+                    b.emitLoadConstant(2L);
+                    b.endStoreLocal();
+
+                    b.emitLabel(y);
+
+                    b.emitLoadLocal(result);
+                b.endBlock();
+
             b.endAddOperation();
             b.endReturn();
-
             b.endRoot();
         });
+
+        assertEquals(42L, root.call(-1L));
+        assertEquals(43L, root.call(1L));
     }
 
     @Test
