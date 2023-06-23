@@ -64,6 +64,11 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         for (Object downcall : downcalls) {
             parseAndRegisterForeignCall(downcall, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
+
+        var upcalls = asList(topLevel.get("upcalls", List.of()), "upcalls must be an array of method signatures");
+        for (Object upcall : upcalls) {
+            parseAndRegisterForeignCall(upcall, (descriptor, options) -> accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options));
+        }
     }
 
     private void parseAndRegisterForeignCall(Object call, BiConsumer<Object, Object[]> register) {

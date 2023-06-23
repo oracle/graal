@@ -72,6 +72,10 @@ public final class RuntimeForeignAccess {
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
     }
 
+    public static void registerForUpcall(Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
+    }
+
     private RuntimeForeignAccess() {
     }
 }

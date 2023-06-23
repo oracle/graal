@@ -63,6 +63,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -89,6 +90,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = ConcurrentHashMap.newKeySet();
     private int downcallCount = 0;
 
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredUpcalls = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private int upcallCount = 0;
+
     @Fold
     public static ForeignFunctionsFeature singleton() {
         return ImageSingletons.lookup(ForeignFunctionsFeature.class);
@@ -103,6 +107,11 @@ public class ForeignFunctionsFeature implements InternalFeature {
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
             registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(Pair.create(desc, options)));
+        }
+
+        @Override
+        public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+            registerConditionalConfiguration(condition, () -> registeredUpcalls.add(Pair.create(desc, options)));
         }
     }
 
@@ -144,14 +153,26 @@ public class ForeignFunctionsFeature implements InternalFeature {
         this.downcallCount = createStubs(
                         registeredDowncalls,
                         access,
+                        false,
                         AbiUtils.singleton()::makeNativeEntrypoint,
                         n -> new DowncallStub(n, access.getMetaAccess().getWrapped()),
                         ForeignFunctionsRuntime.singleton()::addDowncallStubPointer);
     }
 
+    private void createUpcallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
+        this.upcallCount = createStubs(
+                        registeredUpcalls,
+                        access,
+                        true,
+                        AbiUtils.singleton()::makeJavaEntryPoint,
+                        j -> new UpcallStubC(j, access.getUniverse(), access.getMetaAccess().getWrapped()),
+                        ForeignFunctionsRuntime.singleton()::addUpcallStubPointer);
+    }
+
     private <S> int createStubs(
                     Set<Pair<FunctionDescriptor, Linker.Option[]>> source,
                     FeatureImpl.BeforeAnalysisAccessImpl access,
+                    boolean registerAsEntryPoints,
                     BiFunction<FunctionDescriptor, Linker.Option[], S> stubGenerator,
                     Function<S, ResolvedJavaMethod> wrapper,
                     BiConsumer<S, CFunctionPointer> register) {
@@ -165,6 +186,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 ResolvedJavaMethod stub = wrapper.apply(nepi);
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
+                if (registerAsEntryPoints) {
+                    analysisStub.registerAsEntryPoint(CEntryPointData.createCustomUnpublished());
+                }
                 created.put(nepi, analysisStub);
                 register.accept(nepi, new MethodPointer(analysisStub));
             }
@@ -191,12 +215,20 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                         "USE_SPEC"),
                         (receiver, originalValue) -> false);
 
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(
+                                        ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.UpcallLinker"),
+                                        "USE_SPEC"),
+                        (receiver, originalValue) -> false);
+
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
+
         access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
                         "Runtime support, registered in " + ForeignFunctionsFeature.class);
 
         createDowncallStubs(access);
-        ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount());
+        createUpcallStubs(access);
+        ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount(), getCreatedUpcallStubsCount());
     }
 
     @Override
@@ -209,5 +241,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public int getCreatedDowncallStubsCount() {
         assert sealed;
         return this.downcallCount;
+    }
+
+    public int getCreatedUpcallStubsCount() {
+        assert sealed;
+        return this.upcallCount;
     }
 }
