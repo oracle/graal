@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ public final class LibGraalUtil {
 
     public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
         Objects.requireNonNull(id, "Id must be non null.");
-        return LibGraalJNIMethodScope.open(entryPointClass.getSimpleName() + "::" + id, env);
+        return LibGraalJNIMethodScope.open(com.oracle.svm.util.ClassUtil.getUnqualifiedName(entryPointClass) + "::" + id, env);
     }
 
     public static JNIMethodScope openScope(String scopeName, JNIEnv env) {
