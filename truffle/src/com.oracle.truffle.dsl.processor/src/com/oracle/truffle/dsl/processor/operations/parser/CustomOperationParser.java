@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedNam
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isObject;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEqualsAny;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.PUBLIC;
@@ -577,6 +578,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         int numLocalSetters = 0;
         int numLocalSetterRanges = 0;
 
+        boolean isFallback = ElementUtils.findAnnotationMirror(spec, types.Fallback) != null;
+
         // Each specialization should have parameters in the following order:
         // frame, value*, variadic, localSetter*, localSetterRange*
         // All parameters are optional, and the ones with * can be repeated multiple times.
@@ -638,6 +641,21 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 if (numLocalSetterRanges > 0 || numLocalSetters > 0) {
                     data.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
                     isValid = false;
+                }
+                if (isFallback) {
+                    /**
+                     * In the regular DSL, fallback specializations can take non-Object arguments if
+                     * they agree with the type signature of the abstract execute method. Since we
+                     * synthesize our own execute method that only takes Object arguments, fallback
+                     * specializations with non-Object parameters are unsupported.
+                     */
+                    if (!isObject(param.asType())) {
+                        data.addError(param, "Value parameters to @%s specializations of Operation nodes must have type %s.",
+                                        getSimpleName(types.Fallback),
+                                        getSimpleName(context.getDeclaredType(Object.class)));
+                        isValid = false;
+
+                    }
                 }
                 canBeBoxingEliminated.add(parent.isBoxingEliminated(param.asType()));
                 numValues++;

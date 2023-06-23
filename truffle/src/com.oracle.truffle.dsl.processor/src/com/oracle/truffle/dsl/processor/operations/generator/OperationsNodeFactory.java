@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addSuppressWarnings;
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addOverride;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.mergeSuppressWarnings;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
@@ -316,6 +317,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
+            mergeSuppressWarnings(el, "static-method");
             el.setSuperClass(types.Node);
             factory.create(el);
             new CustomInstructionPostProcessor().process(el, instr);
@@ -559,6 +561,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createContinueAt() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(Object.class), "continueAt");
+        mergeSuppressWarnings(ex, "hiding");
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         if (model.enableYield) {
             /**
@@ -654,7 +657,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.getTypeParameters().add(E);
         ex.addThrownType(E.asType());
 
-        addSuppressWarnings(context, ex, "unchecked");
+        mergeSuppressWarnings(ex, "unchecked");
         CodeTreeBuilder b = ex.createBuilder();
         b.startThrow();
         b.cast(E.asType()).variable(param);
@@ -705,7 +708,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end();
         b.end();
 
-        addSuppressWarnings(context, method, "unchecked");
+        mergeSuppressWarnings(method, "unchecked");
 
         return method;
     }
@@ -802,7 +805,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationIntrospection, "getIntrospectionData");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.statement("List<Object> instructions = new ArrayList<>()");
+        b.declaration(generic(context.getDeclaredType(List.class), context.getDeclaredType(Object.class)), "instructions", "new ArrayList<>()");
 
         b.startFor().string("int bci = 0; bci < bc.length;").end().startBlock();
 
@@ -1046,6 +1049,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createChangeInterpreters() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "changeInterpreters");
+        mergeSuppressWarnings(ex, "hiding");
 
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "newTier"));
 
@@ -1263,6 +1267,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createWriteOperationNode() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationSerializer_SerializerContext, "writeOperationNode");
+            mergeSuppressWarnings(ex, "hiding");
             ex.renameArguments("buffer", "node");
             CodeTreeBuilder b = ex.createBuilder();
             b.startStatement();
@@ -1651,7 +1656,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startTryBlock();
 
-            b.startStatement().startCall(castParser("nodes.getParser()"), "parse").string("this").end(2);
+            b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
 
             b.statement("short[][] nodeIndices = new short[builtNodes.size()][]");
             b.startFor().string("int i = 0; i < nodeIndices.length; i ++").end().startBlock();
@@ -1695,6 +1700,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDeserialize() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
                             context.getType(void.class), "deserialize");
+            mergeSuppressWarnings(method, "hiding");
 
             method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
@@ -1707,12 +1713,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("ArrayList<Object> consts = new ArrayList<>()");
             b.statement("ArrayList<OperationLocal> locals = new ArrayList<>()");
             b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
-            b.startStatement().type(type(DataInput.class)).string(" buffer = bufferSupplier.get()").end();
-
-            b.startStatement();
-            b.type(generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()));
-            b.string("builtNodes = new ArrayList<>()");
-            b.end();
+            b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
+            b.declaration(generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes", "new ArrayList<>()");
 
             b.startStatement();
             b.type(types.OperationDeserializer_DeserializerContext);
@@ -1796,7 +1798,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                     } else if (op.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
                         b.startStatement().type(argType).string(" ", argumentName, " = TAG_INDEX_TO_CLASS[buffer.readShort()]").end();
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
-                        b.startStatement().type(argType).string(" ", argumentName, " = ").cast(argType).string("consts.get(buffer.readShort())").end();
+                        b.startStatement().type(argType).string(" ", argumentName, " = ");
+                        if (!ElementUtils.isObject(argType)) {
+                            b.cast(argType);
+                        }
+                        b.string("consts.get(buffer.readShort())").end();
                     } else {
                         throw new UnsupportedOperationException("cannot deserialize: " + argType);
                     }
@@ -1939,13 +1945,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createRegisterUnresolvedLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
             ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "immediateBci"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("int[] sites = unresolvedLabels.getOrDefault(label, new int[0])");
             b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
-            b.statement("sites[sites.length-1] = bci");
+            b.statement("sites[sites.length-1] = immediateBci");
             b.statement("unresolvedLabels.put(label, sites)");
 
             return ex;
@@ -2211,7 +2217,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         serializationElements.writeInt(after, "arg" + i);
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-                        serializationElements.writeShort(after, "(short) CLASS_TO_TAG_INDEX.get(arg0)");
+                        serializationElements.writeShort(after, "CLASS_TO_TAG_INDEX.get(arg0)");
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         String argumentName = "arg" + i;
                         String index = argumentName + "_index";
@@ -3090,7 +3096,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
                         b.end();
                         b.end().startElseBlock();
-                        b.statement(writeBc("offsetBci + branchIdx", "(short) branchTarget"));
+                        b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
                         b.end();
                         break;
 
@@ -3254,25 +3260,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             return ex;
-        }
-
-        private void buildPushStackIndex(CodeTreeBuilder b, String index, boolean performCheck) {
-            if (performCheck) {
-                b.startIf().string("stackValueBciStack.length == stackValueBciSp").end().startBlock();
-                b.statement("stackValueBciStack = Arrays.copyOf(stackValueBciStack, stackValueBciStack.length * 2)");
-                b.end();
-            }
-
-            if (index != null) {
-                if (index.equals("0")) {
-                    b.statement("stackValueBciStack[stackValueBciSp++] = bci");
-                } else {
-                    b.statement("stackValueBciStack[stackValueBciSp++] = ((" + index + ") << 16 | bci");
-                }
-            } else {
-                b.statement("stackValueBciStack[stackValueBciSp++] = 0xffff0000");
-            }
-
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String[] arguments) {
@@ -3539,19 +3526,23 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createReparseImpl() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationNodes, "reparseImpl");
+            addOverride(ex);
+            mergeSuppressWarnings(ex, "hiding");
             ex.renameArguments("config", "parse", "nodes");
+            ((CodeVariableElement) ex.getParameters().get(2)).setType(arrayOf(model.templateType.asType()));
             CodeTreeBuilder b = ex.createBuilder();
 
             // When we reparse, we add metadata to the existing nodes. The builder gets them here.
             b.declaration(builder.asType(), "builder",
                             b.create().startNew(builder.asType()).string("this").string("true").string("config").end().build());
-            b.startStatement().startCall("builder.builtNodes.addAll");
-            b.startGroup().string("(List) ");
-            b.startStaticCall(context.getType(List.class), "of").string("nodes").end();
-            b.end();
+
+            b.startFor().type(model.templateType.asType()).string(" node : nodes").end().startBlock();
+            b.startStatement().startCall("builder.builtNodes.add");
+            b.startGroup().cast(operationNodeGen.asType()).string("node").end();
+            b.end(2);
             b.end(2);
 
-            b.startStatement().startCall(castParser("parse"), "parse").string("builder").end(2);
+            b.startStatement().startCall(castParser(ex, "parse"), "parse").string("builder").end(2);
 
             b.startStatement().startCall("builder", "finish").end(2);
 
@@ -4267,7 +4258,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createValidateArgument() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "validateArgument");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(void.class), "validateArgument");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "value"));
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert value >= 0");
@@ -4460,12 +4451,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
     }
 
-    private CodeTree castParser(String parser) {
+    private CodeTree castParser(CodeExecutableElement ex, String parser) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startParantheses();
         b.cast(generic(types.OperationParser, builder.asType()));
         b.string(parser);
         b.end();
+        mergeSuppressWarnings(ex, "unchecked");
         return b.build();
     }
 

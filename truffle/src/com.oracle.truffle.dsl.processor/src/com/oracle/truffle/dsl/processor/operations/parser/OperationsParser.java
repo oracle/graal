@@ -176,6 +176,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateOperationsMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();

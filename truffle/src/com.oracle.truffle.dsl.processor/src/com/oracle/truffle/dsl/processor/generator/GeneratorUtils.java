@@ -380,14 +380,6 @@ public class GeneratorUtils {
         }
     }
 
-    public static void addSuppressWarnings(ProcessorContext context, CodeElement<? extends Element> element, String... value) {
-        CodeAnnotationMirror annSuppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
-        element.addAnnotationMirror(annSuppressWarnings);
-
-        annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(
-                        Arrays.stream(value).map(CodeAnnotationValue::new).collect(Collectors.toList())));
-    }
-
     static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
         List<ExecutableElement> constructors = new ArrayList<>();
         for (ExecutableElement constructor : ElementFilter.constructorsIn(ElementUtils.fromTypeMirror(nodeType).getEnclosedElements())) {

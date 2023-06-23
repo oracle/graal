@@ -102,7 +102,7 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
     }
 
     @SuppressWarnings("hiding")
-    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, OperationRootNode[] nodes);
+    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, T[] nodes);
 
     void reparse(OperationConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");

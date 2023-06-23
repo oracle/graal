@@ -105,12 +105,12 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         int index = execution.getIndex();
 
-        boolean throwsUnexpectedResult = buildChildExecution(b, stackFrame(), index, targetValue.getTypeMirror());
+        boolean throwsUnexpectedResult = buildChildExecution(b, stackFrame(), index);
 
         return new ChildExecutionResult(b.build(), throwsUnexpectedResult);
     }
 
-    private boolean buildChildExecution(CodeTreeBuilder b, String frame, int idx, TypeMirror resultType) {
+    private boolean buildChildExecution(CodeTreeBuilder b, String frame, int idx) {
         int index = idx;
 
         if (index < instr.signature.valueCount) {
