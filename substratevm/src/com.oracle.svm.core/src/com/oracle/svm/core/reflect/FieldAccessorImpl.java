@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// Checkstyle: stop
 
 package com.oracle.svm.core.reflect;
 
@@ -43,92 +42,92 @@ abstract class FieldAccessorImpl implements FieldAccessor {
         this.field = field;
     }
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract Object get(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract boolean getBoolean(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract byte getByte(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract char getChar(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract short getShort(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract int getInt(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract long getLong(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract float getFloat(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract double getDouble(Object obj)
                     throws IllegalArgumentException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void set(Object obj, Object value)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setBoolean(Object obj, boolean z)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setByte(Object obj, byte b)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setChar(Object obj, char c)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setShort(Object obj, short s)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setInt(Object obj, int i)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setLong(Object obj, long l)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setFloat(Object obj, float f)
                     throws IllegalArgumentException, IllegalAccessException;
 
-    /** Matches specification in {@link java.lang.reflect.Field} */
+    /** Matches specification in {@link java.lang.reflect.Field}. */
     @Override
     public abstract void setDouble(Object obj, double d)
                     throws IllegalArgumentException, IllegalAccessException;
@@ -226,18 +225,21 @@ abstract class FieldAccessorImpl implements FieldAccessor {
 
     protected String getSetMessage(String attemptedType, String attemptedValue) {
         String err = "Can not set";
-        if (Modifier.isStatic(field.getModifiers()))
+        if (Modifier.isStatic(field.getModifiers())) {
             err += " static";
-        if (Modifier.isFinal(field.getModifiers()))
+        }
+        if (Modifier.isFinal(field.getModifiers())) {
             err += " final";
+        }
         err += " " + field.getType().getName() + " field " + getQualifiedFieldName() + " to ";
         if (!attemptedValue.isEmpty()) {
             err += "(" + attemptedType + ")" + attemptedValue;
         } else {
-            if (!attemptedType.isEmpty())
+            if (!attemptedType.isEmpty()) {
                 err += attemptedType;
-            else
+            } else {
                 err += "null value";
+            }
         }
         return err;
     }

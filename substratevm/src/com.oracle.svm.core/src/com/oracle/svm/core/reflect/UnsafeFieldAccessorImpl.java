@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// Checkstyle: stop
 
 package com.oracle.svm.core.reflect;
 
@@ -47,9 +46,10 @@ abstract class UnsafeFieldAccessorImpl extends FieldAccessorImpl {
         super(field);
         int mods = field.getModifiers();
         this.isFinal = Modifier.isFinal(mods);
-        if (Modifier.isStatic(mods))
+        if (Modifier.isStatic(mods)) {
             fieldOffset = unsafe.staticFieldOffset(field);
-        else
+        } else {
             fieldOffset = unsafe.objectFieldOffset(field);
+        }
     }
 }
