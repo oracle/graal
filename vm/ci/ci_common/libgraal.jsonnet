@@ -80,13 +80,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "daily-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_zgc-labsjdk-21-linux-amd64": {},
-    "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -123,7 +117,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
       "21"
     ]
     for os_arch in all_os_arches
@@ -175,7 +168,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
       "21",
     ]
     for os_arch in all_os_arches
