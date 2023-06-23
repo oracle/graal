@@ -11,7 +11,6 @@ redirect_from: /$version/reference-manual/native-image/BuildOutput/
 * [Build Stages](#build-stages)
 * [Resource Usage Statistics](#resource-usage-statistics)
 * [Machine-Readable Build Output](#machine-readable-build-output)
-* [Build Output Options](#build-output-options)
 
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:

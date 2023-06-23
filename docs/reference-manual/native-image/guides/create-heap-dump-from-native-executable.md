@@ -174,7 +174,7 @@ Follow these steps to build a native executable that will produce a heap dump wh
 
 ## Create a Heap Dump from within a Native Executable
 
-The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) if some condition is met.
+The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#dumpHeap-java.lang.String-boolean-) if some condition is met.
 The condition to create a heap dump is provided as an option on the command line.
 
 1. Save the code below in a file named _SVMHeapDumpAPI.java_.
