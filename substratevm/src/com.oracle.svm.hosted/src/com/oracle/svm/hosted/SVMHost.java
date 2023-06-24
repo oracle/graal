@@ -49,8 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -114,7 +114,6 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
-import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -307,28 +306,6 @@ public class SVMHost extends HostVM {
 
         /* Decide when the type should be initialized. */
         classInitializationSupport.maybeInitializeHosted(analysisType);
-
-        /*
-         * For reachable classes, registering class's package in appropriate class loader.
-         */
-        Class<?> javaClass = analysisType.getJavaClass();
-        /**
-         * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
-         * may be different than the class used to load it during native-image generation.
-         */
-        ClassLoader classloader = javaClass.getClassLoader();
-        if (classloader == null) {
-            classloader = BootLoaderSupport.getBootLoader();
-        }
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
-        if (runtimeClassLoader != null) {
-            Package packageValue = javaClass.getPackage();
-            if (packageValue != null) {
-                DynamicHub typeHub = typeToHub.get(analysisType);
-                String packageName = typeHub.getPackageName();
-                ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
-            }
-        }
 
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
