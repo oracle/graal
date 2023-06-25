@@ -3559,7 +3559,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     static PolyglotContextImpl preinitialize(final PolyglotEngineImpl engine, final PreinitConfig preinitConfig, PolyglotSharingLayer sharableLayer, Set<PolyglotLanguage> languagesToPreinitialize,
                     boolean emitWarning) {
         String tmpDir = System.getProperty("java.io.tmpdir");
-        final FileSystemConfig fileSystemConfig = new FileSystemConfig(IOAccess.ALL, new PreInitializeContextFileSystem(tmpDir), new PreInitializeContextFileSystem(tmpDir), tmpDir);
+        final FileSystemConfig fileSystemConfig = new FileSystemConfig(IOAccess.ALL, new PreInitializeContextFileSystem(tmpDir), new PreInitializeContextFileSystem(tmpDir));
         final PolyglotContextConfig config = new PolyglotContextConfig(engine, fileSystemConfig, preinitConfig);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {
