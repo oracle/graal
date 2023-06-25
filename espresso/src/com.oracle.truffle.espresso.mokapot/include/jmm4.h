@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,8 +21,8 @@
  * questions.
  */
 
-#ifndef _JAVA_JMM14_H_
-#define _JAVA_JMM14_H_
+#ifndef _JAVA_JMM21_H_
+#define _JAVA_JMM21_H_
 
 /*
  * This is a private interface used by JDK for JVM monitoring
@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-typedef struct jmmInterface_3 {
+typedef struct jmmInterface_4 {
   void*        reserved1;
   void*        reserved2;
 
@@ -64,6 +64,8 @@ typedef struct jmmInterface_3 {
   jobject      (JNICALL *GetMemoryPoolUsage)     (JNIEnv* env, jobject pool);
   jobject      (JNICALL *GetPeakMemoryPoolUsage) (JNIEnv* env, jobject pool);
 
+  jlong        (JNICALL *GetTotalThreadAllocatedMemory)
+                                                 (JNIEnv *env);
   jlong        (JNICALL *GetOneThreadAllocatedMemory)
                                                  (JNIEnv *env,
                                                   jlong thread_id);
@@ -157,7 +159,8 @@ typedef struct jmmInterface_3 {
   void         (JNICALL *GetDiagnosticCommandArgumentsInfo)
                                                  (JNIEnv *env,
                                                   jstring commandName,
-                                                  dcmdArgInfo *infoArray);
+                                                  dcmdArgInfo *infoArray,
+                                                  jint count);
   jstring      (JNICALL *ExecuteDiagnosticCommand)
                                                  (JNIEnv *env,
                                                   jstring command);
@@ -170,4 +173,4 @@ typedef struct jmmInterface_3 {
 } /* extern "C" */
 #endif /* __cplusplus */
 
-#endif /* !_JAVA_JMM14_H_ */
+#endif /* !_JAVA_JMM21_H_ */

@@ -625,6 +625,12 @@ public final class VM extends NativeEnv {
         return language.isPreviewEnabled();
     }
 
+    @VmImpl
+    public static boolean JVM_IsForeignLinkerSupported() {
+        // Currently no wiring for the "default" linker
+        return true;
+    }
+
     // region objects
 
     private static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
@@ -2343,6 +2349,9 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     public int JVM_GetInterfaceVersion() {
+        if (getJavaVersion().java21OrLater()) {
+            getLogger().warning("JVM_GetInterfaceVersion invoked for a 21+ context but it was removed in Java 21");
+        }
         if (getJavaVersion().java8OrEarlier()) {
             return JniEnv.JVM_INTERFACE_VERSION_8;
         } else {

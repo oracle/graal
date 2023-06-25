@@ -152,7 +152,9 @@ public final class Management extends NativeEnv {
     public static final int JMM_VERSION_1_2_2 = 0x20010202;
     public static final int JMM_VERSION_1_2_3 = 0x20010203;
     public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
-    public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
+    public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.0.9 and 14
+    public static final int JMM_VERSION_4 = 0x20040000; // JDK 21
+
 
     @CompilationFinal //
     private @Pointer TruffleObject managementPtr;
@@ -189,7 +191,7 @@ public final class Management extends NativeEnv {
      * </ul>
      */
     public static boolean isSupportedManagementVersion(int version) {
-        return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
+        return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3 || version == JMM_VERSION_4;
     }
 
     public TruffleObject getManagement(int version) {
