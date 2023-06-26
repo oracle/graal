@@ -153,6 +153,11 @@
       <property name="format" value="\(LoadConstantOp\)"/>
       <property name="message" value="Do not cast directly to `LoadConstantOp`. Use `LoadConstantOp.asLoadConstantOp(op)` instead!"/>
     </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="while \(true\)"/>
+      <property name="message" value="Do not use untrusted endless loops."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>
       <property name="onCommentFormat" value="Checkstyle: resume constant name check"/>
