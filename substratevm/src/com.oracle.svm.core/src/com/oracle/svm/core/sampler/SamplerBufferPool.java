@@ -114,6 +114,7 @@ public class SamplerBufferPool {
         BufferNode node = BufferNodeAccess.allocate(buffer);
         if (node.isNull()) {
             free(buffer);
+            return;
         }
         buffer.setNode(node);
         availableBuffers.pushBuffer(buffer);
