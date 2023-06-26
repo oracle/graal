@@ -72,7 +72,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
-import com.oracle.svm.core.reflect.UnsafeFieldAccessorFactory;
+import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.reflect.FieldAccessor;
 import org.graalvm.compiler.core.common.NumUtil;
