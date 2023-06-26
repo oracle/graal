@@ -52,6 +52,7 @@ import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -118,7 +119,7 @@ public class DynamicHubInitializer {
             /* Support for Java enumerations. */
             if (type.isEnum()) {
                 AnalysisError.guarantee(hub.shouldInitEnumConstants(), "Enum constants already initialized for %s.", type.toJavaName(true));
-                if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
+                if (!hostVM.getClassInitializationSupport().maybeInitializeAtBuildTime(type)) {
                     hub.initEnumConstantsAtRuntime(javaClass);
                 } else {
                     hub.initEnumConstants(retrieveEnumConstantArray(type, javaClass));
@@ -192,12 +193,12 @@ public class DynamicHubInitializer {
 
     private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
+        boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
-        if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
-            info = buildRuntimeInitializationInfo(type);
-        } else {
-            assert type.isInitialized();
+        if (initializedAtBuildTime) {
             info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+        } else {
+            info = buildRuntimeInitializationInfo(type);
         }
         hub.setClassInitializationInfo(info);
         heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);

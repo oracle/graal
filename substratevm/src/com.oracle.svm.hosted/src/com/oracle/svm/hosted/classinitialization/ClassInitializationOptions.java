@@ -102,4 +102,19 @@ public final class ClassInitializationOptions {
 
     @Option(help = "Use new class initialization strategy that allows all classes to be used at image build time.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseNewExperimentalClassInitialization = new HostedOptionKey<>(false);
+
+    @Option(help = "Simulate the effects of class initializer at image build time, to avoid class initialization at run time.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> SimulateClassInitializer = new HostedOptionKey<>(true);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Collect all reasons why a class initializer cannot be simulated.", type = OptionType.Expert)//
+    static final HostedOptionKey<Boolean> SimulateClassInitializerCollectAllReasons = new HostedOptionKey<>(false);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum inlining depth during simulation.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxInlineDepth = new HostedOptionKey<>(200);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum number of loop iterations that are unrolled during simulation.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxLoopIterations = new HostedOptionKey<>(2_000);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum number of bytes allocated in the image heap for each class initializer.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxAllocatedBytes = new HostedOptionKey<>(40_000);
 }

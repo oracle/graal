@@ -1397,7 +1397,11 @@ def cinterfacetutorial(args):
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):
-    def build_and_test_clinittest_image(native_image, args=None):
+    def build_and_test_clinittest_images(native_image, args=None):
+        build_and_test_clinittest_image(native_image, args, True)
+        build_and_test_clinittest_image(native_image, args, False)
+
+    def build_and_test_clinittest_image(native_image, args, new_class_init_policy):
         args = [] if args is None else args
         test_cp = classpath('com.oracle.svm.test')
         build_dir = join(svmbuild_dir(), 'clinittest')
@@ -1407,11 +1411,17 @@ def clinittest(args):
             remove_tree(build_dir)
         mkpath(build_dir)
 
+        if new_class_init_policy:
+            policy_args = ['-H:+UseNewExperimentalClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+        else:
+            policy_args = ['-H:-UseNewExperimentalClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+
         # Build and run the example
         native_image(
-            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarly',
-             '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarlyFeature',
-             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+             '-J--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED',
+             '-J-ea', '-J-esa',
+             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + policy_args + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
@@ -1425,9 +1435,17 @@ def clinittest(args):
                                                    "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
                 for line in f:
-                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                    checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
-                    checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                    if new_class_init_policy:
+                        checkLine(line, "MustBeSafeEarly", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSafeLate", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    else:
+                        checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSimulated", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+
                 if len(wrongly_initialized_lines) > 0:
                     msg = ""
                     for (line, error) in wrongly_initialized_lines:
@@ -1439,7 +1457,7 @@ def clinittest(args):
 
         check_class_initialization(all_classes_file)
 
-    native_image_context_run(build_and_test_clinittest_image, args)
+    native_image_context_run(build_and_test_clinittest_images, args)
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
