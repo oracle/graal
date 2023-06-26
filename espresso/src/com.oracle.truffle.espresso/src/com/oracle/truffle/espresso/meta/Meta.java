@@ -394,7 +394,10 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = diff() //
+                .method(lower(20), Name._init_, Signature._void_long_int) //
+                .method(higher(21), Name._init_, Signature._void_long_long) //
+                .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 

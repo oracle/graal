@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -3350,13 +3351,22 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused) {
-        final StaticObject[] threads = getContext().getActiveThreads();
-        return getMeta().java_lang_Thread.allocateReferenceArray(threads.length, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int index) {
-                return threads[index];
+        ThreadsAccess threadAccess = getThreadAccess();
+        StaticObject[] threads = getContext().getActiveThreads();
+        int numThreads = threads.length;
+        int i = 0;
+        while (i < numThreads) {
+            if (threadAccess.isVirtualThread(threads[i])) {
+                threads[i] = threads[numThreads - 1];
+                numThreads--;
+                continue;
             }
-        });
+            i++;
+        }
+        if (numThreads < threads.length) {
+            threads = Arrays.copyOf(threads, numThreads);
+        }
+        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayClass(), threads);
     }
 
     // endregion threads

@@ -50,12 +50,12 @@ public final class DowncallStubs {
     }
 
     @TruffleBoundary
-    public long makeStub(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask) {
+    public long makeStub(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask, boolean needsTransition) {
         int id;
         synchronized (this) {
             id = nextId++;
         }
-        DowncallStub stub = create(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask);
+        DowncallStub stub = create(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask, needsTransition);
 
         synchronized (this) {
             if (stubs == null) {
@@ -76,7 +76,8 @@ public final class DowncallStubs {
         return id;
     }
 
-    private DowncallStub create(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask) {
+    private DowncallStub create(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs,
+                    boolean needsReturnBuffer, int capturedStateMask, @SuppressWarnings("unused") boolean needsTransition) {
         assert pTypes.length == inputRegs.length;
         EspressoError.guarantee(!needsReturnBuffer, "unimplemented");
         EspressoError.guarantee(capturedStateMask == 0, "unimplemented");

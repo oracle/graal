@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThre
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -108,8 +109,8 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @JavaType(Thread[].class) StaticObject getThreads(@Inject Meta meta) {
-        return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads(), meta.getContext());
+    public static @JavaType(Thread[].class) StaticObject getThreads(@Inject EspressoContext context) {
+        return context.getVM().JVM_GetAllThreads(null);
     }
 
     @Substitution
@@ -232,15 +233,27 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution
+    @Substitution(versionFilter = VersionFilter.Java18OrEarlier.class)
+    public static void sleep(long amount, @Inject Meta meta, @Inject SubstitutionProfiler location) {
+        sleep0(amount, meta, location);
+    }
+
+    @TruffleBoundary
+    @Substitution(versionFilter = VersionFilter.Java19OrLater.class)
     @SuppressWarnings("try")
-    public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
-        if (millis < 0) {
+    public static void sleep0(long amount, @Inject Meta meta, @Inject SubstitutionProfiler location) {
+        if (amount < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "timeout value is negative");
+        }
+        TimeUnit unit;
+        if (meta.getJavaVersion().java21OrLater()) {
+            unit = TimeUnit.NANOSECONDS;
+        } else {
+            unit = TimeUnit.MILLISECONDS;
         }
         StaticObject thread = meta.getContext().getCurrentPlatformThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
-            meta.getContext().getBlockingSupport().sleep(millis, location);
+            meta.getContext().getBlockingSupport().sleep(unit.toNanos(amount), location);
         } catch (GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());

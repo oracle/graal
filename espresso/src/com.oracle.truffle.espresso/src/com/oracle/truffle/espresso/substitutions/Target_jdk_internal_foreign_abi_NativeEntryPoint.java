@@ -39,11 +39,13 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     @Substitution
-    public static long makeDowncallStub(@JavaType(MethodType.class) StaticObject methodType, @JavaType(internalName = "Ljdk/internal/foreign/abi/ABIDescriptor;") StaticObject abi,
+    public static long makeDowncallStub(@JavaType(MethodType.class) StaticObject methodType,
+                    @JavaType(internalName = "Ljdk/internal/foreign/abi/ABIDescriptor;") @SuppressWarnings("unused") StaticObject abi,
                     @JavaType(internalName = "[Ljdk/internal/foreign/abi/VMStorage;") StaticObject encArgMoves,
                     @JavaType(internalName = "[Ljdk/internal/foreign/abi/VMStorage;") StaticObject encRetMoves,
                     boolean needsReturnBuffer,
                     int capturedStateMask,
+                    boolean needsTransition,
                     @Inject EspressoContext context, @Inject Meta meta) {
         Klass[] pTypes = getPTypes(methodType, meta);
         Klass rType = meta.java_lang_invoke_MethodType_rtype.getObject(methodType).getMirrorKlass(meta);
@@ -52,7 +54,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         VMStorage[] outRegs = VMStorage.fromGuestArray(encRetMoves, meta);
         assert inputRegs.length == pTypes.length;
 
-        return context.getDowncallStubs().makeStub(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask);
+        return context.getDowncallStubs().makeStub(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask, needsTransition);
     }
 
     static Klass[] getPTypes(StaticObject methodType, Meta meta) {

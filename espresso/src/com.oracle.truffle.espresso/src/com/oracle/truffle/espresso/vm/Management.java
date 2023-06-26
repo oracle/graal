@@ -347,7 +347,7 @@ public final class Management extends NativeEnv {
 
         for (int i = 0; i < threads.length; i++) {
             StaticObject thread = threads[i];
-            if (StaticObject.isNull(thread) || !getThreadAccess().isAlive(thread)) {
+            if (StaticObject.isNull(thread) || !getThreadAccess().isAlive(thread) || getThreadAccess().isVirtualThread(thread)) {
                 getInterpreterToVM().setArrayObject(language, StaticObject.NULL, i, infoArray);
             } else {
                 int threadStatus = meta.getThreadAccess().getState(thread);
