@@ -265,7 +265,7 @@ public class MainTest {
         }
     }
 
-    private ExperimentMock createJITExperiment1(String directoryPrefix, String profPrefix) throws IOException {
+    private static ExperimentMock createJITExperiment1(String directoryPrefix, String profPrefix) throws IOException {
         OptimizationLogMock optLog = new OptimizationLogMock(directoryPrefix);
         optLog.addLogFile().addCompilationUnit("foo()", "10-foo").addCompilationUnit("bar()", "20-bar");
         Path logDir = optLog.writeToTempDirectory();
@@ -275,7 +275,7 @@ public class MainTest {
         return new ExperimentMock(optLog, logDir, profFile);
     }
 
-    private ExperimentMock createJITExperiment2(String directoryPrefix, String profPrefix) throws IOException {
+    private static ExperimentMock createJITExperiment2(String directoryPrefix, String profPrefix) throws IOException {
         OptimizationLogMock optLog = new OptimizationLogMock(directoryPrefix);
         optLog.addLogFile().addCompilationUnit("foo()", "30-foo").addCompilationUnit("baz()", "40-baz");
         Path logDir = optLog.writeToTempDirectory();
@@ -285,7 +285,7 @@ public class MainTest {
         return new ExperimentMock(optLog, logDir, profFile);
     }
 
-    private ExperimentMock createAOTExperiment1(String directoryPrefix, String profPrefix) throws IOException {
+    private static ExperimentMock createAOTExperiment1(String directoryPrefix, String profPrefix) throws IOException {
         OptimizationLogMock optLog = new OptimizationLogMock(directoryPrefix);
         optLog.addLogFile().addCompilationUnit("foo()", "10-foo").addCompilationUnit("bar()", "20-bar");
         Path logDir = optLog.writeToTempDirectory();
@@ -295,7 +295,7 @@ public class MainTest {
         return new ExperimentMock(optLog, logDir, profFile);
     }
 
-    private ExperimentMock createAOTExperiment2(String directoryPrefix, String profPrefix) throws IOException {
+    private static ExperimentMock createAOTExperiment2(String directoryPrefix, String profPrefix) throws IOException {
         OptimizationLogMock optLog = new OptimizationLogMock(directoryPrefix);
         optLog.addLogFile().addCompilationUnit("foo()", "30-foo").addCompilationUnit("baz()", "40-baz");
         Path logDir = optLog.writeToTempDirectory();
