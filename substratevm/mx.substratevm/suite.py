@@ -243,7 +243,7 @@ suite = {
                 "java.compiler",
                 "jdk.jfr",
                 "jdk.management",
-                "jdk.management.jfr",
+                "jdk.zipfs",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1324,7 +1324,6 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
-                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

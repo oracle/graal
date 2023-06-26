@@ -195,6 +195,7 @@ public class NativeImageGeneratorRunner {
                         "jdk.management",
                         "java.compiler",
                         "jdk.jfr",
+                        "jdk.zipfs",
                         "jdk.management.jfr");
 
         Set<String> unexpectedBuilderDependencies = modulesBuilderDependsOn.stream().map(Module::getName).collect(Collectors.toSet());
