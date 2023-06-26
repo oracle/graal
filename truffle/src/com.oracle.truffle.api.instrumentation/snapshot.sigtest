@@ -53,6 +53,7 @@ meth public void onLanguageContextInitializeFailed(com.oracle.truffle.api.Truffl
 CLSS public com.oracle.truffle.api.instrumentation.EventBinding<%0 extends java.lang.Object>
 meth public boolean isDisposed()
 meth public final boolean isAttached()
+meth public final boolean tryAttach()
 meth public final void attach()
 meth public void dispose()
 meth public {com.oracle.truffle.api.instrumentation.EventBinding%0} getElement()
