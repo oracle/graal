@@ -232,7 +232,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
             return CallsiteKind.Root;
         }
         if (positive) {
-            assert !alive;
+            assert !alive : "an inlined node cannot be alive";
             return CallsiteKind.Inlined;
         }
         if (alive) {

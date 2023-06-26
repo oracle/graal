@@ -40,7 +40,7 @@ import org.graalvm.profdiff.command.JITJITCommand;
 import org.graalvm.profdiff.command.ReportCommand;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.OptionValues;
-import org.graalvm.profdiff.core.StdoutWriter;
+import org.graalvm.profdiff.core.Writer;
 
 public class Profdiff {
     private static class ProgramArguments {
@@ -164,7 +164,7 @@ public class Profdiff {
 
         programArguments.parseOrExit(args);
 
-        StdoutWriter writer = new StdoutWriter(programArguments.getOptionValues());
+        Writer writer = Writer.standardOutput(programArguments.getOptionValues());
         try {
             commandGroup.getSelectedCommand().invoke(writer);
         } catch (Exception exception) {

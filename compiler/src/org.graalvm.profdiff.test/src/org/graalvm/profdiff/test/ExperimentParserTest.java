@@ -39,6 +39,7 @@ import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -48,7 +49,6 @@ import org.graalvm.profdiff.parser.ExperimentFiles;
 import org.graalvm.profdiff.parser.ExperimentParser;
 import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.parser.FileView;
-import org.graalvm.profdiff.core.StdoutWriter;
 import org.graalvm.profdiff.core.Writer;
 import org.junit.Test;
 
@@ -253,8 +253,7 @@ public class ExperimentParserTest {
     @Test
     public void testExperimentParser() throws Exception {
         ExperimentFiles experimentFiles = new ExperimentString(OPTIMIZATION_LOG_MOCK, PROFILE_MOCK);
-        Writer writer = new StdoutWriter(null);
-        ExperimentParser experimentParser = new ExperimentParser(experimentFiles, writer);
+        ExperimentParser experimentParser = new ExperimentParser(experimentFiles, Writer.standardOutput(new OptionValues()));
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
         assertEquals(2, StreamSupport.stream(experiment.getCompilationUnits().spliterator(), false).count());
@@ -339,7 +338,7 @@ public class ExperimentParserTest {
                                 ]
                             }
                         }""".replace("\n", "");
-        Experiment experiment = new ExperimentParser(new ExperimentString(compilationUnitJSON, null), new StdoutWriter(null)).parse();
+        Experiment experiment = new ExperimentParser(new ExperimentString(compilationUnitJSON, null), Writer.stringBuilder(new OptionValues())).parse();
         String methodName = "foo.Bar(Baz)";
         Method method = experiment.getMethodsByName().get(methodName);
         assertNotNull(method);

@@ -121,6 +121,27 @@ public class OptionValues {
     }
 
     /**
+     * Constructs option values with the default {@link HotCompilationUnitPolicy} and all options
+     * {@code false}.
+     */
+    public OptionValues() {
+        this(new HotCompilationUnitPolicy(), false, false, false, false, false, false, false, false, false);
+    }
+
+    /**
+     * Returns a copy of these option values with an updated value of
+     * {@link #alwaysPrintInlinerReasoning}.
+     *
+     * @param newAlwaysPrintInlinerReasoning the updated value of
+     *            {@link #alwaysPrintInlinerReasoning}
+     * @return updated option values
+     */
+    public OptionValues withAlwaysPrintInlinerReasoning(boolean newAlwaysPrintInlinerReasoning) {
+        return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, bciLongForm, sortInliningTree, sortUnorderedPhases, removeVeryDetailedPhases,
+                        pruneIdentities, createFragments, newAlwaysPrintInlinerReasoning);
+    }
+
+    /**
      * Returns {@code true} iff {@link OptimizationContextTree an optimization context tree} should
      * be built and displayed instead of a separate inlining and optimization tree.
      */
