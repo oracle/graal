@@ -212,6 +212,10 @@ public class SubstrateOptions {
         public boolean isMinimalLevel(OptimizationLevel other) {
             return this.level >= other.level;
         }
+
+        public int getLevel() {
+            return level;
+        }
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
