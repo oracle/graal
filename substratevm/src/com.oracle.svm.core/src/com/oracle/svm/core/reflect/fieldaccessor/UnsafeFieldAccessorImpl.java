@@ -28,6 +28,8 @@ package com.oracle.svm.core.reflect.fieldaccessor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.VMError;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.FieldAccessor;
 
@@ -46,6 +48,7 @@ abstract class UnsafeFieldAccessorImpl implements FieldAccessor {
     protected final boolean isFinal;
 
     UnsafeFieldAccessorImpl(Field field) {
+        VMError.guarantee(!SubstrateUtil.HOSTED, "UnsafeFieldAccessors must only be create at runtime.");
         this.field = field;
         int mods = field.getModifiers();
         this.isFinal = Modifier.isFinal(mods);
