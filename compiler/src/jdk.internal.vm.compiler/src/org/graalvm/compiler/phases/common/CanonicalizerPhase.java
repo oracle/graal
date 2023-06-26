@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.DEAD_PHI_CYCLE_DETECTION;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
 
@@ -109,7 +110,13 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
          * Determines if the canonicalizer is allowed to perform global value numbering. See
          * {@link StructuredGraph#findDuplicate(Node)} for details.
          */
-        GVN;
+        GVN,
+        /**
+         * Determines if the canonicalizer is allowed to perform a global graph analysis on dead
+         * loop phi cycles and delete them.
+         * {@link CanonicalizerPhase#isDeadLoopPhiCycle(PhiNode, NodeFlood)} for details.
+         */
+        DEAD_PHI_CYCLE_DETECTION;
     }
 
     protected static final int MAX_ITERATION_PER_NODE = 10;
@@ -156,6 +163,12 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     public CanonicalizerPhase copyWithoutGVN() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
         newFeatures.remove(GVN);
+        return new CanonicalizerPhase(customSimplification, newFeatures);
+    }
+
+    public CanonicalizerPhase copyWithoutDeadPhyCycleDetection() {
+        EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
+        newFeatures.remove(DEAD_PHI_CYCLE_DETECTION);
         return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
@@ -315,7 +328,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             for (Node n : tool.workList) {
                 processNode(n, tool);
                 ++sum;
-                if (tool.allUsagesAvailable() && n.isAlive() && n instanceof PhiNode && ((PhiNode) n).isLoopPhi()) {
+                if (features.contains(DEAD_PHI_CYCLE_DETECTION) && tool.allUsagesAvailable() && n.isAlive() && n instanceof PhiNode && ((PhiNode) n).isLoopPhi()) {
                     if (phiPostProcessingWorkList == null) {
                         phiPostProcessingWorkList = EconomicSet.create();
                     }
@@ -324,7 +337,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        if (graph.hasLoops()) {
+        if (features.contains(DEAD_PHI_CYCLE_DETECTION) && graph.hasLoops()) {
             for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
                 for (PhiNode n : lb.phis()) {
                     if (tool.allUsagesAvailable() && n.isAlive()) {
