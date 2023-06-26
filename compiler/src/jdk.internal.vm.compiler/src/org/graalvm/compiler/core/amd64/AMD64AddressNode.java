@@ -119,13 +119,6 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
                 indexReference = Value.ILLEGAL;
             }
         }
-//        // FIXME
-//        if (base instanceof AMD64CompressAddressLowering.HeapBaseNode && index != null){
-//            gen.getLIRGeneratorTool().emitSpeculationFence();
-//            int mask = (int) ((1L << 32) - 1); // TODO this can fit an int.
-//            Value maskValue = new ConstantValue(LIRKind.fromJavaKind(gen.getLIRGeneratorTool().target().arch, JavaKind.Int), JavaConstant.forInt(mask));
-//            indexValue = gen.getLIRGeneratorTool().asAllocatable(gen.getLIRGeneratorTool().getArithmetic().emitAnd(gen.operand(index), maskValue));
-//        }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
         gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
