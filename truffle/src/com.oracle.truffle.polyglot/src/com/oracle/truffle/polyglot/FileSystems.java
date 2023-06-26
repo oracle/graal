@@ -218,6 +218,195 @@ final class FileSystems {
         }
     }
 
+    private abstract static class ForwardingPath<T extends ForwardingPath<T>> implements Path {
+
+        abstract T wrap(Path path);
+
+        abstract Path unwrap();
+
+        static Path unwrap(Path path) {
+            if (path instanceof ForwardingPath<?> forwardingPath) {
+                return forwardingPath.unwrap();
+            } else {
+                return path;
+            }
+        }
+
+        @Override
+        public java.nio.file.FileSystem getFileSystem() {
+            return null;
+        }
+
+        @Override
+        public boolean isAbsolute() {
+            return unwrap().isAbsolute();
+        }
+
+        @Override
+        public Path getRoot() {
+            return wrap(unwrap().getRoot());
+        }
+
+        @Override
+        public Path getFileName() {
+            return wrap(unwrap().getFileName());
+        }
+
+        @Override
+        public Path getParent() {
+            return wrap(unwrap().getParent());
+        }
+
+        @Override
+        public int getNameCount() {
+            return unwrap().getNameCount();
+        }
+
+        @Override
+        public Path getName(int index) {
+            return wrap(unwrap().getName(index));
+        }
+
+        @Override
+        public Path subpath(int beginIndex, int endIndex) {
+            return wrap(unwrap().subpath(beginIndex, endIndex));
+        }
+
+        @Override
+        public boolean startsWith(Path other) {
+            return unwrap().startsWith(unwrap(other));
+        }
+
+        @Override
+        public boolean startsWith(String other) {
+            return unwrap().startsWith(other);
+        }
+
+        @Override
+        public boolean endsWith(Path other) {
+            return unwrap().endsWith(unwrap(other));
+        }
+
+        @Override
+        public boolean endsWith(String other) {
+            return unwrap().endsWith(other);
+        }
+
+        @Override
+        public Path normalize() {
+            return wrap(unwrap().normalize());
+        }
+
+        @Override
+        public Path resolve(Path other) {
+            return wrap(unwrap().resolve(unwrap(other)));
+        }
+
+        @Override
+        public Path resolve(String other) {
+            return wrap(unwrap().resolve(other));
+        }
+
+        @Override
+        public Path resolveSibling(Path other) {
+            return wrap(unwrap().resolveSibling(unwrap(other)));
+        }
+
+        @Override
+        public Path resolveSibling(String other) {
+            return wrap(unwrap().resolveSibling(other));
+        }
+
+        @Override
+        public Path relativize(Path other) {
+            return wrap(unwrap().relativize(unwrap(other)));
+        }
+
+        @Override
+        public URI toUri() {
+            return unwrap().toUri();
+        }
+
+        @Override
+        public Path toAbsolutePath() {
+            return wrap(unwrap().toAbsolutePath());
+        }
+
+        @Override
+        public Path toRealPath(LinkOption... options) throws IOException {
+            return wrap(unwrap().toRealPath(options));
+        }
+
+        @Override
+        public File toFile() {
+            return unwrap().toFile();
+        }
+
+        @Override
+        public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterator<Path> iterator() {
+            return new ForwardingPathIterator<>(unwrap().iterator(), this::wrap);
+        }
+
+        @Override
+        public int compareTo(Path other) {
+            return unwrap().compareTo(unwrap(other));
+        }
+
+        @Override
+        public int hashCode() {
+            return unwrap().hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof ForwardingPath<?>)) {
+                return false;
+            }
+            return unwrap().equals(unwrap((Path) other));
+        }
+
+        @Override
+        public String toString() {
+            return unwrap().toString();
+        }
+
+        private static final class ForwardingPathIterator<T extends ForwardingPath<T>> implements Iterator<Path> {
+
+            private final Iterator<Path> delegateIterator;
+            private final Function<Path, T> wrap;
+
+            ForwardingPathIterator(Iterator<Path> delegateIterator, Function<Path, T> wrap) {
+                Objects.requireNonNull(delegateIterator, "DelegateIterator must be non-null.");
+                Objects.requireNonNull(delegateIterator, "Wrap function must be non-null.");
+                this.delegateIterator = delegateIterator;
+                this.wrap = wrap;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return delegateIterator.hasNext();
+            }
+
+            @Override
+            public Path next() {
+                return wrap.apply(delegateIterator.next());
+            }
+        }
+    }
+
     static final class PreInitializeContextFileSystem implements PolyglotFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
@@ -289,41 +478,41 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI path) {
-            return wrap(delegate.parsePath(path));
+            return factory.apply(delegate.parsePath(path));
         }
 
         @Override
         public Path parsePath(String path) {
-            return wrap(delegate.parsePath(path));
+            return factory.apply(delegate.parsePath(path));
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            delegate.checkAccess(unwrap(path), modes, linkOptions);
+            delegate.checkAccess(PreInitializePath.unwrap(path), modes, linkOptions);
         }
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            delegate.createDirectory(unwrap(dir), attrs);
+            delegate.createDirectory(PreInitializePath.unwrap(dir), attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            delegate.delete(unwrap(path));
+            delegate.delete(PreInitializePath.unwrap(path));
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            return delegate.newByteChannel(unwrap(path), options, attrs);
+            return delegate.newByteChannel(PreInitializePath.unwrap(path), options, attrs);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(unwrap(dir), filter);
+            DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(PreInitializePath.unwrap(dir), filter);
             return new DirectoryStream<>() {
                 @Override
                 public Iterator<Path> iterator() {
-                    return new WrappingPathIterator(delegateStream.iterator());
+                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), factory);
                 }
 
                 @Override
@@ -335,52 +524,52 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return wrap(delegate.toAbsolutePath(unwrap(path)));
+            return factory.apply(delegate.toAbsolutePath(PreInitializePath.unwrap(path)));
         }
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return wrap(delegate.toRealPath(unwrap(path), linkOptions));
+            return factory.apply(delegate.toRealPath(PreInitializePath.unwrap(path), linkOptions));
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            return delegate.readAttributes(unwrap(path), attributes, options);
+            return delegate.readAttributes(PreInitializePath.unwrap(path), attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            delegate.setAttribute(unwrap(path), attribute, value, options);
+            delegate.setAttribute(PreInitializePath.unwrap(path), attribute, value, options);
         }
 
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.copy(unwrap(source), unwrap(target), options);
+            delegate.copy(PreInitializePath.unwrap(source), PreInitializePath.unwrap(target), options);
         }
 
         @Override
         public void move(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.move(unwrap(source), unwrap(target), options);
+            delegate.move(PreInitializePath.unwrap(source), PreInitializePath.unwrap(target), options);
         }
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            delegate.createLink(unwrap(link), unwrap(existing));
+            delegate.createLink(PreInitializePath.unwrap(link), PreInitializePath.unwrap(existing));
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            delegate.createSymbolicLink(unwrap(link), unwrap(target), attrs);
+            delegate.createSymbolicLink(PreInitializePath.unwrap(link), PreInitializePath.unwrap(target), attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return wrap(delegate.readSymbolicLink(unwrap(link)));
+            return factory.apply(delegate.readSymbolicLink(PreInitializePath.unwrap(link)));
         }
 
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
-            delegate.setCurrentWorkingDirectory(unwrap(currentWorkingDirectory));
+            delegate.setCurrentWorkingDirectory(PreInitializePath.unwrap(currentWorkingDirectory));
         }
 
         @Override
@@ -390,22 +579,22 @@ final class FileSystems {
 
         @Override
         public Charset getEncoding(Path path) {
-            return delegate.getEncoding(unwrap(path));
+            return delegate.getEncoding(PreInitializePath.unwrap(path));
         }
 
         @Override
         public String getMimeType(Path path) {
-            return delegate.getMimeType(unwrap(path));
+            return delegate.getMimeType(PreInitializePath.unwrap(path));
         }
 
         @Override
         public Path getTempDirectory() {
-            return wrap(delegate.getTempDirectory());
+            return factory.apply(delegate.getTempDirectory());
         }
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
-            return delegate.isSameFile(unwrap(path1), unwrap(path2), options);
+            return delegate.isSameFile(PreInitializePath.unwrap(path1), PreInitializePath.unwrap(path2), options);
         }
 
         @Override
@@ -424,19 +613,11 @@ final class FileSystems {
             return delegate.equals(((PreInitializeContextFileSystem) other).delegate);
         }
 
-        Path wrap(Path path) {
-            return path == null ? null : factory.apply(path);
-        }
-
-        static Path unwrap(Path path) {
-            return path.getClass() == PreInitializePath.class ? ((PreInitializePath) path).getDelegate() : path;
-        }
-
         private class ImageExecutionTimeFactory implements Function<Path, PreInitializePath> {
 
             @Override
             public PreInitializePath apply(Path path) {
-                return new PreInitializePath(path);
+                return path == null ? null : new PreInitializePath(path);
             }
         }
 
@@ -446,9 +627,13 @@ final class FileSystems {
 
             @Override
             public PreInitializePath apply(Path path) {
-                PreInitializePath preInitPath = super.apply(path);
-                emittedPaths.add(new WeakReference<>(preInitPath));
-                return preInitPath;
+                if (path == null) {
+                    return null;
+                } else {
+                    PreInitializePath preInitPath = super.apply(path);
+                    emittedPaths.add(new WeakReference<>(preInitPath));
+                    return preInitPath;
+                }
             }
 
             void onPreInitializeContextEnd() {
@@ -468,26 +653,7 @@ final class FileSystems {
             }
         }
 
-        private final class WrappingPathIterator implements Iterator<Path> {
-
-            private final Iterator<Path> delegateIterator;
-
-            WrappingPathIterator(Iterator<Path> delegateIterator) {
-                this.delegateIterator = delegateIterator;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return delegateIterator.hasNext();
-            }
-
-            @Override
-            public Path next() {
-                return wrap(delegateIterator.next());
-            }
-        }
-
-        private final class PreInitializePath implements Path {
+        private final class PreInitializePath extends ForwardingPath<PreInitializePath> {
 
             private volatile Object delegatePath;
 
@@ -495,7 +661,13 @@ final class FileSystems {
                 this.delegatePath = delegatePath;
             }
 
-            private Path getDelegate() {
+            @Override
+            PreInitializePath wrap(Path path) {
+                return factory.apply(path);
+            }
+
+            @Override
+            Path unwrap() {
                 Path result = resolve(delegate);
                 delegatePath = result;
                 return result;
@@ -536,11 +708,6 @@ final class FileSystems {
             }
 
             @Override
-            public java.nio.file.FileSystem getFileSystem() {
-                return getDelegate().getFileSystem();
-            }
-
-            @Override
             public boolean isAbsolute() {
                 // We need to support isAbsolute and toString even after conversion to image heap
                 // form. These methods are used by the TruffleBaseFeature to report the absolute
@@ -548,144 +715,8 @@ final class FileSystems {
                 if (delegate == INVALID_FILESYSTEM) {
                     return ((ImageHeapPath) delegatePath).absolute;
                 } else {
-                    return getDelegate().isAbsolute();
+                    return super.isAbsolute();
                 }
-            }
-
-            @Override
-            public Path getRoot() {
-                return wrap(getDelegate().getRoot());
-            }
-
-            @Override
-            public Path getFileName() {
-                return wrap(getDelegate().getFileName());
-            }
-
-            @Override
-            public Path getParent() {
-                return wrap(getDelegate().getParent());
-            }
-
-            @Override
-            public int getNameCount() {
-                return getDelegate().getNameCount();
-            }
-
-            @Override
-            public Path getName(int index) {
-                return wrap(getDelegate().getName(index));
-            }
-
-            @Override
-            public Path subpath(int beginIndex, int endIndex) {
-                return wrap(getDelegate().subpath(beginIndex, endIndex));
-            }
-
-            @Override
-            public boolean startsWith(Path other) {
-                return getDelegate().startsWith(unwrap(other));
-            }
-
-            @Override
-            public boolean startsWith(String other) {
-                return getDelegate().startsWith(other);
-            }
-
-            @Override
-            public boolean endsWith(Path other) {
-                return getDelegate().endsWith(unwrap(other));
-            }
-
-            @Override
-            public boolean endsWith(String other) {
-                return getDelegate().endsWith(other);
-            }
-
-            @Override
-            public Path normalize() {
-                return wrap(getDelegate().normalize());
-            }
-
-            @Override
-            public Path resolve(Path other) {
-                return wrap(getDelegate().resolve(unwrap(other)));
-            }
-
-            @Override
-            public Path resolve(String other) {
-                return wrap(getDelegate().resolve(other));
-            }
-
-            @Override
-            public Path resolveSibling(Path other) {
-                return wrap(getDelegate().resolveSibling(unwrap(other)));
-            }
-
-            @Override
-            public Path resolveSibling(String other) {
-                return wrap(getDelegate().resolveSibling(other));
-            }
-
-            @Override
-            public Path relativize(Path other) {
-                return wrap(getDelegate().relativize(unwrap(other)));
-            }
-
-            @Override
-            public URI toUri() {
-                return getDelegate().toUri();
-            }
-
-            @Override
-            public Path toAbsolutePath() {
-                return wrap(getDelegate().toAbsolutePath());
-            }
-
-            @Override
-            public Path toRealPath(LinkOption... options) throws IOException {
-                return wrap(getDelegate().toRealPath(options));
-            }
-
-            @Override
-            public File toFile() {
-                return getDelegate().toFile();
-            }
-
-            @Override
-            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
-                return getDelegate().register(watcher, events, modifiers);
-            }
-
-            @Override
-            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
-                return getDelegate().register(watcher, events);
-            }
-
-            @Override
-            public Iterator<Path> iterator() {
-                return new WrappingPathIterator(getDelegate().iterator());
-            }
-
-            @Override
-            public int compareTo(Path other) {
-                return getDelegate().compareTo(unwrap(other));
-            }
-
-            @Override
-            public int hashCode() {
-                return getDelegate().hashCode();
-            }
-
-            @Override
-            public boolean equals(Object other) {
-                if (other == this) {
-                    return true;
-                }
-                if (!(other instanceof Path)) {
-                    return false;
-                }
-                return getDelegate().equals(unwrap((Path) other));
             }
 
             @Override
@@ -700,22 +731,15 @@ final class FileSystems {
                     }
                     return imageHeapPath.path;
                 } else {
-                    return getDelegate().toString();
+                    return super.toString();
                 }
             }
         }
 
-        private static final class ImageHeapPath {
+        private record ImageHeapPath(String languageId, String path, boolean absolute) {
 
-            private final String languageId;
-            private final String path;
-            private final boolean absolute;
-
-            ImageHeapPath(String languageId, String path, boolean absolute) {
+            private ImageHeapPath {
                 assert path != null;
-                this.languageId = languageId;
-                this.path = path;
-                this.absolute = absolute;
             }
         }
     }
@@ -1747,37 +1771,48 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
-            return new InternalResourcePath(delegate.parsePath(path));
+            return InternalResourcePath.forDelegate(delegate.parsePath(path));
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.checkAccess(normalized, modes, linkOptions);
         }
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(dir).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.createDirectory(normalized, attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.delete(normalized);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(path).getNormalizedDelegateAbsolutePath(rootDelegate);
             return delegate.newByteChannel(normalized, options, attrs);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path normalized = ((InternalResourcePath) dir).getNormalizedDelegateAbsolutePath(rootDelegate);
-            return delegate.newDirectoryStream(normalized, filter);
+            Path normalized = InternalResourcePath.as(dir).getNormalizedDelegateAbsolutePath(rootDelegate);
+            DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(normalized, filter);
+            return new DirectoryStream<>() {
+                @Override
+                public Iterator<Path> iterator() {
+                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), InternalResourcePath::forDelegate);
+                }
+
+                @Override
+                public void close() throws IOException {
+                    delegateStream.close();
+                }
+            };
         }
 
         @Override
@@ -1785,7 +1820,9 @@ final class FileSystems {
             if (path.isAbsolute()) {
                 return path;
             } else {
-                return InternalResourcePath.wrap(rootDelegate.resolve(((InternalResourcePath) path).delegate));
+                InternalResourcePath internalResourcePath = InternalResourcePath.as(path);
+                Path resolvedAbsolute = internalResourcePath.isRelativeResourceRoot() ? rootDelegate : rootDelegate.resolve(internalResourcePath.delegate);
+                return InternalResourcePath.forDelegate(resolvedAbsolute);
             }
         }
 
@@ -1796,34 +1833,37 @@ final class FileSystems {
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(path).getNormalizedDelegateAbsolutePath(rootDelegate);
             return delegate.readAttributes(normalized, attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            Path normalized = ((InternalResourcePath) path).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized = InternalResourcePath.as(path).getNormalizedDelegateAbsolutePath(rootDelegate);
             delegate.setAttribute(normalized, attribute, value, options);
         }
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
-            Path normalizedExisting = ((InternalResourcePath) existing).getNormalizedDelegateAbsolutePath(rootDelegate);
-            PolyglotFileSystem.super.createLink(normalizedLink, normalizedExisting);
+            Path normalizedLink = InternalResourcePath.as(link).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalizedExisting = InternalResourcePath.as(existing).getNormalizedDelegateAbsolutePath(rootDelegate);
+            delegate.createLink(normalizedLink, normalizedExisting);
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
-            Path normalizedTarget = ((InternalResourcePath) target).getNormalizedDelegateAbsolutePath(rootDelegate);
-            PolyglotFileSystem.super.createSymbolicLink(normalizedLink, normalizedTarget, attrs);
+            Path normalizedLink = InternalResourcePath.as(link).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalizedTarget = InternalResourcePath.as(target).getNormalizedDelegateAbsolutePath(rootDelegate);
+            delegate.createSymbolicLink(normalizedLink, normalizedTarget, attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            Path normalizedLink = ((InternalResourcePath) link).getNormalizedDelegateAbsolutePath(rootDelegate);
-            return PolyglotFileSystem.super.readSymbolicLink(normalizedLink);
+            Path normalizedLink = InternalResourcePath.as(link).getNormalizedDelegateAbsolutePath(rootDelegate);
+            InternalResourcePath result = InternalResourcePath.forDelegate(delegate.readSymbolicLink(normalizedLink));
+            // Ensure that the link does not point outside the internal resource root.
+            result.getNormalizedDelegateAbsolutePath(rootDelegate);
+            return result;
         }
 
         @Override
@@ -1834,6 +1874,13 @@ final class FileSystems {
         @Override
         public String getPathSeparator() {
             return delegate.getPathSeparator();
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
+            Path normalized1 = InternalResourcePath.as(path1).getNormalizedDelegateAbsolutePath(rootDelegate);
+            Path normalized2 = InternalResourcePath.as(path2).getNormalizedDelegateAbsolutePath(rootDelegate);
+            return normalized1.equals(normalized2);
         }
 
         @Override
@@ -1851,7 +1898,7 @@ final class FileSystems {
             return false;
         }
 
-        private static final class InternalResourcePath implements Path {
+        private static final class InternalResourcePath extends ForwardingPath<InternalResourcePath> {
 
             private static final Object INVALID = new Object();
 
@@ -1862,157 +1909,53 @@ final class FileSystems {
              */
             private volatile Object normalizedAbsolutePath;
 
-            InternalResourcePath(Path delegate) {
+            private InternalResourcePath(Path delegate) {
                 this.delegate = delegate;
             }
 
             @Override
-            public java.nio.file.FileSystem getFileSystem() {
-                return null;
+            InternalResourcePath wrap(Path path) {
+                return forDelegate(path);
             }
 
             @Override
-            public boolean isAbsolute() {
-                return delegate.isAbsolute();
+            Path unwrap() {
+                return delegate;
             }
 
-            @Override
-            public Path getRoot() {
-                return wrap(delegate.getRoot());
+            static InternalResourcePath forDelegate(Path path) {
+                return path == null ? null : new InternalResourcePath(path);
             }
 
-            @Override
-            public Path getFileName() {
-                return wrap(delegate.getFileName());
-            }
-
-            @Override
-            public Path getParent() {
-                return wrap(delegate.getParent());
-            }
-
-            @Override
-            public int getNameCount() {
-                return delegate.getNameCount();
-            }
-
-            @Override
-            public Path getName(int index) {
-                return wrap(delegate.getName(index));
-            }
-
-            @Override
-            public Path subpath(int beginIndex, int endIndex) {
-                return wrap(delegate.subpath(beginIndex, endIndex));
-            }
-
-            @Override
-            public boolean startsWith(Path other) {
-                return delegate.startsWith(((InternalResourcePath) other).delegate);
-            }
-
-            @Override
-            public boolean startsWith(String other) {
-                return delegate.startsWith(other);
-            }
-
-            @Override
-            public boolean endsWith(Path other) {
-                return delegate.endsWith(((InternalResourcePath) other).delegate);
-            }
-
-            @Override
-            public boolean endsWith(String other) {
-                return delegate.endsWith(other);
-            }
-
-            @Override
-            public Path normalize() {
-                return wrap(delegate.normalize());
+            static InternalResourcePath as(Path path) {
+                return (InternalResourcePath) path;
             }
 
             @Override
             public Path resolve(Path other) {
-                return wrap(delegate.resolve(((InternalResourcePath) other).delegate));
+                if (isRelativeResourceRoot()) {
+                    return other;
+                } else {
+                    return super.resolve(other);
+                }
             }
 
             @Override
             public Path resolve(String other) {
-                return wrap(delegate.resolve(other));
-            }
-
-            @Override
-            public Path resolveSibling(Path other) {
-                return wrap(delegate.resolveSibling(((InternalResourcePath) other).delegate));
-            }
-
-            @Override
-            public Path resolveSibling(String other) {
-                return wrap(delegate.resolveSibling(other));
-            }
-
-            @Override
-            public Path relativize(Path other) {
-                return wrap(delegate.relativize(((InternalResourcePath) other).delegate));
+                if (isRelativeResourceRoot()) {
+                    return wrap(delegate.getFileSystem().getPath(other));
+                } else {
+                    return super.resolve(other);
+                }
             }
 
             @Override
             public URI toUri() {
                 if (delegate.isAbsolute()) {
-                    return delegate.toUri();
+                    return super.toUri();
                 } else {
-                    throw new UnsupportedOperationException();
+                    throw new SecurityException();
                 }
-            }
-
-            @Override
-            public Path toAbsolutePath() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public File toFile() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Path toRealPath(LinkOption... options) throws IOException {
-                if (delegate.isAbsolute()) {
-                    return delegate.toRealPath(options);
-                } else {
-                    throw new UnsupportedOperationException();
-                }
-            }
-
-            @Override
-            public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int compareTo(Path other) {
-                return delegate.compareTo(((InternalResourcePath) other).delegate);
-            }
-
-            @Override
-            public String toString() {
-                return delegate.toString();
-            }
-
-            @Override
-            public int hashCode() {
-                return delegate.hashCode();
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (obj == this) {
-                    return true;
-                }
-                if (obj == null || obj.getClass() != InternalResourcePath.class) {
-                    return false;
-                }
-                return delegate.equals(((InternalResourcePath) obj).delegate);
             }
 
             /**
@@ -2037,8 +1980,8 @@ final class FileSystems {
                 return (Path) res;
             }
 
-            private static Path wrap(Path path) {
-                return path == null ? null : new InternalResourcePath(path);
+            private boolean isRelativeResourceRoot() {
+                return delegate.getNameCount() == 1 && ".".equals(delegate.getFileName().toString());
             }
         }
     }
