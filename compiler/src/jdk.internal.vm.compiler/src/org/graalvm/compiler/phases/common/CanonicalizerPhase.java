@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -319,6 +320,19 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         phiPostProcessingWorkList = EconomicSet.create();
                     }
                     phiPostProcessingWorkList.add((PhiNode) n);
+                }
+            }
+        }
+
+        if (graph.hasLoops()) {
+            for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
+                for (PhiNode n : lb.phis()) {
+                    if (tool.allUsagesAvailable() && n.isAlive()) {
+                        if (phiPostProcessingWorkList == null) {
+                            phiPostProcessingWorkList = EconomicSet.create();
+                        }
+                        phiPostProcessingWorkList.add(n);
+                    }
                 }
             }
         }
