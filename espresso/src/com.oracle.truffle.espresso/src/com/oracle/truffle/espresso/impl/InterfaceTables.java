@@ -149,6 +149,7 @@ final class InterfaceTables {
                 thisInterfKlass.hasDeclaredDefaultMethods = true;
             }
         }
+        thisInterfKlass.hasDefaultMethods = thisInterfKlass.hasDeclaredDefaultMethods;
         Method.MethodVersion[] methods = tmpMethodTable.toArray(Method.EMPTY_VERSION_ARRAY);
         ArrayList<ObjectKlass.KlassVersion> tmpKlassTable = new ArrayList<>();
         tmpKlassTable.add(thisInterfKlass);
@@ -157,6 +158,9 @@ final class InterfaceTables {
                 if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
+            }
+            if (interf.getKlassVersion().hasDefaultMethods) {
+                thisInterfKlass.hasDefaultMethods = true;
             }
         }
         ObjectKlass.KlassVersion[] sortedInterfaces = tmpKlassTable.toArray(ObjectKlass.EMPTY_KLASSVERSION_ARRAY);
