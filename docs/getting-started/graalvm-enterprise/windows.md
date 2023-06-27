@@ -9,8 +9,7 @@ Oracle GraalVM is available for Windows on the x64 architecture.
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/).  
-Select the preferred Oracle GraalVM version, **17** or **20** for the Java version, and **Windows** for the operating system. Start downloading.
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). Select the preferred Oracle GraalVM version, **17** or **20** for the Java version, and **Windows** for the operating system. Start downloading.
 
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 
@@ -35,7 +34,7 @@ Select the preferred Oracle GraalVM version, **17** or **20** for the Java versi
 
 Alternatively, you can set up environment variables through a Windows GUI:
 
-1. Go to Windows Start Menu - Settings - ... - Advanced.
+1. Go to Windows Start Menu, then **Settings**, then **Advanced**.
 2. Click **Environment Variables**. In the section labeled "System Variables" find the `JAVA_HOME` variable and select it.
 3. Click **Edit**.
 4. Click **New**.
@@ -44,11 +43,69 @@ Alternatively, you can set up environment variables through a Windows GUI:
 
 Repeat the same for the `PATH` environment variable.
 
-## Prerequisites for Using Native Image on Windows
-On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
-You can use Visual Studio 2022 version 17.1.0 or later.
-There are two installation options:
-- Install the Visual Studio Build Tools with the Windows 10 SDK
-- Install Visual Studio with the Windows 10 SDK
+## Prerequisites for Native Image on Windows
 
-Step-by-step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).
+On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC). 
+You can use Visual Studio 2017 version 15.9 or later.
+
+### Install Visual Studio Build Tools and Windows SDK
+
+1. Download the Visual Studio Build Tools (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
+
+2. Start the Visual Studio Build Tools installation by clicking on the _.exe_ file, and then press Continue:
+
+    ![Install Visual Studio Build Tools](../img/visual_studio_installer.png)
+
+3. Check the **Desktop development with C++** box in the main window. Also, on the right side under Installation Details, choose **Windows SDK**, and click the Install button.
+
+    ![Select Desktop development with C++](../img/desktop_development_with_C.png)
+
+4. After the installation completes, reboot your system.
+
+5. Next ensure Windows 10 SDK is indeed available. Open the Visual Studio Installer:
+
+    ![Open the Visual Studio Installer](../img/open_vs_installer.png)
+
+6. Under the Installed tab, click Modify and choose Individual Components:
+
+    ![Visual Studio Installed Components](../img/visual-studio-installed-components.png)
+
+7. Then scroll to the bottom and check if Windows SDK is installed and confirm the build tools are checked:
+  
+    ![Windows 10 SDK Installed](../img/windows-10-installed.png)
+
+Now that you have the Windows 10 SDK and Visual Studio tooling installed, you can start using Oracle GraalVM Native Image.
+
+### Start Using Native Image
+
+The Oracle GraalVM download includes Native Image.
+Native Image sets up build environments for Windows automatically. 
+You can run Native Image in a regular Windows Command Prompt, `cmd`, or an x64 Native Tools Command Prompt.
+
+Start the Command Prompt, running as administrator. 
+Then check the `native-image` version to see that it is working:
+```shell
+C:\> native-image --version
+```
+
+If you prefer to run Native Image from the x64 Native Tools Command Prompt, you can.
+Note that the command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
+
+Use this command if you have the Visual Studio Build Tools installed:
+
+```shell
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat
+```
+
+Use this command if you installed the full VS Code 2019:
+```bash
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\vcvars64.bat
+```
+
+Alternatively, you can launch a Dev command prompt from the Visual Studio interface:
+
+  ![Launch a Dev command prompt](../img/launch_dev_command_prompt.png)
+
+Once the x64 Native Tools Command Prompt is opened, check the `native-image` version. 
+
+This guide was written for Windows 10, but should be valid for Windows 8 and 11.
