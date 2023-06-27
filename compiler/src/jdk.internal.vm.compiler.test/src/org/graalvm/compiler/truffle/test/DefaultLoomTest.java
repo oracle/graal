@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.IOException;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;

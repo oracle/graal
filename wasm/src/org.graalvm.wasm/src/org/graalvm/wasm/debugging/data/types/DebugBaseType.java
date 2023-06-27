@@ -96,8 +96,8 @@ public class DebugBaseType extends DebugType {
 
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
-        final int effectiveBitSize = context.memberBitSize().orElse(bitSize);
-        final int effectiveBitOffset = context.memberBitOffset().orElse(bitOffset);
+        final int effectiveBitSize = context.memberBitSizeOrDefault(bitSize);
+        final int effectiveBitOffset = context.memberBitOffsetOrDefault(bitOffset);
         if (encoding == AttributeEncodings.ADDRESS) {
             return location.loadAsLocation();
         }
@@ -167,8 +167,8 @@ public class DebugBaseType extends DebugType {
 
     @Override
     public int asInt(DebugContext context, DebugLocation location) {
-        final int effectiveBitSize = context.memberBitSize().orElse(bitSize);
-        final int effectiveBitOffset = context.memberBitOffset().orElse(bitOffset);
+        final int effectiveBitSize = context.memberBitSizeOrDefault(bitSize);
+        final int effectiveBitOffset = context.memberBitOffsetOrDefault(bitOffset);
         if (encoding == AttributeEncodings.SIGNED) {
             if (byteSize == 1) {
                 return location.loadI8(effectiveBitSize, effectiveBitOffset);
@@ -204,8 +204,8 @@ public class DebugBaseType extends DebugType {
 
     @Override
     public long asLong(DebugContext context, DebugLocation location) {
-        final int effectiveBitSize = context.memberBitSize().orElse(bitSize);
-        final int effectiveBitOffset = context.memberBitOffset().orElse(bitOffset);
+        final int effectiveBitSize = context.memberBitSizeOrDefault(bitSize);
+        final int effectiveBitOffset = context.memberBitOffsetOrDefault(bitOffset);
         if (encoding == AttributeEncodings.SIGNED) {
             if (byteSize == 1) {
                 return location.loadI8(effectiveBitSize, effectiveBitOffset);

@@ -178,7 +178,14 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
         @Override
         protected boolean shouldVerifyFrameStates() {
-            return true;
+            /*
+             * (GR-46115) Ideally we should verify frame states in methods registered for runtime
+             * compilations, as well as any other methods that can deoptimize. Because runtime
+             * compiled methods can pull in almost arbitrary code, this means most frame states
+             * should be verified. We currently use illegal states as placeholders in many places,
+             * so this cannot be enabled at the moment.
+             */
+            return false;
         }
     }
 
@@ -539,6 +546,13 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
     @Override
     public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
+        /*
+         * No action is needed for the legacy implementation.
+         */
+    }
+
+    @Override
+    public void registerAllowInliningPredicate(AllowInliningPredicate predicate) {
         /*
          * No action is needed for the legacy implementation.
          */

@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -35,15 +35,15 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      * Compiles and installs special code for truffle call boundary methods. The passed method must
      * have compilation and inlining disabled in HotSpot.
      */
-    void installTruffleCallBoundaryMethod(ResolvedJavaMethod method);
+    void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable);
 
     /**
      * Compiles and installs special code fast thread local object access. The passed method must
      * have compilation and inlining disabled in HotSpot.
      */
-    void installTruffleReservedOopMethod(ResolvedJavaMethod method);
+    void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable);
 
-    int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable);
+    int pendingTransferToInterpreterOffset(TruffleCompilable compilable);
 
     /**
      * Releases caches used for PE/compilation.

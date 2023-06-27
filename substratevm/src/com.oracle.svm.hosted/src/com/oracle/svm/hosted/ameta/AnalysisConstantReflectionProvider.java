@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.ameta;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.vm.ci.meta.Constant;
@@ -64,6 +66,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private final AnalysisUniverse universe;
     private final UniverseMetaAccess metaAccess;
     private final ClassInitializationSupport classInitializationSupport;
+    private SimulateClassInitializerSupport simulateClassInitializerSupport;
 
     public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
@@ -91,21 +94,26 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return EmptyMemoryAcessProvider.SINGLETON;
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
-    }
+    private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         if (!source.getJavaKind().isObject()) {
             return null;
         }
-        if (source instanceof ImageHeapConstant heapConstant) {
-            return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(heapConstant.getHostedObject()));
+        if (source instanceof ImageHeapConstant imageHeapConstant) {
+            /*
+             * Unbox by reading the known single field "value", which is a primitive field of the
+             * correct unboxed type.
+             */
+            AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
+            if (BOXING_CLASSES.contains(type.getJavaClass())) {
+                ResolvedJavaField[] fields = type.getInstanceFields(true);
+                assert fields.length == 1 && fields[0].getName().equals("value");
+                return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
+            }
+            /* Not a valid boxed primitive. */
+            return null;
         }
         return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
     }
@@ -159,10 +167,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readValue(metaAccess, (AnalysisField) field, receiver);
+        return readValue(metaAccess, (AnalysisField) field, receiver, false);
     }
 
-    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
+    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -178,18 +186,29 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
 
-        JavaConstant value;
-        if (receiver instanceof ImageHeapConstant) {
-            ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
-            return interceptValue(suppliedMetaAccess, field, heapObject.readFieldValue(field));
+        JavaConstant value = null;
+        if (returnSimulatedValues) {
+            value = readSimulatedValue(field);
         }
-        value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, classInitializationSupport, field.wrapped, universe.toHosted(receiver)));
-
+        if (value == null && receiver instanceof ImageHeapConstant) {
+            ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
+            value = heapObject.readFieldValue(field);
+        }
+        if (value == null) {
+            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, classInitializationSupport, field.wrapped, universe.toHosted(receiver)));
+        }
         return interceptValue(suppliedMetaAccess, field, value);
     }
 
     /** Read the field value and wrap it in a value supplier without performing any replacements. */
-    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, HostedMetaAccess hMetaAccess, JavaConstant receiver) {
+    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, HostedMetaAccess hMetaAccess, JavaConstant receiver, boolean returnSimulatedValues) {
+        if (returnSimulatedValues) {
+            var simulatedValue = readSimulatedValue(field);
+            if (simulatedValue != null) {
+                return ValueSupplier.eagerValue(simulatedValue);
+            }
+        }
+
         if (field.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
             if (readableField.isValueAvailableBeforeAnalysis()) {
@@ -208,6 +227,25 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
         return ValueSupplier.eagerValue(universe.lookup(ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, field.wrapped, receiver)));
+    }
+
+    /**
+     * For classes that are simulated as initialized, provide the value of static fields to the
+     * static analysis so that they are seen properly as roots in the image heap.
+     *
+     * We cannot return such simulated field values for "normal" field value reads because then they
+     * would be seen during bytecode parsing too. Therefore, we only return such values when
+     * explicitly requested via a flag.
+     */
+    private JavaConstant readSimulatedValue(AnalysisField field) {
+        if (!field.isStatic() || field.getDeclaringClass().isInitialized()) {
+            return null;
+        }
+        field.getDeclaringClass().getInitializeMetaDataTask().ensureDone();
+        if (simulateClassInitializerSupport == null) {
+            simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
+        }
+        return simulateClassInitializerSupport.getSimulatedFieldValue(field);
     }
 
     public JavaConstant interceptValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {

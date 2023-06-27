@@ -54,7 +54,7 @@
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
     "jdk20"+: common.labsjdk20,
-    "jdk21"+: common.oraclejdk21,
+    "jdk21"+: common.labsjdk21,
   },
 
   local default_os_arch = {

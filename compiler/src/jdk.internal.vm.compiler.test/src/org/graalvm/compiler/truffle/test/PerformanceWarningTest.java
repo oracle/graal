@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -65,8 +64,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @Before
     public void setUp() {
         outContent = new ByteArrayOutputStream();
-        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
-                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
+        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("compiler.TracePerformanceWarnings", "all").option(
+                        "compiler.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
     }
 
     @Test
@@ -127,13 +126,13 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         boolean seenException = false;
         try {
             OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-            DebugContext debug = new Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
+            TruffleCompilerImpl compiler = getTruffleCompiler(target);
+            DebugContext debug = new Builder(compiler.getOrCreateCompilerOptions(target)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
-                TruffleCompilerImpl compiler = getTruffleCompiler(target);
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-                    compiler.compileAST(compilable.getOptionValues(), debug, compilable, compilation.getCompilationId(), task, null);
+                    compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);
                 }
 
                 assertTrue(compilable.isValid());

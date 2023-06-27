@@ -4015,7 +4015,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     @SuppressWarnings({"unchecked", "try"})
     private NodeData lookupNodeData(NodeData node, TypeMirror type, MessageContainer errorTarget) {
         TypeElement parameterType = ElementUtils.castTypeElement(type);
-        String typeId = ElementUtils.getTypeId(type);
+        String typeId = ElementUtils.getQualifiedName(type);
         NodeData nodeData = nodeDataCache.get(typeId);
         if (nodeDataCache.containsKey(typeId)) {
             return nodeData;

@@ -42,8 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
  *
@@ -89,10 +87,10 @@ public class BackgroundCompileQueue {
             }
 
             // NOTE: The value from the first Engine compiling wins for now
-            this.delayMillis = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
+            this.delayMillis = callTarget.getOptionValue(OptimizedRuntimeOptions.EncodedGraphCachePurgeDelay);
 
             // NOTE: the value from the first Engine compiling wins for now
-            int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
+            int threads = callTarget.getOptionValue(OptimizedRuntimeOptions.CompilerThreads);
             if (threads == 0) {
                 // Old behavior, use either 1 or 2 compiler threads.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -153,11 +151,11 @@ public class BackgroundCompileQueue {
     }
 
     private BlockingQueue<Runnable> createQueue(OptimizedCallTarget callTarget, int threads) {
-        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
-            if (callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholds) && callTarget.getOptionValue(PolyglotCompilerOptions.BackgroundCompilation)) {
-                double minScale = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMinScale);
-                int minNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMinNormalLoad);
-                int maxNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMaxNormalLoad);
+        if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraversingCompilationQueue)) {
+            if (callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholds) && callTarget.getOptionValue(OptimizedRuntimeOptions.BackgroundCompilation)) {
+                double minScale = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinScale);
+                int minNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinNormalLoad);
+                int maxNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMaxNormalLoad);
                 return new DynamicThresholdsQueue(threads, minScale, minNormalLoad, maxNormalLoad, new IdlingLinkedBlockingDeque<>());
             } else {
                 return new TraversingBlockingQueue(new IdlingLinkedBlockingDeque<>());

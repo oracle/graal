@@ -26,6 +26,7 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -37,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -139,16 +141,13 @@ final class WindowsVMLockFeature implements InternalFeature {
 
 public final class WindowsVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMMutex[].class)//
-    WindowsVMMutex[] mutexes;
+    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMCondition[].class)//
-    WindowsVMCondition[] conditions;
+    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMCondition[] conditions;
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = WindowsVMSemaphore[].class)//
-    WindowsVMSemaphore[] semaphores;
+    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the Condition Variable structures. Since we know that native image objects are
@@ -156,8 +155,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
      * offset into this array is stored in {@link WindowsVMMutex#structOffset} and
      * {@link WindowsVMCondition#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] syncStructs;
+    @UnknownObjectField(availability = ReadyForCompilation.class) byte[] syncStructs;
 
     @Fold
     public static WindowsVMLockSupport singleton() {
@@ -222,6 +220,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
 
 final class WindowsVMMutex extends VMMutex {
 
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -274,6 +273,7 @@ final class WindowsVMMutex extends VMMutex {
 
 final class WindowsVMCondition extends VMCondition {
 
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)

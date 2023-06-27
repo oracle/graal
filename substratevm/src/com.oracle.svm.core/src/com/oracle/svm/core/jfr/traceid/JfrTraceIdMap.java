@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -41,7 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
  * Map for storing trace ids. Initialized before compilation with static class count from analysis.
  */
 public class JfrTraceIdMap {
-    @UnknownObjectField(types = {long[].class}) private long[] traceIDs;
+    @UnknownObjectField(availability = ReadyForCompilation.class) private long[] traceIDs;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdMap() {

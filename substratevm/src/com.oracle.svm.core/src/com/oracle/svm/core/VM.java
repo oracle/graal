@@ -46,7 +46,7 @@ public final class VM {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String getSupportUrl() {
-        return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+        return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/support");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

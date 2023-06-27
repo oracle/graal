@@ -124,7 +124,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
     public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
-    public final ResolvedJavaType enterprise_UnsafeAccess = lookupTypeOptional("com.oracle.truffle.object.enterprise.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");

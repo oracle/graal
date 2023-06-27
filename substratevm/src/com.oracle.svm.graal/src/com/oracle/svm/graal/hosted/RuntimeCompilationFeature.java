@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -181,6 +182,16 @@ public abstract class RuntimeCompilationFeature {
 
     public interface RuntimeCompilationCandidatePredicate {
         boolean allowRuntimeCompilation(ResolvedJavaMethod method);
+    }
+
+    public interface AllowInliningPredicate {
+        enum InlineDecision {
+            INLINE,
+            INLINING_DISALLOWED,
+            NO_DECISION
+        }
+
+        InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target);
     }
 
     public abstract static class AbstractCallTreeNode implements Comparable<AbstractCallTreeNode> {
@@ -516,6 +527,8 @@ public abstract class RuntimeCompilationFeature {
 
     public abstract void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator);
 
+    public abstract void registerAllowInliningPredicate(AllowInliningPredicate predicate);
+
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
     protected final void afterAnalysisHelper() {
@@ -628,7 +641,7 @@ public abstract class RuntimeCompilationFeature {
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
-        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
+        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);

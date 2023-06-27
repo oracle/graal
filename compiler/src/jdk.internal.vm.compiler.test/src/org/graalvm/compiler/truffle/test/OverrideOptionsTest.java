@@ -24,9 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
@@ -43,8 +41,8 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
                         Boolean.TRUE.toString()).build());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        OptionValues values = TruffleCompilerImpl.getOptionsForCompiler(GraalTruffleRuntime.getOptionsForCompiler(callTarget));
-        Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
-        Assert.assertEquals(true, values.get(PolyglotCompilerOptions.CompileImmediately));
+        OptionValues values = callTarget.engine.getEngineOptions();
+        Assert.assertEquals(false, values.get(OptimizedRuntimeOptions.BackgroundCompilation));
+        Assert.assertEquals(true, values.get(OptimizedRuntimeOptions.CompileImmediately));
     }
 }

@@ -33,6 +33,7 @@ import org.graalvm.collections.Pair;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
@@ -77,7 +78,7 @@ enum InitKind {
                                     "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time;" +
                                     " that assumption is often incorrect.";
                     if (ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime.getValue()) {
-                        System.out.println("Warning: " + msg);
+                        LogUtils.warning(msg);
                     } else {
                         throw UserError.abort("%s%nAs a workaround, %s allows turning this error into a warning. Note that this option is deprecated and will be removed in a future version.", msg,
                                         SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime, "+"));

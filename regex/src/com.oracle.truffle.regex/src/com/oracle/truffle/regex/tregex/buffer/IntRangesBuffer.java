@@ -112,6 +112,16 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
         add(hi);
     }
 
+    public void appendRangeConcatAdjacent(int lo, int hi) {
+        assert isEmpty() || leftOf(size() - 1, lo, hi);
+        if (isEmpty() || !adjacent(size() - 1, lo, hi)) {
+            add(lo);
+            add(hi);
+        } else {
+            set((size() - 1) * 2 + 1, hi);
+        }
+    }
+
     @Override
     public void insertRange(int index, int lo, int hi) {
         assert index >= 0 && index < size();

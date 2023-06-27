@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -436,19 +436,23 @@ public interface FileSystem {
      * Creates a {@link FileSystem} implementation based on the host Java NIO. The returned instance
      * can be used as a delegate by a decorating {@link FileSystem}.
      * <p>
-     * The following example shows a {@link FileSystem} restricting an IO access only to a given
-     * folder.
+     * For an untrusted code execution, access to the host filesystem should be prevented either by
+     * using {@link IOAccess#NONE} or an {@link #newFileSystem(java.nio.file.FileSystem)} in-memory
+     * filesystem}. For more details on executing untrusted code, see the
+     * <a href="https://www.graalvm.org/dev/security-guide/polyglot-sandbox/">Polyglot Sandboxing
+     * Security Guide</a>.
+     * <p>
+     * The following example shows a {@link FileSystem} logging filesystem operations.
      *
      * <pre>
-     * class RestrictedFileSystem implements FileSystem {
+     * class TracingFileSystem implements FileSystem {
+     *
+     *     private static final Logger LOGGER = Logger.getLogger(TracingFileSystem.class.getName());
      *
      *     private final FileSystem delegate;
-     *     private final Path allowedFolder;
      *
-     *     RestrictedFileSystem(String allowedFolder) throws IOException {
+     *     TracingFileSystem() {
      *         this.delegate = FileSystem.newDefaultFileSystem();
-     *         this.allowedFolder = delegate.toRealPath(
-     *                         delegate.parsePath(allowedFolder));
      *     }
      *
      *     &#64;Override
@@ -463,24 +467,24 @@ public interface FileSystem {
      *
      *     &#64;Override
      *     public SeekableByteChannel newByteChannel(Path path,
-     *                     Set&lt;? extends OpenOption&gt; options,
-     *                     FileAttribute&lt;?&gt;... attrs) throws IOException {
-     *         verifyAccess(path);
-     *         return delegate.newByteChannel(path, options, attrs);
+     *                                               Set&lt;? extends OpenOption&gt; options,
+     *                                               FileAttribute&lt;?&gt;... attrs) throws IOException {
+     *         boolean success = false;
+     *         try {
+     *             SeekableByteChannel result =  delegate.newByteChannel(path, options, attrs);
+     *             success = true;
+     *             return result;
+     *         } finally {
+     *             trace("newByteChannel", path, success);
+     *         }
      *     }
      *
-     *     private void verifyAccess(Path path) {
-     *         Path realPath = null;
-     *         for (Path c = path; c != null; c = c.getParent()) {
-     *             try {
-     *                 realPath = delegate.toRealPath(c);
-     *                 break;
-     *             } catch (IOException ioe) {
-     *             }
-     *         }
-     *         if (realPath == null || !realPath.startsWith(allowedFolder)) {
-     *             throw new SecurityException("Access to " + path + " is denied.");
-     *         }
+     *     ...
+     *
+     *     private void trace(String operation, Path path, boolean success) {
+     *         LOGGER.log(Level.FINE, "The {0} request for the path {1} {2}.",new Object[] {
+     *                         operation, path, success ? "was successful" : "failed"
+     *                 });
      *     }
      * }
      * </pre>
@@ -491,7 +495,7 @@ public interface FileSystem {
      * @since 20.2.0
      */
     static FileSystem newDefaultFileSystem() {
-        return IOHelper.IMPL.newDefaultFileSystem();
+        return IOHelper.IMPL.newDefaultFileSystem(System.getProperty("java.io.tmpdir"));
     }
 
     /**

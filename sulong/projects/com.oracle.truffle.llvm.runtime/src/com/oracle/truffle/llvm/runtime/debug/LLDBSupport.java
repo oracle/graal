@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,11 +46,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLDBSupport {
 
-    private final LLVMLanguage language;
     private final EconomicMap<Type, CallTarget> loadFunctionCache;
 
-    public LLDBSupport(LLVMLanguage language) {
-        this.language = language;
+    public LLDBSupport() {
         this.loadFunctionCache = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     }
 
@@ -58,8 +56,8 @@ public final class LLDBSupport {
 
         @Child LLVMLoadNode loadNode;
 
-        LoadRootNode(LLDBSupport dbSupport, Type loadType) {
-            super(dbSupport.language);
+        LoadRootNode(LLVMLanguage language, Type loadType) {
+            super(language);
             loadNode = CommonNodeFactory.createLoad(loadType, null);
         }
 
@@ -71,10 +69,10 @@ public final class LLDBSupport {
     }
 
     @TruffleBoundary
-    public CallTarget getLoadFunction(Type loadType) {
+    public CallTarget getLoadFunction(LLVMLanguage language, Type loadType) {
         CallTarget ret = loadFunctionCache.get(loadType);
         if (ret == null) {
-            ret = new LoadRootNode(this, loadType).getCallTarget();
+            ret = new LoadRootNode(language, loadType).getCallTarget();
             loadFunctionCache.put(loadType, ret);
         }
         return ret;

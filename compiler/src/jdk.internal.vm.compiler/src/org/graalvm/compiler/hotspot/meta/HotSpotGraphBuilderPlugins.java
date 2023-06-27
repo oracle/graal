@@ -33,6 +33,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DE
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -884,7 +885,13 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode state = helper.loadField(realReceiver, stateField);
                 ValueNode bufAddr = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                 ValueNode stateAddr = helper.arrayStart(state, stateField.getType().getComponentType().getJavaKind());
-                b.add(new ForeignCallNode(descriptor, bufAddr, stateAddr));
+                if (descriptor.equals(SHA3_IMPL_COMPRESS)) {
+                    ResolvedJavaField blockSizeField = helper.getField(targetMethod.getDeclaringClass(), "blockSize");
+                    ValueNode blockSize = helper.loadField(realReceiver, blockSizeField);
+                    b.add(new ForeignCallNode(descriptor, bufAddr, stateAddr, blockSize));
+                } else {
+                    b.add(new ForeignCallNode(descriptor, bufAddr, stateAddr));
+                }
             }
             return true;
         }
@@ -931,7 +938,7 @@ public class HotSpotGraphBuilderPlugins {
         rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
 
         Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
+        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA3_IMPL_COMPRESS));
     }
 
     private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {

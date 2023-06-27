@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;

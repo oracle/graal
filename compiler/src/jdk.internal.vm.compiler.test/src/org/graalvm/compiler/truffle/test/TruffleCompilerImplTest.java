@@ -62,7 +62,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     @Before
     public void onlyWhiteBox() {
         if (TruffleOptions.AOT) {
-            TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().getTruffleCompiler((OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget());
+            TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().getTruffleCompiler(getInitCallTarget());
             Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
             this.truffleCompiler = (TruffleCompilerImpl) compiler;
         }
@@ -89,20 +89,25 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     }
 
     protected final TruffleCompilerImpl getTruffleCompiler() {
-        TruffleCompilerImpl compiler = getTruffleCompiler((OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget());
+        TruffleCompilerImpl compiler = getTruffleCompiler(getInitCallTarget());
         return compiler;
+    }
+
+    @SuppressWarnings("static-method")
+    protected final OptimizedCallTarget getInitCallTarget() {
+        return (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
     }
 
     protected final TruffleCompilerImpl getTruffleCompiler(OptimizedCallTarget callTarget) {
         if (compilerInitialized.compareAndSet(false, true)) {
-            truffleCompiler.initialize(GraalTruffleRuntime.getOptionsForCompiler(callTarget), callTarget, true);
+            truffleCompiler.initialize(callTarget, true);
         }
         return truffleCompiler;
     }
 
     @Override
     protected CompilationIdentifier createCompilationId() {
-        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
+        OptimizedCallTarget target = getInitCallTarget();
         TruffleCompilerImpl compiler = getTruffleCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(PartialEvaluationTest.newTask(), target)) {
             return compilation.getCompilationId();

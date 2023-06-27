@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.27.1",
   "name" : "truffle",
   "version" : "23.1.0",
   "release" : False,
@@ -90,6 +90,7 @@ suite = {
     },
 
     "ANTLR4": {
+      "moduleName": "org.antlr.antlr4.runtime",
       "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
       "maven" : {
         "groupId" : "org.antlr",
@@ -139,10 +140,10 @@ suite = {
     },
 
     "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
-      "digest" : "sha512:b9f95acd4373acc5c86c2863e797313f7e97b39fa41566768a67f792f9cf3e642343fcbde2e6433069debc53babe766b09697eb775301f6f08773e75cfad9e83",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
-      "sourceDigest" : "sha512:fe05059681fa01023a290a4a653e26007df0b76ecec81e2796828d34c7906986a502b0321f308578a15b695251b5a00b4b38cbc36a8165fbc3676cf4ac9b6ef9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
+      "digest" : "sha512:2b48819e94ca82472ffbdd3befc214351e1cfd0f87eb97d4aed092b48f11b53a7d82a637b008e022254781d2439aefe45ca4794eea8ad05de69934c5317c9a27",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227-src.jar"],
+      "sourceDigest" : "sha512:ecf08ea386398a9834f560e0afbb1bc2630037e3b170fe6d5c60e23ed4e198072cec2cd3569bdc1cae22318cd5fb97123dc5bb6d1e138c08f8d5c612f486956a",
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
@@ -201,17 +202,16 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.jdk19" : {
+    "com.oracle.truffle.api.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
       "overlayTarget" : "com.oracle.truffle.api",
       "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "19",
+      "multiReleaseJarVersion" : "21",
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19+",
+      "javaCompliance" : "21+",
       "workingSets" : "API,Truffle",
     },
 
@@ -1013,26 +1013,6 @@ suite = {
           "java.sql" # java.sql.date java.sql.Time
         ],
         "exports" : [
-          # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.api.impl to org.graalvm.locator",
-          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
-        ],
-        "uses" : [
-          "com.oracle.truffle.api.TruffleRuntimeAccess",
-          "java.nio.file.spi.FileTypeDetector",
-          "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.api.TruffleLanguage.Provider",
-          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-          "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider"
-        ],
-      },
-      "moduleInfo:open" : {
-        # This is the module descriptor for the Truffle API modular jar deployed via maven.
-        # It exports all the Truffle API packages.
-        "exports" : [
           # Unqualified exports
           "com.oracle.truffle.api.debug",
           "com.oracle.truffle.api.nodes",
@@ -1051,9 +1031,40 @@ suite = {
           "com.oracle.truffle.api.utilities",
           "com.oracle.truffle.api.library",
           "com.oracle.truffle.api.staticobject",
+          "com.oracle.truffle.api.provider",
+          "com.oracle.truffle.api.instrumentation.provider",
+          "com.oracle.truffle.api.library.provider",
 
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",
+          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+        ],
+        "uses" : [
+          "com.oracle.truffle.api.TruffleRuntimeAccess",
+          "java.nio.file.spi.FileTypeDetector",
+          "com.oracle.truffle.api.impl.TruffleLocator",
+          "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+          "com.oracle.truffle.api.library.provider.DefaultExportProvider",
+          "com.oracle.truffle.api.library.provider.EagerExportProvider",
+          "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
+          "com.oracle.truffle.api.library.DefaultExportProvider", # Deprecated
+          "com.oracle.truffle.api.library.EagerExportProvider", # Deprecated
+          "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
+          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
+        ],
+      },
+      "moduleInfo:closed" : {
+        # This is the module descriptor for the Truffle API modular jar deployed via maven.
+        # It exports all the Truffle API packages.
+        "exports" : [
+          # Unqualified exports
+          "com.oracle.truffle.api.provider",
+          "com.oracle.truffle.api.instrumentation.provider",
+          "com.oracle.truffle.api.library.provider",
+          # Qualified exports
+          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api.impl to org.graalvm.locator",
+          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
         ],
       },
@@ -1077,9 +1088,10 @@ suite = {
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
-      "maven" : {
-        # Deploy the modular jar specified by "moduleInfo.open"
-        "moduleInfo" : "open",
+      "maven": True,
+      "graalvm" : {
+        # Deploy the modular jar specified by "moduleInfo.closed"
+        "moduleInfo" : "closed",
       }
     },
 
@@ -1087,12 +1099,12 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api",
-            "com.oracle.truffle.api.library"
-          ],
-        }
+        "exports" : [
+          "com.oracle.truffle.nfi.api",
+          "com.oracle.truffle.nfi.backend.spi",
+          "com.oracle.truffle.nfi.backend.spi.types",
+          "com.oracle.truffle.nfi.backend.spi.util",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1111,12 +1123,6 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api",
-            "com.oracle.truffle.api.library"
-          ],
-        }
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1238,17 +1244,18 @@ suite = {
 
     "TRUFFLE_SL" : {
       "subDir" : "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sl",
+      },
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.sl",
       ],
       "exclude" : [
-        "mx:JUNIT",
         "truffle:ANTLR4",
       ],
       "distDependencies" : [
           "TRUFFLE_API",
-          "TRUFFLE_TCK",
       ],
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -172,7 +171,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.getReturnsAllInstantiatedTypes() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */
@@ -234,10 +233,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public TypeFlow<?> getParameter(int idx) {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
-    }
-
-    public Iterable<TypeFlow<?>> getParameters() {
-        return flowsGraph == null ? Collections.emptyList() : Arrays.asList(flowsGraph.getParameters());
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */

@@ -66,7 +66,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -458,10 +457,6 @@ public class HostedUniverse implements Universe {
         return bb;
     }
 
-    public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
-        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
-    }
-
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return method;
@@ -476,10 +471,15 @@ public class HostedUniverse implements Universe {
 
     private static final class TypeComparator implements Comparator<HostedType> {
 
-        private static boolean isProxy(HostedType type) {
-            boolean result = Proxy.isProxyClass(type.getJavaClass());
-            assert result == type.toJavaName(false).startsWith("$Proxy");
-            return result;
+        private static Optional<HostedType[]> proxyType(HostedType type) {
+            HostedType baseType = type.getBaseType();
+            boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
+            assert isProxy == baseType.toJavaName(false).startsWith("$Proxy");
+            if (isProxy) {
+                return Optional.of(baseType.getInterfaces());
+            } else {
+                return Optional.empty();
+            }
         }
 
         @Override
@@ -495,15 +495,23 @@ public class HostedUniverse implements Universe {
              * on the interfaces the proxy implements. Note the proxy class is also tied to the
              * order of the interfaces implemented, so {@code getInterfaces} should not be sorted.
              */
-            if (isProxy(o1) || isProxy(o2)) {
-                boolean o1Proxy = isProxy(o1);
-                boolean o2Proxy = isProxy(o2);
-                HostedType[] array1 = o1Proxy ? o1.getInterfaces() : new HostedType[]{o1};
-                HostedType[] array2 = o2Proxy ? o2.getInterfaces() : new HostedType[]{o2};
+            Optional<HostedType[]> o1ProxyType = proxyType(o1);
+            Optional<HostedType[]> o2ProxyType = proxyType(o2);
+            if (o1ProxyType.isPresent() || o2ProxyType.isPresent()) {
+                HostedType[] array1 = o1ProxyType.orElseGet(() -> new HostedType[]{o1});
+                HostedType[] array2 = o2ProxyType.orElseGet(() -> new HostedType[]{o2});
                 int result = Arrays.compare(array1, array2, HostedUniverse.TYPE_COMPARATOR);
                 if (result == 0) {
                     // proxy can match the interface it implements
-                    result = Boolean.compare(o1Proxy, o2Proxy);
+                    result = Boolean.compare(o1ProxyType.isPresent(), o2ProxyType.isPresent());
+                }
+                if (result == 0) {
+                    /*
+                     * Can be same proxy with different array dimension, such as $ProxyXX,
+                     * $ProxyXX[], and $ProxyXX[][].
+                     */
+                    assert o1.isArray() || o2.isArray();
+                    result = Integer.compare(o1.getArrayDimension(), o2.getArrayDimension());
                 }
                 VMError.guarantee(result != 0, "HostedType proxies not distinguishable: %s, %s", o1, o2);
                 return result;

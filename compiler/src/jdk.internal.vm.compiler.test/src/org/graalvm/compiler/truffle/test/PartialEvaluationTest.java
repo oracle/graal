@@ -297,8 +297,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 }
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compiler.getConfig().runtime(), compilable.getOptionValues())) {
-                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
+                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                                    compiler.getOrCreateCompilerOptions(compilable),
+                                    debug, compilable,
+                                    partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
@@ -316,7 +320,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptionValues getGraalOptions() {
-        OptionValues options = getTruffleCompiler().getConfig().runtime().getGraalOptions(OptionValues.class);
+        OptionValues options = getTruffleCompiler().getOrCreateCompilerOptions(getInitCallTarget());
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }

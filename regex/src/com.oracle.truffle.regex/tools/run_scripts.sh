@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ then
 fi
 
 UNICODE_VERSION=15.0.0
+EMOJI_VERSION=15.0
 
 mkdir -p ./dat
 
@@ -60,6 +61,8 @@ wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/NameAliases.txt -O dat/NameAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/emoji/emoji-data.txt -O dat/emoji-data.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
+wget https://www.unicode.org/Public/emoji/${EMOJI_VERSION}/emoji-sequences.txt -O dat/emoji-sequences.txt
+wget https://www.unicode.org/Public/emoji/${EMOJI_VERSION}/emoji-zwj-sequences.txt -O dat/emoji-zwj-sequences.txt
 
 unzip -d dat dat/ucd.nounihan.flat.zip
 

@@ -114,8 +114,22 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=[],
-    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    jar_distributions=[],
     boot_jars=['sdk:GRAAL_SDK'],
+    stability="supported",
+))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='GraalVM Launcher Common',
+    short_name='sdkl',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Graal SDK'],
+    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    boot_jars=[],
     stability="supported",
 ))
 

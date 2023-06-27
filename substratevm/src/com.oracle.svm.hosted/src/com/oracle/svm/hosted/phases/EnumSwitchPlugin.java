@@ -148,7 +148,7 @@ final class EnumSwitchFeature implements InternalFeature {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
-        assert existingValue == null || !method.isOriginalMethod() : "Method parsed twice: " + method.format("%H.%n(%p)");
+        assert existingValue == null || method.isDeoptTarget() : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     @Override

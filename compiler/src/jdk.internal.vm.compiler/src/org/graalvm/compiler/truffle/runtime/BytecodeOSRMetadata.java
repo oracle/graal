@@ -30,8 +30,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -82,7 +80,7 @@ public final class BytecodeOSRMetadata {
     /**
      * In this stage, no polling succeeds. The unit enters this stage if either:
      * <ul>
-     * <li>OSR compilation is disabled (see {@link PolyglotCompilerOptions#OSR}).</li>
+     * <li>OSR compilation is disabled (see {@link OptimizedRuntimeOptions#OSR}).</li>
      * <li>An attempt at compilation failed.</li>
      * <li>This unit deopts too much</li>
      * </ul>
@@ -348,7 +346,7 @@ public final class BytecodeOSRMetadata {
              * - Mitigates possibilities of Stack Overflows arising from deopt loops in OSR.
              */
             markOSRDisabled();
-            if (callTarget.getOptionValue(PolyglotCompilerOptions.ThrowOnMaxOSRCompilationReAttemptsReached)) {
+            if (callTarget.getOptionValue(OptimizedRuntimeOptions.ThrowOnMaxOSRCompilationReAttemptsReached)) {
                 throw new AssertionError("Max OSR compilation re-attempts reached for " + osrNode);
             }
             return;

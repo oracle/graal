@@ -39,8 +39,9 @@ import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Reference adjuster for {@linkplain ClientHandle handles} from an {@link IsolatedObjectConstant},
@@ -54,7 +55,7 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T> void setConstantTargetInArray(NonmovableObjectArray<T> array, int index, SubstrateObjectConstant constant) {
+    public <T> void setConstantTargetInArray(NonmovableObjectArray<T> array, int index, JavaConstant constant) {
         if (constant instanceof IsolatedObjectConstant) {
             record(NonmovableArrays.addressOf(array, index), ConfigurationValues.getObjectLayout().getReferenceSize(), ((IsolatedObjectConstant) constant).getHandle());
         } else {
@@ -79,7 +80,7 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setConstantTargetAt(PointerBase address, int length, SubstrateObjectConstant constant) {
+    public void setConstantTargetAt(PointerBase address, int length, JavaConstant constant) {
         if (constant instanceof IsolatedObjectConstant) {
             record(address, length, ((IsolatedObjectConstant) constant).getHandle());
         } else {

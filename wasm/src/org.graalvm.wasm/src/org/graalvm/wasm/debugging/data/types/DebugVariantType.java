@@ -58,6 +58,8 @@ public class DebugVariantType extends DebugType {
     private final EconomicMap<Long, DebugObject> values;
 
     public DebugVariantType(String name, DebugObject discriminant, EconomicMap<Long, DebugObject> values) {
+        assert discriminant != null : "the discriminant of a debug variant type must not be null";
+        assert values != null : "the possible values of a debug variant type must not be null";
         this.name = name;
         this.discriminant = discriminant;
         this.values = values;

@@ -30,7 +30,6 @@ import static org.graalvm.compiler.options.OptionType.User;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.util.StringUtil;
 
 public class NativeImageOptions {
 
@@ -128,7 +128,8 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
-    public static final HostedOptionKey<String> TempDirectory = new HostedOptionKey<>("");
+    @BundleMember(role = BundleMember.Role.Output)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TempDirectory = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     @Option(help = "Suppress console error output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStderr = new HostedOptionKey<>(false);
@@ -171,14 +172,14 @@ public class NativeImageOptions {
         }
     }
 
-    @Option(help = "C standard to use in header files. Possible values are: [C89, C99, C11]", type = User)//
+    @Option(help = "C standard to use in header files. Possible values are 'C89', 'C99', and 'C11'.", type = User)//
     public static final HostedOptionKey<String> CStandard = new HostedOptionKey<>("C89");
 
     public static CStandards getCStandard() {
         try {
             return CStandards.valueOf(CStandard.getValue());
         } catch (IllegalArgumentException e) {
-            throw UserError.abort("C standard %s is not supported. Supported standards are: %s", CStandard.getValue(), Arrays.toString(CStandards.values()));
+            throw UserError.abort("C standard '%s' is not supported. Supported standards are %s.", CStandard.getValue(), StringUtil.joinSingleQuoted(CStandards.values()));
         }
     }
 

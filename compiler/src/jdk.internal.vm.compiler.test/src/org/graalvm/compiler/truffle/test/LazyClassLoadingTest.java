@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileImmediately;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -159,9 +159,11 @@ public final class OldGeneration extends Generation {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getChunkBytes() {
-        UnsignedWord fromBytes = getFromSpace().getChunkBytes();
-        UnsignedWord toBytes = getToSpace().getChunkBytes();
-        return fromBytes.add(toBytes);
+        return fromSpace.getChunkBytes().add(toSpace.getChunkBytes());
+    }
+
+    UnsignedWord computeObjectBytes() {
+        return fromSpace.computeObjectBytes().add(toSpace.computeObjectBytes());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

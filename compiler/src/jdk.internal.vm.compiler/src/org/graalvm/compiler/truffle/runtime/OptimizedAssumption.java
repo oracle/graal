@@ -28,7 +28,6 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -198,7 +197,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                     }
                 }
 
-                if (engineOptions.get(PolyglotCompilerOptions.TraceAssumptions)) {
+                if (engineOptions.get(OptimizedRuntimeOptions.TraceAssumptions)) {
                     logStackTrace = true;
                     logInvalidatedDependency(dependency, message, logger);
                 }
@@ -304,7 +303,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
     private static void logStackTrace(OptionValues engineOptions, TruffleLogger logger) {
         final int skip = 1;
-        final int limit = engineOptions.get(PolyglotCompilerOptions.TraceStackTraceLimit);
+        final int limit = engineOptions.get(OptimizedRuntimeOptions.TraceStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         StringBuilder strb = new StringBuilder();
         String sep = "";

@@ -43,9 +43,6 @@ package org.graalvm.wasm.debugging.data;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import java.util.Optional;
-import java.util.OptionalInt;
-
 /**
  * The debug context used for resolving values. Represents information like the current source code
  * location or the name of the variable that is resolved.
@@ -96,32 +93,32 @@ public class DebugContext {
     }
 
     /**
-     * @return The current element name if it is present.
+     * @return The current element name or an empty string, if not name is present.
      */
-    public Optional<String> elementName() {
-        if (elementName != null) {
-            return Optional.of(elementName);
+    public String elementNameOrEmpty() {
+        if (elementName == null) {
+            return "";
         }
-        return Optional.empty();
+        return elementName;
     }
 
     /**
-     * @return The current bit size if it is present.
+     * @return The current bit size.
      */
-    public OptionalInt memberBitSize() {
-        if (memberBitSize != -1) {
-            return OptionalInt.of(memberBitSize);
+    public int memberBitSizeOrDefault(int defaultValue) {
+        if (memberBitSize == -1) {
+            return defaultValue;
         }
-        return OptionalInt.empty();
+        return memberBitSize;
     }
 
     /**
-     * @return The current bit offset if it is present.
+     * @return The current bit offset.
      */
-    public OptionalInt memberBitOffset() {
-        if (memberBitOffset != -1) {
-            return OptionalInt.of(memberBitOffset);
+    public int memberBitOffsetOrDefault(int defaultValue) {
+        if (memberBitOffset == -1) {
+            return defaultValue;
         }
-        return OptionalInt.empty();
+        return memberBitOffset;
     }
 }

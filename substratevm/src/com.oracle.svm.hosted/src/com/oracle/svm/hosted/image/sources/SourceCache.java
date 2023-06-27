@@ -39,14 +39,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -91,7 +95,7 @@ public class SourceCache {
             Path javaHomePath = Paths.get("", javaHome);
             Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
             if (!srcZipPath.toFile().exists()) {
-                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes%n", srcZipPath);
+                LogUtils.warning("Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes.", srcZipPath);
                 return;
             }
             try {
@@ -503,6 +507,12 @@ public class SourceCache {
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class SourceCacheFeature implements InternalFeature {
+
+    public static class Options {
+        @Option(help = "Search path for source files for application or GraalVM classes (list of comma-separated directories or jar files)")//
+        static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+    }
+
     ImageClassLoader imageClassLoader;
 
     @Override
@@ -519,7 +529,7 @@ class SourceCacheFeature implements InternalFeature {
     }
 
     static List<Path> getSourceSearchPath() {
-        return SubstrateOptions.DebugInfoSourceSearchPath.getValue().values();
+        return Options.DebugInfoSourceSearchPath.getValue().values();
     }
 }
 

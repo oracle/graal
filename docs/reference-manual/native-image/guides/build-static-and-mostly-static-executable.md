@@ -26,7 +26,7 @@ This guide shows how you can take advantage of Native Image linking options incl
 
 - [Prerequisites](#prerequisites-and-preparation)
 - [Build a Static Binary](#build-a-static-native-executable)
-- [Build a Mostly Static Binary](#build-a-mostly-static-executable)
+- [Build a Mostly Static Binary](#build-a-mostly-static-native-executable)
 
 ## Prerequisites and Preparation
 

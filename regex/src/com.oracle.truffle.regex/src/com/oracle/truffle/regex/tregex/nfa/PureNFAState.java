@@ -71,16 +71,17 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
-    public static final byte KIND_INITIAL_OR_FINAL_STATE = 0;
-    public static final byte KIND_CHARACTER_CLASS = 1;
-    public static final byte KIND_SUB_MATCHER = 2;
-    public static final byte KIND_BACK_REFERENCE = 3;
-    public static final byte KIND_EMPTY_MATCH = 4;
+    public static final short KIND_INITIAL_OR_FINAL_STATE = 0;
+    public static final short KIND_CHARACTER_CLASS = 1;
+    public static final short KIND_SUB_MATCHER = 2;
+    public static final short KIND_BACK_REFERENCE = 3;
+    public static final short KIND_EMPTY_MATCH = 4;
 
-    private static final byte FLAG_IS_LOOK_AROUND = 1 << N_FLAGS;
-    private static final byte FLAG_IS_SUB_MATCHER_NEGATED = 1 << N_FLAGS + 1;
-    private static final byte FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 2;
-    private static final byte FLAG_IS_IGNORE_CASE_REFERENCE = (byte) (1 << N_FLAGS + 3);
+    private static final short FLAG_IS_LOOK_AROUND = 1 << N_FLAGS;
+    private static final short FLAG_IS_SUB_MATCHER_NEGATED = 1 << N_FLAGS + 1;
+    private static final short FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 2;
+    private static final short FLAG_IS_IGNORE_CASE_REFERENCE = 1 << N_FLAGS + 3;
+    private static final short FLAG_IS_RECURSIVE_REFERENCE = 1 << N_FLAGS + 4;
 
     private final int astNodeId;
     private final int extraId;
@@ -99,6 +100,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         }
         if (t.isBackReference()) {
             setIgnoreCaseReference(t.asBackReference().isIgnoreCaseReference());
+            setRecursiveReference(t.asBackReference().isNestedBackReference());
         }
     }
 
@@ -196,6 +198,14 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     public void setIgnoreCaseReference(boolean value) {
         setFlag(FLAG_IS_IGNORE_CASE_REFERENCE, value);
+    }
+
+    public boolean isRecursiveReference() {
+        return getFlag(FLAG_IS_RECURSIVE_REFERENCE);
+    }
+
+    public void setRecursiveReference(boolean value) {
+        setFlag(FLAG_IS_RECURSIVE_REFERENCE, value);
     }
 
     /**

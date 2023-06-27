@@ -42,10 +42,10 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.BacktraceDecoder;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.locks.VMMutex;
@@ -701,8 +701,10 @@ public class RealLog extends Log {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
-        protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
-            printJavaFrame(frameInfo.getSourceClassName(), frameInfo.getSourceMethodName(), frameInfo.getSourceFileName(), frameInfo.getSourceLineNumber());
+        protected void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
+            String sourceClassName = sourceClass != null ? sourceClass.getName() : "";
+            String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
+            printJavaFrame(sourceClassName, sourceMethodName, sourceFileName, sourceLineNumber);
         }
     }
 }

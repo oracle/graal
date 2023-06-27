@@ -29,8 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -277,9 +275,9 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
     }
 
     static List<OptimizedCallTarget> preparePartialBlockCompilations(OptimizedCallTarget rootCompilation) {
-        if (rootCompilation.getOptionValue(PolyglotCompilerOptions.PartialBlockCompilation)) {
+        if (rootCompilation.getOptionValue(OptimizedRuntimeOptions.PartialBlockCompilation)) {
             int nonTrivialNodeCount = rootCompilation.getNonTrivialNodeCount();
-            int maxBlockSize = rootCompilation.getOptionValue(PolyglotCompilerOptions.PartialBlockCompilationSize);
+            int maxBlockSize = rootCompilation.getOptionValue(OptimizedRuntimeOptions.PartialBlockCompilationSize);
             if (nonTrivialNodeCount > maxBlockSize) {
                 BlockVisitor visitor = new BlockVisitor(rootCompilation, maxBlockSize);
                 NodeUtil.forEachChild(rootCompilation.getRootNode(), visitor);

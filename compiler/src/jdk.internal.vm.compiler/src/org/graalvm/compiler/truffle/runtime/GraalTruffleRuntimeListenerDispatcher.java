@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 
@@ -141,27 +141,27 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     // Conversion from TruffleCompilerListener events to GraalTruffleRuntimeListener events
 
     @Override
-    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph) {
+    public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {
         onCompilationTruffleTierFinished((OptimizedCallTarget) compilable, (AbstractCompilationTask) task, graph);
     }
 
     @Override
-    public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
+    public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
         onCompilationGraalTierFinished((OptimizedCallTarget) compilable, graph);
     }
 
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo result, int tier) {
+    public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo result, int tier) {
         onCompilationSuccess((OptimizedCallTarget) compilable, (AbstractCompilationTask) task, graph, result);
     }
 
     @Override
-    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
         onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier);
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
         onCompilationQueued((OptimizedCallTarget) compilable, task.tier());
         onCompilationStarted((OptimizedCallTarget) compilable, (AbstractCompilationTask) task);
     }

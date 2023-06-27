@@ -1,1 +1,1 @@
-com.oracle.svm.hosted.NativeImageClassLoaderOptions$ApplyNativeImageClassLoaderOptions
+com.oracle.svm.hosted.ApplyNativeImageClassLoaderOptions

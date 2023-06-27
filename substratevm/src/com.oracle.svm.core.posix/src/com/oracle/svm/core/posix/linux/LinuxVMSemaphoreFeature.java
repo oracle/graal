@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -114,15 +115,13 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
 final class LinuxVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = LinuxVMSemaphore[].class)//
-    LinuxVMSemaphore[] semaphores;
+    @UnknownObjectField(availability = ReadyForCompilation.class) LinuxVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the semaphore lock structures. The offset into this array is stored in
      * {@link LinuxVMSemaphore#structOffset}.
      */
-    @UnknownObjectField(types = byte[].class)//
-    byte[] semaphoreStructs;
+    @UnknownObjectField(availability = ReadyForCompilation.class) byte[] semaphoreStructs;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")

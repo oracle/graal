@@ -229,6 +229,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
+    default Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+        throw GraalError.unimplemented("vectorizedHashCode substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
@@ -545,8 +550,13 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }
 
-    default Value emitTimeStampWithProcid() {
-        throw new GraalError("Emitting code to return the current value of the timestamp counter with procid is not currently supported on %s", target().arch);
+    default Value emitTimeStamp() {
+        throw new GraalError("Emitting code to return the current value of the timestamp counter is not currently supported on %s", target().arch);
+    }
+
+    @SuppressWarnings("unused")
+    default void emitProcid(AllocatableValue dst) {
+        throw new GraalError("Emitting code to return the current value of the procid is not currently supported on %s", target().arch);
     }
 
     default Value emitReadCallerStackPointer(Stamp wordStamp) {

@@ -24,49 +24,44 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountToLexicalSingleCaller;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountToLexicalSingleCallerMaxDepth;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceDeoptimizeFrame;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierBonus;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.BackgroundCompilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Compilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationFailureAction;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileAOTOnCreate;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Mode;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MultiTier;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PriorityQueue;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Profiling;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PropagateLoopCountToLexicalSingleCaller;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PropagateLoopCountToLexicalSingleCallerMaxDepth;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Splitting;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceDeoptimizeFrame;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceSplitting;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,15 +74,15 @@ import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.EngineModeEnum;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -120,9 +115,6 @@ public final class EngineData {
     @CompilationFinal public int splittingMaxCalleeSize;
     @CompilationFinal public int splittingMaxPropagationDepth;
     @CompilationFinal public double splittingGrowthLimit;
-
-    // inlining options
-    @CompilationFinal public boolean inlining;
 
     // compilation options
     @CompilationFinal public boolean compilation;
@@ -159,19 +151,22 @@ public final class EngineData {
 
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
+    private Map<String, String> compilerOptions;
 
-    private Object polyglotEngine;
+    private volatile Object polyglotEngine;
 
     /*
      * Extension data for dynamically bound engine extensions.
      */
     private volatile Map<Class<?>, Object> engineLocals;
 
-    EngineData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        Objects.requireNonNull(options);
+    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        Objects.requireNonNull(polyglotEngine);
+        Objects.requireNonNull(runtimeOptions);
+        this.polyglotEngine = polyglotEngine;
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
-        this.loadOptions(options);
+        this.loadOptions(runtimeOptions);
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
@@ -223,14 +218,13 @@ public final class EngineData {
     }
 
     void onEngineCreated(Object engine) {
-        assert this.polyglotEngine == null;
-        this.polyglotEngine = engine;
+        assert this.polyglotEngine == engine;
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
-    void onEnginePatch(OptionValues newOptions, Function<String, TruffleLogger> newLoggerFactory) {
+    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory) {
         this.loggerFactory = newLoggerFactory;
-        loadOptions(newOptions);
+        loadOptions(newRuntimeOptions);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 
@@ -245,6 +239,10 @@ public final class EngineData {
     void onEngineClosed() {
         getRuntime().getListener().onEngineClosed(this);
         getRuntime().getEngineCacheSupport().onEngineClosed(this);
+        /*
+         * The PolyglotEngine must be reset only after listeners are closed. The PolyglotEngine
+         * reset disables logging.
+         */
         this.polyglotEngine = null;
     }
 
@@ -261,9 +259,6 @@ public final class EngineData {
         this.traceSplittingSummary = options.get(TraceSplittingSummary);
         this.traceSplits = options.get(TraceSplitting);
         this.splittingGrowthLimit = options.get(SplittingGrowthLimit);
-
-        // inlining options
-        this.inlining = options.get(Inlining);
 
         // compilation options
         this.compilation = options.get(Compilation);
@@ -297,24 +292,50 @@ public final class EngineData {
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
-        this.compilationFailureAction = computeCompilationFailureAction(options);
+        this.compilationFailureAction = options.get(CompilationFailureAction);
         validateOptions();
         parsedCompileOnly = null;
+
+        Map<String, String> compilerOptionValues = GraalTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
+        updateCompilerOptions(compilerOptionValues);
+        this.compilerOptions = compilerOptionValues;
     }
 
     /**
-     * Checks if the {@link OptimizedCallTarget} for the given {@link RootNode} should be compiled.
-     * The {@link PolyglotCompilerOptions#Compilation Compilation} and
-     * {@link PolyglotCompilerOptions#CompileOnly CompileOnly} options are used to determine if the
+     * Update compiler options based on runtime options. Note there is no support for compiler
+     * options yet.
+     */
+    private void updateCompilerOptions(Map<String, String> options) {
+        if (compilationFailureAction == ExceptionAction.ExitVM) {
+            options.put("compiler.DiagnoseFailure", "true");
+        } else if (compilationFailureAction == ExceptionAction.Diagnose) {
+            options.put("compiler.DiagnoseFailure", "true");
+        }
+        if (TruffleOptions.AOT && traceTransferToInterpreter) {
+            options.put("compiler.NodeSourcePositions", "true");
+        }
+        if (callTargetStatistics || callTargetStatisticDetails) {
+            options.put("compiler.LogInlinedTargets", "true");
+        }
+    }
+
+    public Map<String, String> getCompilerOptions() {
+        return compilerOptions;
+    }
+
+    /**
+     * Checks if a {@link OptimizedCallTarget} should be compiled. The
+     * {@link OptimizedRuntimeOptions#Compilation Compilation} and
+     * {@link OptimizedRuntimeOptions#CompileOnly CompileOnly} options are used to determine if the
      * calltarget should be compiled.
      */
-    boolean acceptForCompilation(RootNode rootNode) {
+    boolean acceptForCompilation(OptimizedCallTarget target) {
         if (!compilation) {
             return false;
         }
         Pair<List<String>, List<String>> value = getCompileOnly();
         if (value != null) {
-            String name = rootNode.getName();
+            String name = target.getName();
             List<String> includes = value.getLeft();
             boolean included = includes.isEmpty();
             if (name != null) {
@@ -339,7 +360,7 @@ public final class EngineData {
     }
 
     /**
-     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#CompileOnly
+     * Returns the include and exclude sets for the {@link OptimizedRuntimeOptions#CompileOnly
      * CompileOnly} option. The returned value is {@code null} if the {@code CompileOnly} option is
      * not specified. Otherwise the {@link Pair#getLeft() left} value is the include set and the
      * {@link Pair#getRight() right} value is the exclude set.
@@ -373,26 +394,9 @@ public final class EngineData {
     @SuppressWarnings({"static-method", "unchecked"})
     public Collection<OptimizedCallTarget> getCallTargets() {
         if (polyglotEngine == null) {
-            throw new IllegalStateException("No polyglot engine initialized.");
+            throw new IllegalStateException("The polyglot engine is closed.");
         }
         return (Collection<OptimizedCallTarget>) GraalRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
-    }
-
-    private static ExceptionAction computeCompilationFailureAction(OptionValues options) {
-        ExceptionAction action = options.get(CompilationFailureAction);
-        if (action.ordinal() < ExceptionAction.Print.ordinal() && options.get(CompilationExceptionsArePrinted)) {
-            action = ExceptionAction.Print;
-        }
-        if (action.ordinal() < ExceptionAction.Throw.ordinal() && options.get(CompilationExceptionsAreThrown)) {
-            action = ExceptionAction.Throw;
-        }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && options.get(CompilationExceptionsAreFatal)) {
-            action = ExceptionAction.ExitVM;
-        }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && !options.get(PerformanceWarningsAreFatal).isEmpty()) {
-            action = ExceptionAction.ExitVM;
-        }
-        return action;
     }
 
     private void validateOptions() {
@@ -442,7 +446,7 @@ public final class EngineData {
     }
 
     public TruffleLogger getLogger(String loggerId) {
-        return loggerFactory.apply(loggerId);
+        return polyglotEngine != null ? loggerFactory.apply(loggerId) : null;
     }
 
     @SuppressWarnings("static-method")

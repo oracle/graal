@@ -276,6 +276,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   builds: [
     // Gates
-    that.jdk17_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', timelimit='35:00', name='gate-espresso-style-jdk17-linux-amd64'),
+    that.jdk17_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk17-linux-amd64'),
   ],
 }

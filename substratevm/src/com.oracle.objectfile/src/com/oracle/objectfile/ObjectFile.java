@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
@@ -104,7 +107,8 @@ public abstract class ObjectFile {
     public enum Format {
         ELF,
         MACH_O,
-        PECOFF
+        PECOFF,
+        LLVM
     }
 
     public abstract Format getFormat();
@@ -192,15 +196,15 @@ public abstract class ObjectFile {
     }
 
     public static String getFilenameSuffix() {
-        switch (ObjectFile.getNativeFormat()) {
-            case ELF:
-            case MACH_O:
-                return ".o";
-            case PECOFF:
-                return ".obj";
-            default:
-                throw new AssertionError("Unreachable");
-        }
+        return getFilenameSuffix(getNativeFormat());
+    }
+
+    public static String getFilenameSuffix(Format format) {
+        return switch (format) {
+            case ELF, MACH_O -> ".o";
+            case PECOFF -> ".obj";
+            case LLVM -> ".bc";
+        };
     }
 
     public static Format getNativeFormat() {
@@ -1263,6 +1267,14 @@ public abstract class ObjectFile {
 
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
+
+    public void write(DebugContext context, Path outputFile, @SuppressWarnings("unused") ForkJoinPool forkJoinPool) throws IOException {
+        try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+            withDebugContext(context, "ObjectFile.write", () -> {
+                write(channel);
+            });
+        }
+    }
 
     @SuppressWarnings("try")
     public final void write(FileChannel outputChannel) {

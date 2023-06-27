@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -43,12 +43,12 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     public static final String MODE = "engine.Mode";
 
     private static void compileAndAssertLatency(OptimizedCallTarget target) {
-        for (int i = 0; i < target.getOptionValue(PolyglotCompilerOptions.FirstTierCompilationThreshold); i++) {
+        for (int i = 0; i < target.getOptionValue(OptimizedRuntimeOptions.FirstTierCompilationThreshold); i++) {
             target.call();
         }
         assertCompiled(target);
         Assert.assertFalse(target.isValidLastTier());
-        for (int i = 0; i < target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold); i++) {
+        for (int i = 0; i < target.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold); i++) {
             target.call();
         }
         assertCompiled(target);
@@ -155,6 +155,11 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             @Override
             public String getName() {
                 return ROOT;
+            }
+
+            @Override
+            public String toString() {
+                return getName();
             }
         }.getCallTarget();
         compileAndAssertLatency(target);

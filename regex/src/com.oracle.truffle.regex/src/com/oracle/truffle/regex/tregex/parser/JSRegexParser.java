@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
@@ -51,6 +52,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable.CaseFoldingAlgorithm;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
@@ -60,7 +62,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class JSRegexParser implements RegexParser {
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.classSet, Token.Kind.groupEnd, Token.Kind.backReference);
     private final RegexParserGlobals globals;
     private final RegexSource source;
     private final RegexFlags flags;
@@ -72,16 +74,8 @@ public final class JSRegexParser implements RegexParser {
         this.globals = language.parserGlobals;
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, source, flags, flags.isUnicode(), compilationBuffer);
-    }
-
-    public JSRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, RegexSource originalSource) throws RegexSyntaxException {
-        this.globals = language.parserGlobals;
-        this.source = source;
-        this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, originalSource, flags, flags.isUnicode(), compilationBuffer);
+        this.lexer = new JSRegexLexer(source, flags, compilationBuffer);
+        this.astBuilder = new RegexASTBuilder(language, source, flags, flags.isEitherUnicode(), compilationBuffer);
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
@@ -146,7 +140,7 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
+                    if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseWordBoundarySubstitution());
                     } else {
                         astBuilder.addCopy(token, globals.getJsWordBoundarySubstitution());
@@ -160,7 +154,7 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
+                    if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseNonWordBoundarySubsitution());
                     } else {
                         astBuilder.addCopy(token, globals.getJsNonWordBoundarySubstitution());
@@ -176,7 +170,7 @@ public final class JSRegexParser implements RegexParser {
                     if (prevKind == Token.Kind.quantifier) {
                         throw syntaxError(JsErrorMessages.QUANTIFIER_ON_QUANTIFIER);
                     }
-                    if (flags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                    if (flags.isEitherUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
                         throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                     }
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {
@@ -208,6 +202,11 @@ public final class JSRegexParser implements RegexParser {
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
+                case classSet:
+                    astBuilder.addClassSet((Token.ClassSet) token, flags.isIgnoreCase() ? CaseFoldingAlgorithm.ECMAScriptUnicode : null);
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         if (!astBuilder.curGroupIsRoot()) {

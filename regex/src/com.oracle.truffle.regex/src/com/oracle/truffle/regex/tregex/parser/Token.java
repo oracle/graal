@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -54,7 +55,8 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 public class Token implements JsonConvertible {
 
     public enum Kind {
-        a,
+        A,
+        Z,
         z,
         caret,
         dollar,
@@ -69,12 +71,14 @@ public class Token implements JsonConvertible {
         lookBehindAssertionBegin,
         groupEnd,
         charClass,
+        classSet,
         inlineFlags,
         conditionalBackreference
     }
 
-    private static final Token A = new Token(Kind.a);
-    private static final Token Z = new Token(Kind.z);
+    private static final Token A = new Token(Kind.A);
+    private static final Token Z = new Token(Kind.Z);
+    private static final Token Z_LOWER_CASE = new Token(Kind.z);
     private static final Token CARET = new Token(Kind.caret);
     private static final Token DOLLAR = new Token(Kind.dollar);
     private static final Token WORD_BOUNDARY = new Token(Kind.wordBoundary);
@@ -94,6 +98,10 @@ public class Token implements JsonConvertible {
 
     public static Token createZ() {
         return Z;
+    }
+
+    public static Token createZLowerCase() {
+        return Z_LOWER_CASE;
     }
 
     public static Token createCaret() {
@@ -150,6 +158,10 @@ public class Token implements JsonConvertible {
 
     public static CharacterClass createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
         return new CharacterClass(codePointSet, wasSingleChar);
+    }
+
+    public static ClassSet createClassSetExpression(ClassSetContents contents) {
+        return new ClassSet(contents);
     }
 
     public static Token createLookAheadAssertionBegin(boolean negated) {
@@ -277,6 +289,20 @@ public class Token implements JsonConvertible {
             return min == 0 && max <= 1;
         }
 
+        /**
+         * Returns {@code true} if the quantified term can never match. This is the case when:
+         * <ul>
+         * <li>The minimum is virtually infinite (i.e. greater than the maximum string length).</li>
+         * <li>The minimum is larger than the maximum. This is usually a syntax error, but in
+         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor} this can happen due
+         * to a quirk in the integer overflow handling in bounded quantifiers, see
+         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBRegexLexer}.</li>
+         * </ul>
+         */
+        public boolean isDead() {
+            return min == -1 || Integer.compareUnsigned(min, max) > 0;
+        }
+
         @Override
         public int hashCode() {
             return Objects.hash(min, max, greedy, index, zeroWidthIndex);
@@ -351,6 +377,26 @@ public class Token implements JsonConvertible {
 
         public boolean wasSingleChar() {
             return wasSingleChar;
+        }
+    }
+
+    public static final class ClassSet extends Token {
+
+        private final ClassSetContents contents;
+
+        public ClassSet(ClassSetContents contents) {
+            super(Kind.classSet);
+            this.contents = contents;
+        }
+
+        @TruffleBoundary
+        @Override
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("contents", contents));
+        }
+
+        public ClassSetContents getContents() {
+            return contents;
         }
     }
 

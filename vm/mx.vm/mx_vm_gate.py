@@ -24,6 +24,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import shutil
 
 import mx
 import mx_benchmark
@@ -83,28 +84,45 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
+def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
-    Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
+    Checks that `compiler_log_file` exists and that its contents matches each regular expression in `expectations`.
     If all checks succeed, `compiler_log_file` is deleted.
     """
+    def append_extra_logs():
+        suffix = ''
+        if extra_log_files:
+            for extra_log_file in extra_log_files:
+                if exists(extra_log_file):
+                    nl = os.linesep
+                    with open(extra_log_file) as fp:
+                        lines = fp.readlines()
+                        if len(lines) > 50:
+                            lines = lines[0:25] + [f'...{nl}', f'<omitted {len(lines) - 50} lines>{nl}', f'...{nl}'] + lines[-50:]
+                    if lines:
+                        suffix += f'{nl}{extra_log_file}:\n' + ''.join(lines)
+        return suffix
+
     in_exception_path = sys.exc_info() != (None, None, None)
     if not exists(compiler_log_file):
-        mx.abort('No output written to ' + compiler_log_file)
+        mx.abort(f'No output written to {compiler_log_file}{append_extra_logs()}')
     with open(compiler_log_file) as fp:
         compiler_log = fp.read()
     if not isinstance(expectations, list) and not isinstance(expectations, tuple):
         expectations = [expectations]
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
-            mx.abort(f'Did not find expected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}')
+            mx.abort(f'Did not find expected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}{append_extra_logs()}')
     if extra_check is not None:
         extra_check(compiler_log)
     if mx.get_opts().verbose or in_exception_path:
         mx.log(compiler_log)
     remove(compiler_log_file)
+    if extra_log_files:
+        for extra_log_file in extra_log_files:
+            remove(extra_log_file)
 
-def _test_libgraal_basic(extra_vm_arguments):
+def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
@@ -112,7 +130,7 @@ def _test_libgraal_basic(extra_vm_arguments):
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     graalvm_jdk = mx.JDKConfig(graalvm_home)
-    jres = [graalvm_home]
+    jres = [(graalvm_home, [])]
 
     if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
@@ -120,8 +138,21 @@ def _test_libgraal_basic(extra_vm_arguments):
         if exists(libgraal_jre):
             mx.rmtree(libgraal_jre)
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
-        jres.append(libgraal_jre)
+        jres.append((libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
+
+    # Tests that dropping libgraal into OracleJDK works
+    oraclejdk = mx.get_env('ORACLEJDK_JAVA_HOME')
+    if oraclejdk:
+        libjvmci = libgraal_location
+        assert exists(libjvmci), ('missing', libjvmci)
+        oraclejdk_libgraal = abspath('oraclejdk_libgraal')
+        if exists(oraclejdk_libgraal):
+            mx.rmtree(oraclejdk_libgraal)
+        shutil.copytree(oraclejdk, oraclejdk_libgraal)
+        shutil.copy(libjvmci, join(oraclejdk_libgraal, 'lib'))
+        jres.append((oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
+        atexit.register(mx.rmtree, oraclejdk_libgraal)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
@@ -163,9 +194,9 @@ def _test_libgraal_basic(extra_vm_arguments):
             '-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre in jres:
+    for jre, jre_args in jres:
         try:
-            mx.run([join(jre, 'bin', 'java')] + args)
+            mx.run([join(jre, 'bin', 'java')] + jre_args + args)
         finally:
             _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
@@ -300,6 +331,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
+    truffle_log_file = abspath('truffle-compiler.log')
     G = '-Dgraal.' #pylint: disable=invalid-name
     P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
@@ -316,9 +348,10 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'{P}TraceCompilation=false',
                   f'{P}CompileImmediately=true',
                   f'{P}BackgroundCompilation=false',
-                  f'-Dpolyglot.log.file={compiler_log_file}',
+                  f'-Dpolyglot.log.file={truffle_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
+                   '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_LIBGRAAL_TRUFFLEATTACH>/bin/<lib:truffleattach>'),
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
                    '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
 
@@ -329,27 +362,9 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
         if err.data:
             mx.log(err.data)
-            if 'Could not find or load main class com.oracle.truffle.sl.launcher.SLMain' in err.data:
-                # Extra diagnostics to debug GR-43161
-
-                # Can we find the class with javap?
-                cmd = [join(graalvm_home, 'bin', 'javap'), '-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain']
-                mx.log(' '.join(cmd))
-                mx.run(cmd, nonZeroIsFatal=False)
-
-                # Maybe the class files are disappearing?
-                for p in ('com.oracle.truffle.sl', 'com.oracle.truffle.sl.launcher'):
-                    classes_dir = mx.project(p).output_dir()
-                    mx.log(f'Contents of {classes_dir}:')
-                    for root, dirnames, filenames in os.walk(classes_dir):
-                        for name in dirnames + filenames:
-                            mx.log('  ' + join(root, name))
-
-                # Ignore this transient failure until it's clear what is causing it
-                return
 
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
-        _check_compiler_log(compiler_log_file, expectations)
+        _check_compiler_log(compiler_log_file, expectations, extra_log_files=[truffle_log_file])
         if vm_can_exit:
             # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
@@ -419,6 +434,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dgraalvm.locatorDisabled=true",
+        '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_LIBGRAAL_TRUFFLEATTACH>/bin/<lib:truffleattach>'),
         "truffle", "LibGraalCompilerTest"])
 
 def gate_body(args, tasks):
@@ -447,7 +463,7 @@ def gate_body(args, tasks):
                     extra_vm_arguments += args.extra_vm_argument
 
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_basic(extra_vm_arguments)
+                    if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
@@ -520,7 +536,15 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--enable-url-protocols=jar',
                 '--enable-url-protocols=http'
             ]
+            truffle_without_compilation = truffle_with_compilation + [
+                '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
+            ]
             args = ['--force-builder-on-cp', '--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svm._native_unittest(native_image, args)
+
+            args = ['--force-builder-on-cp', '--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)

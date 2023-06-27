@@ -1,11 +1,11 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-image
-link_title: Native Image
+link_title: Getting Started with Native Image
 permalink: /reference-manual/native-image/
 ---
 
-# Getting Started
+# Native Image
 
 Native Image is a technology to compile Java code ahead-of-time to a binary -- a **native executable**. 
 A native executable includes only the code required at run time, that is the application classes, standard-library classes, the language runtime, and statically-linked native code from the JDK. 
@@ -31,7 +31,6 @@ To get used to Native Image terminology and get better understanding of the tech
 
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
-* [License](#license)
 * [Further Reading](#further-reading)
 
 ### Prerequisites

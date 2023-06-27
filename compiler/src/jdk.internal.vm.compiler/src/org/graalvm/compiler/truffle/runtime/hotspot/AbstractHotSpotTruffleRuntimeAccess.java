@@ -34,20 +34,37 @@ import jdk.vm.ci.services.Services;
 
 public abstract class AbstractHotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
-    @Override
-    public TruffleRuntime getRuntime() {
-        // initialize JVMCI to make sure the TruffleCompiler option is parsed
-        Services.initializeJVMCI();
+    private final boolean hasOpenJVMCI;
 
-        HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
-        HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
-        boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
-        if (!useCompiler) {
-            // This happens, for example, when -Xint is given on the command line
-            return new DefaultTruffleRuntime();
+    protected AbstractHotSpotTruffleRuntimeAccess() {
+        hasOpenJVMCI = JVMCIOpenSupport.openJVMCI();
+    }
+
+    @Override
+    public final TruffleRuntime getRuntime() {
+        if (hasOpenJVMCI) {
+            // initialize JVMCI to make sure the TruffleCompiler option is parsed
+            Services.initializeJVMCI();
+            HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
+            HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
+            boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
+            if (useCompiler) {
+                return createRuntime();
+            }
         }
-        return createRuntime();
+        return new DefaultTruffleRuntime();
+    }
+
+    @Override
+    public final int getPriority() {
+        if (hasOpenJVMCI) {
+            return calculatePriority();
+        } else {
+            return Integer.MIN_VALUE;
+        }
     }
 
     protected abstract TruffleRuntime createRuntime();
+
+    protected abstract int calculatePriority();
 }

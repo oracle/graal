@@ -74,6 +74,8 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -100,7 +102,6 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -148,6 +149,9 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
+    static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final DynamicObjectSupport DYNAMIC_OBJECT = ACCESSOR.dynamicObjectSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -157,7 +161,9 @@ final class EngineAccessor extends Accessor {
         if (loaders == null) {
             return null;
         }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(loaders.size());
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(2 + loaders.size());
+        suppliers.add(new ModulePathLoaderSupplier(ClassLoader.getSystemClassLoader()));
+        suppliers.add(new WeakModulePathLoaderSupplier(Thread.currentThread().getContextClassLoader()));
         for (ClassLoader loader : loaders) {
             suppliers.add(new StrongClassLoaderSupplier(loader));
         }
@@ -165,8 +171,7 @@ final class EngineAccessor extends Accessor {
     }
 
     private static List<AbstractClassLoaderSupplier> defaultLoaders() {
-        return Arrays.<AbstractClassLoaderSupplier> asList(
-                        new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+        return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
                         new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
                         new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
     }
@@ -289,21 +294,36 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
-            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
-            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
-                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
-                    found.putIfAbsent(service.getClass(), service);
-                }
+            // 1) Add known Truffle DynamicObjectLibraryProvider service.
+            DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            Class<? extends T> legacyInterface = null;
+            if (type == EagerExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.EagerExportProvider.class.asSubclass(type);
+            } else if (type == DefaultExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.DefaultExportProvider.class.asSubclass(type);
             }
-            // Search guest languages and tools.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
-                    ModuleUtils.exportTo(loader, null);
+                    // 2) Lookup implementations of a module aware interface
                     for (T service : ServiceLoader.load(type, loader)) {
-                        found.putIfAbsent(service.getClass(), service);
+                        if (loaderSupplier.accepts(service.getClass())) {
+                            ModuleUtils.exportTransitivelyTo(service.getClass().getModule());
+                            found.putIfAbsent(service.getClass(), service);
+                        }
+                    }
+                    // 3) Lookup implementations of a legacy interface
+                    // GR-46293 Remove the deprecated service interface lookup.
+                    if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
+                        ModuleUtils.exportToUnnamedModuleOf(loader);
+                        for (T service : ServiceLoader.load(legacyInterface, loader)) {
+                            if (loaderSupplier.accepts(service.getClass())) {
+                                found.putIfAbsent(service.getClass(), service);
+                            }
+                        }
                     }
                 }
             }
@@ -2025,11 +2045,18 @@ final class EngineAccessor extends Accessor {
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
-
         private final int hashCode;
 
         AbstractClassLoaderSupplier(ClassLoader loader) {
             this.hashCode = loader == null ? 0 : loader.hashCode();
+        }
+
+        boolean supportsLegacyProviders() {
+            return true;
+        }
+
+        boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
+            return true;
         }
 
         @Override
@@ -2050,7 +2077,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static final class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    static class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final ClassLoader classLoader;
 
@@ -2065,7 +2092,24 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    private static final class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    private static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
+
+        ModulePathLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+        }
+
+        @Override
+        boolean supportsLegacyProviders() {
+            return false;
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
+        }
+    }
+
+    private static class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final Reference<ClassLoader> classLoaderRef;
 
@@ -2077,6 +2121,23 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoaderRef.get();
+        }
+    }
+
+    private static final class WeakModulePathLoaderSupplier extends WeakClassLoaderSupplier {
+
+        WeakModulePathLoaderSupplier(ClassLoader loader) {
+            super(loader);
+        }
+
+        @Override
+        boolean supportsLegacyProviders() {
+            return false;
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
         }
     }
 

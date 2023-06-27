@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.jdk;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -46,6 +47,10 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements InternalFeature {
 
+    private static Optional<Module> jdkSctpModule() {
+        return ModuleLayer.boot().findModule("jdk.sctp");
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
@@ -59,7 +64,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
             rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
-            if (isLinux()) {
+            if (isLinux() && jdkSctpModule().isPresent()) {
                 rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
@@ -88,7 +93,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerUnixNativeDispatcherInit, method(a, "sun.nio.fs.UnixNativeDispatcher", "init"));
-            if (isLinux()) {
+            if (isLinux() && jdkSctpModule().isPresent()) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNio::registerSctpChannelImplInitIDs, method(a, "sun.nio.ch.sctp.SctpChannelImpl", "initIDs"));
             }
 

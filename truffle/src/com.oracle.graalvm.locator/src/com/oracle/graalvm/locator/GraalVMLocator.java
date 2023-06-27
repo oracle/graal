@@ -117,6 +117,9 @@ public final class GraalVMLocator extends TruffleLocator
 
         String append = System.getProperty("truffle.class.path.append");
         if (append != null) {
+            emitWarning("The internal option -Dtruffle.class.path.append option is deprecated. " +
+                            "Languages must now always use the application module-path instead. " +
+                            String.format("To resolve this use the JVM option '--module-path %s' instead.", append));
             String[] files = append.split(System.getProperty("path.separator"));
             for (String file : files) {
                 addJarOrDir(classPath, Paths.get(file));
@@ -193,6 +196,11 @@ public final class GraalVMLocator extends TruffleLocator
                 throw new IllegalStateException(ex);
             }
         }
+    }
+
+    private static void emitWarning(String message, Object... args) {
+        PrintStream out = System.err;
+        out.printf("[engine] " + message + "%n", args);
     }
 
     @Override

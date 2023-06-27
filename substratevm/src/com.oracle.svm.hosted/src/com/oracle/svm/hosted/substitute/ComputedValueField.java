@@ -80,7 +80,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @see RecomputeFieldValue
  * @see NativeImageReinitialize
  */
-public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue, AnnotationWrapper {
+public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, AnnotationWrapper {
 
     private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
@@ -204,12 +204,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         return annotated;
     }
 
-    @Override
     public Field getTargetField() {
         return targetField;
     }
 
-    @Override
     public RecomputeFieldValue.Kind getRecomputeValueKind() {
         return kind;
     }

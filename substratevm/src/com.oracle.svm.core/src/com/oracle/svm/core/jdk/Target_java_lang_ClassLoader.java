@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.File;
-import java.io.InputStream;
 import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
@@ -34,8 +33,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -43,6 +40,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -89,24 +87,14 @@ public final class Target_java_lang_ClassLoader {
     @Delete
     private static native void initSystemClassLoader();
 
-    @Substitute
-    private URL getResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
+    @Alias
+    public native Enumeration<URL> findResources(String name);
 
     @Substitute
     private Enumeration<URL> getResources(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        return Resources.createInputStream(name);
-    }
-
-    @Substitute
-    public static InputStream getSystemResourceAsStream(String name) {
-        return Resources.createInputStream(name);
+        /* Every class loader sees every resource, so we still need this substitution (GR-19998). */
+        Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(name);
+        return urls.hasMoreElements() ? urls : findResources(name);
     }
 
     @Substitute
@@ -339,7 +327,13 @@ public final class Target_java_lang_ClassLoader {
 final class Target_java_lang_AssertionStatusDirectives {
 }
 
-class PackageFieldTransformer implements FieldValueTransformer {
+class PackageFieldTransformer implements FieldValueTransformerWithAvailability {
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
     @Override
     public Object transform(Object receiver, Object originalValue) {
         assert receiver instanceof ClassLoader;

@@ -52,6 +52,10 @@ public class UnicodeProperties {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec, caseInsensitive));
     }
 
+    public static ClassSetContents getPropertyOfStrings(String propertySpec) {
+        return evaluatePropertySpecStrings(normalizePropertySpec(propertySpec, false));
+    }
+
     /**
      * @param propertySpec *Normalized* Unicode character property specification (i.e. only
      *            abbreviated properties and property values)
@@ -62,6 +66,18 @@ public class UnicodeProperties {
             return generalCategory;
         }
         return UnicodePropertyData.retrieveProperty(propertySpec);
+    }
+
+    /**
+     * @param propertySpec *Normalized* Unicode character property specification (i.e. only
+     *            abbreviated properties and property values)
+     */
+    private static ClassSetContents evaluatePropertySpecStrings(String propertySpec) {
+        CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
+        if (generalCategory != null) {
+            return ClassSetContents.createCharacterClass(generalCategory);
+        }
+        return UnicodePropertyData.retrievePropertyOfStrings(propertySpec);
     }
 
     private static String normalizePropertySpec(String propertySpec, boolean caseInsensitive) {

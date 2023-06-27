@@ -131,6 +131,14 @@ public final class SubprocessUtil {
         return result;
     }
 
+    public static List<String> expandArgFileArgs(List<String> args) {
+        try {
+            return CommandLine.parse(args);
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     /**
      * Gets the command line used to start the current Java VM, including all VM arguments, but not
      * including the main class or any Java arguments. This can be used to spawn an identical VM,
@@ -168,7 +176,7 @@ public final class SubprocessUtil {
      * @param agentPredicate a predicate that is given the value of a {@code -javaagent} VM argument
      */
     public static boolean isJavaAgentAttached(Predicate<String> agentPredicate) {
-        return SubprocessUtil.getVMCommandLine().stream().//
+        return expandArgFileArgs(getVMCommandLine()).stream().//
                         filter(args -> args.startsWith("-javaagent:")).//
                         map(s -> s.substring("-javaagent:".length())).//
                         anyMatch(agentPredicate);

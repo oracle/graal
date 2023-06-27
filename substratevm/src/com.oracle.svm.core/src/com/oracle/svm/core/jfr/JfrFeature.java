@@ -45,6 +45,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
@@ -116,7 +117,7 @@ public class JfrFeature implements InternalFeature {
         boolean runtimeEnabled = VMInspectionOptions.hasJfrSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
-                System.err.println("Warning: When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                LogUtils.warning("When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
@@ -173,6 +174,7 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
+        JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 

@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_EMPTY_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.ROOT_DIRECTORY;
@@ -210,6 +211,19 @@ public class NativeImageResourceFileSystemProviderTest {
 
         long lastModified = connection.getLastModified();
         Assert.assertTrue("Non-positive last-modified.", lastModified > 0);
+    }
+
+    /**
+     * Query an empty directory.
+     */
+    @Test
+    public void queryEmptyDir() {
+        Path emptyDirPath = fileSystem.getPath(RESOURCE_EMPTY_DIR);
+        try (Stream<Path> stream = Files.walk(emptyDirPath)) {
+            Assert.assertEquals(1, stream.count());
+        } catch (IOException e) {
+            Assert.fail("IOException occurred during file system walk, starting from the root.");
+        }
     }
 
     /**

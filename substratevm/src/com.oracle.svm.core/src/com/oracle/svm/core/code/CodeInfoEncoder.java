@@ -117,21 +117,13 @@ public class CodeInfoEncoder {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
             this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            if (FrameInfoDecoder.encodeSourceReferences()) {
-                this.names = FrequencyEncoder.createEqualityEncoder();
-            } else {
-                this.names = null;
-            }
+            this.names = FrequencyEncoder.createEqualityEncoder();
         }
 
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
             JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-            Class<?>[] sourceClassesArray = null;
-            String[] sourceMethodNamesArray = null;
-            if (FrameInfoDecoder.encodeSourceReferences()) {
-                sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-                sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-            }
+            Class<?>[] sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
+            String[] sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
             install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, adjuster);
         }
 
@@ -470,9 +462,9 @@ public class CodeInfoEncoder {
 
 class CodeInfoVerifier {
     static void verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, int compilationSize, CodeInfo info) {
+        CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
         for (int relativeIP = 0; relativeIP < compilationSize; relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
-            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
             assert queryResult.isEntryPoint() == method.isEntryPoint();
             assert queryResult.hasCalleeSavedRegisters() == method.hasCalleeSavedRegisters();
@@ -486,7 +478,6 @@ class CodeInfoVerifier {
                 int offset = CodeInfoEncoder.getEntryOffset(infopoint);
                 if (offset >= 0) {
                     assert offset < compilationSize;
-                    CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
@@ -506,7 +497,6 @@ class CodeInfoVerifier {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilationSize;
 
-            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
             long actual = queryResult.getExceptionOffset();
             long expected = handler.handlerPos - handler.pcOffset;

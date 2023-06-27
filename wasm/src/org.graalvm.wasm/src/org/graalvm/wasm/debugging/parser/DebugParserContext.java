@@ -41,8 +41,6 @@
 package org.graalvm.wasm.debugging.parser;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.OptionalInt;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.collection.IntArrayList;
@@ -65,6 +63,8 @@ public class DebugParserContext {
     private final Source[] fileSources;
 
     public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Source[] fileSources) {
+        assert data != null : "the reference to the array containing the debug information (data) must not be null";
+        assert entryData != null : "the mapping of locations in the bytecode to debug entries (entryData) must not be null";
         this.data = data;
         this.debugInfoOffset = debugInfoOffset;
         this.entryData = entryData;
@@ -79,11 +79,14 @@ public class DebugParserContext {
      * 
      * @param offset the entry offset
      */
-    public Optional<DebugData> tryGetData(int offset) {
-        if (entryData.containsKey(offset)) {
-            return Optional.of(entryData.get(offset));
+    public DebugData dataOrNull(int offset) {
+        if (offset == DebugUtil.DEFAULT_I32) {
+            return null;
         }
-        return Optional.empty();
+        if (entryData.containsKey(offset)) {
+            return entryData.get(offset);
+        }
+        return null;
     }
 
     /**
@@ -92,19 +95,19 @@ public class DebugParserContext {
      * @param fileIndex the file index
      * @param lineNumber the line number in the file
      */
-    public OptionalInt tryGetSourceLocation(int fileIndex, int lineNumber) {
+    public int sourceLocationOrDefault(int fileIndex, int lineNumber, int defaultValue) {
         if (fileLineMaps == null) {
-            return OptionalInt.empty();
+            return defaultValue;
         }
         if (fileIndex >= fileLineMaps.length || fileIndex < 0) {
-            return OptionalInt.empty();
+            return defaultValue;
         }
         final DebugLineMap lineMap = fileLineMaps[fileIndex];
         final int pc = lineMap.getSourceLocation(lineNumber);
         if (pc == -1) {
-            return OptionalInt.empty();
+            return defaultValue;
         }
-        return OptionalInt.of(pc);
+        return pc;
     }
 
     /**
@@ -112,18 +115,14 @@ public class DebugParserContext {
      * 
      * @param fileIndex the file index
      */
-    public Optional<DebugLineMap> tryGetLineMap(int fileIndex) {
+    public DebugLineMap lineMapOrNull(int fileIndex) {
         if (fileLineMaps == null) {
-            return Optional.empty();
+            return null;
         }
         if (fileIndex >= fileLineMaps.length || fileIndex < 0) {
-            return Optional.empty();
+            return null;
         }
-        final DebugLineMap lineMap = fileLineMaps[fileIndex];
-        if (lineMap != null) {
-            return Optional.of(lineMap);
-        }
-        return Optional.empty();
+        return fileLineMaps[fileIndex];
     }
 
     /**
@@ -131,18 +130,14 @@ public class DebugParserContext {
      * 
      * @param fileIndex the file index
      */
-    public Optional<Source> tryGetSource(int fileIndex) {
+    public Source sourceOrNull(int fileIndex) {
         if (fileSources == null) {
-            return Optional.empty();
+            return null;
         }
         if (fileIndex >= fileSources.length || fileIndex < 0) {
-            return Optional.empty();
+            return null;
         }
-        final Source source = fileSources[fileIndex];
-        if (source == null) {
-            return Optional.empty();
-        }
-        return Optional.of(source);
+        return fileSources[fileIndex];
     }
 
     /**
@@ -160,8 +155,13 @@ public class DebugParserContext {
      * 
      * @param rangeOffset the range offset.
      */
-    public IntArrayList readRangeSection(int rangeOffset) {
-        return new DebugParser(data).readRangeSection(DebugUtil.rangesOffset(data, debugInfoOffset) + rangeOffset);
+    public IntArrayList readRangeSectionOrNull(int rangeOffset) {
+        final int debugRangeOffset = DebugUtil.getRangesOffsetOrUndefined(data, debugInfoOffset);
+        final int debugRangeLength = DebugUtil.getRangesLengthOrUndefined(data, debugInfoOffset);
+        if (debugRangeOffset == DebugUtil.UNDEFINED || debugRangeLength == DebugUtil.UNDEFINED || Integer.compareUnsigned(rangeOffset, debugRangeLength) >= 0) {
+            return null;
+        }
+        return new DebugParser(data).readRangeSectionOrNull(debugRangeOffset + rangeOffset, debugRangeLength);
     }
 
     /**
@@ -169,8 +169,13 @@ public class DebugParserContext {
      * 
      * @param locOffset the location offset.
      */
-    public byte[] readLocationList(int locOffset) {
-        return new DebugParser(data).readLocationList(DebugUtil.locOffset(data, debugInfoOffset) + locOffset);
+    public byte[] readLocationListOrNull(int locOffset) {
+        final int debugLocOffset = DebugUtil.getLocOffsetOrUndefined(data, debugInfoOffset);
+        final int debugLocLength = DebugUtil.getLocLengthOrUndefined(data, debugInfoOffset);
+        if (debugLocOffset == DebugUtil.UNDEFINED || debugLocLength == DebugUtil.UNDEFINED || Integer.compareUnsigned(locOffset, debugLocLength) >= 0) {
+            return null;
+        }
+        return new DebugParser(data).readLocationListOrNull(debugLocOffset + locOffset, debugLocLength);
     }
 
     /**

@@ -15,7 +15,21 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
 * GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
-
+* GR-46146 Added `TruffleLanguage#ContextLocalProvider` and `TruffleInstrument#ContextLocalProvider`, and deprecated `TruffleLanguage.createContextLocal`, `TruffleLanguage.createContextThreadLocal`, `TruffleInstrument.createContextLocal` and `TruffleInstrument.createContextThreadLocal`. Starting with JDK 21, the deprecated methods trigger the new this-escape warning. The replacement API avoids the warning.
+* GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md). Truffle languages or instruments installed as a GraalVM component in the GraalVM JDK are still loaded in an unnamed module. However, GraalVM components will be deprecated, so languages and instruments should be migrated to the module path.
+* GR-46181 `truffle-tck.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
+* GR-46181 `truffle-dsl-processor.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
+* GR-44222 Deprecated several experimental engine options and moved them to use the `compiler` prefix instead of the `engine` prefix.
+* GR-44222 The following deprecated debugging options were removed in this release:
+	* `engine.InvalidationReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.ReplaceReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.PerformanceWarningsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` and `compiler.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>` instead.
+	* `engine.PrintExpansionHistogram`: Superseded by `engine.TraceMethodExpansion`.
+	* `engine.ForceFrameLivenessAnalysis`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.CompilationExceptionsArePrinted`: Use `engine.CompilationFailureAction=Print` instead.
+	* `engine.CompilationExceptionsAreThrown`: Use `engine.CompilationFailureAction=Throw` instead.
+	* `engine.CompilationExceptionsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` instead.
+* GR-44420 Added `TruffleLanguage.finalizeThread(Object, Thread)` to allow languages run finalization hooks for initialized threads before the context is disposed.
 
 ## Version 23.0.0
 

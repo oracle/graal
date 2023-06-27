@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -58,7 +59,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
 
     @Override
     protected Context.Builder newContextBuilder() {
-        return super.newContextBuilder().option("engine.EncodedGraphCache", "false");
+        return super.newContextBuilder().option("compiler.EncodedGraphCache", "false");
     }
 
     @Test
@@ -209,7 +210,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         setupContext("engine.CompileImmediately", "true",
                         "engine.BackgroundCompilation", "false",
                         "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
-                        "engine.MaximumGraalGraphSize", "20000");
+                        "compiler.MaximumGraalGraphSize", "20000");
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         AbstractTestNode[] children = new AbstractTestNode[nodeCount];
         for (int i = 0; i < children.length; i++) {

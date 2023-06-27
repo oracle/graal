@@ -63,6 +63,10 @@ public class DebugFunction extends DebugType {
     private final List<DebugObject> globals;
 
     public DebugFunction(String name, DebugLineMap lineMap, SourceSection sourceSection, byte[] frameBaseExpression, List<DebugObject> variables, List<DebugObject> globals) {
+        assert lineMap != null : "the source code to bytecode line map of a debug function must not be null";
+        assert frameBaseExpression != null : "the expression for calculating the frame base of a debug function must not be null";
+        assert variables != null : "the list of variables of a debug function must not be null";
+        assert globals != null : "the list of globals of a debug function must not be null";
         this.name = name;
         this.lineMap = lineMap;
         this.sourceSection = sourceSection;
@@ -105,10 +109,11 @@ public class DebugFunction extends DebugType {
     /**
      * @param frame the frame
      * @param dataAccess the data access
-     * @return The frame base location of the function.
+     * @return The frame base location of the function, or null if the frame base expression is
+     *         malformed.
      */
-    public DebugLocation frameBase(MaterializedFrame frame, WasmDataAccess dataAccess) {
-        return DebugLocation.createFrameBase(frame, dataAccess, frameBaseExpression);
+    public DebugLocation frameBaseOrNull(MaterializedFrame frame, WasmDataAccess dataAccess) {
+        return DebugLocation.createFrameBaseOrNull(frame, dataAccess, frameBaseExpression);
     }
 
     /**

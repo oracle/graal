@@ -58,7 +58,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.util.json.JSONParserException;
@@ -70,6 +69,8 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.StringUtil;
 
 final class BundleSupport {
 
@@ -175,10 +176,8 @@ final class BundleSupport {
             return bundleSupport;
 
         } catch (StringIndexOutOfBoundsException | IllegalArgumentException e) {
-            String suggestedVariants = Arrays.stream(BundleOptionVariants.values())
-                            .map(v -> BUNDLE_OPTION + "-" + v)
-                            .collect(Collectors.joining(", "));
-            throw NativeImage.showError("Unknown option " + bundleArg + ". Valid variants are: " + suggestedVariants + ".");
+            String suggestedVariants = StringUtil.joinSingleQuoted(Arrays.stream(BundleOptionVariants.values()).map(v -> BUNDLE_OPTION + "-" + v).toList());
+            throw NativeImage.showError("Unknown option '" + bundleArg + "'. Valid variants are " + suggestedVariants + ".");
         }
     }
 
@@ -806,7 +805,7 @@ final class BundleSupport {
                     throw NativeImage.showError(message);
                 } else if (major == BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
                     if (minor > BUNDLE_FILE_FORMAT_VERSION_MINOR) {
-                        NativeImage.showWarning(message);
+                        LogUtils.warning(message);
                     }
                 }
             } catch (NumberFormatException e) {

@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+
 public final class Constants {
 
     public static final int MAX_CODE_POINT = Character.MAX_CODE_POINT;
@@ -222,6 +226,10 @@ public final class Constants {
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
 
+    public static final CodePointSet NO_NEWLINE = CodePointSet.createNoDedup(
+                    0x0000, 0x0009,
+                    0x000b, 0x10ffff);
+
     public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(0x0000, 0x10ffff);
 
     // [A-Fa-f0-9]
@@ -244,4 +252,14 @@ public final class Constants {
                     DOT,
                     HEX_CHARS
     };
+
+    public static final CodePointSet FOLDABLE_CHARACTERS = CodePointSet.createNoDedup(CaseFoldTable.SIMPLE_CASE_FOLDING_ENTRIES);
+
+    public static final CodePointSet FOLDED_CHARACTERS = FOLDABLE_CHARACTERS.createInverse(Encodings.UTF_16);
+
+    public static final CodePointSet WORD_CHARS_UNICODE_SETS_IGNORE_CASE = CaseFoldTable.simpleCaseFold(WORD_CHARS, new CodePointSetAccumulator());
+
+    public static final CodePointSet NON_WORD_CHARS_UNICODE_SETS_IGNORE_CASE = WORD_CHARS_UNICODE_SETS_IGNORE_CASE.createInverse(FOLDABLE_CHARACTERS,
+                    new CompilationBuffer(Encodings.UTF_16));
+
 }

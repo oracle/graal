@@ -539,7 +539,9 @@ public final class CompilationResultFrameTree {
                     }
                     visitFrame(infopointForRoot, bcp, null);
                 } else {
+                    // Checkstyle: Allow raw info or warning printing - begin
                     debug.log("Warning: Constructing FrameTree from SourceMappings only is (currently) unsafe");
+                    // Checkstyle: Allow raw info or warning printing - end
                 }
 
                 /*

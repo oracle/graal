@@ -38,10 +38,12 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
-    private final HostedMetaAccess metaAccess;
+    private final HostedMetaAccess hMetaAccess;
+    private final HostedConstantReflectionProvider hConstantReflection;
 
-    public HostedMemoryAccessProvider(HostedMetaAccess metaAccess) {
-        this.metaAccess = metaAccess;
+    public HostedMemoryAccessProvider(HostedMetaAccess hMetaAccess, HostedConstantReflectionProvider hConstantReflection) {
+        this.hMetaAccess = hMetaAccess;
+        this.hConstantReflection = hConstantReflection;
     }
 
     @Override
@@ -98,7 +100,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (base.getJavaKind() != JavaKind.Object) {
             return null;
         }
-        HostedType type = metaAccess.lookupJavaType(base);
+        HostedType type = hMetaAccess.lookupJavaType(base);
         HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
         if (field == null) {
             return null;
@@ -106,7 +108,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
         assert field.getStorageKind().getStackKind() == stackKind;
 
-        JavaConstant result = field.readValue(base);
+        JavaConstant result = hConstantReflection.readFieldValue(field, base);
         if (result.getJavaKind().getStackKind() != stackKind) {
             /*
              * For certain Word types like RelocatedPointer, the boxed value is returned by

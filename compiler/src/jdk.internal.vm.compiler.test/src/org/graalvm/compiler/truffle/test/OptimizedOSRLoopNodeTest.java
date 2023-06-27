@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.OSRCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -145,7 +144,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertCompiled(rootNode.getOSRTarget());
         assertNotCompiled(target);
         target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-        for (int i = 0; i < target.getOptionValue(SingleTierCompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
+        for (int i = 0; i < target.getOptionValue(SingleTierCompilationThreshold) + 3 - 1; i++) {
             target.call(2);
         }
         assertCompiled(rootNode.getOSRTarget());

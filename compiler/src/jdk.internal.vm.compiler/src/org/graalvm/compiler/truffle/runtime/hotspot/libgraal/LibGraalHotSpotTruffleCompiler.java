@@ -26,20 +26,17 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import java.util.Map;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.util.OptionsEncoder;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -55,20 +52,15 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    private final LibGraalTruffleRuntime runtime;
-    private volatile Map<String, Object> previousOptions;
+    private final HotSpotTruffleRuntime runtime;
 
-    private long resolveIsolateHandle(Supplier<Map<String, Object>> optionsSupplier, CompilableTruffleAST compilable, boolean firstInitialization) {
+    private long getOrCreateIsolate(TruffleCompilable compilable, boolean firstInitialization) {
         return resolveIsolateHandleImpl(() -> {
             long isolateThread = getIsolateThread();
-            long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, runtime.handle());
-            TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, OptionsEncoder.encode(optionsSupplier.get()), compilable, firstInitialization);
+            long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, LibGraalTruffleCompilationSupport.handle(runtime));
+            TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, compilable, firstInitialization);
             return new Handle(compilerHandle);
         });
-    }
-
-    long resolveIsolateHandle(Map<String, Object> options) {
-        return resolveIsolateHandle(() -> options, null, false);
     }
 
     private static long resolveIsolateHandleImpl(Supplier<Handle> handleSupplier) {
@@ -77,43 +69,25 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         }
     }
 
-    LibGraalHotSpotTruffleCompiler(LibGraalTruffleRuntime runtime) {
+    LibGraalHotSpotTruffleCompiler(HotSpotTruffleRuntime runtime) {
         this.runtime = runtime;
     }
 
     @SuppressWarnings("try")
     @Override
-    public void initialize(Map<String, Object> options, CompilableTruffleAST compilable, boolean firstInitialization) {
-        /*
-         * There can only be a single set of options a compiler can be configured with. The first
-         * Truffle engine of a process typically initializes the compiler which also determines the
-         * compiler configuration. Any options specified after that will be ignored. So it is safe
-         * to store the previous options here and reuse later for recreating a disposed isolate if
-         * needed.
-         */
-        previousOptions = options;
-        // Force installation of the Truffle call boundary methods.
-        // See AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod
-        // for further details.
-        resolveIsolateHandle(() -> options, compilable, firstInitialization);
+    public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
+        getOrCreateIsolate(compilable, firstInitialization);
     }
 
     @Override
     @SuppressWarnings("try")
     public void doCompile(
                     TruffleCompilationTask task,
-                    CompilableTruffleAST compilable,
-                    Map<String, Object> options,
+                    TruffleCompilable compilable,
                     TruffleCompilerListener listener) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.doCompile(getIsolateThread(), resolveIsolateHandle(() -> options, compilable, false), task, compilable, OptionsEncoder.encode(options), listener);
+            TruffleToLibGraalCalls.doCompile(getIsolateThread(), getOrCreateIsolate(compilable, false), task, compilable, listener);
         }
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    public String getCompilerConfigurationName() {
-        return runtime.initLazyCompilerConfigurationName();
     }
 
     @SuppressWarnings("try")
@@ -128,21 +102,17 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @Override
     @SuppressWarnings("try")
-    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
+    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            Map<String, Object> options = previousOptions;
-            assert options != null : "truffle compiler was never initialized";
-            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), resolveIsolateHandle(options), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
         }
     }
 
     @Override
     @SuppressWarnings("try")
-    public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
+    public void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            Map<String, Object> options = previousOptions;
-            assert options != null : "truffle compiler was never initialized";
-            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), resolveIsolateHandle(options), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
         }
     }
 
@@ -150,18 +120,14 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @SuppressWarnings("try")
     @Override
-    public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
+    public int pendingTransferToInterpreterOffset(TruffleCompilable compilable) {
         if (pendingTransferToInterpreterOffset == null) {
             try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-                pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), resolveIsolateHandle(optionsEncoder(compilable), compilable, false),
+                pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), getOrCreateIsolate(compilable, false),
                                 compilable);
             }
         }
         return pendingTransferToInterpreterOffset;
-    }
-
-    private static Supplier<Map<String, Object>> optionsEncoder(CompilableTruffleAST compilable) {
-        return () -> GraalTruffleRuntime.getOptionsForCompiler((OptimizedCallTarget) compilable);
     }
 
     @Override

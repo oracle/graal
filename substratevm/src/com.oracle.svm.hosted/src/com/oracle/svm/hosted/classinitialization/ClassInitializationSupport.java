@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
@@ -48,6 +49,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -86,10 +88,14 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         if (ClassInitializationOptions.UseNewExperimentalClassInitialization.getValue()) {
-            System.out.println("WARNING: using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
+            LogUtils.warning("Using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
             return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
         }
         return new ProvenSafeClassInitializationSupport(metaAccess, loader);
+    }
+
+    public static ClassInitializationSupport singleton() {
+        return (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
     ClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
@@ -138,25 +144,25 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     /**
-     * Returns true if the provided type should be initialized at runtime.
+     * Returns true if the provided type is initialized at image build time.
+     *
+     * If the return value is true, then the class is also guaranteed to be initialized already.
+     * This means that calling this method might trigger class initialization, i.e., execute
+     * arbitrary user code.
      */
-    public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
-        return computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type)) != InitKind.BUILD_TIME;
+    public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
+        return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 
     /**
-     * Returns true if the provided class should be initialized at runtime.
+     * Returns true if the provided type is initialized at image build time.
+     *
+     * If the return value is true, then the class is also guaranteed to be initialized already.
+     * This means that calling this method might trigger class initialization, i.e., execute
+     * arbitrary user code.
      */
-    public boolean shouldInitializeAtRuntime(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz) != InitKind.BUILD_TIME;
-    }
-
-    /**
-     * Initializes the class during image building, unless initialization must be delayed to
-     * runtime.
-     */
-    public void maybeInitializeHosted(ResolvedJavaType type) {
-        computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type));
+    public boolean maybeInitializeAtBuildTime(Class<?> clazz) {
+        return computeInitKindAndMaybeInitializeClass(clazz) == InitKind.BUILD_TIME;
     }
 
     /**

@@ -151,17 +151,17 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (polyglotLanguageInstance != null) {
-                if (impl.contextLocals == null) {
-                    impl.contextLocals = Collections.emptyList();
+                if (impl.locals.contextLocals == null) {
+                    impl.locals.contextLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
-                    impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+                    ENGINE.initializeLanguageContextLocal(impl.locals.contextLocals, polyglotLanguageInstance);
+                    impl.locals.contextLocals = Collections.unmodifiableList(impl.locals.contextLocals);
                 }
-                if (impl.contextThreadLocals == null) {
-                    impl.contextThreadLocals = Collections.emptyList();
+                if (impl.locals.contextThreadLocals == null) {
+                    impl.locals.contextThreadLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
-                    impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+                    ENGINE.initializeLanguageContextThreadLocal(impl.locals.contextThreadLocals, polyglotLanguageInstance);
+                    impl.locals.contextThreadLocals = Collections.unmodifiableList(impl.locals.contextThreadLocals);
                 }
             }
         }
@@ -336,6 +336,11 @@ final class LanguageAccessor extends Accessor {
         @Override
         public void exitContext(Env env, TruffleLanguage.ExitMode exitMode, int exitCode) {
             env.getSpi().exitContext(env.context, exitMode, exitCode);
+        }
+
+        @Override
+        public void finalizeThread(TruffleLanguage.Env env, Thread current) {
+            env.getSpi().finalizeThread(env.context, current);
         }
 
         @Override

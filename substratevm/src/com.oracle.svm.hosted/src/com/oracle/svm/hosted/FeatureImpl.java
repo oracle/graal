@@ -459,6 +459,21 @@ public class FeatureImpl {
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
             bb.getAnnotationSubstitutionProcessor().registerFieldValueTransformer(field, transformer);
         }
+
+        /**
+         * Registers a method as having an analysis-opaque return value. This designation limits the
+         * type-flow analysis performed on the method's return value.
+         *
+         * Currently we expect only methods with the Object return type to be registered via this
+         * method; however, the underlying analysis support can handle other object types (including
+         * untrusted interfaces).
+         */
+        public void registerOpaqueMethodReturn(Method method) {
+            AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
+            VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
+            VMError.guarantee(method.getReturnType().equals(Object.class), "Called registerOpaqueMethodReturn for a method with a non-Object return type: %s", method);
+            aMethod.setReturnsAllInstantiatedTypes();
+        }
     }
 
     public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess {
@@ -590,7 +605,7 @@ public class FeatureImpl {
                     JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
                     for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, field.readValue(constant));
+                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, heap.hConstantReflection.readFieldValue(field, constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                         }
                     }

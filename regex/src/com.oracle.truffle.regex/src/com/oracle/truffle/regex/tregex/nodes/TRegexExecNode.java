@@ -90,7 +90,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     @Child private RunRegexSearchNode runnerNode;
 
     public TRegexExecNode(RegexAST ast, TRegexExecutorNode nfaExecutor) {
-        super(ast.getLanguage(), ast.getSource(), ast.getFlags().isUnicode());
+        super(ast.getLanguage(), ast.getSource(), ast.getFlags().isEitherUnicode());
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;

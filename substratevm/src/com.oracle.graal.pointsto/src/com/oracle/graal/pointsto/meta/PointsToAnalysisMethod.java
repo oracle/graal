@@ -163,7 +163,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     /**
-     * Create an unique, per method, context insensitive virtual or special invoke. The context
+     * Create a unique, per method, context insensitive virtual or special invoke. The context
      * insensitive invoke uses the receiver type of the method, i.e., its declaring class. Therefore
      * this invoke will link with all possible callees.
      */
@@ -245,5 +245,11 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
              */
             return !getTypeFlow().getMethodFlowsGraphInfo().isStub();
         }
+    }
+
+    @Override
+    public void setReturnsAllInstantiatedTypes() {
+        super.setReturnsAllInstantiatedTypes();
+        assert !getTypeFlow().flowsGraphCreated() : "must call setReturnsAllInstantiatedTypes before typeflow is created";
     }
 }

@@ -130,35 +130,72 @@ public class LanguageRegistrationTest {
     public static class InvalidIDError5 extends ProxyLanguage {
     }
 
-    @Registration(id = "filedetector1", name = "filedetector1", fileTypeDetectors = {FileTypeDetectorRegistration1.Detector.class})
+    @Registration(id = "filedetector1", name = "filedetector1", fileTypeDetectors = {
+                    FileTypeDetectorRegistration1.Detector1.class,
+                    FileTypeDetectorRegistration1.Detector2.class
+    })
     public static class FileTypeDetectorRegistration1 extends ProxyLanguage {
-        public static class Detector extends ProxyFileTypeDetector {
+        public static class Detector1 extends ProxyFileTypeDetector {
+        }
+
+        public static class Detector2 extends ProxyFileTypeDetector {
         }
     }
 
-    @ExpectError("Registered FileTypeDetector class must be public.")
+    @ExpectError("The class LanguageRegistrationTest.FileTypeDetectorRegistration2.Detector must be a static inner-class or a top-level class. " +
+                    "To resolve this, make the Detector static or top-level class.")
     @Registration(id = "filedetector2", name = "filedetector2", fileTypeDetectors = {FileTypeDetectorRegistration2.Detector.class})
     public static class FileTypeDetectorRegistration2 extends ProxyLanguage {
-        static class Detector extends ProxyFileTypeDetector {
+        public abstract class Detector extends ProxyFileTypeDetector {
         }
     }
 
-    @ExpectError("Registered FileTypeDetector inner-class must be static.")
+    @ExpectError("The class LanguageRegistrationTest.FileTypeDetectorRegistration3.Detector must have a no argument public constructor. " +
+                    "To resolve this, add public Detector() constructor.")
     @Registration(id = "filedetector3", name = "filedetector3", fileTypeDetectors = {FileTypeDetectorRegistration3.Detector.class})
     public static class FileTypeDetectorRegistration3 extends ProxyLanguage {
-        public class Detector extends ProxyFileTypeDetector {
-        }
-    }
-
-    @ExpectError("A FileTypeDetector subclass must have a public no argument constructor.")
-    @Registration(id = "filedetector5", name = "filedetector5", fileTypeDetectors = {FileTypeDetectorRegistration5.Detector.class})
-    public static class FileTypeDetectorRegistration5 extends ProxyLanguage {
         public static class Detector extends ProxyFileTypeDetector {
-            Detector() {
+
+            @SuppressWarnings("unused")
+            Detector(String unused) {
             }
 
             @SuppressWarnings("unused")
-            public Detector(String name) {
+            Detector(long unused) {
+            }
+
+            @SuppressWarnings("unused")
+            private Detector() {
+            }
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.FileTypeDetectorRegistration4.Detector must be public or package protected " +
+                    "in the com.oracle.truffle.api.dsl.test.processor package. To resolve this, make the " +
+                    "LanguageRegistrationTest.FileTypeDetectorRegistration4.Detector public or move it to the " +
+                    "com.oracle.truffle.api.dsl.test.processor package.")
+    @Registration(id = "filedetector4", name = "filedetector4", fileTypeDetectors = {FileTypeDetectorRegistration4.Detector.class})
+    public static class FileTypeDetectorRegistration4 extends ProxyLanguage {
+        private static class Detector extends ProxyFileTypeDetector {
+            @SuppressWarnings("unused")
+            Detector() {
+            }
+        }
+    }
+
+    @Registration(id = "filedetector5", name = "filedetector5", fileTypeDetectors = {FileTypeDetectorRegistration5.Detector.class})
+    public static class FileTypeDetectorRegistration5 extends ProxyLanguage {
+        public static class Detector extends ProxyFileTypeDetector {
+
+            @SuppressWarnings("unused")
+            Detector(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Detector(long unused) {
+            }
+
+            Detector() {
             }
         }
     }

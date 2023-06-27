@@ -59,7 +59,7 @@ public class CPointer extends DebugPointerType {
     @Override
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
         if (location.loadAsLocation().isZero()) {
-            final String name = context.elementName().orElse("");
+            final String name = context.elementNameOrEmpty();
             return new DebugConstantObject("*" + name, CConstants.NULL);
         }
         return super.readMember(context, location, index);

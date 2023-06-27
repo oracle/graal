@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
@@ -55,10 +56,10 @@ public class SubstrateField implements SharedField {
     private final int modifiers;
     private int hashCode;
 
-    @UnknownPrimitiveField int location;
-    @UnknownPrimitiveField private boolean isAccessed;
-    @UnknownPrimitiveField private boolean isWritten;
-    @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant")//
+    @UnknownPrimitiveField(availability = AfterCompilation.class) int location;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private boolean isAccessed;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private boolean isWritten;
+    @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant", availability = AfterCompilation.class)//
     JavaConstant constantValue;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -162,6 +163,11 @@ public class SubstrateField implements SharedField {
     @Override
     public boolean isSynthetic() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isValueAvailable() {
+        return true;
     }
 
     @Override

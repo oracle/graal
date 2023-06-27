@@ -66,7 +66,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
 
     @Test
     public void catchControlFlowExceptionFromCall() {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("compiler.Inlining", "true").build());
         CallTarget callTarget = new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()).getCallTarget();
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
         assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));

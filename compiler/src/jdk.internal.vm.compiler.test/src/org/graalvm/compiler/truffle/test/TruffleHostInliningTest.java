@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 

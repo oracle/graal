@@ -64,7 +64,10 @@ public class DebugVariable extends DebugBinding {
     }
 
     private DebugLocation variableLocation(DebugLocation baseLocation) {
-        return DebugParser.readExpression(locationExpression, baseLocation);
+        if (locationExpression != null) {
+            return DebugParser.readExpression(locationExpression, baseLocation);
+        }
+        return baseLocation.invalidate();
     }
 
     @Override

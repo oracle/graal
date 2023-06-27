@@ -34,20 +34,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.objectfile.debugentry.range.PrimaryRange;
-import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
@@ -142,6 +143,10 @@ public abstract class DebugInfoBase {
      * Handle on type entry for header structure.
      */
     private HeaderTypeEntry headerType;
+    /**
+     * Handle on type entry for void type.
+     */
+    private TypeEntry voidType;
     /**
      * Handle on class entry for java.lang.Object.
      */
@@ -349,13 +354,15 @@ public abstract class DebugInfoBase {
         }));
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
-            String provenance = debugDataInfo.getProvenance();
-            String typeName = debugDataInfo.getTypeName();
-            String partitionName = debugDataInfo.getPartition();
-            /* Address is heap-register relative pointer. */
-            long address = debugDataInfo.getAddress();
-            long size = debugDataInfo.getSize();
-            debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                String provenance = debugDataInfo.getProvenance();
+                String typeName = debugDataInfo.getTypeName();
+                String partitionName = debugDataInfo.getPartition();
+                /* Address is heap-register relative pointer. */
+                long address = debugDataInfo.getAddress();
+                long size = debugDataInfo.getSize();
+                debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+            }
         }));
     }
 
@@ -395,6 +402,11 @@ public abstract class DebugInfoBase {
                 assert filePath == null;
                 typeEntry = new HeaderTypeEntry(typeName, size);
                 break;
+            case FOREIGN: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new ForeignTypeEntry(typeName, fileEntry, size);
+                break;
+            }
         }
         return typeEntry;
     }
@@ -413,6 +425,9 @@ public abstract class DebugInfoBase {
             }
             if (typeName.equals("java.lang.Object")) {
                 objectClass = (ClassEntry) typeEntry;
+            }
+            if (typeName.equals("void")) {
+                voidType = typeEntry;
             }
             if (typeEntry instanceof ClassEntry) {
                 indexInstanceClass(idType, (ClassEntry) typeEntry);
@@ -450,6 +465,12 @@ public abstract class DebugInfoBase {
         // this should only be looked up after all types have been notified
         assert headerType != null;
         return headerType;
+    }
+
+    public TypeEntry lookupVoidType() {
+        // this should only be looked up after all types have been notified
+        assert voidType != null;
+        return voidType;
     }
 
     public ClassEntry lookupObjectClass() {

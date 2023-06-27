@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -47,6 +48,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -144,7 +147,7 @@ public abstract class VMThreads {
      */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord("VMThreads.nextTL");
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
-    protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
+    public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
     /** The highest stack address. */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
@@ -576,23 +579,20 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
-        OSThreadId osThreadId = getCurrentOSThreadId();
+        ThreadLookup threadLookup = ImageSingletons.lookup(ThreadLookup.class);
+        ComparableWord identifier = threadLookup.getThreadIdentifier();
 
         /*
          * This code can execute during the prologue of a crash handler for a thread that already
-         * owns the lock. Trying to reacquire the lock here would result in deadlock.
+         * owns the lock. Trying to reacquire the lock here would result in a deadlock.
          */
         boolean needsLock = !inCrashHandler;
         if (needsLock) {
-            /*
-             * Accessing the VMThread list requires the lock, but locking must be without
-             * transitions because the IsolateThread is not set up yet.
-             */
             THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         }
         try {
             IsolateThread thread;
-            for (thread = firstThreadUnsafe(); thread.isNonNull() && OSThreadIdTL.get(thread).notEqual(osThreadId); thread = nextThread(thread)) {
+            for (thread = firstThreadUnsafe(); thread.isNonNull() && threadLookup.matchesThread(thread, identifier); thread = nextThread(thread)) {
             }
             return thread;
         } finally {
@@ -1064,5 +1064,27 @@ public abstract class VMThreads {
     }
 
     public interface OSThreadId extends PointerBase {
+    }
+
+    public static class ThreadLookup {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public ComparableWord getThreadIdentifier() {
+            return VMThreads.singleton().getCurrentOSThreadId();
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
+            return OSThreadIdTL.get(thread).notEqual(identifier);
+        }
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class ThreadLookupFeature implements InternalFeature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(VMThreads.ThreadLookup.class)) {
+            ImageSingletons.add(VMThreads.ThreadLookup.class, new VMThreads.ThreadLookup());
+        }
     }
 }

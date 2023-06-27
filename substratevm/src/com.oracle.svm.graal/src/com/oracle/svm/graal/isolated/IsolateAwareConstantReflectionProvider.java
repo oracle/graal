@@ -188,21 +188,6 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         ConstantDataConverter.fromClient(result, resultData);
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant primitive) {
-        if (!isIsolatedCompilation()) {
-            return super.boxPrimitive(primitive);
-        }
-        if (!canBoxPrimitive(primitive)) {
-            return null;
-        }
-        ConstantData resultData = StackValue.get(ConstantData.class);
-        ConstantData primitiveData = StackValue.get(ConstantData.class);
-        ConstantDataConverter.fromCompiler(primitive, primitiveData);
-        boxPrimitive0(IsolatedCompileContext.get().getClient(), primitiveData, resultData);
-        return ConstantDataConverter.toCompiler(resultData);
-    }
-
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void boxPrimitive0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData primitiveData, ConstantData resultData) {
         JavaConstant primitive = ConstantDataConverter.toClient(primitiveData);

@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -182,6 +183,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     private final AnalysisFuture<Void> onTypeReachableTask;
+    private final AnalysisFuture<Void> initializeMetaDataTask;
+
     /**
      * Additional information that is only available for types that are marked as reachable.
      */
@@ -301,6 +304,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
         /* The registration task initializes the type. */
         this.onTypeReachableTask = new AnalysisFuture<>(() -> universe.onTypeReachable(this), null);
+        this.initializeMetaDataTask = new AnalysisFuture<>(() -> universe.initializeMetaData(this), null);
         this.typeData = new AnalysisFuture<>(() -> {
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
@@ -686,6 +690,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void ensureOnTypeReachableTaskDone() {
         /* Run the registration and wait for it to complete, if necessary. */
         onTypeReachableTask.ensureDone();
+    }
+
+    public AnalysisFuture<Void> getInitializeMetaDataTask() {
+        return initializeMetaDataTask;
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -1193,7 +1201,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            System.err.println("warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            LogUtils.warning("Unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }
