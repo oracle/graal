@@ -543,7 +543,7 @@ public class InternalResourceTest {
 
         private static void setCacheRoot(Path root) throws ClassNotFoundException {
             Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
-            ReflectionUtils.invokeStatic(internalResourceCacheClass, "setCacheRoot", new Class<?>[]{Path.class}, root);
+            ReflectionUtils.invokeStatic(internalResourceCacheClass, "resetCacheRoot", new Class<?>[]{Path.class}, root);
         }
     }
 }

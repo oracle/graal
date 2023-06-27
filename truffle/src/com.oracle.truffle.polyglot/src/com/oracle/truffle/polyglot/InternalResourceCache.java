@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 final class InternalResourceCache {
 
@@ -65,6 +66,7 @@ final class InternalResourceCache {
 
     private final String id;
     private final InternalResource resource;
+    private RootSupplier rootSupplier;
     private volatile FileSystem resourceFileSystem;
 
     InternalResourceCache(String languageId, InternalResource forResource) {
@@ -75,16 +77,28 @@ final class InternalResourceCache {
     FileSystem getResourceFileSystem() throws IOException {
         FileSystem result = resourceFileSystem;
         if (result == null) {
-            Path root;
-            if (ImageInfo.inImageRuntimeCode()) {
-                root = getResourceRootOnNativeImage();
-            } else {
-                root = getResourceRootOnHotSpot();
+            synchronized (this) {
+                result = resourceFileSystem;
+                if (result == null) {
+                    Path root = getResourceRoot();
+                    rootSupplier = new RootSupplier(root);
+                    result = FileSystems.newInternalResourceFileSystem(rootSupplier);
+                    resourceFileSystem = result;
+                }
             }
-            result = FileSystems.newInternalResourceFileSystem(root);
-            resourceFileSystem = result;
         }
         return result;
+    }
+
+    private Path getResourceRoot() throws IOException {
+        Path root;
+        if (ImageInfo.inImageRuntimeCode()) {
+            root = getResourceRootOnNativeImage();
+        } else {
+            root = getResourceRootOnHotSpot();
+        }
+        // TODO: Maybe we should rather create a canonical path???
+        return root.normalize();
     }
 
     private Path getResourceRootOnHotSpot() throws IOException {
@@ -181,9 +195,56 @@ final class InternalResourceCache {
     }
 
     /**
-     * Method intended for unit tests only. Used reflectively by {@code InternalResourceTest}.
+     * Resets cache roots after context pre-initialization. This method is also used reflectively by
+     * the {@code InternalResourceTest}.
      */
-    static void setCacheRoot(Path root) {
+    static void resetCacheRoot(Path root) {
         cacheRoot = root;
+        for (LanguageCache language : LanguageCache.languages().values()) {
+            for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
+                InternalResourceCache cache = language.getResourceCache(resourceType);
+                cache.resetCacheRoot();
+            }
+        }
+        for (InstrumentCache instrument : InstrumentCache.load()) {
+            for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
+                InternalResourceCache cache = instrument.getResourceCache(resourceType);
+                cache.resetCacheRoot();
+            }
+        }
+    }
+
+    private synchronized void resetCacheRoot() {
+        if (rootSupplier != null) {
+            rootSupplier.reset();
+        }
+    }
+
+    private final class RootSupplier implements Supplier<Path> {
+
+        private volatile Path resourceCacheRoot;
+
+        RootSupplier(Path resourceCacheRoot) {
+            Objects.requireNonNull(resourceCacheRoot, "ResourceCacheRoot must be non-null.");
+            this.resourceCacheRoot = resourceCacheRoot;
+        }
+
+        @Override
+        public Path get() {
+            Path res = resourceCacheRoot;
+            if (res == null) {
+                try {
+                    res = getResourceRoot();
+                    resourceCacheRoot = res;
+                } catch (IOException ioe) {
+                    throw CompilerDirectives.shouldNotReachHere(ioe);
+                }
+            }
+            return res;
+        }
+
+        void reset() {
+            resourceCacheRoot = null;
+        }
     }
 }

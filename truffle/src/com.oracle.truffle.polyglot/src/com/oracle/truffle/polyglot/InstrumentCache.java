@@ -263,6 +263,21 @@ final class InstrumentCache {
     }
 
     InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
+        var cacheByType = initializeInternalResources();
+        InternalResourceCache cache = cacheByType.get(resourceType);
+        if (cache == null) {
+            throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
+                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+        } else {
+            return cache;
+        }
+    }
+
+    Collection<Class<? extends InternalResource>> getResourceTypes() {
+        return initializeInternalResources().keySet();
+    }
+
+    private Map<Class<? extends InternalResource>, InternalResourceCache> initializeInternalResources() {
         var cacheByType = internalResources;
         if (cacheByType == null) {
             synchronized (this) {
@@ -276,13 +291,7 @@ final class InstrumentCache {
                 }
             }
         }
-        InternalResourceCache cache = cacheByType.get(resourceType);
-        if (cache == null) {
-            throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
-                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
-        } else {
-            return cache;
-        }
+        return cacheByType;
     }
 
     String getWebsite() {
