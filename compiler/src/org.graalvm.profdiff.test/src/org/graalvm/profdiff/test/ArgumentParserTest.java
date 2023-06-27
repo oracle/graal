@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,6 +143,25 @@ public class ArgumentParserTest {
             commandBar = new CommandBar();
             commandGroup.addCommand(commandBar);
         }
+    }
+
+    @Test
+    public void formatPositionalUsageForCommand() {
+        var parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addStringArgument("string", "String argument.");
+        var commandGroup = parser.addCommandGroup("command", "Commands.");
+        var foo = new CommandFoo();
+        commandGroup.addCommand(foo);
+        assertEquals("STRING foo", parser.formatPositionalUsage(foo));
+    }
+
+    @Test
+    public void requiredOptionHelp() {
+        var parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addStringArgument("--string", "String argument.");
+        String help = parser.formatOptionHelp();
+        assertTrue(help.contains("--string"));
+        assertFalse(help.contains("null"));
     }
 
     @Test
