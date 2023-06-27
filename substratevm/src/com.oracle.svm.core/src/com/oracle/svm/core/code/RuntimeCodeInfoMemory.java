@@ -89,16 +89,12 @@ public class RuntimeCodeInfoMemory {
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoMemory() {
         lock = new ReentrantLock();
-    }
 
-    public void clearSizeCounters() {
         codeSize = WordFactory.zero();
         codeAndDataMemorySize = WordFactory.zero();
         nativeMetadataSize = WordFactory.zero();
         totalSize = WordFactory.zero();
-    }
 
-    public void clearPeakSizeCounters() {
         peakCodeSize = WordFactory.zero();
         peakCodeAndDataMemorySize = WordFactory.zero();
         peakNativeMetadataSize = WordFactory.zero();
