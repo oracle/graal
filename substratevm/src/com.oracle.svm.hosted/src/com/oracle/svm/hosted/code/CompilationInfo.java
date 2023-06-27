@@ -106,10 +106,19 @@ public class CompilationInfo {
         return compilationGraph;
     }
 
+    /**
+     * Create a graph from this compilation info using the default compile options set in the
+     * {@link CompilationInfo}.
+     */
     public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
         return createGraph(debug, compileOptions, compilationId, decode);
     }
 
+    /**
+     * Create a graph from this compilation info using the custom compile options instead of the
+     * ones defined in {@link CompilationInfo}. This is to be used if you intentionally wish to
+     * override any of the Options in the default {@link OptionValues}.
+     */
     @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
         var graph = new StructuredGraph.Builder(options, debug)
