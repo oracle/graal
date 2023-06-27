@@ -26,6 +26,7 @@ package org.graalvm.profdiff.test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
@@ -40,6 +41,7 @@ import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.core.optimization.Position;
 import org.graalvm.profdiff.diff.DeltaTree;
 import org.graalvm.profdiff.diff.DeltaTreeNode;
@@ -48,10 +50,13 @@ import org.graalvm.profdiff.diff.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.diff.InliningTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeWriterVisitor;
+import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.diff.SelkowTreeMatcher;
+import org.junit.Assert;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class DeltaTreeTest {
     private static class MockTreeNode extends TreeNode<MockTreeNode> {
@@ -129,6 +134,77 @@ public class DeltaTreeTest {
         List<DeltaTreeNode<MockTreeNode>> actualPreorder = new ArrayList<>();
         deltaTree.forEach(actualPreorder::add);
         assertEquals(expectedPreorder, actualPreorder);
+    }
+
+    @Test
+    public void deltaTreeExpansion() {
+        OptimizationPhase rootPhase1 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        OptimizationPhase foo1 = new OptimizationPhase("foo1");
+        rootPhase1.addChild(foo1);
+        OptimizationPhase foo2 = new OptimizationPhase("foo2");
+        foo1.addChild(foo2);
+
+        OptimizationPhase rootPhase2 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        OptimizationPhase bar1 = new OptimizationPhase("bar1");
+        rootPhase2.addChild(bar1);
+        OptimizationPhase bar2 = new OptimizationPhase("bar2");
+        bar1.addChild(bar2);
+
+        EditScript<OptimizationTreeNode> editScript = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy()).match(rootPhase1, rootPhase2);
+        DeltaTree<OptimizationTreeNode> deltaTree = DeltaTree.fromEditScript(editScript);
+        Supplier<Integer> deltaTreeSize = () -> {
+            Integer[] result = new Integer[]{0};
+            deltaTree.forEach((node) -> result[0]++);
+            return result[0];
+        };
+        assertEquals(3, deltaTreeSize.get().intValue());
+        deltaTree.expand();
+        assertEquals(5, deltaTreeSize.get().intValue());
+    }
+
+    @Test
+    public void emptyDeltaTree() {
+        DeltaTree<MockTreeNode> deltaTree = DeltaTree.fromEditScript(new EditScript<MockTreeNode>());
+        deltaTree.forEach((node) -> Assert.fail());
+        deltaTree.removeIf((node) -> {
+            Assert.fail();
+            return false;
+        });
+        assertNull(deltaTree.getRoot());
+    }
+
+    @Test
+    public void writeDeltaTree() {
+        MockTreeNode root1 = new MockTreeNode();
+        MockTreeNode left1 = new MockTreeNode();
+        root1.addChild(left1);
+        MockTreeNode rel1 = new MockTreeNode();
+        root1.addChild(rel1);
+        MockTreeNode id1 = new MockTreeNode();
+        root1.addChild(id1);
+
+        MockTreeNode root2 = new MockTreeNode();
+        MockTreeNode rel2 = new MockTreeNode();
+        root2.addChild(rel2);
+        MockTreeNode id2 = new MockTreeNode();
+        root2.addChild(id2);
+        MockTreeNode right2 = new MockTreeNode();
+        root2.addChild(right2);
+
+        DeltaTreeNode<MockTreeNode> root = new DeltaTreeNode<>(0, true, root1, root2);
+        root.addChild(false, left1, null);
+        root.addChild(false, rel1, rel2);
+        root.addChild(true, id1, id2);
+        root.addChild(false, null, right2);
+        var writer = Writer.stringBuilder(new OptionValues());
+        root.writeRecursive(writer);
+        assertEquals("""
+                        . null
+                            - null
+                            * null
+                            . null
+                            + null
+                        """, writer.getOutput());
     }
 
     @Test
