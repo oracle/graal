@@ -27,21 +27,18 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.junit.Before;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 
 /**
@@ -52,11 +49,6 @@ import jdk.jfr.consumer.RecordedEvent;
  */
 public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
-
-    @Before
-    public void checkJavaVersion() {
-        assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
-    }
 
     @Test
     public void test() throws Throwable {
