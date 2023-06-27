@@ -33,7 +33,7 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-20"],
+  latest_jdk:: common["labsjdk-ee-21"],
   bench_jdks:: [
     self.latest_jdk
   ],
