@@ -1155,21 +1155,31 @@ public class HotSpotGraphBuilderPlugins {
                     EndNode arrayBranch = graph.add(new EndNode());
                     arrayLengthNode.setNext(arrayBranch);
 
-                    int objectAlignmentMask = config.objectAlignment - 1;
-                    ValueNode arrayHeaderSize = b.add(AndNode.create(new UnsignedRightShiftNode(layoutHelper, ConstantNode.forInt(config.layoutHelperHeaderSizeShift)),
+                    ValueNode arrayHeaderSizeInt = b.add(UnsignedRightShiftNode.create(layoutHelper,
+                                    ConstantNode.forInt(config.layoutHelperHeaderSizeShift), NodeView.DEFAULT));
+                    ValueNode arrayHeaderSizeMaskedInt = b.add(AndNode.create(arrayHeaderSizeInt,
                                     ConstantNode.forInt(config.layoutHelperHeaderSizeMask), NodeView.DEFAULT));
-                    ValueNode arraySize = b.add(AddNode.create(arrayHeaderSize, LeftShiftNode.create(arrayLengthNode, layoutHelper, NodeView.DEFAULT), NodeView.DEFAULT));
-                    ValueNode arraySizeMasked = b.add(AndNode.create(AddNode.create(arraySize, ConstantNode.forInt(objectAlignmentMask), NodeView.DEFAULT),
-                                    ConstantNode.forInt(~objectAlignmentMask), NodeView.DEFAULT));
+                    ValueNode arrayHeaderSizeMaskedLong = b.add(SignExtendNode.create(arrayHeaderSizeMaskedInt, JavaKind.Long.getBitCount(), NodeView.DEFAULT));
+
+                    ValueNode arrayLengthLong = b.add(SignExtendNode.create(arrayLengthNode, JavaKind.Long.getBitCount(), NodeView.DEFAULT));
+                    ValueNode arraySizeLong = b.add(LeftShiftNode.create(arrayLengthLong, layoutHelper, NodeView.DEFAULT));
+                    ValueNode arrayInstanceSizeLong = b.add(AddNode.create(arrayHeaderSizeMaskedLong, arraySizeLong, NodeView.DEFAULT));
+
+                    long objectAlignmentMask = config.objectAlignment - 1;
+                    ValueNode arrayInstanceSizeMaskedLong = b.add(AndNode.create(
+                                    AddNode.create(arrayInstanceSizeLong, ConstantNode.forLong(objectAlignmentMask), NodeView.DEFAULT),
+                                    ConstantNode.forLong(~objectAlignmentMask), NodeView.DEFAULT));
 
                     EndNode instanceBranch = graph.add(new EndNode());
-                    ValueNode instanceSize = b.add(AndNode.create(layoutHelper, ConstantNode.forInt(~(Long.BYTES - 1)), NodeView.DEFAULT));
+                    ValueNode layoutHelperLong = b.add(SignExtendNode.create(layoutHelper, JavaKind.Long.getBitCount(), NodeView.DEFAULT));
+                    ValueNode instanceSizeLong = b.add(AndNode.create(layoutHelperLong, ConstantNode.forLong(-((long) JavaKind.Long.getByteCount())), NodeView.DEFAULT));
 
-                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.unknown()));
+                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.injected(0.5D)));
                     MergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(arrayBranch);
                     merge.addForwardEnd(instanceBranch);
-                    b.addPush(JavaKind.Long, SignExtendNode.create(new ValuePhiNode(StampFactory.positiveInt(), merge, new ValueNode[]{arraySizeMasked, instanceSize}), 64, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Long, new ValuePhiNode(StampFactory.forKind(JavaKind.Long), merge,
+                                    arrayInstanceSizeMaskedLong, instanceSizeLong));
                     b.setStateAfter(merge);
                 }
                 return true;
