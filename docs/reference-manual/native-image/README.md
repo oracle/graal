@@ -180,7 +180,7 @@ REM Open an info dialog box with text
 native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
 ```
 
-## Build Overview
+## Build Configuration
 
 There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
@@ -189,7 +189,7 @@ For different build tweaks and to learn more about build time configuration, see
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 
-## Configuring Native Image with Third-Party Libraries
+## Native Image and Third-Party Libraries
 
 For more complex applications that use external libraries, you must provide the `native-image` builder with metadata.
 
