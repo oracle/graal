@@ -237,7 +237,7 @@ public class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            if (value instanceof String || value instanceof Boolean || value instanceof List) {
+            if (value instanceof String || value instanceof Boolean || value instanceof List || value == null) {
                 helper.putGeneralInfo(this, value);
             } else {
                 VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
