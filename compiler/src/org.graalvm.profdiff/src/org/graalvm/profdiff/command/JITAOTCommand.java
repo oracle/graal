@@ -105,6 +105,7 @@ public class JITAOTCommand implements Command {
         }
         aot.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit, aot));
     }

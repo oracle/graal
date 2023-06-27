@@ -129,16 +129,43 @@ public class OptionValues {
     }
 
     /**
-     * Returns a copy of these option values with an updated value of
-     * {@link #alwaysPrintInlinerReasoning}.
-     *
-     * @param newAlwaysPrintInlinerReasoning the updated value of
-     *            {@link #alwaysPrintInlinerReasoning}
-     * @return updated option values
+     * Returns a builder for {@link OptionValues}.
      */
-    public OptionValues withAlwaysPrintInlinerReasoning(boolean newAlwaysPrintInlinerReasoning) {
-        return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, bciLongForm, sortInliningTree, sortUnorderedPhases, removeVeryDetailedPhases,
-                        pruneIdentities, createFragments, newAlwaysPrintInlinerReasoning);
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private final HotCompilationUnitPolicy hotCompilationUnitPolicy;
+        private boolean optimizationContextTreeEnabled;
+        private boolean diffCompilations;
+        private boolean alwaysPrintInlinerReasoning;
+
+        private Builder() {
+            this.hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
+        }
+
+        /**
+         * Builds and returns the {@link OptionValues}.
+         */
+        public OptionValues build() {
+            return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, false, false, false, false, false, false, alwaysPrintInlinerReasoning);
+        }
+
+        public Builder withOptimizationContextTreeEnabled(boolean optimizationContextTreeEnabled) {
+            this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
+            return this;
+        }
+
+        public Builder withDiffCompilations(boolean diffCompilations) {
+            this.diffCompilations = diffCompilations;
+            return this;
+        }
+
+        public Builder withAlwaysPrintInlinerReasoning(boolean alwaysPrintInlinerReasoning) {
+            this.alwaysPrintInlinerReasoning = alwaysPrintInlinerReasoning;
+            return this;
+        }
     }
 
     /**

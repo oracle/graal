@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -186,7 +186,7 @@ public class DeltaTreeTest {
                             + (direct) ins() at bci 8
                         """, writer.getOutput());
 
-        writer = Writer.stringBuilder(new OptionValues().withAlwaysPrintInlinerReasoning(true));
+        writer = Writer.stringBuilder(OptionValues.builder().withAlwaysPrintInlinerReasoning(true).build());
         deltaTree.accept(new InliningDeltaTreeWriterVisitor(writer));
         assertEquals("""
                         . (root) foo()

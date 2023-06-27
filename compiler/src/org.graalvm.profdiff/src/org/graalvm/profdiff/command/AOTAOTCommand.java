@@ -89,6 +89,7 @@ public class AOTAOTCommand implements Command {
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot2);
         aot2.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(aot1, aot2));
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,8 +95,13 @@ public class ExperimentMatcher {
         if (writer.getOptionValues().shouldCreateFragments()) {
             experimentPair.createCompilationFragments();
         }
+        boolean first = true;
         for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
-            writer.writeln();
+            if (first) {
+                first = false;
+            } else {
+                writer.writeln();
+            }
             methodPair.writeHeaderAndCompilationList(writer);
             writer.increaseIndent();
             if (writer.getOptionValues().shouldDiffCompilations()) {
@@ -118,10 +123,10 @@ public class ExperimentMatcher {
                     writer.decreaseIndent();
                 }
             } else {
-                for (CompilationUnit compilationUnit : methodPair.getMethod1().getCompilationUnits()) {
+                for (CompilationUnit compilationUnit : methodPair.getMethod1().getHotCompilationUnits()) {
                     compilationUnit.write(writer);
                 }
-                for (CompilationUnit compilationUnit : methodPair.getMethod2().getCompilationUnits()) {
+                for (CompilationUnit compilationUnit : methodPair.getMethod2().getHotCompilationUnits()) {
                     compilationUnit.write(writer);
                 }
             }

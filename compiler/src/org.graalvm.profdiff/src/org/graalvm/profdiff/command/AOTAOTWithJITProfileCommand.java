@@ -107,6 +107,7 @@ public class AOTAOTWithJITProfileCommand implements Command {
             });
         }
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(aot1, aot2));
     }
