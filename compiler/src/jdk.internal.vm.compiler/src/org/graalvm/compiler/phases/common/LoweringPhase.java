@@ -611,13 +611,20 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
              * proxy will. Thus in this case we need to create a begin node to act as the last fixed
              * node for insertion. Then control flow can be inserted between ifNode and
              * loopExitNode.
+             *
+             * Note that the control flow graph automatically creates a new basic block for every
+             * loop exit because its a valid implementation of AbstractBeginNode.
              */
             FixedNode pred = (FixedNode) lastFixedNode.predecessor();
             if (!(pred instanceof FixedWithNextNode)) {
+                // insert begin node to have a valid FixedWithNextNode to insert after before the
+                // loop exit
                 AbstractBeginNode begin = b.getBeginNode().graph().add(new BeginNode());
                 pred.replaceFirstSuccessor(lastFixedNode, begin);
                 begin.setNext(lastFixedNode);
                 lastFixedNode = begin;
+            } else {
+                lastFixedNode = (FixedWithNextNode) pred;
             }
         }
 
