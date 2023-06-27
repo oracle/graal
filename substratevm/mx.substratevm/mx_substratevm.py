@@ -639,7 +639,8 @@ def jvm_unittest(args):
 def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
     jsruncmd = [get_js_launcher(jslib)] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
-                                      '--', '--warmup-iterations=' + str(warmup_iterations),
+                                      '--', '--warmup-time=' + str(15_000),
+                                      '--warmup-iterations=' + str(warmup_iterations),
                                       '--iterations=' + str(iterations)]
     mx.log(' '.join(jsruncmd))
 
