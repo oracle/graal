@@ -648,7 +648,6 @@ public class SubstrateJVM {
         return jfrThrottlerSupport.shouldCommit(event.getId());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
     }

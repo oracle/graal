@@ -83,13 +83,13 @@ public class JfrThrottlerWindow {
         return samplesPerWindow + debt;
     }
 
-    public void configure(long debt, double projectedPopSize) {
-        this.debt = debt;
+    public void configure(long newDebt, double projectedPopSize) {
+        this.debt = newDebt;
         if (projectedPopSize <= samplesExpected()) {
             samplingInterval = 1;
         } else {
 
-            double projectedProbability = (double) samplesExpected() / projectedPopSize;
+            double projectedProbability = samplesExpected() / projectedPopSize;
             samplingInterval = nextGeometric(projectedProbability, Math.random());
         }
 
@@ -110,12 +110,13 @@ public class JfrThrottlerWindow {
      * This method is essentially the same as jfrAdaptiveSampler::next_geometric(double, double) in
      * the OpenJDK.
      */
-    private long nextGeometric(double p, double u) {
-        if (u == 0.0) {
-            u = 0.01;
+    private static long nextGeometric(double probability, double u) {
+        double randomVar = u;
+        if (randomVar == 0.0) {
+            randomVar = 0.01;
         }
         // Inverse CDF for the geometric distribution.
-        return (long) Math.ceil(log(1.0 - u) / log(1.0 - p));
+        return (long) Math.ceil(log(1.0 - randomVar) / log(1.0 - probability));
     }
 
     public boolean isExpired() {

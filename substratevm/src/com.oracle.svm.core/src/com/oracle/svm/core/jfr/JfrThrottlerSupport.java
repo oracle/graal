@@ -32,10 +32,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.locks.VMMutex;
 
 /**
- * Each event that supports throttling has its own throttler that can be accessed through this class.
+ * Each event that supports throttling has its own throttler that can be accessed through this
+ * class.
  */
 public class JfrThrottlerSupport {
     JfrThrottler objectAllocationSampleThrottler;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrThrottlerSupport() {
         if (HasJfrSupport.get()) {

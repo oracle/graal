@@ -56,8 +56,7 @@ public class JfrAllocationEvents {
 
     /**
      * This method exists as a slight optimization to avoid entering the sampler code if
-     * unnecessary. We'll have to check {@link JfrEvent.shouldEmit()} again if a sample ends up
-     * being taken.
+     * unnecessary. This is required because the sampler code is interruptible.
      */
     @Uninterruptible(reason = "Needed for JfrEvent.shouldEmit().")
     private static boolean shouldEmitObjectAllocationSample() {

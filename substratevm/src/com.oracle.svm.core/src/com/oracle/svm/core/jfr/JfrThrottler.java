@@ -218,7 +218,7 @@ public class JfrThrottler {
             // This effectively means we reset the debt count upon reconfiguration
             accumulatedDebtCarryCount = accumulatedDebtCarryLimit;
             avgPopulationSize = 0;
-            ewmaPopulationSizeAlpha = (double) 1 / windowLookback(next);
+            ewmaPopulationSizeAlpha = 1.0 / windowLookback(next);
             reconfigure = false;
         }
 

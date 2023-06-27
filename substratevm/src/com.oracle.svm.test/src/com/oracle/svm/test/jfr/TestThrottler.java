@@ -324,7 +324,7 @@ public class TestThrottler extends JfrRecordingTest {
      * This is a more involved test that checks the sample distribution. It has been adapted from
      * JfrGTestAdaptiveSampling in the OpenJDK.
      */
-    private void testDistribution(IncomingPopulation incomingPopulation, int samplePointsPerWindow, double errorFactor) {
+    private static void testDistribution(IncomingPopulation incomingPopulation, int samplePointsPerWindow, double errorFactor) {
         final int distributionSlots = 100;
         final int windowDurationMs = 100;
         final int windowCount = 10000;
