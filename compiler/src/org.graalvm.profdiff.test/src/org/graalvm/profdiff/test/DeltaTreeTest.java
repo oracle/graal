@@ -56,6 +56,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 
 public class DeltaTreeTest {
@@ -85,6 +86,30 @@ public class DeltaTreeTest {
         editScript.identity(new MockTreeNode(), new MockTreeNode(), 0);
         EditScript<MockTreeNode> convertedEditScript = DeltaTree.fromEditScript(editScript).asEditScript();
         assertEquals(editScript.getOperations().toList(), convertedEditScript.getOperations().toList());
+    }
+
+    @Test
+    public void editOperationEqualsAndHash() {
+        MockTreeNode left = new MockTreeNode();
+        MockTreeNode right = new MockTreeNode();
+        EditScript<MockTreeNode> editScript = new EditScript<>();
+        editScript.relabel(left, right, 0);
+        editScript.identity(new MockTreeNode(), right, 0);
+        editScript.identity(left, new MockTreeNode(), 0);
+        editScript.delete(left, 0);
+        editScript.insert(right, 0);
+        editScript.identity(left, right, 1);
+
+        EditScript<MockTreeNode> editScript2 = new EditScript<>();
+        editScript2.identity(left, right, 0);
+        var operation = editScript2.getOperations().iterator().next();
+        assertEquals(operation, operation);
+
+        editScript.getOperations().forEach(other -> assertNotEquals(operation, other));
+        editScript.identity(left, right, 0);
+        var same = editScript.getOperations().iterator().next();
+        assertEquals(operation, same);
+        assertEquals(operation.hashCode(), same.hashCode());
     }
 
     /**
