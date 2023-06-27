@@ -55,11 +55,11 @@ public class JfrThrottler {
     private volatile double avgPopulationSize = 0;
     private volatile boolean reconfigure;
     private volatile long accumulatedDebtCarryLimit;
-    private volatile long accumulatedDebtCarryCount;
+    private UninterruptibleUtils.AtomicLong accumulatedDebtCarryCount;
 
     public JfrThrottler(VMMutex mutex) {
         accumulatedDebtCarryLimit = 0;
-        accumulatedDebtCarryCount = 0;
+        accumulatedDebtCarryCount = new UninterruptibleUtils.AtomicLong(0);
         reconfigure = false;
         disabled = new UninterruptibleUtils.AtomicBoolean(true);
         window0 = new JfrThrottlerWindow();
@@ -175,11 +175,11 @@ public class JfrThrottler {
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
         assert mutex.isOwner();
-        if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
-            accumulatedDebtCarryCount = 1;
+        if (accumulatedDebtCarryCount.get() == accumulatedDebtCarryLimit) {
+            accumulatedDebtCarryCount.set(1);
             return 0; // reset because new settings have been applied
         }
-        accumulatedDebtCarryCount++;
+        accumulatedDebtCarryCount.incrementAndGet();
         // Did we sample less than we were supposed to?
         return lastWindow.samplesExpected() - lastWindow.samplesTaken();
     }
@@ -216,7 +216,7 @@ public class JfrThrottler {
             setSamplePointsAndWindowDuration();
             accumulatedDebtCarryLimit = computeAccumulatedDebtCarryLimit(next.windowDurationNs);
             // This effectively means we reset the debt count upon reconfiguration
-            accumulatedDebtCarryCount = accumulatedDebtCarryLimit;
+            accumulatedDebtCarryCount.set(accumulatedDebtCarryLimit);
             avgPopulationSize = 0;
             ewmaPopulationSizeAlpha = 1.0 / windowLookback(next);
             reconfigure = false;
