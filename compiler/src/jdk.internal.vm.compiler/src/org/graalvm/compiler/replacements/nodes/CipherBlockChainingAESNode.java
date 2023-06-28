@@ -168,6 +168,11 @@ public class CipherBlockChainingAESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         if (cryptMode.isEncrypt()) {
             gen.setResult(this, gen.getLIRGeneratorTool().emitCBCAESEncrypt(gen.operand(from), gen.operand(to), gen.operand(key), gen.operand(r), gen.operand(len)));
