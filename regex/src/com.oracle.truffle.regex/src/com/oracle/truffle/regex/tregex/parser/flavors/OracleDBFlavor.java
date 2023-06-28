@@ -42,7 +42,8 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import java.util.function.BiPredicate;
 
-import com.ibm.icu.lang.UCharacter;
+import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
+
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
