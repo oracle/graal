@@ -148,9 +148,9 @@ public final class EspressoOptions {
     public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
     @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of modules that are permitted to perform restricted native operations.\\nEquivalent to '--enable-native-access=<module>'", //
-            category = OptionCategory.USER, //
-            stability = OptionStability.STABLE, //
-            usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
@@ -644,15 +644,15 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> EnablePreview = new OptionKey<>(false);
 
     @Option(help = "Enables the WhiteBox API.", //
-            category = OptionCategory.EXPERT, //
-            stability = OptionStability.EXPERIMENTAL, //
-            usageSyntax = "false|true") //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
 
     @Option(help = "Explicitly allow using diagnostic VM options.", //
-            category = OptionCategory.EXPERT, //
-            stability = OptionStability.STABLE, //
-            usageSyntax = "false|true") //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
     public static final OptionKey<Boolean> UnlockDiagnosticVMOptions = new OptionKey<>(false);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .

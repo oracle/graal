@@ -155,7 +155,6 @@ public final class Management extends NativeEnv {
     public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.0.9 and 14
     public static final int JMM_VERSION_4 = 0x20040000; // JDK 21
 
-
     @CompilationFinal //
     private @Pointer TruffleObject managementPtr;
     @CompilationFinal //

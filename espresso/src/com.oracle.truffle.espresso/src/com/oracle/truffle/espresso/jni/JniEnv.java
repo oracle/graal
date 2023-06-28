@@ -1996,8 +1996,8 @@ public final class JniEnv extends NativeEnv {
      *
      * @param buf a direct java.nio.Buffer object (must not be NULL)
      * @return the starting address of the memory region referenced by the buffer. Returns NULL if
-     * the memory region is undefined, if the given object is not a direct java.nio.Buffer,
-     * or if JNI access to direct buffers is not supported by this virtual machine.
+     *         the memory region is undefined, if the given object is not a direct java.nio.Buffer,
+     *         or if JNI access to direct buffers is not supported by this virtual machine.
      */
     @JniImpl
     public @Pointer TruffleObject GetDirectBufferAddress(@JavaType(java.nio.Buffer.class) StaticObject buf) {
@@ -2024,9 +2024,9 @@ public final class JniEnv extends NativeEnv {
      *
      * @param buf a direct java.nio.Buffer object (must not be NULL)
      * @return the capacity of the memory region associated with the buffer. Returns -1 if the given
-     * object is not a direct java.nio.Buffer, if the object is an unaligned view buffer and
-     * the processor architecture does not support unaligned access, or if JNI access to
-     * direct buffers is not supported by this virtual machine.
+     *         object is not a direct java.nio.Buffer, if the object is an unaligned view buffer and
+     *         the processor architecture does not support unaligned access, or if JNI access to
+     *         direct buffers is not supported by this virtual machine.
      */
     @JniImpl
     public long GetDirectBufferCapacity(@JavaType(java.nio.Buffer.class) StaticObject buf) {
@@ -2144,8 +2144,8 @@ public final class JniEnv extends NativeEnv {
      * a way to reload and relink native libraries.
      *
      * @param clazz a Java class object.
-     *              <p>
-     *              Returns 0 on success; returns a negative value on failure.
+     *            <p>
+     *            Returns 0 on success; returns a negative value on failure.
      */
     @JniImpl
     @TruffleBoundary
@@ -2391,7 +2391,7 @@ public final class JniEnv extends NativeEnv {
      * @param ref1 a Java object.
      * @param ref2 a Java object.
      * @return JNI_TRUE if ref1 and ref2 refer to the same Java object, or are both NULL; otherwise,
-     * returns JNI_FALSE.
+     *         returns JNI_FALSE.
      */
     @JniImpl
     @NoSafepoint
@@ -2438,12 +2438,12 @@ public final class JniEnv extends NativeEnv {
      *
      * @param handle a local, global or weak global reference.
      * @return one of the following enumerated values defined as a <b>jobjectRefType</b>:
-     * <ul>
-     * <li>{@link #JNIInvalidRefType} = 0
-     * <li>{@link #JNILocalRefType} = 1
-     * <li>{@link #JNIGlobalRefType} = 2
-     * <li>{@link #JNIWeakGlobalRefType} = 3
-     * </ul>
+     *         <ul>
+     *         <li>{@link #JNIInvalidRefType} = 0
+     *         <li>{@link #JNILocalRefType} = 1
+     *         <li>{@link #JNIGlobalRefType} = 2
+     *         <li>{@link #JNIWeakGlobalRefType} = 3
+     *         </ul>
      */
     @JniImpl
     public /* C enum */ int GetObjectRefType(@Handle(StaticObject.class) long handle) {
@@ -2485,14 +2485,14 @@ public final class JniEnv extends NativeEnv {
      * Returns the version of the native method interface.
      *
      * @return the major version number in the higher 16 bits and the minor version number in the
-     * lower 16 bits.
+     *         lower 16 bits.
      *
-     * <p>
-     * codes</b>
-     * <ul>
-     * <li>#define JNI_EDETACHED (-2) // thread detached from the VM
-     * <li>#define JNI_EVERSION (-3) // JNI version error
-     * </ul>
+     *         <p>
+     *         codes</b>
+     *         <ul>
+     *         <li>#define JNI_EDETACHED (-2) // thread detached from the VM
+     *         <li>#define JNI_EVERSION (-3) // JNI version error
+     *         </ul>
      */
     @JniImpl
     @NoSafepoint
