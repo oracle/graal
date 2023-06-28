@@ -342,4 +342,20 @@ public class ExperimentPairTest {
                                     40000 consumed  5.00% of Graal execution,  5.00% of total
                         """, writer.getOutput());
     }
+
+    @Test
+    public void matchTreesTooBigToCompare() throws ExperimentParserError {
+        ExperimentPair pair = mockExperimentPair();
+        OptionValues optionValues = OptionValues.builder().withDiffCompilations(true).build();
+        var writer = Writer.stringBuilder(optionValues);
+        new ExperimentMatcher(writer, 0).match(pair);
+        String output = writer.getOutput();
+        assertTrue(output.contains("The inlining trees are too big to compare"));
+        assertTrue(output.contains("The optimization trees are too big to compare"));
+
+        optionValues = OptionValues.builder().withDiffCompilations(true).withOptimizationContextTreeEnabled(true).build();
+        writer = Writer.stringBuilder(optionValues);
+        new ExperimentMatcher(writer, 0).match(pair);
+        assertTrue(writer.getOutput().contains("The optimization-context trees are too big to compare"));
+    }
 }

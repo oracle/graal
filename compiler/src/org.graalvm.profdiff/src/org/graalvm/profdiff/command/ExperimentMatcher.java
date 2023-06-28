@@ -54,11 +54,6 @@ import org.graalvm.profdiff.core.Writer;
 public class ExperimentMatcher {
 
     /**
-     * Two trees whose product of sizes (number of nodes) exceeds this threshold cannot be compared.
-     */
-    private static final long TREE_COMPARISON_THRESHOLD = 100_000_000;
-
-    /**
      * Matches optimization trees of two compilation units.
      */
     private final TreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new TreeMatcher<>(new OptimizationTreeEditPolicy());
@@ -75,8 +70,19 @@ public class ExperimentMatcher {
      */
     private final Writer writer;
 
+    /**
+     * If the product of the number of nodes of two trees exceeds the square of this threshold, the
+     * trees cannot be compared.
+     */
+    private final long treeComparisonThreshold;
+
     public ExperimentMatcher(Writer writer) {
+        this(writer, 10_000);
+    }
+
+    public ExperimentMatcher(Writer writer, long treeComparisonThreshold) {
         this.writer = writer;
+        this.treeComparisonThreshold = treeComparisonThreshold;
     }
 
     /**
@@ -217,10 +223,10 @@ public class ExperimentMatcher {
      * @param root2 the root of the second tree
      * @return {@code true} if the trees are too big to be compared
      */
-    private static <T extends TreeNode<T>> boolean tooBigToCompare(TreeNode<T> root1, TreeNode<T> root2) {
+    private <T extends TreeNode<T>> boolean tooBigToCompare(TreeNode<T> root1, TreeNode<T> root2) {
         long[] size = new long[2];
         root1.forEach((node) -> ++size[0]);
         root2.forEach((node) -> ++size[1]);
-        return size[0] * size[1] > TREE_COMPARISON_THRESHOLD;
+        return size[0] * size[1] > treeComparisonThreshold * treeComparisonThreshold;
     }
 }
