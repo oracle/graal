@@ -58,6 +58,7 @@ public class SubstitutionHelper {
         return (ExecutableElement) target;
     }
 
+    @SuppressWarnings("this-escape")
     public SubstitutionHelper(EspressoProcessor processor, Element target, TypeElement implAnnotation) {
         this.target = target;
         this.implAnnotation = implAnnotation;

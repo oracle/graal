@@ -125,6 +125,7 @@ public class UpcallStubs {
         private final int[] shuffle;
         private final EspressoLanguage language;
 
+        @SuppressWarnings("this-escape")
         public UpcallStub(CallTarget callTarget, StaticObject mh, int[] shuffle, EspressoLanguage language, int nativeArgsCount, NativeSignature nativeSignature, NativeAccess nativeAccess) {
             this.callTarget = callTarget;
             this.mh = mh;

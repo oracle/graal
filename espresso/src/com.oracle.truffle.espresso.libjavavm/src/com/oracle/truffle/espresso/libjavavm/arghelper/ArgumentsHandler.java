@@ -68,6 +68,7 @@ public class ArgumentsHandler {
     private boolean helpExpert = false;
     private boolean helpInternal = false;
 
+    @SuppressWarnings("this-escape")
     public ArgumentsHandler(Context.Builder builder, JNIJavaVMInitArgs args) {
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
