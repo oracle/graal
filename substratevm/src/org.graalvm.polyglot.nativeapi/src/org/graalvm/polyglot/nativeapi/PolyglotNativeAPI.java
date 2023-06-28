@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -73,6 +72,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
@@ -122,6 +122,7 @@ import com.oracle.svm.core.jvmstat.PerfDataSupport;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 // Checkstyle: stop method name check
 
@@ -179,16 +180,33 @@ public final class PolyglotNativeAPI {
 
     private static final ExecutorService closeContextExecutor = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 5L, TimeUnit.SECONDS, new SynchronousQueue<>());
 
+    private static String[] getPermittedLanguages(CCharPointerPointer permitted_languages, UnsignedWord length) {
+        if (length.aboveThan(0)) {
+            nullCheck(permitted_languages, "permitted_languages");
+        }
+        if (length.aboveThan(Integer.MAX_VALUE - 8)) {
+            throw new IllegalArgumentException("permitted language array length is too large");
+        }
+        int intLength = UnsignedUtils.safeToInt(length);
+        String[] jPermittedLangs = new String[intLength];
+        for (int i = 0; i < intLength; i++) {
+            jPermittedLangs[i] = CTypeConversion.toJavaString(permitted_languages.read(i));
+        }
+        return jPermittedLangs;
+    }
+
     @CEntryPoint(name = "poly_create_engine_builder", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Creates a new context builder that allows to configure an engine instance.",
                     "",
+                    "@param permittedLanguages array of 0 terminated language identifiers in UTF-8 that are permitted.",
+                    "@param length of the array of language identifiers.",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder--",
-                    "@since 19.0",
+                    "@since 23.1",
     })
-    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilderPointer result) {
+    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotEngineBuilderPointer result) {
         resetErrorState();
         nullCheck(result, "result");
-        ObjectHandle handle = createHandle(Engine.newBuilder());
+        ObjectHandle handle = createHandle(Engine.newBuilder(getPermittedLanguages(permitted_languages, length)));
         result.write(handle);
         return poly_ok;
     }
@@ -229,6 +247,50 @@ public final class PolyglotNativeAPI {
         nullCheck(value_utf8, "value_utf8");
         Engine.Builder eb = fetchHandle(engine_builder);
         eb.option(CTypeConversion.utf8ToJavaString(key_utf8), CTypeConversion.utf8ToJavaString(value_utf8));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_output", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets output handlers for a <code>poly_engine_builder</code>.",
+                    "",
+                    "@param engine_builder that is modified.",
+                    "@param stdout_handler callback used for engine_builder output stream. Not used if NULL.",
+                    "@param stderr_handler callback used for engine_builder error stream. Not used if NULL.",
+                    "@param data user-defined data to be passed to stdout_handler and stderr_handler callbacks.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#out-java.io.OutputStream-",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#err-java.io.OutputStream-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_engine_builder_output(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, PolyglotOutputHandler stdout_handler,
+                    PolyglotOutputHandler stderr_handler, VoidPointer data) {
+        resetErrorState();
+        nullCheck(engine_builder, "engine_builder");
+        Engine.Builder eb = fetchHandle(engine_builder);
+        if (stdout_handler.isNonNull()) {
+            eb.out(newOutputStreamFor(stdout_handler, data));
+        }
+        if (stderr_handler.isNonNull()) {
+            eb.err(newOutputStreamFor(stderr_handler, data));
+        }
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_set_constrained_sandbox_policy", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets the engine's sandbox policy to CONSTRAINED.",
+                    "",
+                    "@param engine_builder that is modified.",
+                    "@return poly_ok if successful; otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#sandbox-org.graalvm.polyglot.SandboxPolicy-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_engine_builder_set_constrained_sandbox_policy(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder) {
+        resetErrorState();
+        nullCheck(engine_builder, "engine_builder");
+        Engine.Builder engineBuilder = fetchHandle(engine_builder);
+        engineBuilder.sandbox(SandboxPolicy.CONSTRAINED);
         return poly_ok;
     }
 
@@ -353,15 +415,8 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_context_builder(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextBuilderPointer result) {
         resetErrorState();
-        if (length.aboveThan(0)) {
-            nullCheck(permitted_languages, "permitted_languages");
-        }
         nullCheck(result, "result");
-        List<String> jPermittedLangs = new ArrayList<>();
-        for (int i = 0; length.aboveThan(i); i++) {
-            jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
-        }
-        Context.Builder c = Context.newBuilder(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
+        Context.Builder c = Context.newBuilder(getPermittedLanguages(permitted_languages, length));
         result.write(createHandle(c));
         return poly_ok;
     }
@@ -562,6 +617,23 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
+    @CEntryPoint(name = "poly_context_builder_set_constrained_sandbox_policy", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets the context's sandbox policy to CONSTRAINED.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#sandbox-org.graalvm.polyglot.SandboxPolicy-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_context_builder_set_constrained_sandbox_policy(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder) {
+        resetErrorState();
+        nullCheck(context_builder, "context_builder");
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        contextBuilder.sandbox(SandboxPolicy.CONSTRAINED);
+        return poly_ok;
+    }
+
     @CEntryPoint(name = "poly_context_builder_build", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Builds a <code>context</code> from a <code>context_builder</code>. The same builder can be used to ",
                     "produce multiple <code>poly_context</code> instances.",
@@ -598,20 +670,8 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextPointer result) {
         resetErrorState();
-        if (length.aboveThan(0) && permitted_languages.isNull()) {
-            throw new IllegalArgumentException("Permitted_languages should not be null when length is not zero.");
-        }
         nullCheck(result, "result");
-        Context c;
-        if (permitted_languages.isNull()) {
-            c = Context.create();
-        } else {
-            List<String> jPermittedLangs = new ArrayList<>();
-            for (int i = 0; length.aboveThan(i); i++) {
-                jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
-            }
-            c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
-        }
+        Context c = Context.create(getPermittedLanguages(permitted_languages, length));
         result.write(createHandle(c));
         return poly_ok;
     }
