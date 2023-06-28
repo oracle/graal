@@ -83,16 +83,16 @@ public class AOTAOTWithJITProfileCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.AUXILIARY, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        Experiment jit = ExperimentParser.parseOrPanic(ExperimentId.AUXILIARY, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument1.getValue(), writer);
+        Experiment aot1 = ExperimentParser.parseOrPanic(ExperimentId.ONE, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument1.getValue(), writer);
         aot1.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument2.getValue(), writer);
+        Experiment aot2 = ExperimentParser.parseOrPanic(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument2.getValue(), writer);
         aot2.writeExperimentSummary(writer);
 
         for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
