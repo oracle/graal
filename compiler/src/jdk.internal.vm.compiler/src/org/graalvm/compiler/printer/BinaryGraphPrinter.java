@@ -42,6 +42,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
@@ -258,12 +259,12 @@ public class BinaryGraphPrinter implements
 
         try {
             props.put("nodeCostSize", node.estimatedNodeSize());
-        } catch (Exception e) {
+        } catch (GraalError | Exception e) {
             handleNodePropertyException("nodeCostSize", node, e, props);
         }
         try {
             props.put("nodeCostCycles", node.estimatedNodeCycles());
-        } catch (Exception e) {
+        } catch (GraalError | Exception e) {
             handleNodePropertyException("nodeCostCycles", node, e, props);
         }
 
@@ -313,14 +314,14 @@ public class BinaryGraphPrinter implements
         if (MemoryKill.isSingleMemoryKill(node)) {
             try {
                 props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
-            } catch (Exception e) {
+            } catch (GraalError | Exception e) {
                 handleNodePropertyException("killedLocationIdentity", node, e, props);
             }
         }
         if (MemoryKill.isMultiMemoryKill(node)) {
             try {
                 props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
-            } catch (Exception e) {
+            } catch (GraalError | Exception e) {
                 handleNodePropertyException("killedLocationIdentities", node, e, props);
             }
         }
@@ -328,7 +329,7 @@ public class BinaryGraphPrinter implements
         if (node instanceof MemoryAccess) {
             try {
                 props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
-            } catch (Exception e) {
+            } catch (GraalError | Exception e) {
                 handleNodePropertyException("locationIdentity", node, e, props);
             }
         }
@@ -342,9 +343,11 @@ public class BinaryGraphPrinter implements
         }
     }
 
-    private static void handleNodePropertyException(String property, Node node, Exception e, Map<String, Object> properties) {
-        TTY.printf("Exception when calculating node property \"%s\" for node %s: %s%n", property, node, e);
-        properties.put(property, "Error when calculating node property.");
+    private static void handleNodePropertyException(String property, Node node, Throwable e, Map<String, Object> properties) {
+        TTY.printf("Exception when calculating node property \"%s\" for node %s: %s. This indicates a node is not checking if optional/non-optional properties are properly initialized or set. " +
+                        "Dumping can happen with non-canonical non-verifiable graphs. Node implementations should also be able to dump contents if they are not properly initialized.%n",
+                        property, node, e);
+        properties.put(property, "Exception when calculating node property.");
     }
 
     private HIRBlock getBlockForNode(Node node, NodeMap<HIRBlock> nodeToBlocks) {
