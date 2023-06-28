@@ -822,7 +822,7 @@ def test():
 
     execute("continue");
     exec_string = execute("list")
-    rexp = r"210%ssb\.append\(\"Text\"\);"%spaces_pattern
+    rexp = r"210%ssb\.append\(System\.getProperty\(\"never_optimize_away\", \"Text\"\)\);"%spaces_pattern
     checker = Checker('hit breakpoint 2 in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 3")

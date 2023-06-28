@@ -207,7 +207,7 @@ public class Hello {
 
     private static java.util.function.Supplier<String> lambda = () -> {
         StringBuilder sb = new StringBuilder("lambda");
-        sb.append("Text");
+        sb.append(System.getProperty("never_optimize_away", "Text"));
         return sb.toString();
     };
 
