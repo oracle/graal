@@ -32,7 +32,6 @@ import org.graalvm.profdiff.command.Command;
 import org.graalvm.profdiff.args.ArgumentParser;
 import org.graalvm.profdiff.args.CommandGroup;
 import org.graalvm.profdiff.args.DoubleArgument;
-import org.graalvm.profdiff.args.EnumArgument;
 import org.graalvm.profdiff.args.FlagArgument;
 import org.graalvm.profdiff.args.IntegerArgument;
 import org.graalvm.profdiff.args.InvalidArgumentException;
@@ -45,11 +44,6 @@ import org.junit.Test;
 
 public class ArgumentParserTest {
     private static final double DELTA = 0.000001;
-
-    private enum TestEnum {
-        FOO,
-        BAR
-    }
 
     private static final class CommandFoo implements Command {
         private final ArgumentParser argumentParser = new ArgumentParser();
@@ -110,8 +104,6 @@ public class ArgumentParserTest {
 
         private static final int DEFAULT_INT = 42;
 
-        private static final TestEnum DEFAULT_ENUM = TestEnum.FOO;
-
         private final ProgramArgumentParser argumentParser;
 
         private final DoubleArgument doubleArgument;
@@ -121,8 +113,6 @@ public class ArgumentParserTest {
         private final FlagArgument flagArgument;
 
         private final StringArgument stringArgument;
-
-        private final EnumArgument<TestEnum> enumArgument;
 
         private final CommandGroup commandGroup;
 
@@ -136,7 +126,6 @@ public class ArgumentParserTest {
             integerArgument = argumentParser.addIntegerArgument("--int", DEFAULT_INT, "An integer argument.");
             flagArgument = argumentParser.addFlagArgument("--flag", "A flag argument.");
             stringArgument = argumentParser.addStringArgument("string", "A string argument.");
-            enumArgument = argumentParser.addEnumArgument("--enum", DEFAULT_ENUM, "An enum argument.");
             commandGroup = argumentParser.addCommandGroup("command", "Commands.");
             commandFoo = new CommandFoo();
             commandGroup.addCommand(commandFoo);
@@ -185,19 +174,17 @@ public class ArgumentParserTest {
         assertEquals(ProgramArguments.DEFAULT_DOUBLE, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(ProgramArguments.DEFAULT_INT, programArguments.integerArgument.getValue().intValue());
         assertFalse(programArguments.flagArgument.getValue());
-        assertEquals(ProgramArguments.DEFAULT_ENUM, programArguments.enumArgument.getValue());
         assertEquals(programArguments.commandFoo, programArguments.commandGroup.getSelectedCommand());
     }
 
     @Test
     public void parseProvidedValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
-        String[] args = new String[]{"--int", "123", "str", "--double", "1.23", "--flag", "--enum", TestEnum.BAR.toString(), "bar", "--bar-flag"};
+        String[] args = new String[]{"--int", "123", "str", "--double", "1.23", "--flag", "bar", "--bar-flag"};
         programArguments.argumentParser.parse(args);
         assertEquals(args[2], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
-        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
         assertTrue(programArguments.flagArgument.getValue());
         assertEquals(programArguments.commandBar, programArguments.commandGroup.getSelectedCommand());
         assertTrue(programArguments.commandBar.flagArgument.getValue());
@@ -206,22 +193,13 @@ public class ArgumentParserTest {
     @Test
     public void equalSignNotation() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
-        String[] args = new String[]{"--int=123", "foo", "--double=1.23", "--flag", "--enum=" + TestEnum.BAR, "foo"};
+        String[] args = new String[]{"--int=123", "foo", "--double=1.23", "--flag", "foo"};
         programArguments.argumentParser.parse(args);
         assertEquals(args[1], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
-        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
         assertTrue(programArguments.flagArgument.getValue());
         assertEquals(programArguments.commandFoo, programArguments.commandGroup.getSelectedCommand());
-    }
-
-    @Test
-    public void enumArgumentCaseInsensitive() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
-        ProgramArguments programArguments = new ProgramArguments();
-        String[] args = new String[]{"foo", "--enum", TestEnum.BAR.toString().toLowerCase(), "foo"};
-        programArguments.argumentParser.parse(args);
-        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
     }
 
     @Test(expected = MissingArgumentException.class)
