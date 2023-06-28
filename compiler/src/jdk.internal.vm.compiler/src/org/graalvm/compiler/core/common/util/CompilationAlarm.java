@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.core.common.util;
 
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -74,6 +76,13 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public boolean hasExpired() {
         return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+    }
+
+    public static void bailoutIfExpired(Graph graph) {
+        if (CompilationAlarm.current().hasExpired()) {
+            double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
+            throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
+        }
     }
 
     @Override
