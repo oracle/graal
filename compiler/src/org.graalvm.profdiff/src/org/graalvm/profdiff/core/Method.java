@@ -202,17 +202,16 @@ public class Method {
                 }
             }
             writer.writeln();
-            if (compilationUnit instanceof CompilationFragment) {
-                CompilationFragment fragment = (CompilationFragment) compilationUnit;
+            if (compilationUnit instanceof CompilationFragment fragment) {
                 boolean first = true;
                 for (InliningPath.PathElement element : fragment.getPathFromRoot().elements()) {
                     writer.write(first ? "  |_ a fragment of " : "                   ");
-                    writer.write(element.getMethodName());
-                    if (element.getCallsiteBCI() == Optimization.UNKNOWN_BCI) {
+                    writer.write(element.methodName());
+                    if (element.callsiteBCI() == Optimization.UNKNOWN_BCI) {
                         writer.writeln();
                     } else {
                         writer.write(" at bci ");
-                        writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                        writer.writeln(Integer.toString(element.callsiteBCI()));
                     }
                     first = false;
                 }

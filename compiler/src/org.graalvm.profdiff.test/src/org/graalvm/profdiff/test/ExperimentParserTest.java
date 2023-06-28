@@ -348,7 +348,7 @@ public class ExperimentParserTest {
         CompilationUnit.TreePair treePair = compilationUnit.loadTrees();
         assertEquals(methodName, treePair.getInliningTree().getRoot().getName());
         Optimization optimization = treePair.getOptimizationTree().getRoot().getOptimizationsRecursive().get(0);
-        assertEquals(methodName, optimization.getPosition().enclosingMethodPath().get(0).getMethodName());
+        assertEquals(methodName, optimization.getPosition().enclosingMethodPath().get(0).methodName());
     }
 
     @Test(expected = ExperimentParserError.class)
