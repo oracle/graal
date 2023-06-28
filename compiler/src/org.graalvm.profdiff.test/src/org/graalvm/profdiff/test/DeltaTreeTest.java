@@ -337,6 +337,7 @@ public class DeltaTreeTest {
         foo1.addChild(new InliningTreeNode("baz()", 2, true, null, false, null, false));
         foo1.addChild(new InliningTreeNode("baz()", 2, true, null, false, null, false));
         foo1.addChild(new InliningTreeNode("del()", 3, true, null, false, null, false));
+        foo1.addChild(new InliningTreeNode("rel()", 4, false, null, false, null, true));
         InliningTree inliningTree1 = new InliningTree(foo1);
 
         OptimizationPhase rootPhase1 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
@@ -353,6 +354,7 @@ public class DeltaTreeTest {
         foo2.addChild(new InliningTreeNode("baz()", 2, true, null, false, null, false));
         foo2.addChild(new InliningTreeNode("baz()", 2, true, null, false, null, false));
         foo2.addChild(new InliningTreeNode("ins()", 3, true, null, false, null, false));
+        foo2.addChild(new InliningTreeNode("rel()", 4, true, null, false, null, false));
         InliningTree inliningTree2 = new InliningTree(foo2);
 
         OptimizationPhase rootPhase2 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
@@ -384,6 +386,9 @@ public class DeltaTreeTest {
                                     + Opt Baz20 at bci 20 with {prop: 2}
                                 - (inlined) del() at bci 3
                                 + (inlined) ins() at bci 3
+                                * (direct -> inlined) rel() at bci 4
+                                    |_ no inlining decisions in experiment 1
+                                    |_ no inlining decisions in experiment 2
                         """, writer.getOutput());
     }
 }
