@@ -49,7 +49,7 @@ Repeat the same for the `PATH` environment variable.
 ## Prerequisites for Native Image on Windows
 
 On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC). 
-You can use Visual Studio 2017 version 15.9 or later.
+You can use Visual Studio 2022 version 17.1.0 or later.
 
 ### Install Visual Studio Build Tools and Windows SDK
 
@@ -65,7 +65,7 @@ You can use Visual Studio 2017 version 15.9 or later.
 
 4. After the installation completes, reboot your system.
 
-5. Next ensure Windows 10 SDK is indeed available. Open the Visual Studio Installer:
+5. Next ensure Windows SDK is indeed available. Open the Visual Studio Installer:
 
     ![Open the Visual Studio Installer](../img/open_vs_installer.png)
 
@@ -75,40 +75,28 @@ You can use Visual Studio 2017 version 15.9 or later.
 
 7. Then scroll to the bottom and check if Windows SDK is installed and confirm the build tools are checked:
   
-    ![Windows 10 SDK Installed](../img/windows-10-installed.png)
+    ![Windows SDK Installed](../img/windows-10-installed.png)
 
-Now that you have the Windows 10 SDK and Visual Studio tooling installed, you can start using GraalVM Native Image.
+Now that you have the Windows SDK and Visual Studio tooling installed, you can start using GraalVM Native Image.
 
 ### Start Using Native Image
 
-The GraalVM download includes Native Image.
-Native Image sets up build environments for Windows automatically. 
-You can run Native Image in a regular Windows Command Prompt, `cmd`, or an x64 Native Tools Command Prompt.
+Native Image sets up build environments automatically if it can find an appropriate Visual Studio installation in a known location.
+With the GraalVM JDK on your `PATH`, you can therefore now run the `native-image` utility in a Command Prompt (`cmd`) or a PowerShell (`pwsh`).
 
-Start the Command Prompt, running as administrator. 
-Then check the `native-image` version to see that it is working:
+To check the `native-image` version, run:
 ```shell
-C:\> native-image --version
+C:\> native-image.cmd --version
 ```
 
-If you prefer to run Native Image from the x64 Native Tools Command Prompt, you can.
-Note that the command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
-
-Use this command if you have the Visual Studio Build Tools installed:
-
+To build a project using the [Native Build Tools Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}, run:
 ```shell
-C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat
+mvnw.cmd native:compile
 ```
 
-Use this command if you installed the full VS Code 2019:
-```bash
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\vcvars64.bat
+To build a project using the [Native Build Tools Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html){:target="_blank"}, run:
+```shell
+gradlew.bat nativeCompile
 ```
-
-Alternatively, you can launch a Dev command prompt from the Visual Studio interface:
-
-  ![Launch a Dev command prompt](../img/launch_dev_command_prompt.png)
-
-Once the x64 Native Tools Command Prompt is opened, check the `native-image` version. 
 
 This guide was written for Windows 10, but should be valid for Windows 8 and 11.
