@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.profdiff.args.BooleanArgument;
 import org.graalvm.profdiff.command.Command;
 import org.graalvm.profdiff.args.ArgumentParser;
 import org.graalvm.profdiff.args.CommandGroup;
@@ -268,5 +269,34 @@ public class ArgumentParserTest {
     public void commandGroupMustBePositional() {
         ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
         parser.addCommandGroup("--foo", "Foo group.");
+    }
+
+    @Test
+    public void falseBooleanArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        BooleanArgument argument = parser.addBooleanArgument("--bool", true, "A boolean argument.");
+        parser.parse(new String[]{"--bool", "falsE"});
+        assertFalse(argument.getValue());
+    }
+
+    @Test(expected = InvalidArgumentException.class)
+    public void invalidBooleanArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addBooleanArgument("--bool", true, "A boolean argument.");
+        parser.parse(new String[]{"--bool", "invalid"});
+    }
+
+    @Test(expected = InvalidArgumentException.class)
+    public void invalidIntegerArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addIntegerArgument("--int", 0, "An integer argument.");
+        parser.parse(new String[]{"--int", "1.5"});
+    }
+
+    @Test(expected = InvalidArgumentException.class)
+    public void invalidDoubleArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addDoubleArgument("--double", 0, "A double argument.");
+        parser.parse(new String[]{"--double", "null"});
     }
 }
