@@ -246,4 +246,37 @@ public class ArgumentParserTest {
         String[] args = new String[]{"str", "baz"};
         programArguments.argumentParser.parse(args);
     }
+
+    @Test(expected = MissingArgumentException.class)
+    public void missingOptionArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addStringArgument("--string", "A string argument");
+        parser.parse(new String[]{});
+    }
+
+    @Test
+    public void getEmptyCommandGroup() {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        assertTrue(parser.getCommandGroup().isEmpty());
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void onlyOneSubparserGroup() {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addCommandGroup("foo", "Foo group.");
+        parser.addCommandGroup("bar", "Bar group.");
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void optionalPositionalFollowedByRequired() {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addStringArgument("argument1", "", "Argument 1.");
+        parser.addStringArgument("argument2", "Argument 2.");
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void commandGroupMustBePositional() {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.addCommandGroup("--foo", "Foo group.");
+    }
 }
