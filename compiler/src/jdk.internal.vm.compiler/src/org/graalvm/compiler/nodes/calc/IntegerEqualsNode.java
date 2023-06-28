@@ -150,25 +150,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 return LogicConstantNode.contradiction();
             }
 
-            if (forX instanceof AddNode && forY instanceof AddNode) {
-                AddNode addX = (AddNode) forX;
-                AddNode addY = (AddNode) forY;
+            if ((forX instanceof AddNode && forY instanceof AddNode) || (forX instanceof XorNode && forY instanceof XorNode)) {
+                BinaryNode addX = (BinaryNode) forX;
+                BinaryNode addY = (BinaryNode) forY;
                 ValueNode v1 = null;
                 ValueNode v2 = null;
                 if (addX.getX() == addY.getX()) {
-                    // (x + y) == (x + z) => y == z
+                    // (x op y) == (x op z) => y == z for op == + || op == ^
                     v1 = addX.getY();
                     v2 = addY.getY();
                 } else if (addX.getX() == addY.getY()) {
-                    // (x + y) == (z + x) => y == z
+                    // (x op y) == (z op x) => y == z for op == + || op == ^
                     v1 = addX.getY();
                     v2 = addY.getX();
                 } else if (addX.getY() == addY.getX()) {
-                    // (y + x) == (x + z) => y == z
+                    // (y op x) == (x op z) => y == z for op == + || op == ^
                     v1 = addX.getX();
                     v2 = addY.getY();
                 } else if (addX.getY() == addY.getY()) {
-                    // (y + x) == (z + x) => y == z
+                    // (y op x) == (z op x) => y == z for op == + || op == ^
                     v1 = addX.getX();
                     v2 = addY.getX();
                 }

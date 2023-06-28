@@ -176,6 +176,26 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         test("testEqualsNotRightSnippet", "testEqualsNotReferenceSnippet");
     }
 
+    @Test
+    public void testXorEquality() {
+        // (x ^ y) == (x ^ z) is equivalent to y == z
+        test("testXorEqualsSnippet", "testXorEqualsReference");
+    }
+
+    public static void testXorEqualsSnippet(int x, int y, int z) {
+        field = (x ^ y) == (x ^ z) ? 1 : 0;
+        field = (x ^ y) == (z ^ x) ? 1 : 0;
+        field = (y ^ x) == (x ^ z) ? 1 : 0;
+        field = (y ^ x) == (z ^ x) ? 1 : 0;
+    }
+
+    public static void testXorEqualsReference(@SuppressWarnings("unused") int x, int y, int z) {
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+    }
+
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = getCanonicalizedGraph(snippet);
         StructuredGraph referenceGraph = getCanonicalizedGraph(referenceSnippet);
@@ -191,4 +211,5 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         }
         return graph;
     }
+
 }
