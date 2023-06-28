@@ -227,6 +227,26 @@ public class MainTest {
     }
 
     @Test
+    public void compareJITAndAOTUnprofiled() throws IOException {
+        ExperimentMock exp1 = createJITExperiment1("profdiff_jit_aot_unprof_1", "profdiff_jit_aot_unprof_prof_1");
+
+        OptimizationLogMock optLog = new OptimizationLogMock("profdiff_jit_aot_unprof_2");
+        optLog.addLogFile().addCompilationUnit("foo()", "30-foo").addCompilationUnit("baz()", "40-baz");
+        Path logDir = optLog.writeToTempDirectory();
+
+        try {
+            String[] args = {"jit-vs-aot", exp1.logDir.toAbsolutePath().toString(), exp1.profFile.toAbsolutePath().toString(),
+                            logDir.toAbsolutePath().toString()};
+            Profdiff.main(args);
+        } finally {
+            exp1.delete();
+            deleteTree(logDir);
+        }
+        assertNoError();
+        assertOutputContains(exp1.optLog.allCompilationIDs());
+    }
+
+    @Test
     public void compareAOTExperimentsWithExternalProfile() throws IOException {
         ExperimentMock exp = createJITExperiment1("profdiff_jit_aot_ext_0", "profdiff_jit_aot_ext_prof_0");
 
