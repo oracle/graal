@@ -156,6 +156,18 @@ public class ArgumentParserTest {
     }
 
     @Test
+    public void formatHelpForCommand() {
+        var parser = new ProgramArgumentParser("program", "Program description.");
+        var commandGroup = parser.addCommandGroup("command", "Commands.");
+        var foo = new CommandFoo();
+        commandGroup.addCommand(foo);
+        foo.argumentParser.addStringArgument("--string", "A string argument.");
+        String help = parser.formatHelp(foo);
+        assertTrue(help.contains("program foo --string STRING"));
+        assertTrue(help.contains("A string argument."));
+    }
+
+    @Test
     public void requiredOptionHelp() {
         var parser = new ProgramArgumentParser("program", "Program description.");
         parser.addStringArgument("--string", "String argument.");

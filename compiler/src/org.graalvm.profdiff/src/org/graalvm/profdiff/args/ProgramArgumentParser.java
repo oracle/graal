@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,13 @@
 package org.graalvm.profdiff.args;
 
 import java.util.Formatter;
+import java.util.Optional;
 
 import org.graalvm.profdiff.command.Command;
 
 /**
- * Assembles and parses program arguments. This is the root parser of the program.
+ * Assembles and parses program arguments. This is the root parser of the program. The root parser
+ * may contain a command group as the last positional argument.
  */
 public class ProgramArgumentParser extends ArgumentParser {
     /**
@@ -119,9 +121,40 @@ public class ProgramArgumentParser extends ArgumentParser {
         if (!commandParser.getPositionalArguments().isEmpty()) {
             fmt.format("%n%s", commandParser.formatPositionalHelp());
         }
-        if (commandParser.getCommandGroup().isPresent()) {
-            fmt.format("%n%s", commandParser.getCommandGroup().get().formatCommandsHelp());
-        }
         return fmt.toString();
+    }
+
+    /**
+     * Gets {@link CommandGroup the command group} argument if this parser contains a command group.
+     */
+    public Optional<CommandGroup> getCommandGroup() {
+        if (positionalArguments.isEmpty()) {
+            return Optional.empty();
+        }
+        Argument last = positionalArguments.get(positionalArguments.size() - 1);
+        if (last instanceof CommandGroup) {
+            return Optional.of((CommandGroup) last);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Adds a positional argument that expects a command name. The returned {@link CommandGroup}
+     * should be populated with commands. The selected command from the command group will then
+     * parse the rest of the arguments. Only one command group per parser is possible, and it must
+     * be the last positional argument.
+     *
+     * @param name the name of the command group
+     * @param help the help message for the command group
+     * @return the added command group
+     */
+    public CommandGroup addCommandGroup(String name, String help) {
+        if (name.startsWith(Argument.OPTION_PREFIX)) {
+            throw new RuntimeException("Command group must be a positional argument, i.e., the name must not start with " +
+                            Argument.OPTION_PREFIX + ".");
+        }
+        CommandGroup subparserGroup = new CommandGroup(name, help);
+        addArgument(subparserGroup);
+        return subparserGroup;
     }
 }
