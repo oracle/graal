@@ -38,6 +38,7 @@ import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class OptimizationTreeTest {
     private static final class MockCompilationUnit {
@@ -158,5 +159,17 @@ public class OptimizationTreeTest {
 
         List<Optimization> expected = List.of(optimization1, optimization2, optimization3, optimization4, optimization5);
         assertEquals(expected, rootPhase.getOptimizationsRecursive());
+    }
+
+    @Test
+    public void optimizationEqualsAndHashCode() {
+        Optimization opt1 = new Optimization("Opt", "Event", null, EconomicMap.create());
+        assertEquals(opt1, opt1);
+        assertNotEquals(opt1, null);
+        Optimization opt2 = new Optimization("Opt", "Event", Position.EMPTY, null);
+        assertEquals(opt1, opt2);
+        assertEquals(opt1.hashCode(), opt1.hashCode());
+        Optimization opt3 = new Optimization("Opt", "Event", null, EconomicMap.of("prop", 1));
+        assertNotEquals(opt1, opt3);
     }
 }
