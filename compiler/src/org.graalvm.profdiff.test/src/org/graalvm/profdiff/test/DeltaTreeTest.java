@@ -52,7 +52,7 @@ import org.graalvm.profdiff.diff.InliningTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeWriterVisitor;
 import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.diff.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.TreeMatcher;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -176,7 +176,7 @@ public class DeltaTreeTest {
         OptimizationPhase bar2 = new OptimizationPhase("bar2");
         bar1.addChild(bar2);
 
-        EditScript<OptimizationTreeNode> editScript = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy()).match(rootPhase1, rootPhase2);
+        EditScript<OptimizationTreeNode> editScript = new TreeMatcher<>(new OptimizationTreeEditPolicy()).match(rootPhase1, rootPhase2);
         DeltaTree<OptimizationTreeNode> deltaTree = DeltaTree.fromEditScript(editScript);
         Supplier<Integer> deltaTreeSize = () -> {
             Integer[] result = new Integer[]{0};
@@ -275,7 +275,7 @@ public class DeltaTreeTest {
         root2.addChild(new InliningTreeNode("bar()", 7, false, null, false, null, true));
         root2.addChild(new InliningTreeNode("ins()", 8, false, List.of("inlined"), false, null, true));
 
-        EditScript<InliningTreeNode> editScript = new SelkowTreeMatcher<>(new InliningTreeEditPolicy()).match(root1, root2);
+        EditScript<InliningTreeNode> editScript = new TreeMatcher<>(new InliningTreeEditPolicy()).match(root1, root2);
         DeltaTree<InliningTreeNode> deltaTree = DeltaTree.fromEditScript(editScript);
 
         var writer = Writer.stringBuilder(new OptionValues());
@@ -378,7 +378,7 @@ public class DeltaTreeTest {
 
         OptimizationContextTree tree2 = OptimizationContextTree.createFrom(inliningTree2, optimizationTree2);
 
-        EditScript<OptimizationContextTreeNode> editScript = new SelkowTreeMatcher<>(new OptimizationContextTreeEditPolicy()).match(tree1.getRoot(), tree2.getRoot());
+        EditScript<OptimizationContextTreeNode> editScript = new TreeMatcher<>(new OptimizationContextTreeEditPolicy()).match(tree1.getRoot(), tree2.getRoot());
         DeltaTree<OptimizationContextTreeNode> deltaTree = DeltaTree.fromEditScript(editScript);
         var writer = Writer.stringBuilder(new OptionValues());
         deltaTree.accept(new OptimizationContextTreeWriterVisitor(writer));

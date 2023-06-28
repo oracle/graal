@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,11 @@ import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.diff.EditScript;
 import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.diff.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.TreeMatcher;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SelkowTreeMatcherTest {
+public class TreeMatcherTest {
     /**
      * The {@link OptimizationTreeEditPolicy} discourages relabelling, however, we still want to
      * test that the algorithm can find relabelling.
@@ -56,7 +56,7 @@ public class SelkowTreeMatcherTest {
         OptimizationPhase root2 = new OptimizationPhase("RootPhase");
         root2.addChild(bar);
 
-        SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
+        TreeMatcher<OptimizationTreeNode> matcher = new TreeMatcher<>(new TestOptimizationTreeEditPolicy());
         EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
         EditScript<OptimizationTreeNode> expected = new EditScript<>();
         expected.insert(bar, 1);
@@ -117,7 +117,7 @@ public class SelkowTreeMatcherTest {
         root2.addChild(toBeUnchagedClone);
         root2.addChild(toBeInserted);
 
-        SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
+        TreeMatcher<OptimizationTreeNode> matcher = new TreeMatcher<>(new TestOptimizationTreeEditPolicy());
         EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
         EditScript<OptimizationTreeNode> expected = new EditScript<>();
         expected.insert(toBeInserted, 1);

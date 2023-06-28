@@ -43,7 +43,7 @@ import org.graalvm.profdiff.diff.InliningTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeEditPolicy;
 import org.graalvm.profdiff.diff.OptimizationContextTreeWriterVisitor;
 import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.diff.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.TreeMatcher;
 import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.core.Writer;
 
@@ -61,14 +61,14 @@ public class ExperimentMatcher {
     /**
      * Matches optimization trees of two compilation units.
      */
-    private final SelkowTreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
+    private final TreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new TreeMatcher<>(new OptimizationTreeEditPolicy());
 
     /**
      * Matches inlining trees of two compilation units.
      */
-    private final SelkowTreeMatcher<InliningTreeNode> inliningTreeMatcher = new SelkowTreeMatcher<>(new InliningTreeEditPolicy());
+    private final TreeMatcher<InliningTreeNode> inliningTreeMatcher = new TreeMatcher<>(new InliningTreeEditPolicy());
 
-    private final SelkowTreeMatcher<OptimizationContextTreeNode> optimizationContextTreeMatcher = new SelkowTreeMatcher<>(new OptimizationContextTreeEditPolicy());
+    private final TreeMatcher<OptimizationContextTreeNode> optimizationContextTreeMatcher = new TreeMatcher<>(new OptimizationContextTreeEditPolicy());
 
     /**
      * The destination writer of the output.
