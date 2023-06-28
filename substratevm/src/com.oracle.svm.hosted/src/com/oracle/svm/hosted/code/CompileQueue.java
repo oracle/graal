@@ -616,6 +616,14 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
 
         for (HostedMethod method : universe.getMethods()) {
+            /*
+             * Deoptimization target code for deoptimization testing: all methods that are not
+             * blacklisted are possible deoptimization targets. The methods are also flagged so that
+             * all possible deoptimization entry points are emitted.
+             */
+            if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
+                method.compilationInfo.canDeoptForTesting = true;
+            }
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                 if (multiMethod.isDeoptTarget()) {
                     // deoptimization targets are parsed in a later phase
@@ -671,18 +679,9 @@ public class CompileQueue {
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().filter(this::isRegisteredDeoptTarget).forEach(
+            universe.getMethods().stream().filter(method -> isRegisteredDeoptTarget(method) || method.compilationInfo.canDeoptForTesting).forEach(
                             method -> ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
         }
-        /*
-         * Deoptimization target code for deoptimization testing: all methods that are not
-         * blacklisted are possible deoptimization targets. The methods are also flagged so that all
-         * possible deoptimization entry points are emitted.
-         */
-        universe.getMethods().stream().filter(method -> method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)).forEach(method -> {
-            method.compilationInfo.canDeoptForTesting = true;
-            ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason());
-        });
     }
 
     private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
@@ -1108,7 +1107,7 @@ public class CompileQueue {
         HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
 
-        if (!DeoptimizationUtils.canBeUsedForInlining(universe, caller, callee, invoke.bci(), deoptimizeAll)) {
+        if (!DeoptimizationUtils.canBeUsedForInlining(universe, caller, callee, invoke.bci())) {
             /*
              * Inlining will violate deoptimization requirements.
              */
