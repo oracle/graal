@@ -34,10 +34,19 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_EN
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_VTMS_TRANSITION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_VTMS_NOTIFY_JVMTI_EVENTS;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
@@ -61,6 +70,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -75,6 +85,8 @@ import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
@@ -84,6 +96,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -91,6 +104,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -101,6 +115,7 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
@@ -220,6 +235,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerClassPlugins(plugins, config, replacements);
                 registerSystemPlugins(invocationPlugins);
                 registerThreadPlugins(invocationPlugins, config, replacements);
+                registerVirtualThreadPlugins(invocationPlugins, config, replacements);
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacements, config);
                 registerAESPlugins(invocationPlugins, config, replacements, target.arch);
@@ -634,6 +650,121 @@ public class HotSpotGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
                     try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                         helper.setThreadScopedValueCache(cache);
+                    }
+                    return true;
+                }
+            });
+        }
+    }
+
+    // @formatter:off
+    @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
+              lineStart = 2856,
+              lineEnd   = 2917,
+              commit    = "230bcb769a2701b80b4a12a39785f88a1db48ba9",
+              sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
+    // @formatter:on
+    private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
+                    ValueNode virtualThread, ValueNode hide) {
+        // When notifications are disabled then just update the VTMS transition bit and return.
+        // Otherwise, the bit is updated in the given function call implementing JVMTI notification
+        // protocol.
+        try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+            GraalError.guarantee(config.virtualThreadVTMSNotifyJvmtiEvents != -1L, "JvmtiVTMSTransitionDisabler::_VTMS_notify_jvmti_events is not exported");
+            OffsetAddressNode address = OffsetAddressNode.create(helper.asWord(config.virtualThreadVTMSNotifyJvmtiEvents));
+            ValueNode notifyJvmtiEnabled = b.add(new JavaReadNode(JavaKind.Boolean, address, HOTSPOT_VTMS_NOTIFY_JVMTI_EVENTS, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+            LogicNode testNotifyJvmtiEnabled = IntegerEqualsNode.create(notifyJvmtiEnabled, ConstantNode.forBoolean(true), NodeView.DEFAULT);
+
+            StructuredGraph graph = b.getGraph();
+
+            CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
+            BeginNode trueSuccessor = graph.add(new BeginNode());
+            BeginNode falseSuccessor = graph.add(new BeginNode());
+
+            ProfileData.BranchProbabilityData probability = ProfileData.BranchProbabilityData.injected(NOT_FREQUENT_PROBABILITY);
+            b.add(new IfNode(testNotifyJvmtiEnabled, trueSuccessor, falseSuccessor, probability));
+
+            // if notifyJvmti enabled then make a call to the given runtime function
+            ForeignCallNode runtimeCall = graph.add(new ForeignCallNode(descriptor, virtualThread, hide, javaThread));
+            trueSuccessor.setNext(runtimeCall);
+            runtimeCall.setStateAfter(b.getInvocationPluginReturnState(JavaKind.Void, null));
+            EndNode trueSuccessorEnd = graph.add(new EndNode());
+            runtimeCall.setNext(trueSuccessorEnd);
+
+            // else set hide value to the VTMS transition bit in current JavaThread and
+            // VirtualThread object
+            GraalError.guarantee(config.threadIsInVTMSTransitionOffset != -1L, "JavaThread::_is_in_VTMS_transition is not exported");
+            OffsetAddressNode jtAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInVTMSTransitionOffset)));
+            JavaWriteNode jtWrite = b.add(new JavaWriteNode(JavaKind.Boolean, jtAddress, HOTSPOT_JAVA_THREAD_IS_IN_VTMS_TRANSITION, hide, BarrierType.NONE, false));
+            falseSuccessor.setNext(jtWrite);
+
+            GraalError.guarantee(config.javaLangThreadIsInVTMSTransitonOffset != -1L, "java_lang_Thread::_jvmti_is_in_VTMS_transition_offset is not exported");
+            OffsetAddressNode vtAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(virtualThread, helper.asWord(config.javaLangThreadIsInVTMSTransitonOffset)));
+            b.add(new JavaWriteNode(JavaKind.Boolean, vtAddress, HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION, hide, BarrierType.NONE, false));
+
+            EndNode falseSuccessorEnd = b.add(new EndNode());
+
+            MergeNode merge = b.add(new MergeNode());
+            merge.addForwardEnd(trueSuccessorEnd);
+            merge.addForwardEnd(falseSuccessorEnd);
+        }
+    }
+
+    private static void registerVirtualThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC >= 21 && config.supportJVMTIVThreadNotification()) {
+            Registration r = new Registration(plugins, "java.lang.VirtualThread", replacements);
+            r.register(new InvocationPlugin("notifyJvmtiStart", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        ValueNode nonNullReceiver = receiver.get();
+                        inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, nonNullReceiver, ConstantNode.forBoolean(false, b.getGraph()));
+                    }
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("notifyJvmtiEnd", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        ValueNode nonNullReceiver = receiver.get();
+                        inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, nonNullReceiver, ConstantNode.forBoolean(true, b.getGraph()));
+                    }
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("notifyJvmtiMount", Receiver.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        ValueNode nonNullReceiver = receiver.get();
+                        inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, nonNullReceiver, hide);
+                    }
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("notifyJvmtiUnmount", Receiver.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        ValueNode nonNullReceiver = receiver.get();
+                        inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, nonNullReceiver, hide);
+                    }
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("notifyJvmtiHideFrames", Receiver.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                            // unconditionally update the temporary VTMS transition bit in current
+                            // JavaThread
+                            GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1L, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                            CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
+                            b.add(new JavaWriteNode(JavaKind.Boolean, address, HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
+                        }
                     }
                     return true;
                 }
