@@ -42,6 +42,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -506,7 +507,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             boolean wasExit = predecessorBlockSequentialLoopExit(b);
 
             FixedNode f = b.getBeginNode();
-            while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
+            while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 if (f instanceof LoopExitNode) {
                     LoopBeginNode closedLoop = ((LoopExitNode) f).loopBegin();
                     RPOLoopVerification lv = openLoops[tos - 1];
@@ -590,7 +593,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         while (cur.getPredecessorCount() == 1 && cur.getPredecessorAt(0).getSuccessorCount() == 1) {
             HIRBlock pred = cur.getPredecessorAt(0);
             FixedNode f = pred.getBeginNode();
-            while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
+            while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 if (f instanceof LoopExitNode) {
                     return true;
                 }
@@ -737,7 +742,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     private void identifyBlock(HIRBlock block) {
         FixedWithNextNode cur = block.getBeginNode();
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             assert cur.isAlive() : cur;
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);

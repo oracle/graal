@@ -154,7 +154,7 @@ public class ConditionalNodeTest extends GraalCompilerTest {
         int min = sourceOffset + targetCount - 1;
         int i = min + fromIndex;
 
-        startSearchForLastChar: while (true) {
+        startSearchForLastChar: while (true) { // VALID ENDLESS LOOP
             while (i >= min && source[i] != strLastChar) {
                 i--;
             }

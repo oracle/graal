@@ -645,7 +645,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
@@ -950,7 +950,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             CompilerAsserts.partialEvaluationConstant(foo);
             CompilerAsserts.partialEvaluationConstant(bar);
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (CompilerDirectives.inCompiledCode()) {
                     return foo + bar;
                 }
@@ -976,7 +976,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
@@ -1169,7 +1169,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 assertEquals(EXPECTED_FIRST_ARG, frame.getArguments()[0]);
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
@@ -1252,7 +1252,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public Object executeLoop(VirtualFrame frame) {
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
@@ -1367,7 +1367,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public Object executeLoop(VirtualFrame frame) {
             // This node only terminates in compiled code.
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
@@ -1600,7 +1600,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         Object doExecute(VirtualFrame frame) {
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (CompilerDirectives.inCompiledCode()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
@@ -1688,7 +1688,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             this.compiled = CompilerDirectives.inCompiledCode();
             CompilerAsserts.partialEvaluationConstant(startBCI);
             int bci = startBCI;
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 CompilerAsserts.partialEvaluationConstant(bci);
                 switch (bytecodes[bci]) {
                     case Bytecode.RETURN: {

@@ -155,7 +155,7 @@
     </module>
     <module name="RegexpSinglelineJava">
       <property name="format" value="while \(true\)"/>
-      <property name="message" value="Do not introduce untrusted endless loops. Ensure the loop terminates or is capped with a maximum number of iterations. If you trust your loop ignore this checkstyle message with a line comment in the line of the loop header with VALID_ENDLESS_LOOP."/>
+      <property name="message" value="Do not introduce untrusted endless loops. Ensure the loop terminates or is capped with a maximum number of iterations. If you trust your loop ignore this checkstyle message with a line comment in the line of the loop header with VALID ENDLESS LOOP."/>
       <property name="ignoreComments" value="true"/>
       <property name="id" value="endless-loop"/>
     </module>

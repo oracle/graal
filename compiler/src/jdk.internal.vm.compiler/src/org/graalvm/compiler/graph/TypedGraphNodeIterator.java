@@ -65,7 +65,7 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
     private void forward() {
         needsForward = false;
         int startIdx = currentIdIndex;
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             Node next;
             if (current() == null) {
                 next = graph.getIterableNodeStart(ids[currentIdIndex]);

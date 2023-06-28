@@ -29,6 +29,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Node> {
@@ -188,7 +189,9 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
         int wordsInUse = bits.length;
         if (wordIndex < wordsInUse) {
             long word = getPartOfWord(bits[wordIndex], fromNodeId);
-            while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+            while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 while (word != 0) {
                     int bitIndex = Long.numberOfTrailingZeros(word);
                     int nodeId = wordIndex * Long.SIZE + bitIndex;

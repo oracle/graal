@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
+
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
  */
@@ -73,7 +75,9 @@ public final class Range {
         assert r2 != null : "null ranges not allowed";
         assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
 
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
         do {
+            finiteLoop.checkAndFailIfExceeded();
             if (r1.from < r2.from) {
                 if (r1.to <= r2.from) {
                     r1 = r1.next;
@@ -111,7 +115,7 @@ public final class Range {
                     }
                 }
             }
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 
     @Override

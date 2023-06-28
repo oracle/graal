@@ -42,6 +42,7 @@ import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
@@ -369,7 +370,9 @@ public class GraphUtil {
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
         LinkedStack<Node> stack = null;
         Node cur = node;
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
         do {
+            finiteLoop.checkAndFailIfExceeded();
             assert checkKill(cur, mayKillGuard);
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
@@ -404,7 +407,7 @@ public class GraphUtil {
             } else {
                 cur = stack.pop();
             }
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -744,7 +747,9 @@ public class GraphUtil {
 
         EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
         do {
+            finiteLoop.checkAndFailIfExceeded();
             /*
              * PiArrayNode implements ArrayLengthProvider and ValueProxy. We want to treat it as an
              * ArrayLengthProvider, therefore we check this case first.
@@ -773,7 +778,7 @@ public class GraphUtil {
             } else {
                 return null;
             }
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 
     private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection,
@@ -1184,7 +1189,9 @@ public class GraphUtil {
             return false;
         }
         FixedNode node = start;
-        while (true) {
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
@@ -1316,7 +1323,9 @@ public class GraphUtil {
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
-        while (true) {
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;

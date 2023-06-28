@@ -398,7 +398,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
              * Loops are processed iteratively until the merged state is the same as the initial
              * state.
              */
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 int sizeBeforeLoop = effects.size();
                 info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
                 ArrayList<State> states = new ArrayList<>();

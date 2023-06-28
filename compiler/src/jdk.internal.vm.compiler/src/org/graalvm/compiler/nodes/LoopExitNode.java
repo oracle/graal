@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Association;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -83,7 +84,9 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
 
     public void removeProxies() {
         if (this.hasUsages()) {
-            outer: while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+            outer: while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 for (ProxyNode vpn : proxies().snapshot()) {
                     ValueNode value = vpn.value();
                     vpn.replaceAtUsagesAndDelete(value);

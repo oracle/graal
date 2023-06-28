@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -150,7 +151,9 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
 
     private static FixedNode findBegin(FixedNode node) {
         FixedNode current = node;
-        while (true) {
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.normalLoop();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             assert current != null;
             Node predecessor = current.predecessor();
             if (current instanceof AbstractBeginNode) {

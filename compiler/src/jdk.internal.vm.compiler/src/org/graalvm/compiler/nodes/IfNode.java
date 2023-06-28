@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
@@ -1144,7 +1145,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void pushNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         // push similar nodes upwards through the if, thereby deduplicating them
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
         do {
+            finiteLoop.checkAndFailIfExceeded();
             AbstractBeginNode trueSucc = trueSuccessor();
             AbstractBeginNode falseSucc = falseSuccessor();
             if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
@@ -1185,7 +1188,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             }
             break;
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 
     /**

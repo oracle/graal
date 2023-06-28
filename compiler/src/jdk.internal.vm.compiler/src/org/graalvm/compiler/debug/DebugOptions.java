@@ -49,6 +49,88 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 public class DebugOptions {
 
     /**
+     * Defensive programming facility for the Graal compiler. For every endless {@code while(true)}
+     * loop in the compiler we apply checkstyle rules to ensure developers think about endless loops
+     * they write. We never want to hang the compiler.
+     *
+     * For loops where one can easily abort in event of an unintended iteration number that
+     * indicates an endless loop developers can use {@link #looksInfinite()} and abort their loop.
+     *
+     * For loops where we are in the middle of a transform but the iteration number indicates an
+     * endless loop developers can use {@link #checkAndFailIfExceeded()} and abort the current
+     * compile.
+     */
+    public static final class FiniteLoopCheck {
+
+        private final int maxIterations;
+        private int iterations;
+
+        private FiniteLoopCheck(int maxIterations) {
+            this.maxIterations = maxIterations;
+        }
+
+        public boolean looksInfinite() {
+            return !check();
+        }
+
+        private boolean check() {
+            return iterations++ < maxIterations;
+        }
+
+        public void checkAndFailIfExceeded() {
+            if (!check()) {
+                throw GraalError.shouldNotReachHere(String.format("Potential endless loop detected, max iterations %s exceeded", maxIterations));
+            }
+        }
+
+        public static FiniteLoopCheck graphIterationOutOfBounds() {
+            return new FiniteLoopCheck(VERY_LARGE_GRAPH);
+        }
+
+        public static FiniteLoopCheck cfgIterationsOutOfBounds() {
+            return new FiniteLoopCheck(VERY_LARGE_CFG);
+        }
+
+        public static FiniteLoopCheck normalLoop() {
+            return new FiniteLoopCheck(NORMAL_LOOP);
+        }
+
+        public static FiniteLoopCheck smallLoop() {
+            return new FiniteLoopCheck(SMALL_LOOP);
+        }
+
+        public static FiniteLoopCheck tinyLoop() {
+            return new FiniteLoopCheck(TINY_LOOP);
+        }
+
+        /**
+         * Number of nodes of a humongous graph times 10 - a graph size we have never seen so far in
+         * real life - so something in this loop really goes out of bounds.
+         */
+        public static final int VERY_LARGE_GRAPH = 1_000_000 * 10;
+
+        /**
+         * Number of basic blocks of a humongous control flow graph.
+         */
+        public static final int VERY_LARGE_CFG = 256_000;
+
+        /**
+         * Normally sized loop that finishes in reasonable time on modern day hardware.
+         */
+        public static final int NORMAL_LOOP = 1024 * 1024;
+
+        /**
+         * Small sized loop that finishes quickly on modern day hardware.
+         */
+        public static final int SMALL_LOOP = 1024 * 4;
+
+        /**
+         * Tiny sized loop that finishes nearly instantly on modern day hardware.
+         */
+        public static final int TINY_LOOP = 128;
+    }
+
+    /**
      * Values for the {@link DebugOptions#PrintGraph} option denoting where graphs dumped as a
      * result of the {@link DebugOptions#Dump} option are sent.
      */

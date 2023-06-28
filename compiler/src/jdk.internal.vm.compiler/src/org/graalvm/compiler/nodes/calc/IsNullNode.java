@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -107,7 +108,9 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
     private static LogicNode canonicalized(IsNullNode node, ValueNode forValue, JavaConstant forNullConstant) {
         JavaConstant nullConstant = forNullConstant;
         ValueNode value = forValue;
-        while (true) {
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             if (StampTool.isPointerAlwaysNull(value)) {
                 return LogicConstantNode.tautology();
             } else if (StampTool.isPointerNonNull(value)) {

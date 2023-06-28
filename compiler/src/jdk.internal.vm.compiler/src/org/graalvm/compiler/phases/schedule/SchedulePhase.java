@@ -667,7 +667,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -998,7 +998,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {

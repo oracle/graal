@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
@@ -422,7 +423,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCacheCopy.putAll(loopLocationKillCache);
             }
         }
-        while (true) {
+        // very high number of basic blocks - very unlikely to ever hit in a real program
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             try {
                 BlockT loopEntryState = initialStateRemovedKilledLocations;
                 BlockT lastMergedState = cloneState(initialStateRemovedKilledLocations);

@@ -148,7 +148,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
                 dynamicObjectLibrary.put(obj, "key", (int) arg1);
             }
             int val;
-            while (true) {
+            while (true) { // VALID ENDLESS LOOP
                 val = getInt(obj, "key");
                 if (val >= 42) {
                     break;

@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -109,7 +110,10 @@ public final class ReentrantNodeIterator {
 
         StateT state = initialState;
         FixedNode current = start;
+        // very high number of nodes, abort if we ever hit that in a single apply
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
         do {
+            finiteLoop.checkAndFailIfExceeded();
             while (current instanceof FixedWithNextNode) {
                 if (boundary != null && current instanceof LoopExitNode && ((LoopExitNode) current).loopBegin() == boundary) {
                     blockEndStates.put(current, state);
@@ -196,6 +200,6 @@ public final class ReentrantNodeIterator {
                 state = blockEndStates.removeKey(current);
                 assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode;
             }
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 }

@@ -57,7 +57,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
 
     public static void snippetDown() {
         int i = Integer.MIN_VALUE + 56;
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             if (i > Integer.MIN_VALUE) {
                 GraalDirectives.sideEffect(i);
                 i = Math.subtractExact(i, 8);
@@ -69,7 +69,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
 
     public static void snippetDownUnsigned() {
         int i = 56;
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             if (GraalDirectives.injectIterationCount(100, Integer.compareUnsigned(i, 8) >= 0)) {
                 GraalDirectives.sideEffect(i);
                 i = Math.subtractExact(i, 8);
@@ -81,7 +81,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
 
     public static void snippetUp() {
         int i = Integer.MAX_VALUE - 56;
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             if (i < Integer.MAX_VALUE) {
                 GraalDirectives.sideEffect(i);
                 i = Math.addExact(i, 8);

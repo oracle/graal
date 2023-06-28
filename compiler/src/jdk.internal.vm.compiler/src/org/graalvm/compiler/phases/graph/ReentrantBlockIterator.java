@@ -35,6 +35,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -138,7 +139,10 @@ public final class ReentrantBlockIterator {
 
         StructuredGraph graph = start.getBeginNode().graph();
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
-        while (true) {
+
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
                 throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);

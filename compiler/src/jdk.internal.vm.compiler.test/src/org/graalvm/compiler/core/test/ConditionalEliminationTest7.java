@@ -77,7 +77,7 @@ public class ConditionalEliminationTest7 extends ConditionalEliminationTestBase 
     @SuppressWarnings("all")
     public static int test3Snippet(int a, Object b) {
         int sum = a;
-        outer: while (true) {
+        outer: while (true) { // VALID ENDLESS LOOP
             sum++;
             while (sum++ != 20) {
                 while (sum++ != 30) {

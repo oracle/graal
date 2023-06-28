@@ -33,7 +33,7 @@ import org.junit.Test;
 public class ArrayLengthProviderTest extends GraalCompilerTest {
 
     public static Object test0Snippet(ArrayList<?> list, boolean a) {
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             Object[] array = toArray(list);
             if (array.length < 1) {
                 return null;
@@ -57,7 +57,7 @@ public class ArrayLengthProviderTest extends GraalCompilerTest {
     }
 
     public static Object test1Snippet(ArrayList<?> list, boolean a, boolean b) {
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             Object[] array = toArray(list);
             if (a || b) {
                 if (array.length < 1) {

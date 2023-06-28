@@ -104,7 +104,8 @@ public final class VirtualUtil {
                 TTY.println("offending node path:");
                 Node current = node;
                 TTY.print(current.toString());
-                while (true) {
+                // assertion code only
+                while (true) { // VALID ENDLESS LOOP
                     current = path.get(current);
                     if (current != null) {
                         TTY.print(" -> " + current.toString());

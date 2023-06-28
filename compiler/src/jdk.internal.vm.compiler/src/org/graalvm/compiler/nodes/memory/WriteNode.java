@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -150,7 +151,9 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
     private static boolean followedByVolatileWrite(FixedWithNextNode start) {
         FixedWithNextNode cur = start;
-        while (true) {
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        while (true) { // VALID ENDLESS LOOP
+            finiteLoop.checkAndFailIfExceeded();
             // Check the memory usages of the current access
             for (Node usage : cur.usages()) {
                 if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {

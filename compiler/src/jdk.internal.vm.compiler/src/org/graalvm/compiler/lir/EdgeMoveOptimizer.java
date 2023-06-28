@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.MoveOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -160,7 +161,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process lir-instructions while all predecessors end with the same instruction
-            while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+            while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;
@@ -239,7 +242,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process LIR instructions while all successors begin with the same instruction
-            while (true) {
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+            while (true) { // VALID ENDLESS LOOP
+                finiteLoop.checkAndFailIfExceeded();
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;

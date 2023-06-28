@@ -1271,7 +1271,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     // endregion
 
     private void transitionToInvalidArgumentsProfile() {
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             ArgumentsProfile oldProfile = argumentsProfile;
             if (oldProfile == ArgumentsProfile.INVALID) {
                 /* Profile already invalid, nothing to do. */

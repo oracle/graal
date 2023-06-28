@@ -46,7 +46,7 @@ public class SchedulingTest extends GraphScheduleTest {
 
     public static int testValueProxyInputsSnippet(int s) {
         int i = 0;
-        while (true) {
+        while (true) { // VALID ENDLESS LOOP
             i++;
             int v = i - s * 2;
             if (i == s) {

@@ -159,7 +159,7 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
             }
             current = alternative;
 
-        } while (true);
+        } while (true); // VALID ENDLESS LOOP
     }
 
     @Benchmark
