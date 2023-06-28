@@ -139,6 +139,7 @@ public class OptionValues {
         private final HotCompilationUnitPolicy hotCompilationUnitPolicy;
         private boolean optimizationContextTreeEnabled;
         private boolean diffCompilations;
+        private boolean bciLongForm;
         private boolean alwaysPrintInlinerReasoning;
 
         private Builder() {
@@ -149,7 +150,7 @@ public class OptionValues {
          * Builds and returns the {@link OptionValues}.
          */
         public OptionValues build() {
-            return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, false, false, false, false, false, false, alwaysPrintInlinerReasoning);
+            return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, bciLongForm, false, false, false, false, false, alwaysPrintInlinerReasoning);
         }
 
         public Builder withOptimizationContextTreeEnabled(boolean optimizationContextTreeEnabled) {
@@ -159,6 +160,11 @@ public class OptionValues {
 
         public Builder withDiffCompilations(boolean diffCompilations) {
             this.diffCompilations = diffCompilations;
+            return this;
+        }
+
+        public Builder withBCILongForm(boolean bciLongForm) {
+            this.bciLongForm = bciLongForm;
             return this;
         }
 
