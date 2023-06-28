@@ -112,7 +112,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
-    private volatile Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
+    private final Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
     private int staticIndex;
 
     /*
@@ -146,6 +146,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.providerAdapter = providerAdapter;
         this.website = website;
         this.sandboxPolicy = sandboxPolicy;
+        Map<Class<? extends InternalResource>, InternalResourceCache> map = new HashMap<>();
+        for (InternalResource internalResource : providerAdapter.createInternalResources()) {
+            map.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
+        }
+        this.internalResources = Collections.unmodifiableMap(map);
     }
 
     /**
@@ -613,35 +618,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
-        var cacheByType = initializeInternalResources();
-        InternalResourceCache cache = cacheByType.get(resourceType);
+        InternalResourceCache cache = internalResources.get(resourceType);
         if (cache == null) {
             throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
-                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+                            resourceType, id, internalResources.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
         } else {
             return cache;
         }
     }
 
     Collection<Class<? extends InternalResource>> getResourceTypes() {
-        return initializeInternalResources().keySet();
-    }
-
-    private Map<Class<? extends InternalResource>, InternalResourceCache> initializeInternalResources() {
-        var cacheByType = internalResources;
-        if (cacheByType == null) {
-            synchronized (this) {
-                cacheByType = internalResources;
-                if (cacheByType == null) {
-                    cacheByType = new HashMap<>();
-                    for (InternalResource internalResource : providerAdapter.createInternalResources()) {
-                        cacheByType.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
-                    }
-                    internalResources = cacheByType;
-                }
-            }
-        }
-        return cacheByType;
+        return internalResources.keySet();
     }
 
     @Override

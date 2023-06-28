@@ -1076,9 +1076,10 @@ public abstract class TruffleInstrument {
          * and stored relative to the native-image.
          *
          * @param resource the resource class to load
+         * @throws IOException in case of IO error
          * @since 23.1
          */
-        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
             return InstrumentAccessor.engineAccess().getInternalResource(polyglotInstrument, resource);
         }
 

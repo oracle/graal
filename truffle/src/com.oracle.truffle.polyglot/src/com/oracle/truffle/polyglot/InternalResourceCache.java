@@ -54,19 +54,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 final class InternalResourceCache {
 
-    private static final ConcurrentHashMap<Path, Lock> pendingUnpackLocks = new ConcurrentHashMap<>();
+    private static final Lock unpackLock = new ReentrantLock();
     private static volatile Path cacheRoot;
 
     private final String id;
     private final InternalResource resource;
-    private RootSupplier rootSupplier;
     private volatile FileSystem resourceFileSystem;
 
     InternalResourceCache(String languageId, InternalResource forResource) {
@@ -80,8 +78,18 @@ final class InternalResourceCache {
             synchronized (this) {
                 result = resourceFileSystem;
                 if (result == null) {
-                    Path root = getResourceRoot();
-                    rootSupplier = new RootSupplier(root);
+                    Path root;
+                    if (ImageInfo.inImageRuntimeCode()) {
+                        /*
+                         * TODO: Shouldn't we rather force a filesystem creation in the image
+                         * building-time and throw an assertion error here?
+                         */
+                        root = findCacheRootOnNativeImage().resolve(id).resolve(resource.name());
+                    } else {
+                        root = findCacheRootOnHotSpot().resolve(id).resolve(resource.name()).resolve(resource.versionHash());
+                        unpackFiles(root, resource);
+                    }
+                    ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
                     result = FileSystems.newInternalResourceFileSystem(rootSupplier);
                     resourceFileSystem = result;
                 }
@@ -90,27 +98,13 @@ final class InternalResourceCache {
         return result;
     }
 
-    private Path getResourceRoot() throws IOException {
-        Path root;
-        if (ImageInfo.inImageRuntimeCode()) {
-            root = getResourceRootOnNativeImage();
-        } else {
-            root = getResourceRootOnHotSpot();
-        }
-        // TODO: Maybe we should rather create a canonical path???
-        return root.normalize();
-    }
-
-    private Path getResourceRootOnHotSpot() throws IOException {
-        Path root = findCacheRootOnHotSpot();
-        Path target = root.resolve(id).resolve(resource.name()).resolve(resource.versionHash());
-        Lock unpackLock = pendingUnpackLocks.computeIfAbsent(target, (p) -> new ReentrantLock());
+    private static void unpackFiles(Path target, InternalResource resourceToUnpack) throws IOException {
         unpackLock.lock();
         try {
             if (!Files.exists(target)) {
                 Path owner = Files.createDirectories(target.getParent());
                 Path tmpDir = Files.createTempDirectory(owner, null);
-                resource.unpackFiles(tmpDir);
+                resourceToUnpack.unpackFiles(tmpDir);
                 try {
                     Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
                 } catch (FileAlreadyExistsException existsException) {
@@ -123,16 +117,7 @@ final class InternalResourceCache {
             }
         } finally {
             unpackLock.unlock();
-            pendingUnpackLocks.remove(target, unpackLock);
         }
-        return target;
-    }
-
-    private Path getResourceRootOnNativeImage() throws IOException {
-        Path root = findCacheRootOnNativeImage();
-        Path target = root.resolve(id).resolve(resource.name());
-        verifyResourceRoot(target);
-        return target;
     }
 
     private static void verifyResourceRoot(Path resourceRoot) throws IOException {
@@ -195,36 +180,51 @@ final class InternalResourceCache {
     }
 
     /**
-     * Resets cache roots after context pre-initialization. This method is also used reflectively by
-     * the {@code InternalResourceTest}.
+     * Resets cache roots after closed word analyses. This method is called reflectively by the
+     * {@code TruffleBaseFeature#afterAnalysis}.
      */
-    static void resetCacheRoot(Path root) {
+    static void resetNativeImageState() {
+        cacheRoot = null;
+        resetResourceFileSystems();
+    }
+
+    /**
+     * Sets the {@link #cacheRoot} in unit tests. This method is called reflectively by the
+     * {@code InternalResourceTest}.
+     */
+    @SuppressWarnings("unused")
+    private static void setCacheRoot(Path root) {
         cacheRoot = root;
+        resetResourceFileSystems();
+    }
+
+    private static void resetResourceFileSystems() {
         for (LanguageCache language : LanguageCache.languages().values()) {
             for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
                 InternalResourceCache cache = language.getResourceCache(resourceType);
-                cache.resetCacheRoot();
+                cache.resetFileSystemRoot();
             }
         }
         for (InstrumentCache instrument : InstrumentCache.load()) {
             for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
                 InternalResourceCache cache = instrument.getResourceCache(resourceType);
-                cache.resetCacheRoot();
+                cache.resetFileSystemRoot();
             }
         }
     }
 
-    private synchronized void resetCacheRoot() {
-        if (rootSupplier != null) {
-            rootSupplier.reset();
+    private void resetFileSystemRoot() {
+        FileSystem fs = resourceFileSystem;
+        if (fs != null) {
+            ((ResetableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).reset();
         }
     }
 
-    private final class RootSupplier implements Supplier<Path> {
+    private final class ResetableCachedRoot implements Supplier<Path> {
 
         private volatile Path resourceCacheRoot;
 
-        RootSupplier(Path resourceCacheRoot) {
+        ResetableCachedRoot(Path resourceCacheRoot) {
             Objects.requireNonNull(resourceCacheRoot, "ResourceCacheRoot must be non-null.");
             this.resourceCacheRoot = resourceCacheRoot;
         }
@@ -233,12 +233,9 @@ final class InternalResourceCache {
         public Path get() {
             Path res = resourceCacheRoot;
             if (res == null) {
-                try {
-                    res = getResourceRoot();
-                    resourceCacheRoot = res;
-                } catch (IOException ioe) {
-                    throw CompilerDirectives.shouldNotReachHere(ioe);
-                }
+                assert ImageInfo.inImageRuntimeCode() : "Cache root can be re-initialized only in native-image execution time.";
+                res = findCacheRootOnNativeImage().resolve(id).resolve(resource.name());
+                resourceCacheRoot = res;
             }
             return res;
         }

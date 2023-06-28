@@ -161,7 +161,7 @@ final class FileSystems {
                 }
             }
             return null;
-        } else if (engineObject instanceof PolyglotInstrument) {
+        } else if (engineObject instanceof PolyglotEngineImpl) {
             // instrument internal resources are never relative to language homes
             return null;
         } else if (engineObject instanceof EmbedderFileSystemContext) {
@@ -174,6 +174,15 @@ final class FileSystems {
 
     static FileSystem newInternalResourceFileSystem(Supplier<Path> rootSupplier) {
         return newReadOnlyFileSystem(new InternalResourceFileSystem(rootSupplier));
+    }
+
+    static Supplier<Path> getInternalResourceFileSystemRoot(FileSystem fileSystem) {
+        if (fileSystem instanceof  ReadOnlyFileSystem roFileSystem) {
+            if (roFileSystem.delegateFileSystem instanceof InternalResourceFileSystem resourceFileSystem) {
+                return resourceFileSystem.rootSupplier;
+            }
+        }
+        throw new IllegalArgumentException(Objects.toString(fileSystem));
     }
 
     private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {

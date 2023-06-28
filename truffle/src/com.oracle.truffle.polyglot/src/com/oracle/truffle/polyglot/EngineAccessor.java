@@ -565,10 +565,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemObject) {
-            if (engineFileSystemObject instanceof PolyglotLanguageContext languageContext) {
-                return languageContext.context.engine.getFileTypeDetectorsSupplier().get();
-            } else if (engineFileSystemObject instanceof PolyglotInstrument polyglotInstrument) {
-                return polyglotInstrument.engine.getFileTypeDetectorsSupplier().get();
+            if (engineFileSystemObject instanceof VMObject vmObject) {
+                return vmObject.getEngine().getFileTypeDetectorsSupplier().get();
             } else if (engineFileSystemObject instanceof EmbedderFileSystemContext) {
                 return ((EmbedderFileSystemContext) engineFileSystemObject).fileTypeDetectors.get();
             } else {
@@ -587,15 +585,8 @@ final class EngineAccessor extends Accessor {
         }
 
         private static LanguageCache getLanguageCache(Object engineObject, String language) throws AssertionError {
-            if (engineObject instanceof PolyglotLanguageContext languageContext) {
-                PolyglotLanguage polyglotLanguage = languageContext.context.engine.idToLanguage.get(language);
-                if (polyglotLanguage != null) {
-                    return polyglotLanguage.cache;
-                } else {
-                    return null;
-                }
-            } else if (engineObject instanceof PolyglotInstrument polyglotInstrument) {
-                PolyglotLanguage polyglotLanguage = polyglotInstrument.engine.idToLanguage.get(language);
+            if (engineObject instanceof VMObject vmObject) {
+                PolyglotLanguage polyglotLanguage = vmObject.getEngine().idToLanguage.get(language);
                 if (polyglotLanguage != null) {
                     return polyglotLanguage.cache;
                 } else {
@@ -711,21 +702,15 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean inContextPreInitialization(Object polyglotObject) {
-            PolyglotContextImpl polyglotContext;
-            if (polyglotObject instanceof PolyglotContextImpl) {
-                polyglotContext = (PolyglotContextImpl) polyglotObject;
-            } else if (polyglotObject instanceof PolyglotLanguageContext) {
-                polyglotContext = ((PolyglotLanguageContext) polyglotObject).context;
-            } else if (polyglotObject instanceof PolyglotInstrument polyglotInstrument) {
-                // Instruments are not created during context pre-initialization
-                assert !polyglotInstrument.engine.inEnginePreInitialization;
-                return false;
+            if (polyglotObject instanceof PolyglotContextImpl polyglotContext) {
+                return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
+            } else if (polyglotObject instanceof VMObject vmObject) {
+                return vmObject.getEngine().inEnginePreInitialization;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
                 throw shouldNotReachHere();
             }
-            return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
         }
 
         @Override
@@ -1265,10 +1250,8 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isInternal(Object engineObject, FileSystem fs) {
             AbstractPolyglotImpl polyglot;
-            if (engineObject instanceof PolyglotLanguageContext languageContext) {
-                polyglot = languageContext.getImpl();
-            } else if (engineObject instanceof PolyglotInstrument polyglotInstrument) {
-                polyglot = polyglotInstrument.getImpl();
+            if (engineObject instanceof VMObject vmObject) {
+                polyglot = vmObject.getImpl();
             } else if (engineObject instanceof EmbedderFileSystemContext embedderContext) {
                 polyglot = embedderContext.getImpl();
             } else {
@@ -1281,7 +1264,7 @@ final class EngineAccessor extends Accessor {
         public boolean isSocketIOAllowed(Object engineFileSystemContext) {
             if (engineFileSystemContext instanceof PolyglotLanguageContext languageContext) {
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
-            } else if (engineFileSystemContext instanceof PolyglotInstrument) {
+            } else if (engineFileSystemContext instanceof PolyglotEngineImpl) {
                 return false;
             } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
                 return true;
@@ -2061,22 +2044,30 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) {
-            InternalResourceCache resourceCache;
+        public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException {
             if (owner instanceof PolyglotLanguageContext languageContext) {
-                resourceCache = languageContext.language.cache.getResourceCache(resourceType);
-            } else if (owner instanceof PolyglotInstrument instrument) {
-                resourceCache = instrument.cache.getResourceCache(resourceType);
+                PolyglotLanguage polyglotLanguage = languageContext.language;
+                TruffleFile root = polyglotLanguage.internalResources.get(resourceType);
+                if (root == null) {
+                    InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceType);
+                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(languageContext.getEngine(), resourceCache.getResourceFileSystem());
+                    root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
+                    var prevValue = polyglotLanguage.internalResources.putIfAbsent(resourceType, root);
+                    root = prevValue != null ? prevValue : root;
+                }
+                return root;
+            } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
+                TruffleFile root = polyglotInstrument.internalResources.get(resourceType);
+                if (root == null) {
+                    InternalResourceCache resourceCache = polyglotInstrument.cache.getResourceCache(resourceType);
+                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotInstrument.getEngine(), resourceCache.getResourceFileSystem());
+                    root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
+                    var prevValue = polyglotInstrument.internalResources.putIfAbsent(resourceType, root);
+                    root = prevValue != null ? prevValue : root;
+                }
+                return root;
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
-            }
-            try {
-                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(owner, resourceCache.getResourceFileSystem());
-                return EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-            } catch (IOException ioe) {
-                // TODO: It would be better to throw an IOException from the
-                // Env#getInternalResource().
-                throw CompilerDirectives.shouldNotReachHere(ioe);
             }
         }
     }

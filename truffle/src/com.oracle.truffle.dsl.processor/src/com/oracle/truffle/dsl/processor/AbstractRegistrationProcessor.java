@@ -170,24 +170,22 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "internalResources", true);
         for (TypeMirror internalResource : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "internalResources")) {
             TypeElement internalResourceElement = ElementUtils.fromTypeMirror(internalResource);
-            PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
-            boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(internalResourceElement));
             Set<Modifier> modifiers = internalResourceElement.getModifiers();
-            if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
-                emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
-                                getScopedName(internalResourceElement), targetPackage.getQualifiedName(), getScopedName(internalResourceElement), targetPackage.getQualifiedName()),
-                                annotatedElement, mirror, value);
-                return false;
-            }
             if (internalResourceElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
                 emitError(String.format("The class %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
                                 getScopedName(internalResourceElement), internalResourceElement.getSimpleName()), annotatedElement, mirror, value);
                 return false;
             }
+            if (!ElementUtils.isVisible(annotatedElement, internalResourceElement)) {
+                PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
+                emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
+                                getScopedName(internalResourceElement), targetPackage.getQualifiedName(), getScopedName(internalResourceElement), targetPackage.getQualifiedName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
             boolean foundConstructor = false;
             for (ExecutableElement constructor : ElementFilter.constructorsIn(internalResourceElement.getEnclosedElements())) {
-                modifiers = constructor.getModifiers();
-                if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                if (!ElementUtils.isVisible(annotatedElement, constructor)) {
                     continue;
                 }
                 if (!constructor.getParameters().isEmpty()) {

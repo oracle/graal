@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -195,9 +196,9 @@ public class InternalResourceTest {
                 TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
                 verifyResources(srcRoot1, SourcesResource.RESOURCES);
                 TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
-                assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
+                assertEquals(libRoot1.getAbsoluteFile(), libRoot2.getAbsoluteFile());
                 TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
-                assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
+                assertEquals(srcRoot1.getAbsoluteFile(), srcRoot2.getAbsoluteFile());
                 assertEquals(1, LibraryResource.unpackedCalled);
                 assertEquals(1, SourcesResource.unpackedCalled);
                 return "";
@@ -233,11 +234,13 @@ public class InternalResourceTest {
                 TruffleFile srcRoot1 = env.getInternalResource(SourcesResource.class);
                 verifyResources(srcRoot1, SourcesResource.RESOURCES);
                 TruffleFile libRoot2 = env.getInternalResource(LibraryResource.class);
-                assertEquals(libRoot1.getAbsoluteFile().getPath(), libRoot2.getAbsoluteFile().getPath());
+                assertEquals(libRoot1.getAbsoluteFile(), libRoot2.getAbsoluteFile());
                 TruffleFile srcRoot2 = env.getInternalResource(SourcesResource.class);
-                assertEquals(srcRoot1.getAbsoluteFile().getPath(), srcRoot2.getAbsoluteFile().getPath());
+                assertEquals(srcRoot1.getAbsoluteFile(), srcRoot2.getAbsoluteFile());
                 assertEquals(1, LibraryResource.unpackedCalled);
                 assertEquals(1, SourcesResource.unpackedCalled);
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
             }
         }
     }
@@ -543,7 +546,7 @@ public class InternalResourceTest {
 
         private static void setCacheRoot(Path root) throws ClassNotFoundException {
             Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
-            ReflectionUtils.invokeStatic(internalResourceCacheClass, "resetCacheRoot", new Class<?>[]{Path.class}, root);
+            ReflectionUtils.invokeStatic(internalResourceCacheClass, "setCacheRoot", new Class<?>[]{Path.class}, root);
         }
     }
 }

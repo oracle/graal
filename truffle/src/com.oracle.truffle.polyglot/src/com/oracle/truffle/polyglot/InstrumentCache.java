@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,7 +80,7 @@ final class InstrumentCache {
     private final Set<String> services;
     private final ProviderAdapter providerAdapter;
     private final SandboxPolicy sandboxPolicy;
-    private volatile Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
+    private final Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
 
     /**
      * Initializes state for native image generation.
@@ -130,6 +131,11 @@ final class InstrumentCache {
         this.services = services;
         this.providerAdapter = providerAdapter;
         this.sandboxPolicy = sandboxPolicy;
+        Map<Class<? extends InternalResource>, InternalResourceCache> map = new HashMap<>();
+        for (InternalResource internalResource : providerAdapter.createInternalResources()) {
+            map.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
+        }
+        internalResources = Collections.unmodifiableMap(map);
     }
 
     boolean isInternal() {
@@ -263,35 +269,17 @@ final class InstrumentCache {
     }
 
     InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
-        var cacheByType = initializeInternalResources();
-        InternalResourceCache cache = cacheByType.get(resourceType);
+        InternalResourceCache cache = internalResources.get(resourceType);
         if (cache == null) {
             throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
-                            resourceType, id, cacheByType.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+                            resourceType, id, internalResources.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
         } else {
             return cache;
         }
     }
 
     Collection<Class<? extends InternalResource>> getResourceTypes() {
-        return initializeInternalResources().keySet();
-    }
-
-    private Map<Class<? extends InternalResource>, InternalResourceCache> initializeInternalResources() {
-        var cacheByType = internalResources;
-        if (cacheByType == null) {
-            synchronized (this) {
-                cacheByType = internalResources;
-                if (cacheByType == null) {
-                    cacheByType = new HashMap<>();
-                    for (InternalResource internalResource : providerAdapter.createInternalResources()) {
-                        cacheByType.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
-                    }
-                    internalResources = cacheByType;
-                }
-            }
-        }
-        return cacheByType;
+        return internalResources.keySet();
     }
 
     String getWebsite() {

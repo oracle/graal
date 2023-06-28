@@ -3510,9 +3510,10 @@ public abstract class TruffleLanguage<C> {
          * and stored relative to the native-image.
          *
          * @param resource the resource class to load
+         * @throws IOException in case of IO error
          * @since 23.1
          */
-        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) {
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
             return LanguageAccessor.engineAccess().getInternalResource(this.polyglotLanguageContext, resource);
         }
 

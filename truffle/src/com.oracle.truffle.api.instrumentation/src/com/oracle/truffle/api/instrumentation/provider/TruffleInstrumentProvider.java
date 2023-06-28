@@ -92,5 +92,7 @@ public abstract class TruffleInstrumentProvider {
      *
      * @since 23.1
      */
-    protected abstract List<?> createInternalResources();
+    protected List<?> createInternalResources() {
+        return List.of();
+    }
 }

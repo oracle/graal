@@ -99,5 +99,7 @@ public abstract class TruffleLanguageProvider {
      *
      * @since 23.1
      */
-    protected abstract List<?> createInternalResources();
+    protected List<?> createInternalResources() {
+        return List.of();
+    }
 }
