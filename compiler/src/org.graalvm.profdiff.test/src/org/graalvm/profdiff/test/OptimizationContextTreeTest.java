@@ -36,6 +36,7 @@ import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class OptimizationContextTreeTest {
     /**
@@ -208,5 +209,24 @@ public class OptimizationContextTreeTest {
         ce.addChild(cf);
 
         assertEquals(root, actual.getRoot());
+    }
+
+    @Test
+    public void nodeEqualsAndHashCode() {
+        OptimizationContextTreeNode node1 = new OptimizationContextTreeNode();
+        OptimizationContextTreeNode node2 = new OptimizationContextTreeNode();
+        assertEquals(node1, node1);
+        assertEquals(node1, node2);
+        assertEquals(node1.hashCode(), node2.hashCode());
+        assertNotEquals(node1, null);
+        assertNotEquals(node1, new Object());
+
+        InliningTreeNode inliningTreeNode1 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        InliningTreeNode inliningTreeNode2 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        assertEquals(new OptimizationContextTreeNode(inliningTreeNode1), new OptimizationContextTreeNode(inliningTreeNode2));
+
+        Optimization optimization1 = new Optimization("Opt", "Event", null, null);
+        Optimization optimization2 = new Optimization("Opt", "Event", null, null);
+        assertEquals(new OptimizationContextTreeNode(optimization1), new OptimizationContextTreeNode(optimization2));
     }
 }
