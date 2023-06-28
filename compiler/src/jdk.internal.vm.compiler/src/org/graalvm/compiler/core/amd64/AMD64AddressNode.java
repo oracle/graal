@@ -59,15 +59,21 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
 
     public static final NodeClass<AMD64AddressNode> TYPE = NodeClass.create(AMD64AddressNode.class);
 
-    @OptionalInput private ValueNode base;
+    @OptionalInput protected ValueNode base;
 
-    @OptionalInput private ValueNode index;
-    private Stride stride;
+    @OptionalInput protected ValueNode index;
+    protected Stride stride;
 
-    private int displacement;
+    protected int displacement;
 
     public AMD64AddressNode(ValueNode base) {
         this(base, null);
+    }
+    public AMD64AddressNode(NodeClass<? extends AMD64AddressNode> c, ValueNode base, ValueNode index){
+        super(c);
+        this.base = base;
+        this.index = index;
+        this.stride = Stride.S1;
     }
 
     public AMD64AddressNode(ValueNode base, ValueNode index) {

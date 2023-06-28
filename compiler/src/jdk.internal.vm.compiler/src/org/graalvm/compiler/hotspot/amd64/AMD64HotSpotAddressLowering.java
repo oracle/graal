@@ -73,10 +73,10 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     }
 
     @Override
-    protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
+    protected final AMD64AddressNode improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         CompressEncoding encoding = compression.getEncoding();
         if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
-            return false;
+            return null;
         }
 
         if (heapBaseRegister != null && encoding.getBase() == heapBase) {
@@ -84,13 +84,13 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                 ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
                 addr.setBase(base);
             } else {
-                return false;
+                return null;
             }
         } else if (encoding.getBase() != 0) {
             if (updateDisplacement(addr, encoding.getBase(), false)) {
                 addr.setBase(other);
             } else {
-                return false;
+                return null;
             }
         } else {
             addr.setBase(other);
@@ -99,7 +99,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
         Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setScale(stride);
         addr.setIndex(compression.getValue());
-        return true;
+        return addr;
     }
 
     @Override
