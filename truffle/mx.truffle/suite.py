@@ -1538,8 +1538,11 @@ suite = {
       "exclude" : [
       ],
       "description" : "ICU4J shaded module.",
-      "allowsJavadocWarnings": True,
-      "maven": True,
+      "allowsJavadocWarnings" : True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "icu4j",
+      },
     },
   },
 }
