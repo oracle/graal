@@ -403,4 +403,18 @@ public class ExperimentParserTest {
         new ExperimentParser(files, writer).parse();
         assertTrue(writer.getOutput().contains("Invalid compilation unit"));
     }
+
+    @Test
+    public void invalidCompilationUnitJSON() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("{", null);
+        var writer = Writer.stringBuilder(new OptionValues());
+        new ExperimentParser(files, writer).parse();
+        assertTrue(writer.getOutput().contains("Invalid compilation unit"));
+    }
+
+    @Test(expected = ExperimentParserError.class)
+    public void invalidProfileStringJSON() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("", "{");
+        new ExperimentParser(files, Writer.stringBuilder(new OptionValues())).parse();
+    }
 }
