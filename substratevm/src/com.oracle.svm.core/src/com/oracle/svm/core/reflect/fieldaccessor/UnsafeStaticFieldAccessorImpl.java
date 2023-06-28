@@ -35,10 +35,6 @@ import java.lang.reflect.Field;
  */
 
 abstract class UnsafeStaticFieldAccessorImpl extends UnsafeFieldAccessorImpl {
-    static {
-// Reflection.registerFieldsToFilter(UnsafeStaticFieldAccessorImpl.class,
-// Set.of("base"));
-    }
 
     protected final Object base; // base
 
