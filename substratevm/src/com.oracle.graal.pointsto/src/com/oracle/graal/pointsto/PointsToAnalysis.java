@@ -46,7 +46,6 @@ import java.util.stream.StreamSupport;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
@@ -485,22 +484,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 return operation;
             }
         });
-    }
-
-    public void postTask(final Runnable task) {
-        executor.execute(new DebugContextRunnable() {
-            @Override
-            public void run(DebugContext ignore) {
-                task.run();
-            }
-
-            @Override
-            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
-                return DebugContext.disabled(opts);
-            }
-        });
-
     }
 
     /**
