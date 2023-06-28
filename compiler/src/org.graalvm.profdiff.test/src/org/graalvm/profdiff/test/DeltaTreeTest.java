@@ -45,6 +45,7 @@ import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.core.optimization.Position;
 import org.graalvm.profdiff.diff.DeltaTree;
 import org.graalvm.profdiff.diff.DeltaTreeNode;
+import org.graalvm.profdiff.diff.DeltaTreeWriterVisitor;
 import org.graalvm.profdiff.diff.EditScript;
 import org.graalvm.profdiff.diff.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.diff.InliningTreeEditPolicy;
@@ -227,6 +228,17 @@ public class DeltaTreeTest {
                         . null
                             - null
                             * null
+                            . null
+                            + null
+                        """, writer.getOutput());
+
+        DeltaTree<MockTreeNode> tree = new DeltaTree<>(root);
+        writer = Writer.stringBuilder(new OptionValues());
+        tree.accept(new DeltaTreeWriterVisitor<>(writer));
+        assertEquals("""
+                        . null
+                            - null
+                            * null -> null
                             . null
                             + null
                         """, writer.getOutput());
