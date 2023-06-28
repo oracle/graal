@@ -375,7 +375,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      * @param experimentId an optional experiment ID
      */
     public void writeReceiverTypeProfile(Writer writer, ExperimentId experimentId) {
-        if (receiverTypeProfile == null || (receiverTypeProfile.isMature() && receiverTypeProfile.getProfiledTypes().isEmpty())) {
+        if (receiverTypeProfile == null || (receiverTypeProfile.isMature() && receiverTypeProfile.profiledTypes().isEmpty())) {
             return;
         }
         writer.increaseIndent();
