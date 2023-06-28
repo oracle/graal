@@ -26,6 +26,7 @@ package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -348,5 +349,58 @@ public class ExperimentParserTest {
         assertEquals(methodName, treePair.getInliningTree().getRoot().getName());
         Optimization optimization = treePair.getOptimizationTree().getRoot().getOptimizationsRecursive().get(0);
         assertEquals(methodName, optimization.getPosition().enclosingMethodPath().get(0).getMethodName());
+    }
+
+    @Test(expected = ExperimentParserError.class)
+    public void compilationKindMismatch() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("", """
+                        {
+                            "compilationKind": "AOT",
+                            "totalPeriod": 0,
+                            "code": []
+                        }
+                        """);
+        new ExperimentParser(files, Writer.stringBuilder(new OptionValues())).parse();
+    }
+
+    @Test(expected = ExperimentParserError.class)
+    public void invalidCompilationKind() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("", """
+                        {
+                            "compilationKind": "INVALID",
+                            "totalPeriod": 0,
+                            "code": []
+                        }
+                        """);
+        new ExperimentParser(files, Writer.stringBuilder(new OptionValues())).parse();
+    }
+
+    @Test
+    public void missingCompilationUnit() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("", """
+                        {
+                            "compilationKind": "JIT",
+                            "totalPeriod": 100,
+                            "code": [
+                                {
+                                    "compileId": "1000",
+                                    "name": "1000: foo()",
+                                    "level": 4,
+                                    "period": 100
+                                }
+                            ]
+                        }
+                        """);
+        var writer = Writer.stringBuilder(new OptionValues());
+        new ExperimentParser(files, writer).parse();
+        assertTrue(writer.getOutput().contains("not found"));
+    }
+
+    @Test
+    public void invalidCompilationUnit() throws ExperimentParserError, IOException {
+        ExperimentFiles files = new ExperimentString("{}", null);
+        var writer = Writer.stringBuilder(new OptionValues());
+        new ExperimentParser(files, writer).parse();
+        assertTrue(writer.getOutput().contains("Invalid compilation unit"));
     }
 }
