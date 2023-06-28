@@ -1539,6 +1539,7 @@ suite = {
       ],
       "description" : "ICU4J shaded module.",
       "allowsJavadocWarnings" : True,
+      "license" : ["ICU"],
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
