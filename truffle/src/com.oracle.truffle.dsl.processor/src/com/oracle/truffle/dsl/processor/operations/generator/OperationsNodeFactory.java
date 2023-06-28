@@ -2007,7 +2007,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("HashMap<Integer, OperationLabel> result = new HashMap<>()");
             b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
-            b.statement("assert !result.containsKey(site)");
+            b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, lbl)");
             b.end(2);
             b.startReturn().string("result").end();
@@ -3896,7 +3896,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startIf().string("handlers[idx] > bci").end().startBlock().statement("continue").end();
             b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
             b.statement("bci = handlers[idx + 2]");
-            b.statement("sp = handlers[idx + 3] + $this.numLocals");
+            b.statement("int handlerSp = handlers[idx + 3] + $this.numLocals");
+            b.statement("assert sp >= handlerSp");
+            b.startWhile().string("sp > handlerSp").end().startBlock();
+            b.statement(clearFrame("--sp"));
+            b.end();
+
             b.statement(setFrameObject(localFrame(), "handlers[idx + 4]", "ex"));
 
             b.statement("continue loop");
