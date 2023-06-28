@@ -61,4 +61,6 @@ public abstract class ClassLoaderSupport {
     public abstract void collectResources(ResourceCollector resourceCollector);
 
     public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
+
+    public abstract LinkageError getLinkageError(String className);
 }

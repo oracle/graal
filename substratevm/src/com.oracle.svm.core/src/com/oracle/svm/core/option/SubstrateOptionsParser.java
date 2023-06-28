@@ -61,8 +61,7 @@ public class SubstrateOptionsParser {
         try {
             return CommonOptionParser.parseOption(options, isHosted, option, valuesMap, optionPrefix, booleanOptionFormat);
         } catch (UnsupportedOptionClassException e) {
-            VMError.shouldNotReachHere(e.getMessage());
-            return null;
+            throw VMError.shouldNotReachHere(e.getMessage());
         }
     }
 

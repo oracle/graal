@@ -428,10 +428,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * If linkAtBuildTime was set for type, report the error during image building,
              * otherwise defer the error reporting to runtime.
              */
+            String className = type.toJavaName();
+            LinkageError linkageError = LinkAtBuildTimeSupport.singleton().getLinkageError(className);
             if (linkAtBuildTime) {
-                reportUnresolvedElement("type", type.toJavaName());
+                reportUnresolvedElement("type", className, linkageError);
             } else {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
+                Class<?> exceptionClass = NoClassDefFoundError.class;
+                String message = className;
+                if (linkageError != null) {
+                    exceptionClass = linkageError.getClass();
+                    message = linkageError.getMessage();
+                }
+                ExceptionSynthesizer.throwException(this, exceptionClass, message);
             }
         }
 

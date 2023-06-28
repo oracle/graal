@@ -110,6 +110,10 @@ public final class LinkAtBuildTimeSupport {
         return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + linkAtBuildTimeReason(clazz) + ".";
     }
 
+    public LinkageError getLinkageError(String className) {
+        return classLoaderSupport.getLinkageError(className);
+    }
+
     @SuppressWarnings("unchecked")
     private String linkAtBuildTimeReason(Class<?> clazz) {
         Object reason = isIncluded(clazz);

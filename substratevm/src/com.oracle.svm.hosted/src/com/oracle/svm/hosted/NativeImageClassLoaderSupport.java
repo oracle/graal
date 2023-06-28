@@ -74,7 +74,6 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -83,6 +82,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
@@ -107,12 +107,13 @@ public class NativeImageClassLoaderSupport {
     private final List<Path> imagemp;
     private final List<Path> buildmp;
 
-    private final EconomicMap<URI, EconomicSet<String>> classes;
-    private final EconomicMap<URI, EconomicSet<String>> packages;
-    private final EconomicSet<String> emptySet;
-    private final EconomicSet<URI> builderURILocations;
+    private final EconomicMap<URI, EconomicSet<String>> classes = EconomicMap.create();
+    private final EconomicMap<URI, EconomicSet<String>> packages = EconomicMap.create();
+    private final EconomicMap<String, LinkageError> linkageErrors = EconomicMap.create();
+    private final EconomicSet<String> emptySet = EconomicSet.create();
+    private final EconomicSet<URI> builderURILocations = EconomicSet.create();
 
-    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders = new ConcurrentHashMap<>();
 
     private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
@@ -126,11 +127,6 @@ public class NativeImageClassLoaderSupport {
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
-        classes = EconomicMap.create();
-        packages = EconomicMap.create();
-        emptySet = EconomicSet.create();
-        builderURILocations = EconomicSet.create();
-        serviceProviders = new ConcurrentHashMap<>();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
@@ -220,6 +216,10 @@ public class NativeImageClassLoaderSupport {
 
     public EconomicSet<String> packages(URI container) {
         return packages.get(container, emptySet);
+    }
+
+    public LinkageError getLinkageError(String className) {
+        return linkageErrors.get(className);
     }
 
     public boolean noEntryForURI(EconomicSet<String> set) {
@@ -845,6 +845,10 @@ public class NativeImageClassLoaderSupport {
                 clazz = imageClassLoader.forName(className, module);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
+            } catch (LinkageError le) {
+                synchronized (linkageErrors) {
+                    linkageErrors.put(className, le);
+                }
             } catch (Throwable t) {
                 ImageClassLoader.handleClassLoadingError(t);
             }
