@@ -106,19 +106,15 @@ public class ExperimentMatcher {
             writer.increaseIndent();
             if (writer.getOptionValues().shouldDiffCompilations()) {
                 for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
-                    compilationUnitPair.writeHeadersForHotCompilations(writer);
+                    compilationUnitPair.writeHeaders(writer);
                     writer.increaseIndent();
-                    if (compilationUnitPair.bothHot()) {
-                        CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
-                        CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
-                        if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
-                            createOptimizationContextTreeAndMatch(treePair1, treePair2);
-                        } else {
-                            matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
-                            matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
-                        }
-                    } else if (!writer.getOptionValues().shouldPruneIdentities()) {
-                        compilationUnitPair.firstNonNull().write(writer);
+                    CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
+                    CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
+                    if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
+                        createOptimizationContextTreeAndMatch(treePair1, treePair2);
+                    } else {
+                        matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
+                        matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
                     }
                     writer.decreaseIndent();
                 }

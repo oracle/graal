@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,46 +77,13 @@ public class CompilationUnitPair {
     }
 
     /**
-     * Returns {@code true} if both compilation units are not {@code null}.
-     */
-    public boolean bothNotNull() {
-        return compilationUnit1 != null && compilationUnit2 != null;
-    }
-
-    /**
-     * Returns {@code true} if both compilation units are not {@code null} and both are hot.
-     */
-    public boolean bothHot() {
-        return bothNotNull() && compilationUnit1.isHot() && compilationUnit2.isHot();
-    }
-
-    /**
-     * Returns {@code true} if at least one of the compilation units is hot.
-     */
-    public boolean someHot() {
-        return (compilationUnit1 != null && compilationUnit1.isHot()) || (compilationUnit2 != null && compilationUnit2.isHot());
-    }
-
-    /**
-     * Returns the first non-null compilation unit.
-     */
-    public CompilationUnit firstNonNull() {
-        return compilationUnit1 == null ? compilationUnit2 : compilationUnit1;
-    }
-
-    /**
-     * Writes the headers of hot compilations units (zero, one, or two) to the destination writer.
+     * Writes the headers for both compilation units to the destination writer.
      *
      * @param writer the destination writer
      */
-    public void writeHeadersForHotCompilations(Writer writer) {
-        if (bothHot()) {
-            writer.write(compilationUnit1.toString());
-            writer.writeln(" vs");
-            writer.writeln(compilationUnit2.toString());
-        } else if (someHot()) {
-            CompilationUnit hotCompilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
-            writer.writeln(hotCompilationUnit.toString());
-        }
+    public void writeHeaders(Writer writer) {
+        writer.write(compilationUnit1.toString());
+        writer.writeln(" vs");
+        writer.writeln(compilationUnit2.toString());
     }
 }
