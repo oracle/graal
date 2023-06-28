@@ -195,9 +195,32 @@ public class BytecodeParser {
                     }
                 }
 
+                final int memoryIndexEncoding = bytecode[effectiveOffset];
+                effectiveOffset++;
+                final int memoryIndex;
+                switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_ZERO:
+                        memoryIndex = 0;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                        memoryIndex = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                        memoryIndex = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                        memoryIndex = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
-                final WasmMemory memory = instance.memory();
+                final WasmMemory memory = instance.memory(memoryIndex);
 
                 Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
                 Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
@@ -455,8 +478,6 @@ public class BytecodeParser {
                 case Bytecode.DROP_REF:
                 case Bytecode.SELECT:
                 case Bytecode.SELECT_REF:
-                case Bytecode.MEMORY_SIZE:
-                case Bytecode.MEMORY_GROW:
                 case Bytecode.I32_EQZ:
                 case Bytecode.I32_EQ:
                 case Bytecode.I32_NE:
@@ -639,6 +660,8 @@ public class BytecodeParser {
                     offset += 3;
                     break;
                 }
+                case Bytecode.MEMORY_SIZE:
+                case Bytecode.MEMORY_GROW:
                 case Bytecode.BR_I32:
                 case Bytecode.LOCAL_GET_I32:
                 case Bytecode.LOCAL_GET_REF_I32:
@@ -728,6 +751,22 @@ public class BytecodeParser {
                     final int flags = rawPeekU8(bytecode, offset);
                     offset++;
                     final int offsetLength = flags & BytecodeBitEncoding.MEMORY_OFFSET_MASK;
+                    final int memoryIndexLength = flags & BytecodeBitEncoding.MEMORY_INDEX_MASK;
+                    switch (memoryIndexLength) {
+                        case BytecodeBitEncoding.MEMORY_INDEX_ZERO:
+                            break;
+                        case BytecodeBitEncoding.MEMORY_INDEX_U8:
+                            offset++;
+                            break;
+                        case BytecodeBitEncoding.MEMORY_INDEX_U16:
+                            offset += 2;
+                            break;
+                        case BytecodeBitEncoding.MEMORY_INDEX_I32:
+                            offset += 4;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
                     switch (offsetLength) {
                         case BytecodeBitEncoding.MEMORY_OFFSET_U8:
                             offset++;
@@ -754,28 +793,28 @@ public class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_S:
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
-                        case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.MEMORY_COPY:
-                        case Bytecode.MEMORY64_COPY:
+                        case Bytecode.I64_TRUNC_SAT_F64_U: {
+                            break;
+                        }
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL:
                         case Bytecode.MEMORY64_SIZE:
-                        case Bytecode.MEMORY64_GROW: {
-                            break;
-                        }
+                        case Bytecode.MEMORY64_GROW:
                         case Bytecode.DATA_DROP:
                         case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.ELEM_DROP:
-                        case Bytecode.MEMORY_INIT:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
-                        case Bytecode.MEMORY64_INIT:
-                        case Bytecode.MEMORY64_INIT_UNSAFE:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
                         case Bytecode.TABLE_FILL: {
                             offset += 4;
                             break;
                         }
+                        case Bytecode.MEMORY_INIT:
+                        case Bytecode.MEMORY_INIT_UNSAFE:
+                        case Bytecode.MEMORY64_INIT:
+                        case Bytecode.MEMORY64_INIT_UNSAFE:
+                        case Bytecode.MEMORY_COPY:
+                        case Bytecode.MEMORY64_COPY:
                         case Bytecode.TABLE_INIT:
                         case Bytecode.TABLE_COPY: {
                             offset += 8;

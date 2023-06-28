@@ -608,7 +608,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected unknown memory", e.getMessage().contains("unknown memory: 5 should = 0"));
+                Assert.assertTrue("Expected unknown memory", e.getMessage().contains("unknown memory: 5 should be < 1"));
             }
         }));
     }

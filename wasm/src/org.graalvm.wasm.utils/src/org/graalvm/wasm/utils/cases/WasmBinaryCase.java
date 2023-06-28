@@ -40,7 +40,10 @@
  */
 package org.graalvm.wasm.utils.cases;
 
+import org.graalvm.wasm.utils.WasmBinaryTools;
+
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Properties;
 
@@ -53,7 +56,7 @@ public class WasmBinaryCase extends WasmCase {
     }
 
     @Override
-    public Map<String, byte[]> createBinaries() {
+    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> options) {
         return Collections.singletonMap(name(), binary);
     }
 }

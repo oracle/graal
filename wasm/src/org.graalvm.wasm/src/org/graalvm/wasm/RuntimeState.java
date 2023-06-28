@@ -54,6 +54,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
+    private static final int INITIAL_MEMORIES_SIZE = 1;
 
     private final WasmContext context;
     private final WasmModule module;
@@ -87,12 +88,11 @@ public class RuntimeState {
     @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
     /**
-     * Memory that this module is using.
-     * <p>
-     * In the current WebAssembly specification, a module can use at most one memory. The value
-     * {@code null} denotes that this module uses no memory.
+     * The zeroth memory, stored separately from memories array for faster access.
      */
     @CompilationFinal private WasmMemory memory;
+
+    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
 
     /**
      * The passive elem instances that can be used to lazily initialize tables. They can potentially
@@ -130,11 +130,21 @@ public class RuntimeState {
         }
     }
 
+    private void ensureMemoriesCapacity(int index) {
+        if (index >= memories.length) {
+            final WasmMemory[] nMemories = new WasmMemory[Math.max(Integer.highestOneBit(index) << 1, 2 * memories.length)];
+            System.arraycopy(memories, 0, nMemories, 0, memories.length);
+            memories = nMemories;
+        }
+    }
+
     public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
+        this.memory = null;
+        this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
@@ -231,13 +241,21 @@ public class RuntimeState {
         tableAddresses[tableIndex] = address;
     }
 
-    public WasmMemory memory() {
-        return memory;
+    public WasmMemory memory(int index) {
+        if (index == 0) {
+            return memory;
+        } else {
+            return memories[index];
+        }
     }
 
-    public void setMemory(WasmMemory memory) {
+    public void setMemory(int index, WasmMemory memory) {
+        ensureMemoriesCapacity(index);
         checkNotLinked();
-        this.memory = memory;
+        memories[index] = memory;
+        if (index == 0) {
+            this.memory = memory;
+        }
     }
 
     public WasmFunctionInstance functionInstance(WasmFunction function) {

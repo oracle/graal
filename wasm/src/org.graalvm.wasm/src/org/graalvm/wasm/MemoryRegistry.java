@@ -82,4 +82,13 @@ public class MemoryRegistry {
         assert index < numMemories;
         return memories[index];
     }
+
+    public MemoryRegistry duplicate() {
+        final MemoryRegistry other = new MemoryRegistry();
+        for (int i = 0; i < numMemories; i++) {
+            final WasmMemory memory = memory(i).duplicate();
+            other.register(memory);
+        }
+        return other;
+    }
 }

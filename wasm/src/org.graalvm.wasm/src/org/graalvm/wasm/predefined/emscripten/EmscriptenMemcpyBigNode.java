@@ -61,7 +61,7 @@ public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
         int src = (int) args[1];
         int num = (int) args[2];
 
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.memory(0);
         memory.copyFrom(memory, src, dest, num);
 
         return 0;

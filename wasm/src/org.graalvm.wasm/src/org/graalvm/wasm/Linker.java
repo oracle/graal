@@ -66,6 +66,7 @@ import java.util.function.BiConsumer;
 import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
@@ -338,7 +339,7 @@ public class Linker {
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, long declaredMinSize, long declaredMaxSize, boolean typeIndex64) {
+    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64) {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
@@ -347,49 +348,49 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                 importedModuleName, importedMemoryName, instance.name()));
             }
-            final List<String> exportedMemory = importedInstance.symbolTable().exportedMemoryNames();
-            if (exportedMemory.size() == 0) {
+            final WasmModule importedModule = importedInstance.module();
+            if (importedModule.exportedMemories().size() == 0) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT,
-                                String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
-                                                importedModuleName, importedMemoryName, instance.name()));
+                        String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
+                                importedModuleName, importedMemoryName, instance.name()));
             }
-            if (!exportedMemory.contains(importedMemoryName)) {
-                throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The imported module '%s' exports a memory '%s', but module '%s' imports a memory '%s'.",
-                                importedModuleName, exportedMemory, instance.name(), importedModuleName));
+            final Integer exportedMemoryIndex = importedModule.exportedMemories().get(importedMemoryName);
+            if (exportedMemoryIndex == null) {
+                throw WasmException.create(Failure.UNKNOWN_IMPORT,
+                        "Memory '" + importedMemoryName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
             }
-            final WasmMemory memory = importedInstance.memory();
+            final WasmMemory importedMemory = importedInstance.memory(exportedMemoryIndex);
             // Rules for limits matching:
             // https://webassembly.github.io/spec/core/exec/modules.html#limits
             // If no max size is declared, then declaredMaxSize value will be
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
-            assertUnsignedLongLessOrEqual(declaredMinSize, memory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertUnsignedLongGreaterOrEqual(declaredMaxSize, memory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            if (typeIndex64 != memory.hasIndexType64()) {
+            assertUnsignedLongLessOrEqual(declaredMinSize, importedMemory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertUnsignedLongGreaterOrEqual(declaredMaxSize, importedMemory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            if (typeIndex64 != importedMemory.hasIndexType64()) {
                 Assert.fail(Failure.INCOMPATIBLE_IMPORT_TYPE, "index types of memory import do not match");
             }
-            instance.setMemory(memory);
+            instance.setMemory(memoryIndex, importedMemory);
         };
         resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
     }
 
-    void resolveMemoryExport(WasmInstance instance, String exportedMemoryName) {
+    void resolveMemoryExport(WasmInstance instance, int memoryIndex, String exportedMemoryName) {
         WasmModule module = instance.module();
-        final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
+        final ImportDescriptor importDescriptor = module.symbolTable().importedMemory(memoryIndex);
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, () -> {
         });
     }
 
-    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset,
+    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset,
                     int droppedDataInstanceOffset) {
-        assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+        assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED, String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
             }
-            WasmMemory memory = instance.memory();
-            Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+            WasmMemory memory = instance.memory(memoryIndex);
 
             final long baseAddress;
             if (offsetGlobalIndex != -1) {
@@ -408,8 +409,8 @@ public class Linker {
             instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
-        if (instance.symbolTable().importedMemory() != null) {
-            dependencies.add(new ImportMemorySym(instance.name(), instance.symbolTable().importedMemory()));
+        if (instance.symbolTable().importedMemory(memoryIndex) != null) {
+            dependencies.add(new ImportMemorySym(instance.name(), instance.symbolTable().importedMemory(memoryIndex)));
         }
         if (dataSegmentId > 0) {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));

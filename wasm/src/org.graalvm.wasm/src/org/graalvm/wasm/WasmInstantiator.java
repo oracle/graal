@@ -66,6 +66,10 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
+
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
  */
@@ -213,13 +217,14 @@ public class WasmInstantiator {
             module.addLinkAction((context, instance) -> context.linker().resolveTableExport(instance.module(), tableIndex, tableName));
         }
 
-        if (module.memoryExists()) {
-            final long memoryMinSize = module.memoryInitialSize();
-            final long memoryMaxSize = module.memoryMaximumSize();
-            final boolean memoryIndexType64 = module.memoryHasIndexType64();
-            final ImportDescriptor memoryDescriptor = module.importedMemory();
+        for (int i = 0; i < module.memoryCount(); i++) {
+            final int memoryIndex = i;
+            final long memoryMinSize = module.memoryInitialSize(memoryIndex);
+            final long memoryMaxSize = module.memoryMaximumSize(memoryIndex);
+            final boolean memoryIndexType64 = module.memoryHasIndexType64(memoryIndex);
+            final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);
             if (memoryDescriptor != null) {
-                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryMinSize, memoryMaxSize, memoryIndexType64));
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64));
             } else {
                 module.addLinkAction((context, instance) -> {
                     final ModuleLimits limits = instance.module().limits();
@@ -228,12 +233,15 @@ public class WasmInstantiator {
                     final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, context.getContextOptions().useUnsafeMemory());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);
-                    instance.setMemory(allocatedMemory);
+                    instance.setMemory(memoryIndex, allocatedMemory);
                 });
             }
         }
-        for (String memoryName : module.exportedMemoryNames()) {
-            module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryName));
+        final MapCursor<String, Integer> exportedMemories = module.exportedMemories().getEntries();
+        while (exportedMemories.advance()) {
+            final String memoryName = exportedMemories.getKey();
+            final int memoryIndex = exportedMemories.getValue();
+            module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryIndex, memoryName));
         }
 
         final byte[] bytecode = module.bytecode();
@@ -307,8 +315,32 @@ public class WasmInstantiator {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
+
+                final int memoryIndexEncoding = bytecode[effectiveOffset];
+                effectiveOffset++;
+                final int memoryIndex;
+                switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_ZERO:
+                        memoryIndex = 0;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                        memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                        memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                        memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+
                 final int dataBytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
+                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
                                 dataBytecodeOffset, instance.droppedDataInstanceOffset()));
             } else {
                 final int dataBytecodeOffset = effectiveOffset;

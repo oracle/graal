@@ -482,8 +482,8 @@ public class ParserState {
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
-    public void addMemoryInstruction(int baseInstruction, long value, boolean indexType64) {
-        bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, value, indexType64);
+    public void addMemoryInstruction(int baseInstruction, int memoryIndex, long value, boolean indexType64) {
+        bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, memoryIndex, value, indexType64);
     }
 
     /**

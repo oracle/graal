@@ -42,6 +42,7 @@ package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
@@ -53,6 +54,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 /**
  * This benchmark base class runs a workload that compiles the given test case (but does not run
@@ -88,7 +90,7 @@ public abstract class WasmCompilationBenchmarkSuiteBase {
         }
 
         public void run() throws IOException, InterruptedException {
-            benchmarkCase.getSources().forEach(context::eval);
+            benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class)).forEach(context::eval);
         }
     }
 }

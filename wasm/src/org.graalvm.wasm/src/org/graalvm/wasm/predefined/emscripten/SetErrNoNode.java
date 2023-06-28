@@ -60,7 +60,7 @@ public class SetErrNoNode extends WasmBuiltinRootNode {
         int value = (int) args[0];
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.memory(0);
         memory.store_i32(this, 3120, value);
 
         return value;

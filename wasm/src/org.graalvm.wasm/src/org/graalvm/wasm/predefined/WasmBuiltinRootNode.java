@@ -57,7 +57,7 @@ public abstract class WasmBuiltinRootNode extends WasmRootNode {
     public abstract String builtinNodeName();
 
     protected WasmMemory memory() {
-        return instance.memory();
+        return instance.memory(0);
     }
 
     @Override
