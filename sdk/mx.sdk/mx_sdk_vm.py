@@ -668,11 +668,21 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
         grant codeBase "jrt:/org.graalvm.truffle" {
             permission java.security.AllPermission;
         };
-
         grant codeBase "jrt:/org.graalvm.sdk" {
             permission java.security.AllPermission;
         };
-
+        grant codeBase "jrt:/org.graalvm.truffle.runtime" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.truffle.compiler" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.nativebridge" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.jniutils" {
+            permission java.security.AllPermission;
+        };
         grant codeBase "jrt:/org.graalvm.locator" {
           permission java.io.FilePermission "<<ALL FILES>>", "read";
           permission java.util.PropertyPermission "*", "read,write";

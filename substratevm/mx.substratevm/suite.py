@@ -1003,7 +1003,6 @@ suite = {
                 "com.oracle.svm.graal",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_RUNTIME",
-                "sdk:NATIVEBRIDGE",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1311,7 +1310,6 @@ suite = {
                 "NATIVE_IMAGE_BASE",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_RUNTIME",
-                "sdk:NATIVEBRIDGE",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1495,8 +1493,6 @@ suite = {
             "description" : "SubstrateVM HotSpot Graal library support",
             "javaCompliance" : "17+",
             "dependencies": [
-                "sdk:JNIUTILS",
-                "sdk:NATIVEBRIDGE",
                 "com.oracle.svm.graal.hotspot.libgraal",
             ],
             "overlaps" : [
@@ -1504,6 +1500,7 @@ suite = {
             ],
             "distDependencies": [
                 "SVM",
+                "sdk:NATIVEBRIDGE",
             ],
             "defaultBuild": False,
             "maven": False,

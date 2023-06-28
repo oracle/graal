@@ -95,7 +95,6 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocatio
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.VMRuntime;

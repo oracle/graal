@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
@@ -90,6 +91,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -727,6 +729,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     public boolean isLibGraalCompilationEnabled() {
         return compilationSupport instanceof LibGraalTruffleCompilationSupport;
+    }
+
+    @SuppressWarnings("static-method")
+    public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
+        return Services.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
 
 }

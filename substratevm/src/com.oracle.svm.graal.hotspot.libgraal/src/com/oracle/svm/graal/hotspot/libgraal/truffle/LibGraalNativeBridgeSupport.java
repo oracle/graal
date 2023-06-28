@@ -25,8 +25,6 @@
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
@@ -98,8 +96,4 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
         return res;
     }
 
-    @Override
-    public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onTerminate) {
-        return Services.createTerminatingThreadLocal(initialValue, onTerminate);
-    }
 }

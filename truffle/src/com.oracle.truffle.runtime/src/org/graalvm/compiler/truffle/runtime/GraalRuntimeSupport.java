@@ -40,7 +40,9 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.CompilerOptionsDescriptors;
 import org.graalvm.options.OptionDescriptors;
@@ -64,6 +66,8 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.vm.ci.services.Services;
 
 final class GraalRuntimeSupport extends RuntimeSupport {
 
@@ -364,6 +368,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             return super.getContextThreadLocal();
         }
         return local;
+    }
+
+    @Override
+    public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
+        return Services.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
 
 }

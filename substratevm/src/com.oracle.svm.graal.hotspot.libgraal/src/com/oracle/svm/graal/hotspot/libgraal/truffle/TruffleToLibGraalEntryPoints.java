@@ -65,7 +65,6 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.Isolate;
@@ -79,6 +78,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
+import com.oracle.svm.graal.hotspot.libgraal.LibGraalUtil;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;

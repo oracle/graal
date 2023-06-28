@@ -461,7 +461,7 @@ suite = {
           "org.graalvm.polyglot",
           "org.graalvm.options",
           "org.graalvm.word",
-          "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.graal.graal_enterprise",
+          "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.truffle.enterprise",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
           "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.base,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise,org.graalvm.extraimage.builder",
           "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
@@ -562,6 +562,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.nativebridge.processor.test"
       ],
+      "requiresConcealed": {
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.services",
+        ],
+      },
       "distDependencies" : ["NATIVEBRIDGE"],
       "maven": False,
       "testDistribution" : True,

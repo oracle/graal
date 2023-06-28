@@ -29,9 +29,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.nativebridge.BinaryInput;
-import org.graalvm.nativebridge.BinaryOutput;
-import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -49,6 +46,7 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
+import com.oracle.svm.truffle.isolated.BinaryOutput.ByteArrayBinaryOutput;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;

@@ -83,6 +83,13 @@ public final class NativeIsolateThread {
     }
 
     /**
+     * Returns the isolate for this thread.
+     */
+    public NativeIsolate getIsolate() {
+        return isolate;
+    }
+
+    /**
      * Leaves the {@link NativeIsolate} on the current thread.
      */
     public void leave() {

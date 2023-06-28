@@ -80,4 +80,5 @@ class HotSpotTruffleRuntimeServices {
         compilationSpeculationLog.collectFailedSpeculations();
         return compilationSpeculationLog;
     }
+
 }

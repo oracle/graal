@@ -47,11 +47,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
-import org.graalvm.jniutils.NativeBridgeSupport;
-import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
@@ -81,8 +76,7 @@ public final class NativeIsolate {
         this.config = config;
         this.cleaners = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.threads = new ArrayList<>();
-        this.attachedIsolateThread = ImageSingletons.lookup(NativeBridgeSupport.class).createTerminatingThreadLocal((Supplier<NativeIsolateThread>) () -> null,
-                        (Consumer<NativeIsolateThread>) this::detachThread);
+        this.attachedIsolateThread = config.getThreadLocalFactory().apply(() -> null);
         this.state = State.ACTIVE;
     }
 
@@ -295,6 +289,16 @@ public final class NativeIsolate {
             }
         }
         return nativeIsolateThread;
+    }
+
+    public void detachCurrentThread() {
+        synchronized (this) {
+            NativeIsolateThread isolateThread = attachedIsolateThread.get();
+            if (isolateThread != null) {
+                detachThread(isolateThread);
+                attachedIsolateThread.set(null);
+            }
+        }
     }
 
     private synchronized void detachThread(NativeIsolateThread nativeIsolateThread) {

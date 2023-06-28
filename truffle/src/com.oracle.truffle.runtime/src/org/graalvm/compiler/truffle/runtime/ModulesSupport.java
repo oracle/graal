@@ -38,20 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot;
+package org.graalvm.compiler.truffle.runtime;
 
-final class ModulesSupport {
+import java.lang.module.ModuleDescriptor.Requires;
+
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess;
+
+import jdk.internal.module.Modules;
+
+public final class ModulesSupport {
+
+    private static final boolean AVAILABLE;
 
     static {
-        loadModulesSupportLibrary();
+        AVAILABLE = loadModulesSupportLibrary();
+
+        if (AVAILABLE) {
+            // this is the only access we really need to request natively using JNI.
+            // after that we can access through the Modules class
+            addExports0(ModulesSupport.class.getModule().getLayer().findModule("java.base").orElseThrow(), "jdk.internal.module", ModulesSupport.class.getModule());
+        }
     }
 
     private ModulesSupport() {
     }
 
-    static void addExports(Module m1, String pn, Module m2) {
+    public static boolean exportJVMCI(Class<?> toClass) {
+        Module jvmciModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.ci").orElse(null);
+        if (jvmciModule == null) {
+            // jvmci not found -> fallback to default runtime
+            return false;
+        }
+        addExportsRecursive(jvmciModule, toClass.getModule());
+        return true;
+    }
 
-        addExports0(m1, pn, m2);
+    private static void addExportsRecursive(Module jvmciModule, Module runtimeModule) {
+        for (String pn : jvmciModule.getPackages()) {
+            ModulesSupport.addExports(jvmciModule, pn, runtimeModule);
+        }
+        for (Requires requires : runtimeModule.getDescriptor().requires()) {
+            Module requiredModule = ModulesSupport.class.getModule().getLayer().findModule(requires.name()).orElse(null);
+            if (requiredModule != null) {
+                if (requiredModule.getName().equals("java.base")) {
+                    continue;
+                }
+                addExportsRecursive(jvmciModule, requiredModule);
+            }
+        }
+    }
+
+    public static void addExports(Module m1, String pn, Module m2) {
+        // we check available to avoid illegal access errors for the Modules class
+        if (AVAILABLE) {
+            Modules.addExports(m1, pn, m2);
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static boolean loadModulesSupportLibrary() {
@@ -72,6 +115,6 @@ final class ModulesSupport {
         }
     }
 
-    private static native void addExports0(Module runtimeModule, String packageName, Module compilerModule);
+    private static native void addExports0(Module m1, String pn, Module m2);
 
 }

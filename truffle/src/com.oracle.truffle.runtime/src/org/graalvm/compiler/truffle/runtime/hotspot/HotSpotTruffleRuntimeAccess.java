@@ -40,15 +40,16 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
+import org.graalvm.compiler.truffle.runtime.ModulesSupport;
 import org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 import org.graalvm.libgraal.LibGraal;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationSupport;
 
+import jdk.internal.module.Modules;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
@@ -74,20 +75,9 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     }
 
     protected static TruffleRuntime createRuntime() {
-        Module runtimeModule = HotSpotTruffleRuntimeAccess.class.getModule();
-        Module compilerAPIModule = TruffleCompilable.class.getModule();
-        Module jvmciModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.ci").orElse(null);
-
-        if (jvmciModule == null) {
-            // jvmci not found -> fallback to default runtime
+        if (!ModulesSupport.exportJVMCI(HotSpotTruffleRuntimeAccess.class)) {
             return null;
         }
-
-        for (String pn : jvmciModule.getPackages()) {
-            ModulesSupport.addExports(jvmciModule, pn, runtimeModule);
-            ModulesSupport.addExports(jvmciModule, pn, compilerAPIModule);
-        }
-
         Services.initializeJVMCI();
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
         HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
@@ -96,7 +86,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             // compilation disabled in host VM -> fallback to default runtime
             return null;
         }
-
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             compilationSupport = new LibGraalTruffleCompilationSupport();
@@ -108,7 +97,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                     // jargraal compiler module not found -> fallback to default runtime
                     return null;
                 }
-                ModulesSupport.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", runtimeModule);
+                Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
                 Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
             } catch (ReflectiveOperationException e) {

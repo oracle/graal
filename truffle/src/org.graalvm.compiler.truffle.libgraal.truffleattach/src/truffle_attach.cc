@@ -47,7 +47,7 @@ static void addExports(JNIEnv* jniEnv, jobject m1, jobject pn, jobject m2)  {
 extern "C" {
 #endif
 
-JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_hotspot_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
+JNIEXPORT void JNICALL Java_org_graalvm_compiler_truffle_runtime_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
     addExports(env, m1, pn, m2);
 }
 

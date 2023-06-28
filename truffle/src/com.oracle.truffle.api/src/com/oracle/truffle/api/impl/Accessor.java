@@ -1224,6 +1224,9 @@ public abstract class Accessor {
         }
 
         public abstract boolean isLegacyCompilerOption(String key);
+
+        public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
+
     }
 
     public abstract static class LanguageProviderSupport extends Support {
