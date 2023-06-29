@@ -135,15 +135,27 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         Set<String> memoryManagerNames = new HashSet<>();
         Set<String> memoryPoolNames = new HashSet<>();
         for (MemoryPoolMXBean memoryPool : memoryPools) {
-            memoryPoolNames.add(memoryPool.getName());
+            String memoryPoolName = memoryPool.getName();
+            assert checkObjectName(memoryPoolName);
+            memoryPoolNames.add(memoryPoolName);
         }
         for (MemoryManagerMXBean memoryManager : memoryManagers) {
-            memoryManagerNames.add(memoryManager.getName());
-            assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManager.getName();
+            String memoryManagerName = memoryManager.getName();
+            assert checkObjectName(memoryManagerName);
+            memoryManagerNames.add(memoryManagerName);
+            assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManagerName;
         }
         for (MemoryPoolMXBean memoryPool : memoryPools) {
             assert memoryManagerNames.containsAll(List.of(memoryPool.getMemoryManagerNames())) : memoryPool.getName();
         }
+        return true;
+    }
+
+    private static boolean checkObjectName(String name) {
+        assert !name.contains(":");
+        assert !name.contains("=");
+        assert !name.contains("\"");
+        assert !name.contains("\n");
         return true;
     }
 
