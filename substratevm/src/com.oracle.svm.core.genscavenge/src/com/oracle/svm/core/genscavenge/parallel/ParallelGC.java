@@ -174,8 +174,8 @@ public class ParallelGC {
         assert GCImpl.getGCImpl().isCompleteCollection();
 
         /*
-         * Scanning (and therefore enqueueing) is only necessary if there are any not yet scanned in
-         * the chunk.
+         * Scanning (and therefore enqueueing) is only necessary if there are any not yet scanned
+         * objects in the chunk.
          */
         GCWorkerThreadState state = getWorkerThreadState();
         AlignedHeapChunk.AlignedHeader chunk = state.getAllocChunk();

@@ -454,16 +454,21 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Object copyAlignedObjectParallel(Object original) {
         assert VMOperation.isGCInProgress();
-        assert ObjectHeaderImpl.isAlignedObject(original);
 
         /*
-         * Always read 8 bytes at the hub offset so that we can install the forwarding header with
-         * cmpxchng.
+         * The GC worker thread doesn't own the object yet, so the 8 bytes starting at the hub
+         * offset can be changed at any time (if another GC worker thread forwards the object). Note
+         * that those bytes may also include data such as the array length.
+         *
+         * So, we read the 8 bytes at the hub offset once and then extract all necessary data from
+         * those bytes. This is necessary to avoid races.
          */
         Word originalMemory = Word.objectToUntrackedPointer(original);
         int hubOffset = ObjectHeader.getHubOffset();
         long eightHeaderBytes = originalMemory.readLong(hubOffset);
         Word originalHeader = ObjectHeaderImpl.hasShift() ? WordFactory.unsigned(eightHeaderBytes & 0xFFFFFFFFL) : WordFactory.unsigned(eightHeaderBytes);
+        assert ObjectHeaderImpl.isAlignedHeader(originalHeader);
+
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
             return ohi.getForwardedObject(originalMemory, originalHeader);
@@ -473,13 +478,13 @@ public final class Space {
          * We need the forwarding pointer to point somewhere, so we speculatively allocate memory
          * here. If another thread copies the object first, we retract the allocation later.
          */
-        UnsignedWord originalSize = LayoutEncoding.getSizeFromHeader(original, originalHeader, false);
+        UnsignedWord originalSize = LayoutEncoding.getSizeFromHeader(original, originalHeader, eightHeaderBytes, false);
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
         if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(originalHeader))) {
                 addIdentityHashField = true;
-                copySize = LayoutEncoding.getSizeFromHeader(original, originalHeader, true);
+                copySize = LayoutEncoding.getSizeFromHeader(original, originalHeader, eightHeaderBytes, true);
             }
         }
 
@@ -568,6 +573,7 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promoteAlignedHeapChunk0(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
+        assert !this.isFromSpace();
 
         appendAlignedHeapChunk(chunk, originalSpace);
         if (this.isOldSpace()) {

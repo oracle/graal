@@ -350,13 +350,35 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromHeader(Object obj, Word header, boolean addOptionalIdHashField) {
+    public static UnsignedWord getSizeFromHeader(Object obj, Word header, long eightHeaderBytes, boolean addOptionalIdHashField) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         DynamicHub hub = oh.dynamicHubFromObjectHeader(header);
         int encoding = hub.getLayoutEncoding();
         boolean withOptionalIdHashField = addOptionalIdHashField ||
                         (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && oh.hasOptionalIdentityHashField(header));
-        return getSizeFromEncoding(obj, hub, encoding, withOptionalIdHashField);
+
+        if (isArrayLike(encoding)) {
+            int arrayLength = getArrayLengthFromHeader(obj, eightHeaderBytes);
+            return getArraySize(encoding, arrayLength, withOptionalIdHashField);
+        } else {
+            return getPureInstanceSize(hub, withOptionalIdHashField);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static int getArrayLengthFromHeader(Object obj, long eightHeaderBytes) {
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        assert ol.getArrayLengthOffset() >= 4;
+        if (ol.getArrayLengthOffset() == 4) {
+            /*
+             * If the array length is located within the first 8 bytes, then we need to extract it
+             * from the already read header data.
+             */
+            int result = (int) (eightHeaderBytes >>> 32);
+            assert result >= 0;
+            return result;
+        }
+        return ArrayLengthNode.arrayLength(obj);
     }
 
     @AlwaysInline("Actual inlining decided by callers.")
