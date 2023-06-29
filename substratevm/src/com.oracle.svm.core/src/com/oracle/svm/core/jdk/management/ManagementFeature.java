@@ -29,15 +29,19 @@ import java.lang.management.CompilationMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.PlatformManagedObject;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.management.MBeanServerBuilder;
 import javax.management.openmbean.OpenType;
@@ -119,6 +123,28 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(ManagementFeature::registerMBeanServerFactoryNewBuilder, method(access, "javax.management.MBeanServerFactory", "newBuilder", Class.class));
         access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
+
+        assert checkMemoryManagerBeans();
+    }
+
+    private static boolean checkMemoryManagerBeans() {
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        List<MemoryPoolMXBean> memoryPools = managementSupport.getPlatformMXBeans(MemoryPoolMXBean.class);
+        List<MemoryManagerMXBean> memoryManagers = managementSupport.getPlatformMXBeans(MemoryManagerMXBean.class);
+
+        Set<String> memoryManagerNames = new HashSet<>();
+        Set<String> memoryPoolNames = new HashSet<>();
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            memoryPoolNames.add(memoryPool.getName());
+        }
+        for (MemoryManagerMXBean memoryManager : memoryManagers) {
+            memoryManagerNames.add(memoryManager.getName());
+            assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManager.getName();
+        }
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            assert memoryManagerNames.containsAll(List.of(memoryPool.getMemoryManagerNames())) : memoryPool.getName();
+        }
+        return true;
     }
 
     private static void registerMBeanServerFactoryNewBuilder(@SuppressWarnings("unused") DuringAnalysisAccess a) {

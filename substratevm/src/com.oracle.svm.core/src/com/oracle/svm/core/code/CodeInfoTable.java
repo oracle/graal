@@ -27,9 +27,7 @@ package com.oracle.svm.core.code;
 import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
@@ -46,7 +44,6 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
@@ -61,7 +58,6 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.core.util.VMError;
-import com.sun.management.GarbageCollectorMXBean;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -305,7 +301,6 @@ class CodeInfoFeature implements InternalFeature {
 
         List<MemoryManagerMXBean> memoryManagers = List.of(new CodeCacheManagerMXBean());
         List<MemoryPoolMXBean> memoryPools = CodeCachePoolMXBean.getMemoryPools();
-        assert AbstractMXBean.checkGCBeans(memoryPools, memoryManagers);
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, memoryManagers);
