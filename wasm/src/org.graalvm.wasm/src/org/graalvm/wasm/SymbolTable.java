@@ -1075,7 +1075,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         exportSymbol(name);
         if (!checkMemoryIndex(memoryIndex)) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No memory has been declared or imported, so memory cannot be exported.");
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No memory with the specified index has been declared or imported, so it cannot be exported.");
         }
         exportedMemories.put(name, memoryIndex);
         module().addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryIndex, name));

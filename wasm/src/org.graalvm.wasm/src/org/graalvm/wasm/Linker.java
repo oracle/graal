@@ -371,13 +371,13 @@ public class Linker {
             }
             instance.setMemory(memoryIndex, importedMemory);
         };
-        resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
+        resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor, memoryIndex), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
     }
 
     void resolveMemoryExport(WasmInstance instance, int memoryIndex, String exportedMemoryName) {
         WasmModule module = instance.module();
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory(memoryIndex);
-        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
+        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor, memoryIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, () -> {
         });
     }
@@ -410,7 +410,7 @@ public class Linker {
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedMemory(memoryIndex) != null) {
-            dependencies.add(new ImportMemorySym(instance.name(), instance.symbolTable().importedMemory(memoryIndex)));
+            dependencies.add(new ImportMemorySym(instance.name(), instance.symbolTable().importedMemory(memoryIndex), memoryIndex));
         }
         if (dataSegmentId > 0) {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
@@ -869,20 +869,22 @@ public class Linker {
 
         static class ImportMemorySym extends Sym {
             final ImportDescriptor importDescriptor;
+            final int memoryIndex;
 
-            ImportMemorySym(String moduleName, ImportDescriptor importDescriptor) {
+            ImportMemorySym(String moduleName, ImportDescriptor importDescriptor, int memoryIndex) {
                 super(moduleName);
                 this.importDescriptor = importDescriptor;
+                this.memoryIndex = memoryIndex;
             }
 
             @Override
             public String toString() {
-                return String.format("(import memory %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+                return String.format("(import memory %s from %s into %s with index %d)", importDescriptor.memberName, importDescriptor.moduleName, moduleName, memoryIndex);
             }
 
             @Override
             public int hashCode() {
-                return moduleName.hashCode() ^ importDescriptor.hashCode();
+                return moduleName.hashCode() ^ importDescriptor.hashCode() ^ memoryIndex;
             }
 
             @Override
@@ -891,7 +893,7 @@ public class Linker {
                     return false;
                 }
                 final ImportMemorySym that = (ImportMemorySym) object;
-                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor) && this.memoryIndex == that.memoryIndex;
             }
         }
 
