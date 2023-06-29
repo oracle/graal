@@ -1010,40 +1010,45 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (languageHomesToCopy != null) {
+        if (Options.CopyLanguageResources.getValue()) {
             Path buildDir = access.getImagePath().getParent();
             assert buildDir != null;
-            Path languagesDir = buildDir.resolve(Path.of("resources", "languages"));
-            if (Files.exists(languagesDir)) {
+            Path resourcesDir = buildDir.resolve("resources");
+            if (languageHomesToCopy != null) {
+                Path languagesDir = resourcesDir.resolve("languages");
+                if (Files.exists(languagesDir)) {
 
-                try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
-                    filesToDelete.sorted(Comparator.reverseOrder())
-                                    .forEach(f -> {
-                                        try {
-                                            Files.deleteIfExists(f);
-                                        } catch (IOException ioe) {
-                                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                                        }
-                                    });
-                } catch (IOException ioe) {
-                    throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                    try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
+                        filesToDelete.sorted(Comparator.reverseOrder())
+                                        .forEach(f -> {
+                                            try {
+                                                Files.deleteIfExists(f);
+                                            } catch (IOException ioe) {
+                                                throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                                            }
+                                        });
+                    } catch (IOException ioe) {
+                        throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                    }
                 }
+                HomeFinder hf = HomeFinder.getInstance();
+                Map<String, Path> languageHomes = hf.getLanguageHomes();
+                languageHomesToCopy.forEach((s, path) -> {
+                    Path copyTo = buildDir.resolve(path);
+                    Path copyFrom = languageHomes.get(s);
+                    Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
+                    try {
+                        Files.lines(fileListFile).forEach(fileName -> {
+                            copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
+                        });
+                    } catch (IOException ioe) {
+                        throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
+                    }
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
+                });
             }
-            HomeFinder hf = HomeFinder.getInstance();
-            Map<String, Path> languageHomes = hf.getLanguageHomes();
-            languageHomesToCopy.forEach((s, path) -> {
-                Path copyTo = buildDir.resolve(path);
-                Path copyFrom = languageHomes.get(s);
-                Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
-                try {
-                    Files.lines(fileListFile).forEach(fileName -> {
-                        copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
-                    });
-                } catch (IOException ioe) {
-                    throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
-                }
-                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
-            });
+            invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "buildInternalResourcesForNativeImage",
+                            List.of(Path.class, Set.class), resourcesDir, null);
         }
     }
 

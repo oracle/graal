@@ -510,17 +510,25 @@ public class InternalResourceTest {
         void run() throws IOException;
     }
 
-    private static final class TemporaryResourceCacheRoot implements AutoCloseable {
+    static final class TemporaryResourceCacheRoot implements AutoCloseable {
 
         private final Path root;
 
-        TemporaryResourceCacheRoot() {
+        TemporaryResourceCacheRoot() throws IOException {
+            this(Files.createTempDirectory(null));
+        }
+
+        TemporaryResourceCacheRoot(Path cacheRoot) {
             try {
-                root = Files.createTempDirectory(null);
+                root = cacheRoot;
                 setCacheRoot(root);
-            } catch (IOException | ClassNotFoundException e) {
+            } catch (ClassNotFoundException e) {
                 throw new AssertionError("Failed to set cache root.", e);
             }
+        }
+
+        Path getRoot() {
+            return root;
         }
 
         @Override

@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -52,6 +53,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -83,6 +85,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
@@ -131,6 +134,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import com.oracle.truffle.api.test.polyglot.InternalResourceTest.TemporaryResourceCacheRoot;
 
 public class ContextPreInitializationTest {
 
@@ -2580,6 +2584,141 @@ public class ContextPreInitializationTest {
         });
     }
 
+    @Test
+    @SuppressWarnings("try")
+    public void testLanguageInternalResources() throws Exception {
+        setPatchable(FIRST);
+        List<TruffleFile> files = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot()) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                try {
+                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                    assertNotNull(root);
+                    assertFalse(root.isAbsolute());
+                    TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                    assertNotNull(resource);
+                    assertFalse(resource.isAbsolute());
+                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
+                    files.add(resource);
+                } catch (IOException ioe) {
+                    throw new AssertionError(ioe);
+                }
+            });
+            doContextPreinitialize(FIRST);
+            assertFalse(files.isEmpty());
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                try {
+                    TruffleFile file1 = files.get(0);
+                    assertFalse(file1.isAbsolute());
+                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file1.readAllBytes(), StandardCharsets.UTF_8));
+                    ContextPreInitializationResource.unpackCount = 0;
+                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                    assertNotNull(root);
+                    assertFalse(root.isAbsolute());
+                    assertEquals(0, ContextPreInitializationResource.unpackCount);
+                    TruffleFile file2 = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                    assertNotNull(file2);
+                    assertFalse(file2.isAbsolute());
+                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file2.readAllBytes(), StandardCharsets.UTF_8));
+                    assertEquals(file1, file2);
+                    assertEquals(file1.getAbsoluteFile(), file2.getAbsoluteFile());
+                    assertTrue(file1.getAbsoluteFile().toString().startsWith(runtimeCacheRoot.toString()));
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            });
+            try (Context ctx = Context.create()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testSourcesForInternalResources() throws Exception {
+        setPatchable(FIRST);
+        List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot()) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                try {
+                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                    TruffleFile sourceFile = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                    var source = com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).build();
+                    sources.add(source);
+                } catch (IOException ioe) {
+                    throw new AssertionError(ioe);
+                }
+            });
+            doContextPreinitialize(FIRST);
+            assertFalse(sources.isEmpty());
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                try {
+                    var source1 = sources.get(0);
+                    ContextPreInitializationResource.unpackCount = 0;
+                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                    TruffleFile sourceFile = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                    var source2 = com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).build();
+                    assertEquals(source1, source2);
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            });
+            try (Context ctx = Context.create()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testInstrumentInternalResources() throws Exception {
+        setPatchable(FIRST);
+        AtomicReference<TruffleFile> rootRef = new AtomicReference<>();
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+            try {
+                TruffleFile root = e.env.getInternalResource(ContextPreInitializationResource.class);
+                assertNotNull(root);
+                assertFalse(root.isAbsolute());
+                TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                assertNotNull(resource);
+                assertFalse(resource.isAbsolute());
+                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
+                rootRef.set(root);
+            } catch (IOException ioe) {
+                throw new AssertionError(ioe);
+            }
+        });
+        doContextPreinitialize(FIRST);
+        assertNull(rootRef.get());
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        buildInternalResourcesForNativeImage(runtimeCacheRoot, ContextPreInitializationFirstInstrument.ID);
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+            try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").allowIO(IOAccess.ALL).build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+                TruffleFile root = rootRef.get();
+                assertNotNull(root);
+                assertTrue(root.getAbsoluteFile().toString().startsWith(runtimeCacheRoot.toString()));
+            }
+        }
+    }
+
+    private static void buildInternalResourcesForNativeImage(Path root, String... ids) throws ClassNotFoundException {
+        Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
+        ReflectionUtils.invokeStatic(internalResourceCacheClass, "buildInternalResourcesForNativeImage", new Class<?>[]{Path.class, Set.class},
+                        root, Set.of(ids));
+    }
+
     private static boolean executedWithXCompOptions() {
         Properties props = System.getProperties();
         return props.containsKey("polyglot.engine.CompileImmediately") || props.containsKey("polyglot.engine.BackgroundCompilation");
@@ -2939,7 +3078,9 @@ public class ContextPreInitializationTest {
         Kind getKind();
     }
 
-    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, services = Service.class)
+    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL, //
+                    contextPolicy = TruffleLanguage.ContextPolicy.SHARED, services = Service.class, //
+                    internalResources = ContextPreInitializationResource.class)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
         @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
         public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
@@ -3337,7 +3478,8 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleInstrument.Registration(id = ContextPreInitializationFirstInstrument.ID, name = ContextPreInitializationFirstInstrument.ID)
+    @TruffleInstrument.Registration(id = ContextPreInitializationFirstInstrument.ID, name = ContextPreInitializationFirstInstrument.ID, //
+                    internalResources = ContextPreInitializationResource.class)
     public static final class ContextPreInitializationFirstInstrument extends BaseInstrument {
 
         static final String ID = "ContextPreInitializationFirstInstrument";
@@ -3430,6 +3572,30 @@ public class ContextPreInitializationTest {
             if (closed) {
                 throw new IllegalStateException("Closed");
             }
+        }
+    }
+
+    static final class ContextPreInitializationResource implements InternalResource {
+
+        static final String FILE_NAME = "library_source";
+        static final String FILE_CONTENT = "library_content";
+
+        static int unpackCount;
+
+        @Override
+        public void unpackFiles(Path targetDirectory) throws IOException {
+            unpackCount++;
+            Files.writeString(targetDirectory.resolve(FILE_NAME), FILE_CONTENT);
+        }
+
+        @Override
+        public String name() {
+            return getClass().getSimpleName();
+        }
+
+        @Override
+        public String versionHash() {
+            return "1";
         }
     }
 }

@@ -54,6 +54,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -84,9 +85,9 @@ final class InternalResourceCache {
                          * TODO: Shouldn't we rather force a filesystem creation in the image
                          * building-time and throw an assertion error here?
                          */
-                        root = findCacheRootOnNativeImage().resolve(id).resolve(resource.name());
+                        root = findResourceRootOnNativeImage(findCacheRootOnNativeImage());
                     } else {
-                        root = findCacheRootOnHotSpot().resolve(id).resolve(resource.name()).resolve(resource.versionHash());
+                        root = findCacheRootOnHotSpot().resolve(Path.of(id, resource.name(), resource.versionHash()));
                         unpackFiles(root, resource);
                     }
                     ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
@@ -140,6 +141,10 @@ final class InternalResourceCache {
         Files.delete(f);
     }
 
+    private Path findResourceRootOnNativeImage(Path root) {
+        return root.resolve(Path.of(id, resource.name()));
+    }
+
     private static Path findCacheRootOnHotSpot() {
         Path res = cacheRoot;
         if (cacheRoot == null) {
@@ -155,9 +160,9 @@ final class InternalResourceCache {
             } else if (os.equals("Linux")) {
                 container = userHome.resolve(".cache");
             } else if (os.equals("Mac OS X") || os.equals("Darwin")) {
-                container = userHome.resolve("Library/Caches");
+                container = userHome.resolve(Path.of("Library", "Caches"));
             } else if (os.startsWith("Windows")) {
-                container = userHome.resolve("AppData").resolve("Local");
+                container = userHome.resolve(Path.of("AppData", "Local"));
             } else {
                 // Fallback
                 container = userHome.resolve(".cache");
@@ -186,6 +191,30 @@ final class InternalResourceCache {
     static void resetNativeImageState() {
         cacheRoot = null;
         resetResourceFileSystems();
+    }
+
+    static void buildInternalResourcesForNativeImage(Path target, Set<String> filter) throws IOException {
+        for (LanguageCache language : LanguageCache.languages().values()) {
+            if (filter == null || filter.contains(language.getId())) {
+                for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
+                    InternalResourceCache cache = language.getResourceCache(resourceType);
+                    cache.buildInternalResourcesForNativeImage(target);
+                }
+            }
+        }
+        for (InstrumentCache instrument : InstrumentCache.load()) {
+            if (filter == null || filter.contains(instrument.getId())) {
+                for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
+                    InternalResourceCache cache = instrument.getResourceCache(resourceType);
+                    cache.buildInternalResourcesForNativeImage(target);
+                }
+            }
+        }
+    }
+
+    private void buildInternalResourcesForNativeImage(Path target) throws IOException {
+        Path resourceRoot = Files.createDirectories(findResourceRootOnNativeImage(target));
+        resource.unpackFiles(resourceRoot);
     }
 
     /**
@@ -233,8 +262,7 @@ final class InternalResourceCache {
         public Path get() {
             Path res = resourceCacheRoot;
             if (res == null) {
-                assert ImageInfo.inImageRuntimeCode() : "Cache root can be re-initialized only in native-image execution time.";
-                res = findCacheRootOnNativeImage().resolve(id).resolve(resource.name());
+                res = findResourceRootOnNativeImage(findCacheRootOnNativeImage());
                 resourceCacheRoot = res;
             }
             return res;
