@@ -170,5 +170,26 @@
     environment+: {
       "JVM_CONFIG"+: "-zgc",
     }
+  },
+
+  gen_zgc_mode:: {
+    platform+:: "-gen-zgc",
+    environment+: {
+      "JVM_CONFIG"+: "-gen-zgc",
+    }
+  },
+
+  serialgc_mode:: {
+    platform+:: "-serialgc",
+    environment+: {
+      "JVM_CONFIG"+: "-serialgc",
+    }
+  },
+
+  pargc_mode:: {
+    platform+:: "-pargc",
+    environment+: {
+      "JVM_CONFIG"+: "-pargc",
+    }
   }
 }
