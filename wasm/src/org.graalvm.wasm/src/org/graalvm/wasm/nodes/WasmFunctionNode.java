@@ -860,7 +860,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                     final long baseAddress;
                     if (indexType64 == 0) {
-                        baseAddress = popInt(frame, stackPointer - 1);
+                        baseAddress = Integer.toUnsignedLong(popInt(frame, stackPointer - 1));
                     } else {
                         baseAddress = popLong(frame, stackPointer - 1);
                     }
@@ -992,7 +992,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                     final long baseAddress;
                     if (indexType64 == 0) {
-                        baseAddress = popInt(frame, stackPointer - 2);
+                        baseAddress = Integer.toUnsignedLong(popInt(frame, stackPointer - 2));
                     } else {
                         baseAddress = popLong(frame, stackPointer - 2);
                     }
