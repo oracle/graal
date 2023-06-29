@@ -513,15 +513,21 @@ public class InternalResourceTest {
     static final class TemporaryResourceCacheRoot implements AutoCloseable {
 
         private final Path root;
+        private final boolean disposeResourceFileSystem;
 
         TemporaryResourceCacheRoot() throws IOException {
-            this(Files.createTempDirectory(null));
+            this(true);
         }
 
-        TemporaryResourceCacheRoot(Path cacheRoot) {
+        TemporaryResourceCacheRoot(boolean disposeResourceFileSystem) throws IOException {
+            this(Files.createTempDirectory(null), disposeResourceFileSystem);
+        }
+
+        TemporaryResourceCacheRoot(Path cacheRoot, boolean disposeResourceFileSystem) throws IOException {
             try {
-                root = cacheRoot;
-                setCacheRoot(root);
+                root = cacheRoot.toRealPath();
+                this.disposeResourceFileSystem = disposeResourceFileSystem;
+                setTestCacheRoot(root, false);
             } catch (ClassNotFoundException e) {
                 throw new AssertionError("Failed to set cache root.", e);
             }
@@ -534,7 +540,7 @@ public class InternalResourceTest {
         @Override
         public void close() {
             try {
-                setCacheRoot(null);
+                setTestCacheRoot(null, disposeResourceFileSystem);
                 delete(root);
             } catch (IOException | ClassNotFoundException e) {
                 throw new AssertionError("Failed to reset cache root.", e);
@@ -552,9 +558,9 @@ public class InternalResourceTest {
             Files.delete(path);
         }
 
-        private static void setCacheRoot(Path root) throws ClassNotFoundException {
+        private static void setTestCacheRoot(Path root, boolean disposeResourceFileSystem) throws ClassNotFoundException {
             Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
-            ReflectionUtils.invokeStatic(internalResourceCacheClass, "setCacheRoot", new Class<?>[]{Path.class}, root);
+            ReflectionUtils.invokeStatic(internalResourceCacheClass, "setTestCacheRoot", new Class<?>[]{Path.class, boolean.class}, root, disposeResourceFileSystem);
         }
     }
 }

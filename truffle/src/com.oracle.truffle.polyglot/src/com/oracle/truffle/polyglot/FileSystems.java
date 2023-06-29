@@ -73,6 +73,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
@@ -176,13 +177,16 @@ final class FileSystems {
         return newReadOnlyFileSystem(new InternalResourceFileSystem(rootSupplier));
     }
 
+    static boolean isInternalResourceFileSystem(FileSystem fileSystem) {
+        return (fileSystem instanceof ReadOnlyFileSystem readOnlyFileSystem) && readOnlyFileSystem.delegateFileSystem instanceof InternalResourceFileSystem;
+    }
+
     static Supplier<Path> getInternalResourceFileSystemRoot(FileSystem fileSystem) {
-        if (fileSystem instanceof  ReadOnlyFileSystem roFileSystem) {
-            if (roFileSystem.delegateFileSystem instanceof InternalResourceFileSystem resourceFileSystem) {
-                return resourceFileSystem.rootSupplier;
-            }
+        if (isInternalResourceFileSystem(fileSystem)) {
+            return ((InternalResourceFileSystem) ((ReadOnlyFileSystem) fileSystem).delegateFileSystem).rootSupplier;
+        } else {
+            throw new IllegalArgumentException(Objects.toString(fileSystem));
         }
-        throw new IllegalArgumentException(Objects.toString(fileSystem));
     }
 
     private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {
@@ -416,6 +420,13 @@ final class FileSystems {
         }
     }
 
+    interface ResetablePath extends Path {
+
+        String getReinitializedPath();
+
+        URI getReinitializedURI();
+    }
+
     static final class PreInitializeContextFileSystem implements PolyglotFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
@@ -444,29 +455,9 @@ final class FileSystems {
             this.factory = new ImageExecutionTimeFactory();
         }
 
-        String pathToString(Path path) {
-            if (delegate != INVALID_FILESYSTEM) {
-                return path.toString();
-            }
-            verifyImageState();
-            return ((PreInitializePath) path).resolve(newDefaultFileSystem(null)).toString();
-        }
-
-        URI absolutePathtoURI(Path path) {
-            if (delegate != INVALID_FILESYSTEM) {
-                return path.toUri();
-            }
-            verifyImageState();
-            Path resolved = ((PreInitializePath) path).resolve(newDefaultFileSystem(null));
-            if (!resolved.isAbsolute()) {
-                throw new IllegalArgumentException("Path must be absolute.");
-            }
-            return resolved.toUri();
-        }
-
         private static void verifyImageState() {
             if (ImageInfo.inImageBuildtimeCode()) {
-                throw new IllegalStateException("Reintroducing absolute path into an image heap.");
+                throw CompilerDirectives.shouldNotReachHere("Reintroducing absolute path into an image heap.");
             }
         }
 
@@ -662,7 +653,7 @@ final class FileSystems {
             }
         }
 
-        private final class PreInitializePath extends ForwardingPath<PreInitializePath> {
+        private final class PreInitializePath extends ForwardingPath<PreInitializePath> implements ResetablePath {
 
             private volatile Object delegatePath;
 
@@ -742,6 +733,28 @@ final class FileSystems {
                 } else {
                     return super.toString();
                 }
+            }
+
+            @Override
+            public String getReinitializedPath() {
+                if (delegate != INVALID_FILESYSTEM) {
+                    return toString();
+                }
+                verifyImageState();
+                return resolve(newDefaultFileSystem(null)).toString();
+            }
+
+            @Override
+            public URI getReinitializedURI() {
+                if (delegate != INVALID_FILESYSTEM) {
+                    return toUri();
+                }
+                verifyImageState();
+                Path resolved = resolve(newDefaultFileSystem(null));
+                if (!resolved.isAbsolute()) {
+                    throw new IllegalArgumentException("Path must be absolute.");
+                }
+                return resolved.toUri();
             }
         }
 
@@ -1781,41 +1794,42 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
-            return InternalResourcePath.forDelegate(delegate.parsePath(path));
+            return new InternalResourcePath(delegate.parsePath(path));
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath();
             delegate.checkAccess(normalized, modes, linkOptions);
         }
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = InternalResourcePath.as(dir).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(dir).resolveDelegateAbsolutePath();
             delegate.createDirectory(normalized, attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath();
             delegate.delete(normalized);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath();
             return delegate.newByteChannel(normalized, options, attrs);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path normalized = InternalResourcePath.as(dir).resolveDelegateAbsolutePath(rootSupplier);
+            InternalResourcePath castedPath = InternalResourcePath.as(dir);
+            Path normalized = castedPath.resolveDelegateAbsolutePath();
             DirectoryStream<Path> delegateStream = delegate.newDirectoryStream(normalized, filter);
             return new DirectoryStream<>() {
                 @Override
                 public Iterator<Path> iterator() {
-                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), InternalResourcePath::forDelegate);
+                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), castedPath::wrap);
                 }
 
                 @Override
@@ -1827,53 +1841,47 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            if (path.isAbsolute()) {
-                return path;
-            } else {
-                InternalResourcePath internalResourcePath = InternalResourcePath.as(path);
-                Path root = rootSupplier.get();
-                Path resolvedAbsolute = internalResourcePath.isRelativeResourceRoot() ? root : root.resolve(internalResourcePath.delegate);
-                return InternalResourcePath.forDelegate(resolvedAbsolute);
-            }
+            return path.toAbsolutePath();
         }
 
         @Override
-        public Path toRealPath(Path path, LinkOption... linkOptions) {
-            return toAbsolutePath(path);
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            return path.toRealPath(linkOptions);
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath();
             return delegate.readAttributes(normalized, attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized = InternalResourcePath.as(path).resolveDelegateAbsolutePath();
             delegate.setAttribute(normalized, attribute, value, options);
         }
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            Path normalizedLink = InternalResourcePath.as(link).resolveDelegateAbsolutePath(rootSupplier);
-            Path normalizedExisting = InternalResourcePath.as(existing).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalizedLink = InternalResourcePath.as(link).resolveDelegateAbsolutePath();
+            Path normalizedExisting = InternalResourcePath.as(existing).resolveDelegateAbsolutePath();
             delegate.createLink(normalizedLink, normalizedExisting);
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            Path normalizedLink = InternalResourcePath.as(link).resolveDelegateAbsolutePath(rootSupplier);
-            Path normalizedTarget = InternalResourcePath.as(target).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalizedLink = InternalResourcePath.as(link).resolveDelegateAbsolutePath();
+            Path normalizedTarget = InternalResourcePath.as(target).resolveDelegateAbsolutePath();
             delegate.createSymbolicLink(normalizedLink, normalizedTarget, attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            Path normalizedLink = InternalResourcePath.as(link).resolveDelegateAbsolutePath(rootSupplier);
-            InternalResourcePath result = InternalResourcePath.forDelegate(delegate.readSymbolicLink(normalizedLink));
+            InternalResourcePath castedPath = InternalResourcePath.as(link);
+            Path normalizedLink = castedPath.resolveDelegateAbsolutePath();
+            InternalResourcePath result = castedPath.wrap(delegate.readSymbolicLink(normalizedLink));
             // Ensure that the link does not point outside the internal resource root.
-            result.resolveDelegateAbsolutePath(rootSupplier);
+            result.resolveDelegateAbsolutePath();
             return result;
         }
 
@@ -1889,8 +1897,8 @@ final class FileSystems {
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
-            Path normalized1 = InternalResourcePath.as(path1).resolveDelegateAbsolutePath(rootSupplier);
-            Path normalized2 = InternalResourcePath.as(path2).resolveDelegateAbsolutePath(rootSupplier);
+            Path normalized1 = InternalResourcePath.as(path1).resolveDelegateAbsolutePath();
+            Path normalized2 = InternalResourcePath.as(path2).resolveDelegateAbsolutePath();
             return normalized1.equals(normalized2);
         }
 
@@ -1909,7 +1917,7 @@ final class FileSystems {
             return false;
         }
 
-        private static final class InternalResourcePath extends ForwardingPath<InternalResourcePath> {
+        private final class InternalResourcePath extends ForwardingPath<InternalResourcePath> implements ResetablePath {
 
             private final Path delegate;
 
@@ -1919,16 +1927,12 @@ final class FileSystems {
 
             @Override
             InternalResourcePath wrap(Path path) {
-                return forDelegate(path);
+                return path == null ? null : new InternalResourcePath(path);
             }
 
             @Override
             Path unwrap() {
                 return delegate;
-            }
-
-            static InternalResourcePath forDelegate(Path path) {
-                return path == null ? null : new InternalResourcePath(path);
             }
 
             static InternalResourcePath as(Path path) {
@@ -1954,11 +1958,27 @@ final class FileSystems {
             }
 
             @Override
+            public Path toAbsolutePath() {
+                if (isAbsolute()) {
+                    return this;
+                } else {
+                    Path root = rootSupplier.get();
+                    Path resolvedAbsolute = isRelativeResourceRoot() ? root : root.resolve(delegate);
+                    return wrap(resolvedAbsolute);
+                }
+            }
+
+            @Override
+            public Path toRealPath(LinkOption... options) throws IOException {
+                return wrap(resolveDelegateAbsolutePath().toRealPath(options));
+            }
+
+            @Override
             public URI toUri() {
                 if (delegate.isAbsolute()) {
                     return super.toUri();
                 } else {
-                    throw new SecurityException();
+                    return toAbsolutePath().toUri();
                 }
             }
 
@@ -1966,7 +1986,7 @@ final class FileSystems {
              * Returns the absolute normalized default file system path. If the path after
              * normalization escaped the internal resource root it throws {@link SecurityException}.
              */
-            Path resolveDelegateAbsolutePath(Supplier<Path> rootSupplier) {
+            Path resolveDelegateAbsolutePath() {
                 Path root = rootSupplier.get();
                 Path absolutePath = delegate.isAbsolute() ? delegate : root.resolve(delegate);
                 absolutePath = absolutePath.normalize();
@@ -1978,6 +1998,16 @@ final class FileSystems {
 
             boolean isRelativeResourceRoot() {
                 return delegate.getNameCount() == 1 && ".".equals(delegate.getFileName().toString());
+            }
+
+            @Override
+            public String getReinitializedPath() {
+                return toAbsolutePath().toString();
+            }
+
+            @Override
+            public URI getReinitializedURI() {
+                return toUri();
             }
         }
     }

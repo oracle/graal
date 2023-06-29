@@ -2589,7 +2589,7 @@ public class ContextPreInitializationTest {
     public void testLanguageInternalResources() throws Exception {
         setPatchable(FIRST);
         List<TruffleFile> files = new ArrayList<>();
-        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot()) {
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
                 try {
                     TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
@@ -2609,7 +2609,7 @@ public class ContextPreInitializationTest {
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
-        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 try {
                     TruffleFile file1 = files.get(0);
@@ -2643,7 +2643,7 @@ public class ContextPreInitializationTest {
     public void testSourcesForInternalResources() throws Exception {
         setPatchable(FIRST);
         List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
-        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot()) {
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
                 try {
                     TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
@@ -2659,7 +2659,7 @@ public class ContextPreInitializationTest {
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
-        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 try {
                     var source1 = sources.get(0);
@@ -2702,7 +2702,7 @@ public class ContextPreInitializationTest {
         assertNull(rootRef.get());
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         buildInternalResourcesForNativeImage(runtimeCacheRoot, ContextPreInitializationFirstInstrument.ID);
-        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot)) {
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").allowIO(IOAccess.ALL).build()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
                 assertEquals("test", res.asString());

@@ -487,7 +487,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
+        public TruffleFile getTruffleFile(Path path, Object fileSystemContext) {
+            TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
+            return new TruffleFile(ctx, path);
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
         }
@@ -496,11 +502,6 @@ final class LanguageAccessor extends Accessor {
         public boolean isSocketIOAllowed(Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             return engineAccess().isSocketIOAllowed(ctx.engineObject);
-        }
-
-        @Override
-        public TruffleFile getTruffleFile(Object context, String path) {
-            return getTruffleFile(path, context);
         }
 
         @Override

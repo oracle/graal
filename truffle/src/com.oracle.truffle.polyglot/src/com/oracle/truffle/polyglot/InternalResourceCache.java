@@ -145,7 +145,7 @@ final class InternalResourceCache {
         return root.resolve(Path.of(id, resource.name()));
     }
 
-    private static Path findCacheRootOnHotSpot() {
+    private static Path findCacheRootOnHotSpot() throws IOException {
         Path res = cacheRoot;
         if (cacheRoot == null) {
             String userHomeValue = System.getProperty("user.home");
@@ -168,6 +168,7 @@ final class InternalResourceCache {
                 container = userHome.resolve(".cache");
             }
             res = container.resolve("org.graalvm.polyglot");
+            res = Files.createDirectories(res).toRealPath();
             cacheRoot = res;
         }
         return res;
@@ -190,7 +191,25 @@ final class InternalResourceCache {
      */
     static void resetNativeImageState() {
         cacheRoot = null;
-        resetResourceFileSystems();
+        for (LanguageCache language : LanguageCache.languages().values()) {
+            for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
+                InternalResourceCache cache = language.getResourceCache(resourceType);
+                cache.resetFileSystemNativeImageState();
+            }
+        }
+        for (InstrumentCache instrument : InstrumentCache.load()) {
+            for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
+                InternalResourceCache cache = instrument.getResourceCache(resourceType);
+                cache.resetFileSystemNativeImageState();
+            }
+        }
+    }
+
+    private void resetFileSystemNativeImageState() {
+        FileSystem fs = resourceFileSystem;
+        if (fs != null) {
+            ((ResetableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).resourceCacheRoot = null;
+        }
     }
 
     static void buildInternalResourcesForNativeImage(Path target, Set<String> filter) throws IOException {
@@ -222,30 +241,27 @@ final class InternalResourceCache {
      * {@code InternalResourceTest}.
      */
     @SuppressWarnings("unused")
-    private static void setCacheRoot(Path root) {
+    private static void setTestCacheRoot(Path root, boolean disposeResourceFileSystem) {
         cacheRoot = root;
-        resetResourceFileSystems();
-    }
-
-    private static void resetResourceFileSystems() {
         for (LanguageCache language : LanguageCache.languages().values()) {
             for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
                 InternalResourceCache cache = language.getResourceCache(resourceType);
-                cache.resetFileSystemRoot();
+                if (disposeResourceFileSystem) {
+                    cache.resourceFileSystem = null;
+                } else {
+                    cache.resetFileSystemNativeImageState();
+                }
             }
         }
         for (InstrumentCache instrument : InstrumentCache.load()) {
             for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
                 InternalResourceCache cache = instrument.getResourceCache(resourceType);
-                cache.resetFileSystemRoot();
+                if (disposeResourceFileSystem) {
+                    cache.resourceFileSystem = null;
+                } else {
+                    cache.resetFileSystemNativeImageState();
+                }
             }
-        }
-    }
-
-    private void resetFileSystemRoot() {
-        FileSystem fs = resourceFileSystem;
-        if (fs != null) {
-            ((ResetableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).reset();
         }
     }
 
@@ -262,14 +278,13 @@ final class InternalResourceCache {
         public Path get() {
             Path res = resourceCacheRoot;
             if (res == null) {
+                if (ImageInfo.inImageBuildtimeCode()) {
+                    throw CompilerDirectives.shouldNotReachHere("Reintroducing internal resource cache path into an image heap.");
+                }
                 res = findResourceRootOnNativeImage(findCacheRootOnNativeImage());
                 resourceCacheRoot = res;
             }
             return res;
-        }
-
-        void reset() {
-            resourceCacheRoot = null;
         }
     }
 }

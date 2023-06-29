@@ -126,7 +126,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.FileSystems.ResetablePath;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
@@ -277,13 +277,13 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleFile getTruffleFile(TruffleContext truffleContext, String path) {
             PolyglotContextImpl context = getPolyglotContext(truffleContext);
-            return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), path);
+            return EngineAccessor.LANGUAGE.getTruffleFile(path, context.getHostContext().getPublicFileSystemContext());
         }
 
         @Override
         public TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri) {
             PolyglotContextImpl context = getPolyglotContext(truffleContext);
-            return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), uri);
+            return EngineAccessor.LANGUAGE.getTruffleFile(uri, context.getHostContext().getPublicFileSystemContext());
         }
 
         private static PolyglotContextImpl getPolyglotContext(TruffleContext truffleContext) {
@@ -1536,6 +1536,23 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile) {
+            FileSystem fs = LANGUAGE.getFileSystem(truffleFile);
+            if (FileSystems.isInternalResourceFileSystem(fs)) {
+                if (truffleFile.isAbsolute()) {
+                    Path root = fs.parsePath(FileSystems.getInternalResourceFileSystemRoot(fs).get().toString());
+                    Path path = LANGUAGE.getPath(truffleFile);
+                    if (path.startsWith(root)) {
+                        return LANGUAGE.getTruffleFile(root.relativize(path), LANGUAGE.getFileSystemContext(truffleFile));
+                    }
+                } else {
+                    return truffleFile;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public void onSourceCreated(Source source) {
             PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
             if (currentContext != null && currentContext.sourcesToInvalidate != null) {
@@ -1554,16 +1571,14 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public String getReinitializedPath(TruffleFile truffleFile) {
-            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((PreInitializeContextFileSystem) fs).pathToString(path);
+            return ((ResetablePath) path).getReinitializedPath();
         }
 
         @Override
         public URI getReinitializedURI(TruffleFile truffleFile) {
-            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
+            return ((ResetablePath) path).getReinitializedURI();
         }
 
         @Override

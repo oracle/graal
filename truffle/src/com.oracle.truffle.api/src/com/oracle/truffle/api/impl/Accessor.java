@@ -574,6 +574,8 @@ public abstract class Accessor {
 
         public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
+        public abstract TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile);
+
         public abstract void onSourceCreated(Source source);
 
         public abstract void registerOnDispose(Object engineObject, Closeable closeable);
@@ -860,11 +862,11 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
+        public abstract TruffleFile getTruffleFile(Path path, Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
+
         public abstract boolean isSocketIOAllowed(Object fileSystemContext);
-
-        public abstract TruffleFile getTruffleFile(Object context, String path);
-
-        public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
