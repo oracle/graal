@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,6 +44,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest {
 

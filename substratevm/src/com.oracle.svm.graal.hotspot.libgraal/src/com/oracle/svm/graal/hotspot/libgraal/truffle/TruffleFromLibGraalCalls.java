@@ -36,7 +36,7 @@ import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
 
-    private static final String ENTRY_POINT_CLASS_NAME = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints";
+    private static final String ENTRY_POINT_CLASS_NAME = "com.oracle.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints";
     private static final String CLASS_ENTRY_POINT_CLASS_NAME = "Class<" + ENTRY_POINT_CLASS_NAME + ">";
 
     TruffleFromLibGraalCalls(JNIEnv env, JClass runtimeClass) {

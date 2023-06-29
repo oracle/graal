@@ -116,7 +116,7 @@ public final class Truffle {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
                         try {
-                            Class<?> modulesSupport = Class.forName("org.graalvm.compiler.truffle.runtime.ModulesSupport");
+                            Class<?> modulesSupport = Class.forName("com.oracle.truffle.runtime.ModulesSupport");
                             modulesSupport.getMethod("exportJVMCI", Class.class).invoke(null, runtimeClass);
                         } catch (ClassNotFoundException e) {
                             // we ignore if modules support is not available.

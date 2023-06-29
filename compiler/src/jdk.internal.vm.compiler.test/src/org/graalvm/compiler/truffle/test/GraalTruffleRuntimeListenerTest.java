@@ -40,11 +40,11 @@ import java.util.List;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;

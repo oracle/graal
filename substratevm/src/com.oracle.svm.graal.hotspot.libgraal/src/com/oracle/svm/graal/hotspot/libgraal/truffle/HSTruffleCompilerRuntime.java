@@ -89,7 +89,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 /**
  * Proxy for a {@link TruffleCompilerRuntime} object in the HotSpot heap.
  */
-@FromLibGraalEntryPointsResolver(value = TruffleFromLibGraal.Id.class, entryPointsClassName = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints")
+@FromLibGraalEntryPointsResolver(value = TruffleFromLibGraal.Id.class, entryPointsClassName = "com.oracle.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints")
 final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
     private final ResolvedJavaType classLoaderDelegate;

@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.OSRCompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.OSRCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -38,10 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -71,6 +67,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
+import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
 
 @RunWith(Theories.class)
 public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {

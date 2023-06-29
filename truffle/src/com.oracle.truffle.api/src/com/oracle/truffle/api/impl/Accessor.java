@@ -1354,7 +1354,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
-                        "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||

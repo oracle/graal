@@ -281,7 +281,7 @@ public class HotSpotGraphBuilderPlugins {
             return;
         }
 
-        Registration tl = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        Registration tl = new Registration(plugins, "com.oracle.truffle.runtime.hotspot.HotSpotFastThreadLocal");
         tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

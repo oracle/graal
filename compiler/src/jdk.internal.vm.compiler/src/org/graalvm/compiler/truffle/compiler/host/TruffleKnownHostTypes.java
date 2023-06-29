@@ -43,7 +43,7 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
 
     // truffle.api.impl
     public final ResolvedJavaType FrameWithoutBoxing = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");
-    public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
+    public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
     public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", lookupType(Object[].class));
 
     // truffle.api

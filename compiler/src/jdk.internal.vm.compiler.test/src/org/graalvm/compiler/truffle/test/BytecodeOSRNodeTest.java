@@ -29,10 +29,11 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
+import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.compiler.test.GraalTest;
-import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;

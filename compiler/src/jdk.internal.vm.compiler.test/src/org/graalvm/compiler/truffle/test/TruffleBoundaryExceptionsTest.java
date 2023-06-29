@@ -24,15 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -40,6 +35,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling {
 

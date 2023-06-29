@@ -27,15 +27,15 @@ package com.oracle.svm.truffle;
 import java.util.Iterator;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.truffle.jfr.EventFactory;
-import org.graalvm.compiler.truffle.jfr.EventFactory.Provider;
-import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.truffle.runtime.jfr.EventFactory;
+import com.oracle.truffle.runtime.jfr.EventFactory.Provider;
+import com.oracle.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 
 @AutomaticallyRegisteredFeature
 public class TruffleJFRFeature implements InternalFeature {
