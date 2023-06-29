@@ -480,8 +480,6 @@ class ParallelGCFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class),
-                        "The parallel garbage collector ('--gc=parallel') is currently only supported on Linux and macOS.");
         verifyOptionEnabled(SubstrateOptions.SpawnIsolates);
 
         ImageSingletons.add(ParallelGC.class, new ParallelGC());
