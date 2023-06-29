@@ -2308,7 +2308,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
     def get_build_args(self):
         build_args = [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config),
-            '-H:NumberOfThreads=' + str(self.parallelism),
+            '--parallelism=' + str(self.parallelism),
             '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]
