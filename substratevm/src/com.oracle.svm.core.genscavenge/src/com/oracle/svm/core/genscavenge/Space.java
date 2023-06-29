@@ -241,9 +241,9 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void retractAllocationParallel(UnsignedWord objectSize) {
         assert ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase();
-        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.singleton().getAllocationChunk();
-        assert oldChunk.isNonNull();
-        AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
+        AlignedHeapChunk.AlignedHeader chunk = ParallelGC.singleton().getAllocationChunk();
+        assert chunk.isNonNull();
+        AlignedHeapChunk.retractAllocation(chunk, objectSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -506,7 +506,7 @@ public final class Space {
         Object forward = ohi.installForwardingPointerParallel(original, eightHeaderBytes, copy);
         if (forward != copy) {
             /* We lost the race. Retract speculatively allocated memory. */
-            retractAllocationParallel(originalSize);
+            retractAllocationParallel(copySize);
             return forward;
         }
 
