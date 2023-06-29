@@ -43,14 +43,42 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     },
   },
 
-  vm_bench_polybenchmarks_linux_common(env='polybench-${VM_ENV}', vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_20 + self.polybench_hpc_linux_common + {
+  vm_bench_polybenchmarks_base(env): {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
+  },
+
+  vm_bench_polybenchmarks_linux_build: vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_20 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+    setup+: [
+      self.base_cmd + ['sforceimports'],
+    ],
+    run+: [
+      self.base_cmd + ['build'],
+    ],
+    publishArtifacts+: [
+      {
+        name: "graalvm-with-polybench",
+        dir: "..",
+        patterns: [
+          "*/*/mxbuild/*",
+          "*/mxbuild/*",
+        ]
+      }
+    ],
+    targets+: ['ondemand'],
+  },
+
+  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_20 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
       self.base_cmd + ['sforceimports'],
-      self.base_cmd + ['build'],
-      ['mx', '-p', '../../polybenchmarks/', 'build_benchmarks']
+      ['unpack-artifact', 'graalvm-with-polybench'],
+      ['mx', '-p', '../../polybenchmarks/', 'build_benchmarks'],
     ],
+    requireArtifacts: [{
+      name: 'graalvm-with-polybench',
+      autoExtract: false,
+      dir: '..',
+    }],
     run+: if (is_gate) then  [
       self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=native', '--gate'],
       self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=jvm',    '--gate'],
@@ -251,6 +279,10 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64', notify_groups:: ['polybench']},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64', notify_groups:: ['polybench'] },
 
+    # Produces the graalvm-with-polybench artifact
+    vm_common.vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_build + {name: 'ondemand-vm-build-' + vm.vm_setup.short_name + '-with-polybench-linux-amd64', notify_groups:: ['polybench']},
+
+    # Consume the graalvm-with-polybench artifact
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64', notify_groups:: ['polybench']},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-linux-amd64', notify_groups:: ['polybench']},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-linux-amd64', notify_groups:: ['polybench']},
