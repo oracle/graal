@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.LIRKindWithCast;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionStateProcedure;
 import org.graalvm.compiler.lir.LIR;
@@ -40,6 +42,7 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.util.ValueSet;
@@ -47,6 +50,7 @@ import org.graalvm.compiler.lir.util.ValueSet;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public abstract class LocationMarker<S extends ValueSet<S>> {
 
@@ -78,9 +82,18 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());
         }
+        // This should converge quickly in practice but it's hard to set a firm bound. In normal
+        // operations this reaches a fixed point within 2n iterations. 10n seems like a pretty safe
+        // limit.
+        final int iterationLimit = blocks.length * 10 > 0 ? blocks.length * 10 : Integer.MAX_VALUE;
+        int iterations = 0;
         while (!worklist.isEmpty()) {
             BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
+            iterations++;
+            if (iterations > iterationLimit) {
+                throw new GraalError("Too many iterations coming to a fixed point: blocks %d limit %d", blocks.length, iterationLimit);
+            }
         }
     }
 
@@ -137,8 +150,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         try (Indent indent = debug.logAndIndent("handle op %d, %s", op.id(), op)) {
             // kills
 
-            op.visitEachTemp(defConsumer);
             op.visitEachOutput(defConsumer);
+            op.visitEachTemp(defConsumer);
             if (frameMap != null && op.destroysCallerSavedRegisters()) {
                 for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
                     PlatformKind kind = frameMap.getTarget().arch.getLargestStorableKind(reg.getRegisterCategory());
@@ -168,11 +181,17 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (shouldProcessValue(operand)) {
                 // no need to insert values and derived reference
+                Value value = operand;
+                // Remove any cast so the uses and defs are in agreement about the type
+                if (value.getValueKind() instanceof LIRKindWithCast) {
+                    ValueKind<LIRKind> actualKind = ((LIRKindWithCast) value.getValueKind()).getActualKind();
+                    value = LIRValueUtil.changeValueKind(operand, actualKind, false);
+                }
                 DebugContext debug = lir.getDebug();
                 if (debug.isLogEnabled()) {
-                    debug.log("set operand: %s", operand);
+                    debug.log("set operand: %s", value);
                 }
-                currentSet.put(operand);
+                currentSet.put(value);
             }
         }
     };

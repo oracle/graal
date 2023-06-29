@@ -30,13 +30,14 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.EnumSet;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
@@ -50,7 +51,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
     private final FrameMap frameMap;
     private final IndexedValueMap registers;
     private final IndexedValueMap stack;
-    private Set<Value> extraStack;
+    private HashMap<Integer, Value> extraStack;
 
     RegStackValueSet(FrameMap frameMap) {
         this.frameMap = frameMap;
@@ -63,7 +64,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         registers = new IndexedValueMap(s.registers);
         stack = new IndexedValueMap(s.stack);
         if (s.extraStack != null) {
-            extraStack = new HashSet<>(s.extraStack);
+            extraStack = new HashMap<>(s.extraStack);
         }
     }
 
@@ -87,9 +88,9 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
                 stack.put(index / 4, v);
             } else {
                 if (extraStack == null) {
-                    extraStack = new HashSet<>();
+                    extraStack = new HashMap<>();
                 }
-                extraStack.add(v);
+                extraStack.put(index, v);
             }
         }
     }
@@ -100,9 +101,9 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         stack.putAll(v.stack);
         if (v.extraStack != null) {
             if (extraStack == null) {
-                extraStack = new HashSet<>();
+                extraStack = new HashMap<>();
             }
-            extraStack.addAll(v.extraStack);
+            extraStack.putAll(v.extraStack);
         }
     }
 
@@ -113,15 +114,30 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         }
         if (isRegister(v)) {
             int index = asRegister(v).number;
+            guaranteeEquals(v, registers.get(index));
             registers.put(index, null);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));
             assert index >= 0;
             if (index % 4 == 0) {
+                guaranteeEquals(v, stack.get(index / 4));
                 stack.put(index / 4, null);
             } else if (extraStack != null) {
-                extraStack.remove(v);
+                guaranteeEquals(v, extraStack.get(index));
+                extraStack.remove(index);
             }
+        }
+    }
+
+    /**
+     * Ensure that the uses and the defs agree about the value.
+     */
+    private static void guaranteeEquals(Value v1, Value v2) {
+        if (v1 == null || v2 == null || v1.equals(v2)) {
+            return;
+        }
+        if (!LIRValueUtil.uncast(v1).equals(LIRValueUtil.uncast(v2))) {
+            throw new GraalError("mismatched definition: %s != %s", v1, v2);
         }
     }
 
@@ -158,7 +174,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
         registers.visitEach(null, null, null, addLiveValue);
         stack.visitEach(null, null, null, addLiveValue);
         if (extraStack != null) {
-            for (Value v : extraStack) {
+            for (Value v : extraStack.values()) {
                 refMap.addLiveValue(v);
             }
         }

@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ValueKind;
  * can not track, {@link LIRKind#unknownReference} can be used. In most cases,
  * {@link LIRKind#combine} should be used instead, since it is able to detect this automatically.
  */
-public final class LIRKind extends ValueKind<LIRKind> {
+public class LIRKind extends ValueKind<LIRKind> {
 
     /**
      * The location of object references in the value. If the value is a vector type, each bit
@@ -83,7 +83,7 @@ public final class LIRKind extends ValueKind<LIRKind> {
 
     public static final LIRKind Illegal = unknownReference(ValueKind.Illegal.getPlatformKind());
 
-    private LIRKind(PlatformKind platformKind, int referenceMask, int referenceCompressionMask, AllocatableValue derivedReferenceBase) {
+    protected LIRKind(PlatformKind platformKind, int referenceMask, int referenceCompressionMask, AllocatableValue derivedReferenceBase) {
         super(platformKind);
         this.referenceMask = referenceMask;
         this.referenceCompressionMask = referenceCompressionMask;
@@ -497,7 +497,7 @@ public final class LIRKind extends ValueKind<LIRKind> {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof LIRKind)) {
+        if (obj.getClass() != LIRKind.class) {
             return false;
         }
 

@@ -25,8 +25,8 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.changeValueKind;
 import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
@@ -51,18 +51,13 @@ import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.MoveOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
-import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Phase 7: Assign register numbers back to LIR.
@@ -191,23 +186,6 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         if (hasDead) {
             // Remove null values from the list.
             instructions.removeAll(Collections.singleton(null));
-        }
-    }
-
-    /**
-     * Returns new value with the provided ValueKind.
-     */
-    private static Value changeValueKind(Value value, ValueKind<?> newKind, boolean allowVirtual) {
-        if (isRegister(value)) {
-            return ((RegisterValue) value).getRegister().asValue(newKind);
-        } else if (value instanceof StackSlot) {
-            StackSlot stackSlot = (StackSlot) value;
-            return StackSlot.get(newKind, stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
-        } else if (allowVirtual && value instanceof SimpleVirtualStackSlot) {
-            SimpleVirtualStackSlot stackSlot = (SimpleVirtualStackSlot) value;
-            return new SimpleVirtualStackSlotAlias(newKind, stackSlot);
-        } else {
-            throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
         }
     }
 
