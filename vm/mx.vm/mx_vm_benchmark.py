@@ -911,6 +911,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
+        # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
+        # Override checkSamplesInPgo in your suite and have it return False.
         if not self.bmSuite.checkSamplesInPgo():
             return
         # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
