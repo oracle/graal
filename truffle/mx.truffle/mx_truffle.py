@@ -899,7 +899,7 @@ class ShadedLibraryProject(mx.JavaProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
         self.shade = args.pop('shade')
         subDir = args.pop('subDir', 'src')
-        srcDirs = args.pop('sourceDirs', ['src']) + [os.path.join(suite.get_output_root(platformDependent=False, jdkDependent=True), name, 'src_gen')]
+        srcDirs = args.pop('sourceDirs', ['src']) # + [source_gen_dir()], added below
         d = mx.join(suite.dir, subDir, name)
         shadedLibraries = args.pop('shadedDependencies', [])
         self.shadedDeps = list(set(mx.dependency(d) for d in shadedLibraries))
@@ -907,24 +907,17 @@ class ShadedLibraryProject(mx.JavaProject):
         super().__init__(suite, name, subDir=subDir, srcDirs=srcDirs, deps=deps, # javaCompliance
                         workingSets=workingSets, d=d, theLicense=theLicense, **args)
 
+        # add 'src_gen' dir to srcDirs (self.source_gen_dir() should only be called after Project.__init__)
+        src_gen_dir = self.source_gen_dir()
+        self.srcDirs.append(src_gen_dir)
+        mx.ensure_dir_exists(src_gen_dir)
+
         self.checkstyleProj = args.get('checkstyle', name)
         self.checkPackagePrefix = False
 
     def getBuildTask(self, args):
         jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
         return ShadedLibraryBuildTask(args, self, jdk)
-
-    def output_dir(self, relative=False):
-        res = join(self.get_output_base(), self.name, 'bin')
-        if relative:
-            res = os.path.relpath(res, self.dir)
-        return res
-
-    def source_gen_dir(self, relative=False):
-        res = join(self.get_output_base(), self.name, 'src_gen')
-        if relative:
-            res = os.path.relpath(res, self.dir)
-        return res
 
     def shaded_deps(self):
         return self.shadedDeps
