@@ -46,7 +46,7 @@
         i32.load $m2
         i32.const 0
         i32.load $m1
-        i32.add
+        i32.sub
     )
     (data (memory $m1) (offset i32.const 0) "AB")
     (data (memory $m1) (offset i32.const 2) "CD")

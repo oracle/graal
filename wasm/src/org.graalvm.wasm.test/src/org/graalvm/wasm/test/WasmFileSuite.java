@@ -55,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -228,7 +229,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                             wasmContext.tables().table(j).reset();
                         }
                     }
-                    for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+                    List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
+                    instanceList.sort(Comparator.comparing(instance -> wasmContext.linker().moduleOrdering().indexOf(instance.name())));
+                    for (WasmInstance instance : instanceList) {
                         if (!instance.isBuiltin()) {
                             wasmContext.reinitInstance(instance, reinitMemory);
                         }

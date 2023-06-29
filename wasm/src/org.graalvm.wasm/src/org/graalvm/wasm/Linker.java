@@ -57,6 +57,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmFunctionNode;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +92,12 @@ public class Linker {
     }
 
     private ResolutionDag resolutionDag;
+
+    private List<String> moduleOrdering;
+
+    public List<String> moduleOrdering() {
+        return moduleOrdering;
+    }
 
     public void tryLink(WasmInstance instance) {
         // The first execution of a WebAssembly call target will trigger the linking of the modules
@@ -158,8 +165,16 @@ public class Linker {
 
     private void linkTopologically(WasmContext context, ArrayList<Throwable> failures) {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
+        moduleOrdering = new ArrayList<>();
         for (final Resolver resolver : sortedResolutions) {
             resolver.runActionOnce(context, failures);
+            String moduleName = resolver.element.moduleName();
+            if (!moduleOrdering.contains(moduleName)) {
+                moduleOrdering.add(moduleName);
+            } else {
+                moduleOrdering.remove(moduleName);
+                moduleOrdering.add(moduleName);
+            }
         }
     }
 
@@ -182,8 +197,10 @@ public class Linker {
         }
     }
 
-    private static void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
-        for (WasmInstance instance : instances.values()) {
+    private void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+        List<WasmInstance> instanceList = new ArrayList<>(instances.values());
+        instanceList.sort(Comparator.comparing(instance -> moduleOrdering.indexOf(instance.name())));
+        for (WasmInstance instance : instanceList) {
             if (instance.isLinkInProgress()) {
                 try {
                     final WasmFunction start = instance.symbolTable().startFunction();
