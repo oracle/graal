@@ -911,8 +911,10 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
-        if not self.is_llvm and not self.jdk_profiles_collect:
+        # GR-42738 --pgo-sampling does not work with LLVM.
+        # Sampling is disabled when doing JDK profiles collection.
+        # The console-helloworld benchmark runs too short to gather any samples.
+        if not self.is_llvm and not self.jdk_profiles_collect and profile_path.find("console-helloworld") == -1:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
