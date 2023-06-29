@@ -914,8 +914,17 @@ class ShadedLibraryProject(mx.JavaProject):
         jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
         return ShadedLibraryBuildTask(args, self, jdk)
 
-    def output_dir(self):
-        return os.path.join(self.get_output_base(), self.name, 'bin')
+    def output_dir(self, relative=False):
+        res = join(self.get_output_base(), self.name, 'bin')
+        if relative:
+            res = os.path.relpath(res, self.dir)
+        return res
+
+    def source_gen_dir(self, relative=False):
+        res = join(self.get_output_base(), self.name, 'src_gen')
+        if relative:
+            res = os.path.relpath(res, self.dir)
+        return res
 
     def shaded_deps(self):
         return self.shadedDeps
