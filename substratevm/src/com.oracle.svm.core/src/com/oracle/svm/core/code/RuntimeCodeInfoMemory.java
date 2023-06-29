@@ -89,16 +89,6 @@ public class RuntimeCodeInfoMemory {
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoMemory() {
         lock = new ReentrantLock();
-
-        codeSize = WordFactory.zero();
-        codeAndDataMemorySize = WordFactory.zero();
-        nativeMetadataSize = WordFactory.zero();
-        totalSize = WordFactory.zero();
-
-        peakCodeSize = WordFactory.zero();
-        peakCodeAndDataMemorySize = WordFactory.zero();
-        peakNativeMetadataSize = WordFactory.zero();
-        peakTotalSize = WordFactory.zero();
     }
 
     public void clearPeakCodeAndDataCounters() {
@@ -110,15 +100,15 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
-    private <T extends CodeInfo> void addToSizeCounters(T codeInfo) {
+    private void addToSizeCounters(CodeInfo codeInfo) {
         // must be done under this.lock
         UnsignedWord code = CodeInfoAccess.getCodeSize(codeInfo);
         UnsignedWord codeAndDataMemory = CodeInfoAccess.getCodeAndDataMemorySize(codeInfo);
         UnsignedWord nativeMetadata = CodeInfoAccess.getNativeMetadataSize(codeInfo);
-        codeSize.add(code);
-        codeAndDataMemorySize.add(codeAndDataMemory);
-        nativeMetadataSize.add(nativeMetadata);
-        totalSize.add(codeAndDataMemory).add(nativeMetadata);
+        codeSize = codeSize.add(code);
+        codeAndDataMemorySize = codeAndDataMemorySize.add(codeAndDataMemory);
+        nativeMetadataSize = nativeMetadataSize.add(nativeMetadata);
+        totalSize = totalSize.add(codeAndDataMemory).add(nativeMetadata);
         if (codeSize.aboveThan(peakCodeSize)) {
             peakCodeSize = codeSize;
         }
@@ -134,17 +124,17 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
-    private <T extends CodeInfo> void subtractToSizeCounters(T codeInfo) {
+    private void subtractToSizeCounters(CodeInfo codeInfo) {
         // This is done when the code info is removed the table
         // code and data might actually have been released earlier in
         // RuntimeCodeInfoAccess.freePartially
         UnsignedWord code = CodeInfoAccess.getCodeSize(codeInfo);
         UnsignedWord codeAndDataMemory = CodeInfoAccess.getCodeAndDataMemorySize(codeInfo);
         UnsignedWord nativeMetadata = CodeInfoAccess.getNativeMetadataSize(codeInfo);
-        codeSize.subtract(code);
-        codeAndDataMemorySize.subtract(codeAndDataMemory);
-        nativeMetadataSize.subtract(nativeMetadata);
-        totalSize.subtract(codeAndDataMemory).subtract(nativeMetadata);
+        codeSize = codeSize.subtract(code);
+        codeAndDataMemorySize = codeAndDataMemorySize.subtract(codeAndDataMemory);
+        nativeMetadataSize = nativeMetadataSize.subtract(nativeMetadata);
+        totalSize = totalSize.subtract(codeAndDataMemory).subtract(nativeMetadata);
     }
 
     public SizeCounters getSizeCounters() {
