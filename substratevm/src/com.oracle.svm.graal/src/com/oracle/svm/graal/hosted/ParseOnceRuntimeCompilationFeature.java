@@ -1035,8 +1035,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         @Override
         protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
             if (outer instanceof AccumulativeInlineScope accOuter) {
-                // once the accumulative policy is activated, then we cannot return to the trivial
-                // policy
+                /*
+                 * once the accumulative policy is activated, then we cannot return to the trivial
+                 * policy
+                 */
                 return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope(accOuter, inliningUtils);
             }
 

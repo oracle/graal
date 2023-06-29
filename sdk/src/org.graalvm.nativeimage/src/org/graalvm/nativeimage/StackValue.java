@@ -59,17 +59,19 @@ public final class StackValue {
     private StackValue() {
     }
 
-    //@formatter:off
     /**
      * Reserves a block of memory for given {@link CStruct} class in the stack frame of the method
      * that calls this intrinsic. This is a convenience method for calls to:
+     * <p>
      * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="withSizeOf"}
+     * </p>
      *
      * It can be used to allocate a structure on the stack. The following example allocates a
      * {@code ComplexValue} and then sends it as a regular parameter to another function to compute
      * absolute value of the number:
-     *
+     * <p>
      * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="ninePlusSixteenSqrt"}
+     * </p>
      *
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param structType the requested structure class - must be a compile time constant
@@ -78,22 +80,23 @@ public final class StackValue {
      *
      * @since 19.0
      */
-    //@formatter:on
     public static <T extends PointerBase> T get(Class<T> structType) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
-    //@formatter:off
     /**
      * Reserves a block of memory for array of given {@link CStruct} type in the stack frame of the
      * method that calls this intrinsic. This is a convenience method for calls to:
-     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="withSizeOfArray"}
+     * <p>
+     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="withSizeOfArray"}*
+     * </p>
      *
      * It can be used to allocate a array of parameters on the stack. The following example
      * allocates a three element array, fills them with two int values and one double value and then
      * sends it to a method that accepts such parameter convention:
-     *
+     * <p>
      * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="callIntIntDouble"}
+     * </p>
      *
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param numberOfElements number of array elements to allocate
@@ -103,7 +106,6 @@ public final class StackValue {
      *
      * @since 19.0
      */
-    //@formatter:on
     public static <T extends PointerBase> T get(int numberOfElements, Class<T> structType) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
     }
