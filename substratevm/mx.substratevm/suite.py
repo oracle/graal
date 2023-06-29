@@ -907,9 +907,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "requires" : [
-                "jdk.management",
-            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
@@ -918,9 +915,6 @@ suite = {
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
-                ],
-                "java.management": [
-                    "sun.management",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
