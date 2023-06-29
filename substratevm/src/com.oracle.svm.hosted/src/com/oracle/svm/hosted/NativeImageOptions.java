@@ -268,19 +268,22 @@ public class NativeImageOptions {
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        VMError.guarantee(maxNumberOfThreads >= 0, "Number of threads can't be negative. Validation should have happened in driver.");
+        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
         return maxNumberOfThreads;
     }
 
     public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
         int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
         int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads < 0) {
-            throw UserError.abort("Number of analysis threads can't be negative. Set the NumberOfAnalysisThreads flag to a positive value.");
+        if (analysisThreads <= 0) {
+            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
         }
 
-        if (analysisThreads > NumberOfThreads.getValue(optionValues)) {
-            throw UserError.abort("Number of analysis threads can't be larger than NumberOfThreads. Set the NumberOfAnalysisThreads flag to a positive value smaller than NumberOfThreads.");
+        Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
+        if (analysisThreads > maxNumberOfThreads) {
+            throw UserError.abort(
+                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
+                                            (maxNumberOfThreads + 1) + ".");
         }
         return analysisThreads;
     }
