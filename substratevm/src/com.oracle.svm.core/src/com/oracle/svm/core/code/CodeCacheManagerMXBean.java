@@ -27,6 +27,10 @@ package com.oracle.svm.core.code;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryManagerMXBean;
 
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
@@ -34,7 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import sun.management.Util;
 
-public final class CodeCacheManagerMXBean implements MemoryManagerMXBean {
+public final class CodeCacheManagerMXBean implements MemoryManagerMXBean, NotificationEmitter {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CodeCacheManagerMXBean() {
@@ -62,5 +66,22 @@ public final class CodeCacheManagerMXBean implements MemoryManagerMXBean {
     @Override
     public ObjectName getObjectName() {
         return Util.newObjectName(ManagementFactory.MEMORY_MANAGER_MXBEAN_DOMAIN_TYPE, getName());
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener) {
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+        return new MBeanNotificationInfo[0];
     }
 }
