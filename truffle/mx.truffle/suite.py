@@ -1089,7 +1089,7 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.truffle.libgraal.truffleattach" : {
+    "com.oracle.truffle.runtime.attach" : {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "truffleattach",
@@ -1329,7 +1329,7 @@ suite = {
       }
     },
 
-    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH" : {
+    "TRUFFLE_RUNTIME_ATTACH" : {
       "native" : True,
       "platformDependent" : True,
       "platforms" : [
@@ -1340,19 +1340,19 @@ suite = {
           "windows-amd64",
       ],
       "layout" : {
-        "bin/" : "dependency:org.graalvm.compiler.truffle.libgraal.truffleattach",
+        "bin/" : "dependency:com.oracle.truffle.runtime.attach",
       },
-      "description" : "Contains a library to attach Truffle runtime to jvmci runtime.",
+      "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
       "maven": True,
     },
 
-    "TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT" : {
+    "TRUFFLE_RUNTIME_ATTACH_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
       "layout" : {
-        "./" : ["dependency:org.graalvm.compiler.truffle.libgraal.truffleattach"],
+        "./" : ["dependency:com.oracle.truffle.runtime.attach"],
       },
-      "description" : "Truffle attach library support distribution for the GraalVM",
+      "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
       "maven" : False,
     },
 
