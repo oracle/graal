@@ -151,6 +151,10 @@ public class RuntimeCodeInfoMemory {
         codeAndDataMemorySize = codeAndDataMemorySize.subtract(codeAndDataMemory);
         nativeMetadataSize = nativeMetadataSize.subtract(nativeMetadata);
         totalSize = totalSize.subtract(codeAndDataMemory).subtract(nativeMetadata);
+        assert codeSize.aboveOrEqual(0);
+        assert codeAndDataMemorySize.aboveOrEqual(0);
+        assert nativeMetadataSize.aboveOrEqual(0);
+        assert totalSize.aboveOrEqual(0);
     }
 
     public SizeCounters getSizeCounters() {
@@ -284,7 +288,6 @@ public class RuntimeCodeInfoMemory {
 
     @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private boolean remove0(CodeInfo info) {
-        subtractToSizeCounters(info);
         int length = NonmovableArrays.lengthOf(table);
         int index = hashIndex(info, length);
         UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
@@ -294,6 +297,7 @@ public class RuntimeCodeInfoMemory {
                 count--;
                 assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
+                subtractToSizeCounters(info);
                 return true;
             }
             index = nextIndex(index, length);
