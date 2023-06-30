@@ -397,6 +397,7 @@ public class NativeImageClassLoaderSupport {
         }
 
         processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
+            throwModuleGraphModificationOptionParseErrorIfInvalid("--add-exports", val);
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
             } else {
@@ -406,6 +407,7 @@ public class NativeImageClassLoaderSupport {
             }
         });
         processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
+            throwModuleGraphModificationOptionParseErrorIfInvalid("--add-opens", val);
             if (val.targetModules.isEmpty()) {
                 Modules.addOpensToAllUnnamed(val.module, val.packageName);
             } else {
@@ -423,6 +425,13 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
+    }
+
+    private static void throwModuleGraphModificationOptionParseErrorIfInvalid(String option, AddExportsAndOpensAndReadsFormatValue val) {
+        if (val.packageName == null) {
+            System.err.println("Error occurred during initialization of boot layer");
+            throw new RuntimeException("Unable to parse " + option + " <module>/<package>: " + val.module.getName());
+        }
     }
 
     private static void processListModulesOption(ModuleLayer layer) {
