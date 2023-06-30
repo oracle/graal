@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -81,6 +82,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected final Bytecode code;
     protected final ResolvedJavaMethod method;
     protected final int invokeBci;
+    protected final JavaKind returnKind;
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
@@ -128,6 +130,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
         this.arguments = new ValueNode[max + (method.isStatic() ? 0 : 1)];
+        this.returnKind = method.getSignature().getReturnKind();
 
         int javaIndex = 0;
         int index = 0;
@@ -231,7 +234,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public void push(JavaKind kind, ValueNode value) {
-        assert kind != JavaKind.Void;
+        GraalError.guarantee(kind == returnKind, "expected to return %s but returning %s", returnKind, kind);
+        GraalError.guarantee(kind != JavaKind.Void, "can't push value for void return");
         GraalError.guarantee(returnValue == null, "can only push one value");
         returnValue = value;
     }
@@ -245,8 +249,13 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
     public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
         throw GraalError.shouldNotReachHere();
+=======
+    public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
     }
 
     @Override
@@ -345,7 +354,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
     public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode retVal) {
+=======
+    public FrameState getInvocationPluginReturnState(JavaKind kind, ValueNode retVal) {
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
         return getGraph().add(new FrameState(AFTER_BCI));
     }
 

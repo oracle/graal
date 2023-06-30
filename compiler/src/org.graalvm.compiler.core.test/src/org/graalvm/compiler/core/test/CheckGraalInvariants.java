@@ -72,6 +72,10 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.core.test/src/org/graalvm/compiler/core/test/CheckGraalInvariants.java
+=======
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler.test/src/org/graalvm/compiler/core/test/CheckGraalInvariants.java
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -763,3 +767,24 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
     }
 }
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.core.test/src/org/graalvm/compiler/core/test/CheckGraalInvariants.java
+=======
+
+class DoNotInitializeClassInitializationPlugin implements ClassInitializationPlugin {
+
+    @Override
+    public boolean supportsLazyInitialization(ConstantPool cp) {
+        return true;
+    }
+
+    @Override
+    public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int bytecode) {
+        ((HotSpotConstantPool) cp).loadReferencedType(cpi, bytecode, false);
+    }
+
+    @Override
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
+        return false;
+    }
+}
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler.test/src/org/graalvm/compiler/core/test/CheckGraalInvariants.java

@@ -77,7 +77,16 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/nodes/MacroStateSplitWithExceptionNode.java
     protected MacroStateSplitWithExceptionNode(NodeClass<? extends MacroStateSplitWithExceptionNode> c, MacroParams p) {
+=======
+    protected ResolvedJavaMethod originalTargetMethod;
+    protected StampPair originalReturnStamp;
+    @Input NodeInputList<ValueNode> originalArguments;
+
+    @SuppressWarnings("this-escape")
+    protected MacroWithExceptionNode(NodeClass<? extends MacroWithExceptionNode> c, MacroParams p) {
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/nodes/MacroWithExceptionNode.java
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
@@ -87,6 +96,7 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
         this.invokeKind = p.invokeKind;
         assert !isPlaceholderBci(p.bci);
         assert MacroInvokable.assertArgumentCount(this);
+        this.originalArguments = new NodeInputList<>(this);
     }
 
     @Override
@@ -112,6 +122,26 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     @Override
     public InvokeKind getInvokeKind() {
         return invokeKind;
+    }
+
+    @Override
+    public StampPair getReturnStamp() {
+        return returnStamp;
+    }
+
+    @Override
+    public NodeInputList<ValueNode> getOriginalArguments() {
+        return originalArguments;
+    }
+
+    @Override
+    public ResolvedJavaMethod getOriginalTargetMethod() {
+        return originalTargetMethod;
+    }
+
+    @Override
+    public StampPair getOriginalReturnStamp() {
+        return originalReturnStamp;
     }
 
     @Override
@@ -151,7 +181,7 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
      *            different one.
      */
     public InvokeWithExceptionNode createInvoke(Node oldResult) {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[arguments.size()]), returnStamp, null));
+        MethodCallTargetNode callTarget = createCallTarget();
         InvokeWithExceptionNode invoke = graph().add(new InvokeWithExceptionNode(callTarget, null, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
@@ -184,4 +214,11 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
         return LocationIdentity.any();
     }
 
+    @Override
+    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle) {
+        assert originalArguments.size() == 0 && originalReturnStamp == null & originalTargetMethod == null : this;
+        originalReturnStamp = methodHandle.originalReturnStamp;
+        originalTargetMethod = methodHandle.originalTargetMethod;
+        originalArguments.addAll(methodHandle.originalArguments);
+    }
 }

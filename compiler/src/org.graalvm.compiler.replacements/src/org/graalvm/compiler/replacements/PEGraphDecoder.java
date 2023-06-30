@@ -78,6 +78,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -407,8 +408,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/PEGraphDecoder.java
         public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
             throw unimplemented();
+=======
+        public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/PEGraphDecoder.java
         }
 
         @Override

@@ -70,16 +70,24 @@ import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveDynamicConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
 import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
+=======
+import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
+=======
+import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -99,7 +107,11 @@ import org.graalvm.compiler.hotspot.replacements.RegisterFinalizerSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
+=======
+import org.graalvm.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;
@@ -168,6 +180,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -607,8 +620,12 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void lowerInvoke(Invoke invoke, LoweringTool tool, StructuredGraph graph) {
+        if (invoke.callTarget() instanceof Lowerable) {
+            ((Lowerable) invoke.callTarget()).lower(tool);
+        }
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+            assert callTarget.getClass() == MethodCallTargetNode.class : "unexpected subclass of MethodCallTargetNode";
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.isEmpty() ? null : parameters.get(0);
 

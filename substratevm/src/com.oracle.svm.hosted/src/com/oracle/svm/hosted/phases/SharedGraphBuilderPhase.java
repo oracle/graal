@@ -33,6 +33,15 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+<<<<<<< HEAD
+=======
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invokable;
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes)
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
@@ -252,6 +261,68 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
+<<<<<<< HEAD
+=======
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that throws an instance like the one given as throwable in
+         * the given GraphBuilderContext. If the given throwable has a non-null cause, a
+         * cause-instance of the same type with a proper cause-message is created first that is then
+         * passed to the method that creates and throws the outer throwable-instance.
+         */
+        public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
+            Throwable cause = throwable.getCause();
+            if (cause != null) {
+                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                /* Invoke method that creates a cause-instance with cause-message */
+                var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+                ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+                Invokable causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
+                /*
+                 * Invoke method that creates and throws throwable-instance with message and cause
+                 */
+                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+                ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                /*
+                 * As this invoke will always throw, its state after will not respect the expected
+                 * stack effect.
+                 */
+                boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
+                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                b.getFrameStateBuilder().setStateVerification(verifyStates);
+                b.add(new LoweredDeadEndNode());
+            } else {
+                replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that creates an instance of type throwableClass with
+         * throwableMessage as argument and then throws that instance in the given
+         * GraphBuilderContext.
+         */
+        public static void replaceWithThrowingAtRuntime(SharedBytecodeParser b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+            /*
+             * This method is currently not able to replace
+             * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because
+             * there are places where GraphBuilderContext.getMetaAccess() does not contain a
+             * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If
+             * we can access the ParsingReason in here we will be able to get rid of throwException.
+             */
+            var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
+            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+            ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
+            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
+            b.getFrameStateBuilder().setStateVerification(verifyStates);
+            b.add(new LoweredDeadEndNode());
+        }
+
+>>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes)
         private void handleUnresolvedType(JavaType type) {
             /*
              * If --allow-incomplete-classpath is set defer the error reporting to runtime,

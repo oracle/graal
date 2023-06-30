@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -160,7 +161,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * @param forceInlineEverything specifies if all invocations encountered in the scope of
      *            handling the replaced invoke are to be force inlined
      */
-    Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
+    Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
 
     void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType);
 
