@@ -33,15 +33,21 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Test that MethodHandle invokes of invokes that have been replaced by a MacroNode but not inlined
+ * are emitted correctly.
+ */
 public class MethodHandleMacroTest extends GraalCompilerTest {
 
     @NodeInfo
@@ -55,19 +61,16 @@ public class MethodHandleMacroTest extends GraalCompilerTest {
         @Override
         public Invoke replaceWithInvoke() {
             Invoke invoke = super.replaceWithInvoke();
+            // Disallow inlining to ensure an Invoke is emitted.
             invoke.setUseForInlining(false);
             return invoke;
         }
     }
 
     static class TestClass {
-        public final TestClass empty() {
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return getClass().equals(obj.getClass());
+        @SuppressWarnings("static-method")
+        public final int empty() {
+            return 0;
         }
     }
 
@@ -83,32 +86,50 @@ public class MethodHandleMacroTest extends GraalCompilerTest {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
-                b.addPush(JavaKind.Object, new TestMacroNode(MacroNode.MacroParams.of(b, CallTargetNode.InvokeKind.Special, targetMethod, receiver.get())));
+                b.addPush(JavaKind.Int, new TestMacroNode(MacroNode.MacroParams.of(b, CallTargetNode.InvokeKind.Special, targetMethod, receiver.get())));
                 return true;
             }
         });
     }
 
-    MethodHandle getHandle() {
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        conf.getPlugins().appendInlineInvokePlugin(new InlineDuringParsingPlugin());
+        return conf;
+    }
+
+    static MethodHandle getHandle() {
         try {
-            MethodHandle handle = MethodHandles.lookup().findVirtual(TestClass.class, "empty", MethodType.methodType(TestClass.class));
+            MethodHandle handle = MethodHandles.lookup().findVirtual(TestClass.class, "empty", MethodType.methodType(int.class));
             return handle.bindTo(new TestClass());
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new AssertionError(e);
         }
     }
 
+    static final MethodHandle staticHandle = getHandle();
+
     @Override
     protected Object[] getArgumentToBind() {
-        return new Object[]{getHandle()};
+        return new Object[]{staticHandle};
     }
 
-    public TestClass testSnippet(MethodHandle handle) throws Throwable {
-        return ((TestClass) handle.invokeExact());
+    public int testSnippet(MethodHandle handle) throws Throwable {
+        return ((int) handle.invokeExact());
     }
 
     @Test
     public void test() {
         test("testSnippet", getHandle());
+    }
+
+    @SuppressWarnings("unused")
+    public int testStaticSnippet(MethodHandle handle) throws Throwable {
+        return ((int) staticHandle.invokeExact());
+    }
+
+    @Test
+    public void test2() {
+        test("testStaticSnippet", getHandle());
     }
 }

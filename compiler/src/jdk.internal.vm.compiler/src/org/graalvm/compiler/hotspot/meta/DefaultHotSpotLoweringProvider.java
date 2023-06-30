@@ -69,19 +69,18 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
-import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
+import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
-import org.graalvm.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -101,6 +100,7 @@ import org.graalvm.compiler.hotspot.replacements.RegisterFinalizerSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
+import org.graalvm.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
@@ -175,6 +175,7 @@ import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -692,8 +693,12 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void lowerInvoke(Invoke invoke, LoweringTool tool, StructuredGraph graph) {
+        if (invoke.callTarget() instanceof Lowerable) {
+            ((Lowerable) invoke.callTarget()).lower(tool);
+        }
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+            assert callTarget.getClass() == MethodCallTargetNode.class : "unexpected subclass of MethodCallTargetNode";
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.isEmpty() ? null : parameters.get(0);
 

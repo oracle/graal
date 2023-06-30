@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotJITClassInitializationPlugin implements ClassInitializationPlugin {
     @Override
-    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
         if (!type.isInitialized() && (type.isInstanceClass() || type.isInterface())) {
             int code = builder.getCode().getCode()[builder.bci()] & 0xff;
             switch (code) {

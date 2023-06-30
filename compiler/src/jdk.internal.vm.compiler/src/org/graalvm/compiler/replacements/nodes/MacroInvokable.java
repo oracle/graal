@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -60,6 +62,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
 
     CallTargetNode.InvokeKind getInvokeKind();
+
+    StampPair getReturnStamp();
+
+    NodeInputList<ValueNode> getOriginalArguments();
+
+    ResolvedJavaMethod getOriginalTargetMethod();
+
+    StampPair getOriginalReturnStamp();
 
     /**
      * Gets the arguments for this macro node.
@@ -151,4 +161,23 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         }
         invoke.lower(tool);
     }
+
+    default MethodCallTargetNode createCallTarget() {
+        ValueNode[] arguments = getArguments().toArray(new ValueNode[getArguments().size()]);
+        if (getOriginalTargetMethod() != null) {
+            ValueNode[] originalArguments = getOriginalArguments().toArray(new ValueNode[getOriginalArguments().size()]);
+            return asNode().graph()
+                            .add(ResolvedMethodHandleCallTargetNode.create(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), getOriginalTargetMethod(), originalArguments,
+                                            getOriginalReturnStamp()));
+
+        } else {
+            return asNode().graph()
+                            .add(new MethodCallTargetNode(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), null));
+        }
+    }
+
+    /**
+     * Incorporate method handle information into state so that it can be properly lowered later.
+     */
+    void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle);
 }
