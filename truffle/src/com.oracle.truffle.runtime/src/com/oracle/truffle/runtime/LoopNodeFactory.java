@@ -43,7 +43,7 @@ package com.oracle.truffle.runtime;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-public interface LoopNodeFactory extends GraalRuntimeServiceProvider {
+public interface LoopNodeFactory extends OptimizedRuntimeServiceProvider {
 
     LoopNode create(RepeatingNode repeatingNode);
 

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.runtime;
 
-import static com.oracle.truffle.runtime.GraalTruffleRuntime.getRuntime;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.ArgumentTypeSpeculation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.BackgroundCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Compilation;
@@ -189,15 +189,15 @@ public final class EngineData {
     }
 
     public void preinitializeContext() {
-        GraalRuntimeAccessor.ENGINE.preinitializeContext(this.polyglotEngine);
+        OptimizedRuntimeAccessor.ENGINE.preinitializeContext(this.polyglotEngine);
     }
 
     public void finalizeStore() {
-        GraalRuntimeAccessor.ENGINE.finalizeStore(this.polyglotEngine);
+        OptimizedRuntimeAccessor.ENGINE.finalizeStore(this.polyglotEngine);
     }
 
     public Object getEngineLock() {
-        return GraalRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
+        return OptimizedRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
     }
 
     @SuppressWarnings("unchecked")
@@ -304,7 +304,7 @@ public final class EngineData {
         this.callAndLoopThresholdInFirstTier = computeCallAndLoopThresholdInFirstTier(options);
         this.callTargetStatisticDetails = options.get(CompilationStatisticDetails);
         this.callTargetStatistics = options.get(CompilationStatistics) || this.callTargetStatisticDetails;
-        this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
+        this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(OptimizedTruffleRuntime.getRuntime()) : null;
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
@@ -312,7 +312,7 @@ public final class EngineData {
         validateOptions();
         parsedCompileOnly = null;
 
-        Map<String, String> compilerOptionValues = GraalTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
+        Map<String, String> compilerOptionValues = OptimizedTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
         updateCompilerOptions(compilerOptionValues);
         this.compilerOptions = compilerOptionValues;
     }
@@ -412,7 +412,7 @@ public final class EngineData {
         if (polyglotEngine == null) {
             throw new IllegalStateException("The polyglot engine is closed.");
         }
-        return (Collection<OptimizedCallTarget>) GraalRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
+        return (Collection<OptimizedCallTarget>) OptimizedRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
     }
 
     private void validateOptions() {
@@ -467,23 +467,23 @@ public final class EngineData {
 
     @SuppressWarnings("static-method")
     public void mergeLoadedSources(Source[] sources) {
-        GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
+        OptimizedRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
     }
 
     @SuppressWarnings("static-method")
     public Object enterLanguage(TruffleLanguage<?> language) {
-        return GraalRuntimeAccessor.ENGINE.enterLanguageFromRuntime(language);
+        return OptimizedRuntimeAccessor.ENGINE.enterLanguageFromRuntime(language);
     }
 
     @SuppressWarnings("static-method")
     public void leaveLanguage(TruffleLanguage<?> language, Object prev) {
-        GraalRuntimeAccessor.ENGINE.leaveLanguageFromRuntime(language, prev);
+        OptimizedRuntimeAccessor.ENGINE.leaveLanguageFromRuntime(language, prev);
     }
 
     @SuppressWarnings("static-method")
     public TruffleLanguage<?> getLanguage(OptimizedCallTarget target) {
         RootNode root = target.getRootNode();
-        return GraalRuntimeAccessor.NODES.getLanguage(root);
+        return OptimizedRuntimeAccessor.NODES.getLanguage(root);
     }
 
 }

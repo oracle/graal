@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,51 +40,21 @@
  */
 package com.oracle.truffle.runtime;
 
-import static com.oracle.truffle.api.CompilerAsserts.partialEvaluationConstant;
-import static com.oracle.truffle.api.CompilerDirectives.inCompiledCode;
-import static com.oracle.truffle.runtime.OptimizedCallTarget.castArrayFixedLength;
-import static com.oracle.truffle.runtime.OptimizedCallTarget.unsafeCast;
+import com.oracle.truffle.api.impl.Accessor;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+final class OptimizedRuntimeAccessor extends Accessor {
 
-public abstract class GraalFastThreadLocal extends AbstractFastThreadLocal {
+    static final OptimizedRuntimeAccessor ACCESSOR = new OptimizedRuntimeAccessor();
 
-    protected GraalFastThreadLocal() {
-    }
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+    static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final FrameSupport FRAME = ACCESSOR.framesSupport();
 
-    @Override
-    public abstract void set(Object[] data);
-
-    @Override
-    public abstract Object[] get();
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public final <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull) {
-        Object[] data;
-        if (inCompiledCode()) {
-            partialEvaluationConstant(index);
-            partialEvaluationConstant(castType);
-            Object[] array = get();
-            if (array == null) {
-                if (invalidateOnNull) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                return null;
-            }
-            Object v = castArrayFixedLength(array, index + 1)[index];
-            C result = unsafeCast(v, castType, true, false, true);
-            return result;
-        } else {
-            data = get();
-            if (data == null) {
-                return null;
-            }
-            C result = (C) data[index];
-            assert castType == null || result == null || result.getClass() == castType : "Invalid exact type returned";
-            return result;
-        }
+    private OptimizedRuntimeAccessor() {
     }
 
 }

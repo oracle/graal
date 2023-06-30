@@ -56,7 +56,7 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.ModuleUtil;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
@@ -86,13 +86,13 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private final ThreadLocal<CompilationData> currentCompilation = new ThreadLocal<>();
     private final Statistics statistics;
 
-    private JFRListener(GraalTruffleRuntime runtime) {
+    private JFRListener(OptimizedTruffleRuntime runtime) {
         super(runtime);
         statistics = new Statistics();
         factory.addPeriodicEvent(CompilationStatisticsEvent.class, statistics);
     }
 
-    public static void install(GraalTruffleRuntime runtime) {
+    public static void install(OptimizedTruffleRuntime runtime) {
         if (factory != null) {
             runtime.addListener(new JFRListener(runtime));
         }

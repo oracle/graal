@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils.Subprocess;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -173,7 +173,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                 } catch (RuntimeException e) {
                     OptimizationFailedException optFailedException = isOptimizationFailed(e);
                     if (optFailedException != null) {
-                        GraalTruffleRuntime.getRuntime().log(target, optFailedException.getClass().getName());
+                        OptimizedTruffleRuntime.getRuntime().log(target, optFailedException.getClass().getName());
                     }
                 }
             }, false, useVMOptions);

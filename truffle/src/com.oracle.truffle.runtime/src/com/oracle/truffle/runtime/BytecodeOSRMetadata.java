@@ -66,7 +66,7 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  * Performance note: We do not require the metadata field to be {@code volatile}. As long as the
  * field is initialized under double-checked locking (as is done in
- * {@link GraalRuntimeSupport#pollBytecodeOSRBackEdge}, all threads will observe the same metadata
+ * {@link OptimizedRuntimeSupport#pollBytecodeOSRBackEdge}, all threads will observe the same metadata
  * instance. The JMM guarantees that the instance's final fields will be safely initialized before
  * it is published; the non-final + non-volatile fields (e.g., the back edge counter) may not be,
  * but we tolerate this inaccuracy in order to avoid volatile accesses in the hot path.
@@ -335,7 +335,7 @@ public final class BytecodeOSRMetadata {
      * AST lock should be held when this is invoked.
      */
     private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor, Object frameEntryState) {
-        TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
+        TruffleLanguage<?> language = OptimizedRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, frameEntryState).getCallTarget();
 
     }
@@ -412,7 +412,7 @@ public final class BytecodeOSRMetadata {
         OsrEntryDescription description = (OsrEntryDescription) targetMetadata;
         CompilerAsserts.partialEvaluationConstant(description);
 
-        GraalRuntimeAccessor.ACCESSOR.startOSRFrameTransfer(target);
+        OptimizedRuntimeAccessor.ACCESSOR.startOSRFrameTransfer(target);
         // Transfer indexed frame slots
         transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags);
         // transfer auxiliary slots
@@ -553,7 +553,7 @@ public final class BytecodeOSRMetadata {
                     target.setObject(slot, source.getObject(slot));
                     break;
                 case FrameWithoutBoxing.STATIC_TAG:
-                    GraalRuntimeAccessor.ACCESSOR.transferOSRFrameStaticSlot(source, target, slot);
+                    OptimizedRuntimeAccessor.ACCESSOR.transferOSRFrameStaticSlot(source, target, slot);
                     break;
                 case FrameWithoutBoxing.ILLEGAL_TAG:
                     target.clear(slot);

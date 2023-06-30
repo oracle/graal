@@ -96,7 +96,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * depending on the type of call.
  *
  * <pre>
- *              GraalRuntimeSupport#callProfiled                    GraalRuntimeSupport#callInlined
+ *              OptimizedRuntimeSupport#callProfiled                    OptimizedRuntimeSupport#callInlined
  *                                |                                               |
  *                                |                                               V
  *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
@@ -363,7 +363,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        this.engine = GraalTVMCI.getEngineData(rootNode);
+        this.engine = OptimizedTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
@@ -387,8 +387,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         if (isOSR()) {
             return -1;
         }
-        int childrenCount = GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode);
-        int size = GraalRuntimeAccessor.NODES.computeSize(rootNode);
+        int childrenCount = OptimizedRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode);
+        int size = OptimizedRuntimeAccessor.NODES.computeSize(rootNode);
         return size > 0 ? size : childrenCount;
     }
 
@@ -423,11 +423,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     @Override
     public boolean isTrivial() {
-        return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
+        return OptimizedRuntimeAccessor.NODES.isTrivial(rootNode);
     }
 
     private FrameDescriptor getParentFrameDescriptor() {
-        return GraalRuntimeAccessor.NODES.getParentFrameDescriptor(rootNode);
+        return OptimizedRuntimeAccessor.NODES.getParentFrameDescriptor(rootNode);
     }
 
     /**
@@ -499,7 +499,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         try {
             return callIndirect(prev, args);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(prev, null, t, null);
+            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(prev, null, t, null);
             throw rethrow(t);
         } finally {
             encapsulating.set(prev);
@@ -761,7 +761,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private RuntimeException handleException(VirtualFrame frame, Throwable t) {
         Throwable profiledT = profileExceptionType(t);
-        GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
         throw rethrow(profiledT);
     }
 
@@ -769,8 +769,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         runtime().getListener().onCompilationDeoptimized(this, frame);
     }
 
-    protected static GraalTruffleRuntime runtime() {
-        return (GraalTruffleRuntime) Truffle.getRuntime();
+    protected static OptimizedTruffleRuntime runtime() {
+        return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
     // This should be private but can't be due to SVM bug.
@@ -787,14 +787,14 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private synchronized void initialize(boolean validate) {
         if (!initialized) {
-            if (isSourceCallTarget() && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
+            if (isSourceCallTarget() && rootNode.isCloningAllowed() && !OptimizedRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
 
-            assert !validate || GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
+            assert !validate || OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
 
-            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
+            OptimizedRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
             if (engine.callTargetStatistics) {
                 this.initializedTimestamp = System.nanoTime();
             } else {
@@ -941,7 +941,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     final OptimizedCallTarget cloneUninitialized() {
         assert !isSplit() : "Cannot clone a clone.";
         ensureInitialized();
-        RootNode clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(this, rootNode, uninitializedRootNode);
+        RootNode clonedRoot = OptimizedRuntimeAccessor.NODES.cloneUninitialized(this, rootNode, uninitializedRootNode);
         return (OptimizedCallTarget) clonedRoot.getCallTarget();
     }
 
@@ -952,7 +952,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      */
     public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
-            SPECULATION_LOG_UPDATER.compareAndSet(this, null, ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog());
+            SPECULATION_LOG_UPDATER.compareAndSet(this, null, ((OptimizedTruffleRuntime) Truffle.getRuntime()).createSpeculationLog());
         }
         return speculationLog;
     }
@@ -963,7 +963,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     @Override
     public final JavaConstant asJavaConstant() {
-        return GraalTruffleRuntime.getRuntime().forObject(this);
+        return OptimizedTruffleRuntime.getRuntime().forObject(this);
     }
 
     @SuppressWarnings({"unchecked"})
@@ -1026,7 +1026,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {
-            GraalTruffleRuntime.getRuntime().getListener().onCompilationInvalidated(this, source, reason);
+            OptimizedTruffleRuntime.getRuntime().getListener().onCompilationInvalidated(this, source, reason);
         }
         return cancelCompilation(reason) || wasActive;
     }
@@ -1059,7 +1059,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             throw new OptimizationFailedException(error, this);
         }
         if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
-            GraalTruffleRuntime rt = runtime();
+            OptimizedTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("AST", getNonTrivialNodeCount());
             rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
@@ -1184,7 +1184,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     public final Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(this, properties);
+        OptimizedTruffleRuntimeListener.addASTSizeProperty(this, properties);
         String callsThresholdInInterpreter = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
         String loopsThresholdInInterpreter = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
         if (engine.multiTier) {
@@ -1784,7 +1784,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             return false;
         }
 
-        ExecutionSignature profile = GraalRuntimeAccessor.NODES.prepareForAOT(rootNode);
+        ExecutionSignature profile = OptimizedRuntimeAccessor.NODES.prepareForAOT(rootNode);
         if (profile == null) {
             return false;
         }

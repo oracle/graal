@@ -34,7 +34,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 import com.oracle.truffle.runtime.OptimizedIndirectCallNode;
@@ -43,7 +43,7 @@ import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 @SuppressWarnings("try")
 public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     @Before
     @Override
@@ -134,7 +134,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         DirectlyCallsTargetWithArguments(OptimizedCallTarget target, Object[] arguments) {
             super();
-            this.directCallNode = (OptimizedDirectCallNode) GraalTruffleRuntime.getRuntime().createDirectCallNode(target);
+            this.directCallNode = (OptimizedDirectCallNode) OptimizedTruffleRuntime.getRuntime().createDirectCallNode(target);
             this.arguments = arguments;
         }
 

@@ -30,7 +30,7 @@ import java.util.concurrent.TimeoutException;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -45,7 +45,7 @@ public abstract class SLWaitForOptimizationBuiltin extends SLGraalRuntimeBuiltin
     @Specialization
     public SLFunction waitForOptimization(SLFunction function, long timeout) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
-        GraalTruffleRuntime runtime = ((GraalTruffleRuntime) Truffle.getRuntime());
+        OptimizedTruffleRuntime runtime = ((OptimizedTruffleRuntime) Truffle.getRuntime());
         try {
             runtime.waitForCompilation(target, timeout);
         } catch (ExecutionException | TimeoutException e) {

@@ -48,7 +48,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
  * Support for an embedder to impose control over logging and dumping during Truffle compilation
  * failure handling.
  */
-public interface FloodControlHandler extends GraalRuntimeServiceProvider {
+public interface FloodControlHandler extends OptimizedRuntimeServiceProvider {
 
     /**
      * Return {@code true} to suppress logging and dumping of a given exception.

@@ -73,7 +73,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     }
 
     private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
-        return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
+        return ((OptimizedTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
     }
 
     Object getEntryTagsCache() {

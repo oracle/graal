@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,16 @@
  */
 package com.oracle.truffle.runtime;
 
-import java.io.Closeable;
-import java.io.IOException;
+import org.graalvm.options.OptionDescriptors;
 
-import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.GraalTestTVMCI.GraalTestContext;
+public interface OptimizedRuntimeServiceProvider {
 
-final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTarget> {
-
-    static final class GraalTestContext implements Closeable {
-
-        @Override
-        public synchronized void close() throws IOException {
-        }
+    default int getPriority() {
+        return 0;
     }
 
-    @Override
-    protected GraalTestContext createTestContext(String testName) {
-        return new GraalTestContext();
+    default OptionDescriptors getEngineOptions() {
+        return null;
     }
 
-    @Override
-    public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
-        return (OptimizedCallTarget) testNode.getCallTarget();
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
-        callTarget.compile(true);
-        callTarget.waitForCompilation();
-    }
 }

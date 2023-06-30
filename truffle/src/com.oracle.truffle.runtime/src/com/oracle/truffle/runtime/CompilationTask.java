@@ -60,7 +60,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             OptimizedCallTarget callTarget = task.targetRef.get();
             if (callTarget != null && task.start()) {
                 try {
-                    ((GraalTruffleRuntime) Truffle.getRuntime()).doCompile(callTarget, task);
+                    ((OptimizedTruffleRuntime) Truffle.getRuntime()).doCompile(callTarget, task);
                 } finally {
                     callTarget.compiledTier(task.tier());
                     task.finished();

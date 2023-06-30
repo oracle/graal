@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,54 @@
  */
 package com.oracle.truffle.runtime;
 
-import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.RootNode;
 
-final class GraalRuntimeAccessor extends Accessor {
+import jdk.vm.ci.code.stack.InspectedFrame;
 
-    static final GraalRuntimeAccessor ACCESSOR = new GraalRuntimeAccessor();
+/**
+ * Represents a Truffle {@link com.oracle.truffle.api.frame.FrameInstance} where OSR occurred.
+ *
+ * Contains a separate field for the {@link InspectedFrame} containing the most up-to-date Frame.
+ */
+final class OptimizedOSRFrameInstance extends OptimizedFrameInstance {
+    private final InspectedFrame osrFrame;
 
-    static final NodeSupport NODES = ACCESSOR.nodeSupport();
-    static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
-    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
-    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
-    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
-    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
-    static final FrameSupport FRAME = ACCESSOR.framesSupport();
-
-    private GraalRuntimeAccessor() {
+    OptimizedOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, InspectedFrame osrFrame) {
+        super(callTargetFrame, callNodeFrame);
+        this.osrFrame = osrFrame;
     }
 
+    @TruffleBoundary
+    @Override
+    public Frame getFrame(FrameAccess access) {
+        Frame materializedOSRFrame = getFrameFrom(osrFrame, access);
+        if (getOSRRootNode() instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
+            return (Frame) materializedOSRFrame.getArguments()[0];
+        }
+        return materializedOSRFrame;
+    }
+
+    private RootNode getOSRRootNode() {
+        return ((OptimizedCallTarget) osrFrame.getLocal(OptimizedFrameInstance.CALL_TARGET_INDEX)).getRootNode();
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean isVirtualFrame() {
+        return osrFrame.isVirtual(FRAME_INDEX);
+    }
+
+    @TruffleBoundary
+    @Override
+    public int getCompilationTier() {
+        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean isCompilationRoot() {
+        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
+    }
 }

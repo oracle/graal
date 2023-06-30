@@ -46,8 +46,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
-import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import static org.junit.Assert.assertFalse;
@@ -63,13 +63,13 @@ public class CompilerLoggingTest extends TestWithPolyglotOptions {
     @Test
     public void testLogging() throws IOException {
         if (!TruffleOptions.AOT) {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             TruffleCompiler compiler = runtime.newTruffleCompiler();
             Assume.assumeTrue("Not supported in isolated compiler.", compiler instanceof TruffleCompilerImpl);
         }
         try (ByteArrayOutputStream logOut = new ByteArrayOutputStream()) {
             setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.MultiTier", "false").option("engine.BackgroundCompilation", "false"));
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             TestListener listener = new TestListener();
             try {
                 runtime.addListener(listener);
@@ -84,7 +84,7 @@ public class CompilerLoggingTest extends TestWithPolyglotOptions {
         }
     }
 
-    private static final class TestListener implements GraalTruffleRuntimeListener {
+    private static final class TestListener implements OptimizedTruffleRuntimeListener {
 
         @Override
         public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph,
@@ -127,8 +127,8 @@ public class CompilerLoggingTest extends TestWithPolyglotOptions {
     private void testGR46391Impl(String testName, Context.Builder builder) throws InterruptedException, BrokenBarrierException, TimeoutException {
         CyclicBarrier barrier = new CyclicBarrier(2);
         String rootName = String.format("%s.%s", TestRootNode.class.getName(), testName);
-        GraalTruffleRuntimeListener listener = new LogAfterEngineClose(rootName, barrier);
-        var runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntimeListener listener = new LogAfterEngineClose(rootName, barrier);
+        var runtime = OptimizedTruffleRuntime.getRuntime();
         runtime.addListener(listener);
         try {
             builder.option("engine.CompileImmediately", "true");
@@ -169,7 +169,7 @@ public class CompilerLoggingTest extends TestWithPolyglotOptions {
         }
     }
 
-    private static final class LogAfterEngineClose implements GraalTruffleRuntimeListener {
+    private static final class LogAfterEngineClose implements OptimizedTruffleRuntimeListener {
         private static final String BEFORE_CLOSE = String.format("%s#BEFORE CLOSE", LogAfterEngineClose.class.getSimpleName());
         private static final String AFTER_CLOSE = String.format("%s#AFTER CLOSE", LogAfterEngineClose.class.getSimpleName());
         private final String expectedRootName;

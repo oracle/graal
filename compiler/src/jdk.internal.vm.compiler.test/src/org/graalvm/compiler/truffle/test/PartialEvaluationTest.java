@@ -59,7 +59,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.BailoutException;
@@ -113,7 +113,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
 
         // Ensure the invoke stub is installed
-        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
         runtime.bypassedInstalledCode(compilable);
 
         return compilable;

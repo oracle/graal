@@ -32,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
@@ -77,7 +77,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     @Test
     public void testLatencyNoSplitting() {
         setupContext(MODE, LATENCY);
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         AbstractSplittingStrategyTest.SplitCountingListener listener = new AbstractSplittingStrategyTest.SplitCountingListener();
         try {
             runtime.addListener(listener);
@@ -121,7 +121,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     @Test
     public void testLatencyNoInlining() {
         setupContext(MODE, LATENCY, "engine.CompileOnly", ROOT);
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {

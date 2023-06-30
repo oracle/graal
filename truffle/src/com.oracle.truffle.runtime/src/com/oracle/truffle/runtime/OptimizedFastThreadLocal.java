@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,51 @@
  */
 package com.oracle.truffle.runtime;
 
-import org.graalvm.options.OptionDescriptors;
+import static com.oracle.truffle.api.CompilerAsserts.partialEvaluationConstant;
+import static com.oracle.truffle.api.CompilerDirectives.inCompiledCode;
+import static com.oracle.truffle.runtime.OptimizedCallTarget.castArrayFixedLength;
+import static com.oracle.truffle.runtime.OptimizedCallTarget.unsafeCast;
 
-public interface GraalRuntimeServiceProvider {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 
-    default int getPriority() {
-        return 0;
+public abstract class OptimizedFastThreadLocal extends AbstractFastThreadLocal {
+
+    protected OptimizedFastThreadLocal() {
     }
 
-    default OptionDescriptors getEngineOptions() {
-        return null;
+    @Override
+    public abstract void set(Object[] data);
+
+    @Override
+    public abstract Object[] get();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull) {
+        Object[] data;
+        if (inCompiledCode()) {
+            partialEvaluationConstant(index);
+            partialEvaluationConstant(castType);
+            Object[] array = get();
+            if (array == null) {
+                if (invalidateOnNull) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                return null;
+            }
+            Object v = castArrayFixedLength(array, index + 1)[index];
+            C result = unsafeCast(v, castType, true, false, true);
+            return result;
+        } else {
+            data = get();
+            if (data == null) {
+                return null;
+            }
+            C result = (C) data[index];
+            assert castType == null || result == null || result.getClass() == castType : "Invalid exact type returned";
+            return result;
+        }
     }
 
 }

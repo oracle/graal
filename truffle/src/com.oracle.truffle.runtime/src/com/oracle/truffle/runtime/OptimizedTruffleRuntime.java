@@ -164,7 +164,7 @@ import jdk.vm.ci.services.Services;
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
  */
 
-public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
+public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
 
@@ -176,21 +176,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         knownMethods = null;
     }
 
-    private final GraalTruffleRuntimeListenerDispatcher listeners = new GraalTruffleRuntimeListenerDispatcher();
+    private final OptimizedTruffleRuntimeListenerDispatcher listeners = new OptimizedTruffleRuntimeListenerDispatcher();
 
     protected volatile TruffleCompiler truffleCompiler;
     protected volatile OptimizedCallTarget initializeCallTarget;
 
     protected KnownMethods knownMethods;
 
-    private final GraalTVMCI tvmci = new GraalTVMCI();
-    private volatile GraalTestTVMCI testTvmci;
+    private final OptimizedTVMCI tvmci = new OptimizedTVMCI();
+    private volatile OptimizedTestTVMCI testTvmci;
 
     /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
      */
-    public static GraalTruffleRuntime getRuntime() {
-        return (GraalTruffleRuntime) Truffle.getRuntime();
+    public static OptimizedTruffleRuntime getRuntime() {
+        return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
     private final LoopNodeFactory loopNodeFactory;
@@ -202,7 +202,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected final TruffleCompilationSupport compilationSupport;
 
-    public GraalTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
+    public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
         this.lookupTypes = initLookupTypes(extraLookupTypes);
         List<OptionDescriptors> options = new ArrayList<>();
@@ -264,7 +264,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return compilationSupport.validateCompilerOption(key, value);
     }
 
-    protected GraalTVMCI getTvmci() {
+    protected OptimizedTVMCI getTvmci() {
         return tvmci;
     }
 
@@ -272,7 +272,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         if (testTvmci == null) {
             synchronized (this) {
                 if (testTvmci == null) {
-                    testTvmci = new GraalTestTVMCI();
+                    testTvmci = new OptimizedTestTVMCI();
                 }
             }
         }
@@ -305,13 +305,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         } else {
             providers = TruffleRuntimeServices.load(clazz);
         }
-        boolean priorityService = GraalRuntimeServiceProvider.class.isAssignableFrom(clazz);
+        boolean priorityService = OptimizedRuntimeServiceProvider.class.isAssignableFrom(clazz);
         T bestFactory = null;
         int bestPriority = 0;
         for (T factory : providers) {
             int currentPriority;
             if (priorityService) {
-                currentPriority = ((GraalRuntimeServiceProvider) factory).getPriority();
+                currentPriority = ((OptimizedRuntimeServiceProvider) factory).getPriority();
             } else {
                 currentPriority = 0;
             }
@@ -326,7 +326,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return bestFactory;
     }
 
-    private static <T extends GraalRuntimeServiceProvider> T loadGraalRuntimeServiceProvider(Class<T> clazz, List<OptionDescriptors> descriptors, boolean failIfNotFound) {
+    private static <T extends OptimizedRuntimeServiceProvider> T loadGraalRuntimeServiceProvider(Class<T> clazz, List<OptionDescriptors> descriptors, boolean failIfNotFound) {
         T bestFactory = loadServiceProvider(clazz, failIfNotFound);
         if (descriptors != null && bestFactory != null) {
             OptionDescriptors serviceOptions = bestFactory.getEngineOptions();
@@ -603,12 +603,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /** Accessor for non-public state in {@link FrameDescriptor}. */
     public void markFrameMaterializeCalled(FrameDescriptor descriptor) {
-        GraalRuntimeAccessor.FRAME.markMaterializeCalled(descriptor);
+        OptimizedRuntimeAccessor.FRAME.markMaterializeCalled(descriptor);
     }
 
     /** Accessor for non-public state in {@link FrameDescriptor}. */
     public boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
-        return GraalRuntimeAccessor.FRAME.getMaterializeCalled(descriptor);
+        return OptimizedRuntimeAccessor.FRAME.getMaterializeCalled(descriptor);
     }
 
     @Override
@@ -669,7 +669,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return new OptimizedAssumption(name);
     }
 
-    public final GraalTruffleRuntimeListener getListener() {
+    public final OptimizedTruffleRuntimeListener getListener() {
         return listeners;
     }
 
@@ -776,9 +776,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             } else {
                 try {
                     if (osrFrame != null) {
-                        return visitor.visitFrame(new GraalOSRFrameInstance(frame, callNodeFrame, osrFrame));
+                        return visitor.visitFrame(new OptimizedOSRFrameInstance(frame, callNodeFrame, osrFrame));
                     } else {
-                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
+                        return visitor.visitFrame(new OptimizedFrameInstance(frame, callNodeFrame));
                     }
                 } finally {
                     osrFrame = null;
@@ -788,7 +788,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
 
         private static boolean isOSRFrame(InspectedFrame frame) {
-            return ((OptimizedCallTarget) frame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode() instanceof BaseOSRRootNode;
+            return ((OptimizedCallTarget) frame.getLocal(OptimizedFrameInstance.CALL_TARGET_INDEX)).getRootNode() instanceof BaseOSRRootNode;
         }
     }
 
@@ -827,11 +827,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected abstract OptimizedCallTarget createInitializationCallTarget(EngineData engine);
 
-    public void addListener(GraalTruffleRuntimeListener listener) {
+    public void addListener(OptimizedTruffleRuntimeListener listener) {
         listeners.add(listener);
     }
 
-    public void removeListener(GraalTruffleRuntimeListener listener) {
+    public void removeListener(OptimizedTruffleRuntimeListener listener) {
         listeners.remove(listener);
     }
 
@@ -998,7 +998,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Use {@link OptimizedCallTarget#engine} whenever possible as it's much faster.
      */
     protected static EngineData getEngineData(RootNode rootNode) {
-        return GraalTVMCI.getEngineData(rootNode);
+        return OptimizedTVMCI.getEngineData(rootNode);
     }
 
     @SuppressWarnings("deprecation")
@@ -1007,7 +1007,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
-        ClassLoader runtimeClassLoader = GraalTruffleRuntime.class.getClassLoader();
+        ClassLoader runtimeClassLoader = OptimizedTruffleRuntime.class.getClassLoader();
         ClassLoader appClassLoader = service.getClassLoader();
         ServiceLoader<T> appLoader = ServiceLoader.load(service, appClassLoader);
         if (runtimeClassLoader.equals(appClassLoader)) {
@@ -1065,11 +1065,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         public final ResolvedJavaMethod[] anyFrameMethod;
 
         public KnownMethods(MetaAccessProvider metaAccess) {
-            this.callDirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_DIRECT);
-            this.callIndirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INDIRECT);
-            this.callInlinedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED);
-            this.callInlinedCallMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_CALL);
-            this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
+            this.callDirectMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_DIRECT);
+            this.callIndirectMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_INDIRECT);
+            this.callInlinedMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_INLINED);
+            this.callInlinedCallMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_INLINED_CALL);
+            this.callTargetMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_TARGET_METHOD);
             this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callInlinedCallMethod};
         }
     }
@@ -1094,7 +1094,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     /**
-     * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
+     * Allows {@link OptimizedTruffleRuntime} subclasses to suppress exceptions such as an exception
      * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)} this
      * method is called only for exceptions thrown on the Truffle runtime side, so it does not need
      * to stringify the passed exception.
@@ -1153,14 +1153,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     final OptionDescriptors getOptionDescriptors() {
-        // The engineOptions field needs to be initialized lazily because the GraalRuntimeAccessor
-        // cannot be used in the GraalTruffleRuntime constructor. The GraalTruffleRuntime must be
+        // The engineOptions field needs to be initialized lazily because the OptimizedRuntimeAccessor
+        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime must be
         // fully initialized before using the accessor otherwise a NullPointerException will be
         // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
         // still returns null.
         OptionDescriptors res = engineOptions;
         if (res == null) {
-            res = GraalRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors);
+            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors);
             engineOptions = res;
         }
         return res;
@@ -1199,7 +1199,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
             final int limit = callTarget.getOptionValue(OptimizedRuntimeOptions.TraceStackTraceLimit);
-            final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            final OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
@@ -1316,7 +1316,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 newOptionName = convertFromLegacyOptionName(optionName);
             }
 
-            if (newOptionName != null && GraalTruffleRuntime.getRuntime().existsCompilerOption(newOptionName)) {
+            if (newOptionName != null && OptimizedTruffleRuntime.getRuntime().existsCompilerOption(newOptionName)) {
                 OptionDescriptor.Builder b = OptionDescriptor.newBuilder(getOrCreateOptionKey(optionName), optionName);
                 if (isLegacyOption(optionName)) {
                     b.deprecated(true).deprecationMessage(
@@ -1335,7 +1335,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     if (isLegacyOption(optionName)) {
                         optionName = convertFromLegacyOptionName(optionName);
                     }
-                    String result = GraalTruffleRuntime.getRuntime().validateCompilerOption(optionName, v);
+                    String result = OptimizedTruffleRuntime.getRuntime().validateCompilerOption(optionName, v);
                     if (result != null) {
                         throw new IllegalArgumentException(result);
                     }
@@ -1400,7 +1400,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 /*
                  * Compiler options descriptor never change so it is save to cache them per runtime.
                  */
-                options = optionsArray = GraalTruffleRuntime.getRuntime().listCompilerOptions();
+                options = optionsArray = OptimizedTruffleRuntime.getRuntime().listCompilerOptions();
             }
             List<OptionDescriptor> descriptors = new ArrayList<>();
             for (TruffleCompilerOptionDescriptor descriptor : optionsArray) {

@@ -49,14 +49,14 @@ import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 /**
- * A collection for broadcasting {@link GraalTruffleRuntimeListener} events and converting
- * {@link TruffleCompilerListener} events to {@link GraalTruffleRuntimeListener} events.
+ * A collection for broadcasting {@link OptimizedTruffleRuntimeListener} events and converting
+ * {@link TruffleCompilerListener} events to {@link OptimizedTruffleRuntimeListener} events.
  */
 @SuppressWarnings("serial")
-final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<GraalTruffleRuntimeListener> implements GraalTruffleRuntimeListener, TruffleCompilerListener {
+final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<OptimizedTruffleRuntimeListener> implements OptimizedTruffleRuntimeListener, TruffleCompilerListener {
 
     @Override
-    public boolean add(GraalTruffleRuntimeListener e) {
+    public boolean add(OptimizedTruffleRuntimeListener e) {
         if (e != this && !contains(e)) {
             return super.add(e);
         }
@@ -128,9 +128,9 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
         invokeListeners((l) -> l.onEngineClosed(runtimeData));
     }
 
-    private void invokeListeners(Consumer<? super GraalTruffleRuntimeListener> action) {
+    private void invokeListeners(Consumer<? super OptimizedTruffleRuntimeListener> action) {
         Throwable exception = null;
-        for (GraalTruffleRuntimeListener l : this) {
+        for (OptimizedTruffleRuntimeListener l : this) {
             try {
                 action.accept(l);
             } catch (ThreadDeath t) {
@@ -153,7 +153,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
         throw (E) ex;
     }
 
-    // Conversion from TruffleCompilerListener events to GraalTruffleRuntimeListener events
+    // Conversion from TruffleCompilerListener events to OptimizedTruffleRuntimeListener events
 
     @Override
     public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {

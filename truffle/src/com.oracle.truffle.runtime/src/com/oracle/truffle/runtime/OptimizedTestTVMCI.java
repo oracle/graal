@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,54 +40,36 @@
  */
 package com.oracle.truffle.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.Frame;
+import java.io.Closeable;
+import java.io.IOException;
+
+import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedTestTVMCI.GraalTestContext;
 
-import jdk.vm.ci.code.stack.InspectedFrame;
+final class OptimizedTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTarget> {
 
-/**
- * Represents a Truffle {@link com.oracle.truffle.api.frame.FrameInstance} where OSR occurred.
- *
- * Contains a separate field for the {@link InspectedFrame} containing the most up-to-date Frame.
- */
-public final class GraalOSRFrameInstance extends GraalFrameInstance {
-    private final InspectedFrame osrFrame;
+    static final class GraalTestContext implements Closeable {
 
-    GraalOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, InspectedFrame osrFrame) {
-        super(callTargetFrame, callNodeFrame);
-        this.osrFrame = osrFrame;
-    }
-
-    @TruffleBoundary
-    @Override
-    public Frame getFrame(FrameAccess access) {
-        Frame materializedOSRFrame = getFrameFrom(osrFrame, access);
-        if (getOSRRootNode() instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
-            return (Frame) materializedOSRFrame.getArguments()[0];
+        @Override
+        public synchronized void close() throws IOException {
         }
-        return materializedOSRFrame;
     }
 
-    private RootNode getOSRRootNode() {
-        return ((OptimizedCallTarget) osrFrame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode();
-    }
-
-    @TruffleBoundary
     @Override
-    public boolean isVirtualFrame() {
-        return osrFrame.isVirtual(FRAME_INDEX);
+    protected GraalTestContext createTestContext(String testName) {
+        return new GraalTestContext();
     }
 
-    @TruffleBoundary
     @Override
-    public int getCompilationTier() {
-        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+    public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
+        return (OptimizedCallTarget) testNode.getCallTarget();
     }
 
-    @TruffleBoundary
+    @SuppressWarnings("try")
     @Override
-    public boolean isCompilationRoot() {
-        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
+    public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
+        callTarget.compile(true);
+        callTarget.waitForCompilation();
     }
 }

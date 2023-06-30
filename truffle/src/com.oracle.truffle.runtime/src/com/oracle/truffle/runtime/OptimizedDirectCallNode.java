@@ -99,7 +99,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     private RuntimeException handleException(Throwable t) {
         Throwable profiledT = profileExceptionType(t);
-        GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
         throw OptimizedCallTarget.rethrow(profiledT);
     }
 

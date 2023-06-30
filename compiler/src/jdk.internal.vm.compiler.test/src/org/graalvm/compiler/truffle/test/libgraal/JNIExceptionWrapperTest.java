@@ -45,7 +45,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
@@ -85,7 +85,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     private void testMergedStackTraceImpl() throws Exception {
         setupContext("engine.CompilationFailureAction", "Throw", "engine.BackgroundCompilation", Boolean.FALSE.toString());
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         TestTruffleCompilationTask task = new TestTruffleCompilationTask();

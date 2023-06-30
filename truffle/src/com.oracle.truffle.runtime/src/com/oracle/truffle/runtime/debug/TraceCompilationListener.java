@@ -50,8 +50,8 @@ import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import com.oracle.truffle.runtime.CompilationTask;
 import com.oracle.truffle.runtime.FixedPointMath;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
-import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
@@ -63,11 +63,11 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     private final ThreadLocal<Times> currentCompilation = new ThreadLocal<>();
 
-    private TraceCompilationListener(GraalTruffleRuntime runtime) {
+    private TraceCompilationListener(OptimizedTruffleRuntime runtime) {
         super(runtime);
     }
 
-    public static void install(GraalTruffleRuntime runtime) {
+    public static void install(OptimizedTruffleRuntime runtime) {
         runtime.addListener(new TraceCompilationListener(runtime));
     }
 
@@ -306,7 +306,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     /**
      * Determines if a failure is permanent.
      *
-     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
+     * @see OptimizedTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
      *      boolean, int)
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {

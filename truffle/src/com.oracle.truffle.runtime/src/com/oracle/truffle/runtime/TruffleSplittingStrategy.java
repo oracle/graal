@@ -154,7 +154,7 @@ final class TruffleSplittingStrategy {
 
     private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, BiFunction<OptimizedDirectCallNode, EngineData, String> messageFactory) {
         if (engine.traceSplits) {
-            GraalTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, messageFactory.apply(call, engine));
+            OptimizedTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, messageFactory.apply(call, engine));
         }
     }
 
@@ -301,7 +301,7 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    private static final class SplitStatisticsReporter implements GraalTruffleRuntimeListener {
+    private static final class SplitStatisticsReporter implements OptimizedTruffleRuntimeListener {
 
         private static final String D_FORMAT = "%n%-82s: %10d";
         private static final String D_LONG_FORMAT = "%n%-120s: %10d";
@@ -358,7 +358,7 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    static void installListener(GraalTruffleRuntime runtime) {
+    static void installListener(OptimizedTruffleRuntime runtime) {
         runtime.addListener(new SplitStatisticsReporter());
     }
 }

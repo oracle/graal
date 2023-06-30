@@ -38,14 +38,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
-import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
-    protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    protected static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
     static final Object[] noArguments = {};
     protected SplitCountingListener listener;
 
@@ -170,7 +170,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         runtime.removeListener(listener);
     }
 
-    static class SplitCountingListener implements GraalTruffleRuntimeListener {
+    static class SplitCountingListener implements OptimizedTruffleRuntimeListener {
 
         int splitCount = 0;
 

@@ -61,7 +61,7 @@ import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.runtime.GraalTruffleRuntime.CompilerOptionsDescriptors;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilerOptionsDescriptors;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -69,18 +69,18 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.services.Services;
 
-final class GraalRuntimeSupport extends RuntimeSupport {
+final class OptimizedRuntimeSupport extends RuntimeSupport {
 
-    GraalRuntimeSupport(Object permission) {
+    OptimizedRuntimeSupport(Object permission) {
         super(permission);
     }
 
     @Override
     public RootCallTarget newCallTarget(CallTarget source, RootNode rootNode) {
-        assert GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
+        assert OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
 
         CompilerAsserts.neverPartOfCompilation();
-        return GraalTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+        return OptimizedTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
     }
 
     @Override
@@ -92,7 +92,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     public void notifyOnLoad(CallTarget callTarget) {
         CompilerAsserts.neverPartOfCompilation();
         OptimizedCallTarget target = (OptimizedCallTarget) callTarget;
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+        OptimizedRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
         if (target.engine.compileAOTOnCreate) {
             if (target.prepareForAOT()) {
                 target.compile(true);
@@ -198,12 +198,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public ThreadLocalHandshake getThreadLocalHandshake() {
-        return GraalTruffleRuntime.getRuntime().getThreadLocalHandshake();
+        return OptimizedTruffleRuntime.getRuntime().getThreadLocalHandshake();
     }
 
     @Override
     public OptionDescriptors getRuntimeOptionDescriptors() {
-        return GraalTruffleRuntime.getRuntime().getOptionDescriptors();
+        return OptimizedTruffleRuntime.getRuntime().getOptionDescriptors();
     }
 
     @Override
@@ -251,7 +251,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         try {
             return optimizedCallTarget.callInlined(callNode, arguments);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, null, t, null);
+            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, null, t, null);
             throw OptimizedCallTarget.rethrow(t);
         }
     }
@@ -282,7 +282,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public void flushCompileQueue(Object runtimeData) {
         EngineData engine = (EngineData) runtimeData;
-        BackgroundCompileQueue queue = GraalTruffleRuntime.getRuntime().getCompileQueue();
+        BackgroundCompileQueue queue = OptimizedTruffleRuntime.getRuntime().getCompileQueue();
         // compile queue might be null if no call target was yet created
         if (queue != null) {
             for (OptimizedCallTarget target : queue.getQueuedTargets(engine)) {
@@ -293,7 +293,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public Object tryLoadCachedEngine(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        return GraalTruffleRuntime.getRuntime().getEngineCacheSupport().tryLoadingCachedEngine(options, loggerFactory);
+        return OptimizedTruffleRuntime.getRuntime().getEngineCacheSupport().tryLoadingCachedEngine(options, loggerFactory);
     }
 
     @Override
@@ -333,22 +333,22 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public int getObjectAlignment() {
-        return GraalTruffleRuntime.getRuntime().getObjectAlignment();
+        return OptimizedTruffleRuntime.getRuntime().getObjectAlignment();
     }
 
     @Override
     public int getArrayBaseOffset(Class<?> componentType) {
-        return GraalTruffleRuntime.getRuntime().getArrayBaseOffset(componentType);
+        return OptimizedTruffleRuntime.getRuntime().getArrayBaseOffset(componentType);
     }
 
     @Override
     public int getArrayIndexScale(Class<?> componentType) {
-        return GraalTruffleRuntime.getRuntime().getArrayIndexScale(componentType);
+        return OptimizedTruffleRuntime.getRuntime().getArrayIndexScale(componentType);
     }
 
     @Override
     public int getBaseInstanceSize(Class<?> type) {
-        return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+        return OptimizedTruffleRuntime.getRuntime().getBaseInstanceSize(type);
     }
 
     @Override
@@ -358,12 +358,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
-        return GraalTruffleRuntime.getRuntime().getFieldOffsets(type, includePrimitive, includeSuperclasses);
+        return OptimizedTruffleRuntime.getRuntime().getFieldOffsets(type, includePrimitive, includeSuperclasses);
     }
 
     @Override
     public AbstractFastThreadLocal getContextThreadLocal() {
-        AbstractFastThreadLocal local = GraalTruffleRuntime.getRuntime().getFastThreadLocalImpl();
+        AbstractFastThreadLocal local = OptimizedTruffleRuntime.getRuntime().getFastThreadLocalImpl();
         if (local == null) {
             return super.getContextThreadLocal();
         }

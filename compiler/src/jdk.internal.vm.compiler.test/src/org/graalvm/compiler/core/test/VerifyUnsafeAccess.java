@@ -63,7 +63,7 @@ public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
             // This is the blessed way access Unsafe in Graal and JVMCI
             return;
         } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("com.oracle.truffle.runtime")) {
-            // Truffle and GraalTruffleRuntime do not depend on Graal and so cannot use
+            // Truffle and OptimizedTruffleRuntime do not depend on Graal and so cannot use
             // GraalUnsafeAccess
             return;
         }

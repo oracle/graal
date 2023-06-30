@@ -42,8 +42,6 @@ package com.oracle.truffle.runtime;
 
 import java.lang.module.ModuleDescriptor.Requires;
 
-import com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess;
-
 import jdk.internal.module.Modules;
 
 public final class ModulesSupport {
@@ -64,7 +62,15 @@ public final class ModulesSupport {
     }
 
     public static boolean exportJVMCI(Class<?> toClass) {
-        Module jvmciModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.ci").orElse(null);
+        ModuleLayer layer = toClass.getModule().getLayer();
+        if (layer == null) {
+            /*
+             * Truffle is running in an unnamed module, so we cannot export jvmci to it.
+             */
+            return false;
+        }
+
+        Module jvmciModule = layer.findModule("jdk.internal.vm.ci").orElse(null);
         if (jvmciModule == null) {
             // jvmci not found -> fallback to default runtime
             return false;

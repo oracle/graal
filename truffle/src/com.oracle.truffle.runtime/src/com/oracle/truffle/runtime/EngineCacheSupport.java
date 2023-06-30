@@ -47,7 +47,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLogger;
 
-public interface EngineCacheSupport extends GraalRuntimeServiceProvider {
+public interface EngineCacheSupport extends OptimizedRuntimeServiceProvider {
 
     void onEngineCreated(EngineData e);
 
@@ -104,7 +104,7 @@ public interface EngineCacheSupport extends GraalRuntimeServiceProvider {
     }
 
     static EngineCacheSupport get() {
-        return GraalTruffleRuntime.getRuntime().getEngineCacheSupport();
+        return OptimizedTruffleRuntime.getRuntime().getEngineCacheSupport();
     }
 
 }

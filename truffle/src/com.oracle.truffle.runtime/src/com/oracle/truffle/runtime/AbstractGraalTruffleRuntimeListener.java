@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.runtime;
 
-public abstract class AbstractGraalTruffleRuntimeListener implements GraalTruffleRuntimeListener {
+public abstract class AbstractGraalTruffleRuntimeListener implements OptimizedTruffleRuntimeListener {
 
-    protected final GraalTruffleRuntime runtime;
+    protected final OptimizedTruffleRuntime runtime;
 
-    protected AbstractGraalTruffleRuntimeListener(GraalTruffleRuntime runtime) {
+    protected AbstractGraalTruffleRuntimeListener(OptimizedTruffleRuntime runtime) {
         this.runtime = runtime;
     }
 }

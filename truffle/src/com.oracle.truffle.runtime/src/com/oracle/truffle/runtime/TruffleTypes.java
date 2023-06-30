@@ -42,7 +42,7 @@ package com.oracle.truffle.runtime;
 
 /**
  * A service for getting types that can be resolved by
- * {@link GraalTruffleRuntime#resolveType(jdk.vm.ci.meta.MetaAccessProvider, String, boolean)}.
+ * {@link OptimizedTruffleRuntime#resolveType(jdk.vm.ci.meta.MetaAccessProvider, String, boolean)}.
  */
 public interface TruffleTypes {
 

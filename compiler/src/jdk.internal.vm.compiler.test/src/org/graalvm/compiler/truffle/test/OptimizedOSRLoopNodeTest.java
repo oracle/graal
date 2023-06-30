@@ -67,7 +67,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
@@ -75,7 +75,7 @@ import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
 @RunWith(Theories.class)
 public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     @DataPoint public static final OSRLoopFactory DEFAULT = (threshold, repeating) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
 

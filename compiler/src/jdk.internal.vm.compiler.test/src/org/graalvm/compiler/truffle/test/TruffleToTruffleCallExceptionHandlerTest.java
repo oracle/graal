@@ -34,7 +34,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
@@ -43,7 +43,7 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
  */
 public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationTest {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     private static final class Compilables {
 

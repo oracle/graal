@@ -67,7 +67,7 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import com.oracle.truffle.runtime.EngineData;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
@@ -144,7 +144,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
     private final Map<OptimizedCallTarget, Long> timeQueued = new HashMap<>();
 
-    private StatisticsListener(GraalTruffleRuntime runtime) {
+    private StatisticsListener(OptimizedTruffleRuntime runtime) {
         super(runtime);
     }
 
@@ -153,11 +153,11 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
      */
     private final ThreadLocal<CurrentCompilationStatistics> currentCompilationStatistics = new ThreadLocal<>();
 
-    public static void install(GraalTruffleRuntime runtime) {
+    public static void install(OptimizedTruffleRuntime runtime) {
         runtime.addListener(new StatisticsDispatcher(runtime));
     }
 
-    public static StatisticsListener createEngineListener(GraalTruffleRuntime runtime) {
+    public static StatisticsListener createEngineListener(OptimizedTruffleRuntime runtime) {
         return new StatisticsListener(runtime);
     }
 
@@ -328,7 +328,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     private void printStatistics(EngineData runtimeData) {
-        GraalTruffleRuntime rt = runtime;
+        OptimizedTruffleRuntime rt = runtime;
         long endTime = System.nanoTime();
         StringWriter logMessage = new StringWriter();
         try (PrintWriter out = new PrintWriter(logMessage)) {
@@ -691,7 +691,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
     private static final class StatisticsDispatcher extends AbstractGraalTruffleRuntimeListener {
 
-        private StatisticsDispatcher(GraalTruffleRuntime runtime) {
+        private StatisticsDispatcher(OptimizedTruffleRuntime runtime) {
             super(runtime);
         }
 

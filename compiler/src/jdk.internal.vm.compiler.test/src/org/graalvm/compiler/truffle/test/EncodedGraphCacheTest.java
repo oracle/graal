@@ -46,7 +46,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
@@ -96,7 +96,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     }
 
     private static TruffleCompilerImpl getTruffleCompilerFromRuntime(OptimizedCallTarget callTarget) {
-        return (TruffleCompilerImpl) GraalTruffleRuntime.getRuntime().getTruffleCompiler(callTarget);
+        return (TruffleCompilerImpl) OptimizedTruffleRuntime.getRuntime().getTruffleCompiler(callTarget);
     }
 
     @SuppressWarnings("serial")

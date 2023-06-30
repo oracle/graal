@@ -274,7 +274,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
         RootNode root = getRootNode();
         if (speculationLog == null) {
-            speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
+            speculationLog = OptimizedTruffleRuntime.getRuntime().createSpeculationLog();
         }
         OptimizedCallTarget osrTarget = (OptimizedCallTarget) createRootNodeImpl(root, frame.getClass()).getCallTarget();
         if (!osrTarget.acceptForCompilation()) {
@@ -336,7 +336,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      */
     public static LoopNode create(RepeatingNode repeat) {
         // No RootNode accessible here, as repeat is not adopted.
-        EngineData engine = GraalTVMCI.getEngineData(null);
+        EngineData engine = OptimizedTVMCI.getEngineData(null);
         OptionValues engineOptions = engine.engineOptions;
 
         // using static methods with LoopNode return type ensures

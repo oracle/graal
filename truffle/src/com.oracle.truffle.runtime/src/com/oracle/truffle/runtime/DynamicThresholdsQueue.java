@@ -98,7 +98,7 @@ final class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private void scaleThresholds() {
-        GraalTruffleRuntime.getRuntime().setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
+        OptimizedTruffleRuntime.getRuntime().setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
     }
 
     /**

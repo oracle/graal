@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompiler;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class TransferToInterpreterTest extends TestWithPolyglotOptions {
@@ -46,7 +46,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     @Test
     public void test() {
         RootNode rootNode = new TestRootNode();
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         target.call(0);
         Assert.assertFalse(target.isValid());

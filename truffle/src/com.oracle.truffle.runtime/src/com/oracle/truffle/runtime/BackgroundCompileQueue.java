@@ -70,14 +70,14 @@ import java.util.function.Consumer;
  */
 public class BackgroundCompileQueue {
 
-    protected final GraalTruffleRuntime runtime;
+    protected final OptimizedTruffleRuntime runtime;
     private final AtomicLong idCounter;
     private volatile ThreadPoolExecutor compilationExecutorService;
     private volatile BlockingQueue<Runnable> compilationQueue;
     private boolean shutdown = false;
     private long delayMillis;
 
-    public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
+    public BackgroundCompileQueue(OptimizedTruffleRuntime runtime) {
         this.runtime = runtime;
         this.idCounter = new AtomicLong();
     }
@@ -283,9 +283,9 @@ public class BackgroundCompileQueue {
 
     private final class TruffleCompilerThreadFactory implements ThreadFactory {
         private final String namePrefix;
-        private final GraalTruffleRuntime runtime;
+        private final OptimizedTruffleRuntime runtime;
 
-        TruffleCompilerThreadFactory(final String namePrefix, GraalTruffleRuntime runtime) {
+        TruffleCompilerThreadFactory(final String namePrefix, OptimizedTruffleRuntime runtime) {
             this.namePrefix = namePrefix;
             this.runtime = runtime;
         }
@@ -299,7 +299,7 @@ public class BackgroundCompileQueue {
                 public void run() {
                     setContextClassLoader(getClass().getClassLoader());
                     try (AutoCloseable compilerThreadScope = runtime.openCompilerThreadScope();
-                                    AutoCloseable polyglotThreadScope = GraalRuntimeAccessor.ENGINE.createPolyglotThreadScope()) {
+                                    AutoCloseable polyglotThreadScope = OptimizedRuntimeAccessor.ENGINE.createPolyglotThreadScope()) {
                         super.run();
                         if (compilationExecutorService.allowsCoreThreadTimeOut()) {
                             // If core threads are always kept alive (no timeout), the

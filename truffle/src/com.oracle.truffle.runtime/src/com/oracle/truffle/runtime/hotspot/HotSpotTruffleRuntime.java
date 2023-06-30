@@ -66,7 +66,7 @@ import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
 import com.oracle.truffle.runtime.BackgroundCompileQueue;
 import com.oracle.truffle.runtime.CompilationTask;
 import com.oracle.truffle.runtime.EngineData;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
@@ -100,7 +100,7 @@ import sun.misc.Unsafe;
  * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
  * native-image shared library).
  */
-public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
+public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
@@ -723,7 +723,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public static HotSpotTruffleRuntime getRuntime() {
-        return (HotSpotTruffleRuntime) GraalTruffleRuntime.getRuntime();
+        return (HotSpotTruffleRuntime) OptimizedTruffleRuntime.getRuntime();
     }
 
     public boolean isLibGraalCompilationEnabled() {

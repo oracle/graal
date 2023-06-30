@@ -45,20 +45,20 @@ import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class GraalTVMCI extends TVMCI {
+public final class OptimizedTVMCI extends TVMCI {
 
     @Override
     protected RuntimeSupport createRuntimeSupport(Object permission) {
-        return new GraalRuntimeSupport(permission);
+        return new OptimizedRuntimeSupport(permission);
     }
 
     static EngineData getEngineData(RootNode rootNode) {
-        final EngineSupport engineAccess = GraalRuntimeAccessor.ENGINE;
+        final EngineSupport engineAccess = OptimizedRuntimeAccessor.ENGINE;
         final Object layer;
         if (rootNode == null) {
             layer = engineAccess.getCurrentSharingLayer();
         } else {
-            layer = GraalRuntimeAccessor.NODES.getSharingLayer(rootNode);
+            layer = OptimizedRuntimeAccessor.NODES.getSharingLayer(rootNode);
         }
         return engineAccess.getOrCreateRuntimeData(layer);
     }

@@ -43,11 +43,11 @@ package com.oracle.truffle.runtime.hotspot;
 import java.lang.invoke.MethodHandle;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.runtime.GraalFastThreadLocal;
+import com.oracle.truffle.runtime.OptimizedFastThreadLocal;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
-final class HotSpotFastThreadLocal extends GraalFastThreadLocal {
+final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
 
     static final HotSpotFastThreadLocal SINGLETON = new HotSpotFastThreadLocal();
 

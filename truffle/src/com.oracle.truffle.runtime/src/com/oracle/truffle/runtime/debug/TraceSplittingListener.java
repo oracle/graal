@@ -45,18 +45,18 @@ import java.util.Map;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
-import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
-public final class TraceSplittingListener implements GraalTruffleRuntimeListener {
+public final class TraceSplittingListener implements OptimizedTruffleRuntimeListener {
 
     private TraceSplittingListener() {
     }
 
-    public static void install(GraalTruffleRuntime runtime) {
+    public static void install(OptimizedTruffleRuntime runtime) {
         runtime.addListener(new TraceSplittingListener());
     }
 
@@ -69,7 +69,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
             String label = String.format("split %3s-%08x-%-4s ", splitCount++, 0xFFFF_FFFFL & callNode.getCurrentCallTarget().hashCode(), callNode.getCallCount());
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
-            GraalTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
+            OptimizedTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
         }
     }
 
@@ -80,7 +80,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
             String label = String.format("split failed " + reason);
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
-            GraalTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
+            OptimizedTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
         }
     }
 

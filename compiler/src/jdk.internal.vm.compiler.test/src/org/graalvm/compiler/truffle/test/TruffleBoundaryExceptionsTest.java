@@ -36,14 +36,14 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
-import com.oracle.truffle.runtime.GraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     @Override
     @Before
@@ -87,7 +87,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         }
         final int[] compilationCount = {0};
-        GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
+        OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
             @Override
             public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
                 compilationCount[0]++;

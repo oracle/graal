@@ -66,7 +66,7 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
  * <code>*</code> represents the Kleene Closure.
  * </p>
  */
-public interface GraalTruffleRuntimeListener {
+public interface OptimizedTruffleRuntimeListener {
 
     /**
      * Notifies this object when the target of a Truffle call node is
@@ -268,13 +268,13 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * Notifies this object the {@link GraalTruffleRuntime} is being shut down.
+     * Notifies this object the {@link OptimizedTruffleRuntime} is being shut down.
      */
     default void onShutdown() {
     }
 
     /**
-     * Notifies this object an engine using the {@link GraalTruffleRuntime} was closed.
+     * Notifies this object an engine using the {@link OptimizedTruffleRuntime} was closed.
      *
      * @param runtimeData the engine's compiler configuration
      */

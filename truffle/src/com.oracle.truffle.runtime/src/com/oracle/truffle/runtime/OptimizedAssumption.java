@@ -207,7 +207,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                         engineOptions = callTarget.getOptionValues();
                         logger = callTarget.engine.getEngineLogger();
                     } else {
-                        EngineData engineData = GraalTVMCI.getEngineData(null);
+                        EngineData engineData = OptimizedTVMCI.getEngineData(null);
                         engineOptions = engineData.engineOptions;
                         logger = engineData.getEngineLogger();
                     }

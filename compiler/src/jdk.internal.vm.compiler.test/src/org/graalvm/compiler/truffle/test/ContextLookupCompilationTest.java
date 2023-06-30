@@ -60,7 +60,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.BailoutException;
@@ -96,12 +96,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     }
 
     /*
-     * This test verifies that JVMCI has all the features it needs for a GraalTruffleRuntime.
+     * This test verifies that JVMCI has all the features it needs for a OptimizedTruffleRuntime.
      */
     @Test
     public void testJVMCIIsLatest() {
-        Assume.assumeTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
-        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        Assume.assumeTrue(Truffle.getRuntime() instanceof OptimizedTruffleRuntime);
+        OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
         assertTrue(runtime.isLatestJVMCI());
     }
 

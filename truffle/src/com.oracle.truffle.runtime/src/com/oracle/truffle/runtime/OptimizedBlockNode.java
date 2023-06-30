@@ -647,7 +647,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
 
             RootNode rootNode = rootCompilation.getRootNode();
             assert rootNode == block.getRootNode();
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             Class<?> materializedFrameClass = runtime.createMaterializedFrame(new Object[0]).getClass();
             FrameDescriptor descriptor = rootNode.getFrameDescriptor();
             runtime.markFrameMaterializeCalled(descriptor);
@@ -662,7 +662,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 }
 
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
-                GraalRuntimeAccessor.NODES.applySharingLayer(rootNode, partialRootNode);
+                OptimizedRuntimeAccessor.NODES.applySharingLayer(rootNode, partialRootNode);
 
                 targets[i] = (OptimizedCallTarget) partialRootNode.getCallTarget();
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);

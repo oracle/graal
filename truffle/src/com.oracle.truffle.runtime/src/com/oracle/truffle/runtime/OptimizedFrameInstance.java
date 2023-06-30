@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
 
-public class GraalFrameInstance implements FrameInstance {
+public class OptimizedFrameInstance implements FrameInstance {
     static final int CALL_TARGET_INDEX = 0;
     static final int FRAME_INDEX = 1;
     static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
@@ -68,7 +68,7 @@ public class GraalFrameInstance implements FrameInstance {
         try {
             CALL_DIRECT = OptimizedCallTarget.class.getDeclaredMethod("callDirect", Node.class, Object[].class);
             CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, Object[].class);
-            CALL_INLINED_CALL = GraalRuntimeSupport.class.getDeclaredMethod(GraalRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
+            CALL_INLINED_CALL = OptimizedRuntimeSupport.class.getDeclaredMethod(OptimizedRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class, CompilationState.class);
         } catch (NoSuchMethodException | SecurityException e) {
@@ -79,7 +79,7 @@ public class GraalFrameInstance implements FrameInstance {
     private final InspectedFrame callTargetFrame;
     private final InspectedFrame callNodeFrame;
 
-    GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
+    OptimizedFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
         this.callTargetFrame = callTargetFrame;
         this.callNodeFrame = callNodeFrame;
     }
@@ -90,7 +90,7 @@ public class GraalFrameInstance implements FrameInstance {
             if (inspectedFrame.isVirtual(FRAME_INDEX)) {
                 final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
                 if (callTarget.engine.traceDeoptimizeFrame) {
-                    GraalTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
+                    OptimizedTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
                 }
                 inspectedFrame.materializeVirtualObjects(false);
             }

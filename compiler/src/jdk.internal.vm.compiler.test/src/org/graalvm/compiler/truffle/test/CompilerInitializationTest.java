@@ -39,7 +39,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.runtime.GraalTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 public class CompilerInitializationTest {
 
@@ -102,7 +102,7 @@ public class CompilerInitializationTest {
     }
 
     private static Field compilerField() throws NoSuchFieldException {
-        Field f = GraalTruffleRuntime.class.getDeclaredField("truffleCompiler");
+        Field f = OptimizedTruffleRuntime.class.getDeclaredField("truffleCompiler");
         ReflectionUtils.setAccessible(f, true);
         return f;
     }
