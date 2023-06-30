@@ -429,6 +429,9 @@ public class NativeImageClassLoaderSupport {
 
     private static void throwModuleGraphModificationOptionParseErrorIfInvalid(String option, AddExportsAndOpensAndReadsFormatValue val) {
         if (val.packageName == null) {
+            /*
+             * Fail with RuntimeException, to ensure same behavior as when running on regular JVM.
+             */
             System.err.println("Error occurred during initialization of boot layer");
             throw new RuntimeException("Unable to parse " + option + " <module>/<package>: " + val.module.getName());
         }
