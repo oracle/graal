@@ -1047,8 +1047,11 @@ public final class TruffleBaseFeature implements InternalFeature {
                     BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
                 });
             }
-            invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "buildInternalResourcesForNativeImage",
+            List<Path> internalResourceFolders = invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "buildInternalResourcesForNativeImage",
                             List.of(Path.class, Set.class), resourcesDir, null);
+            for (Path internalResourceFolder : internalResourceFolders) {
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCE, internalResourceFolder);
+            }
         }
     }
 

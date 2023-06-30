@@ -814,6 +814,14 @@ suite = {
       },
     },
 
+    "com.oracle.truffle.nfi.backend.libffi.resources" : {
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "TRUFFLE_NFI_RESOURCES",
+      ],
+    },
+
     "com.oracle.truffle.nfi.backend.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1440,6 +1448,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.libffi",
+        "com.oracle.truffle.nfi.backend.libffi.resources"
       ],
       "distDependencies" : [
         "TRUFFLE_NFI",
@@ -1468,6 +1477,26 @@ suite = {
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
       "maven": True,
+    },
+
+    "TRUFFLE_NFI_RESOURCES" : {
+      "type" : "jar",
+      "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+          "windows-aarch64",
+      ],
+      "layout" : {
+        "META-INF/resources/bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "META-INF/resources/include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
+      },
+      "include_dirs" : ["include"],
+      "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
+      "maven": False,
     },
 
     "TRUFFLE_TCK" : {

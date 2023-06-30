@@ -190,7 +190,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     }
 
     @Substitute
-    private static void loadNFILib() {
+    private void loadNFILib() {
         // do nothing, the NFI library is statically linked to the SVM image
     }
 

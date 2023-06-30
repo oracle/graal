@@ -53,6 +53,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -60,6 +62,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 final class InternalResourceCache {
+
+    private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
 
     private static final Lock unpackLock = new ReentrantLock();
     private static volatile Path cacheRoot;
@@ -87,7 +91,7 @@ final class InternalResourceCache {
                          */
                         root = findResourceRootOnNativeImage(findCacheRootOnNativeImage());
                     } else {
-                        root = findCacheRootOnHotSpot().resolve(Path.of(id, resource.name(), resource.versionHash()));
+                        root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resource.name()), sanitize(resource.versionHash())));
                         unpackFiles(root, resource);
                     }
                     ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
@@ -142,7 +146,15 @@ final class InternalResourceCache {
     }
 
     private Path findResourceRootOnNativeImage(Path root) {
-        return root.resolve(Path.of(id, resource.name()));
+        return root.resolve(Path.of(sanitize(id), sanitize(resource.name())));
+    }
+
+    private static String sanitize(String pathElement) {
+        String result = pathElement;
+        for (char fileSystemsSpecialChar : FILE_SYSTEM_SPECIAL_CHARACTERS) {
+            result = result.replace(fileSystemsSpecialChar, '_');
+        }
+        return result;
     }
 
     private static Path findCacheRootOnHotSpot() throws IOException {
@@ -212,12 +224,17 @@ final class InternalResourceCache {
         }
     }
 
-    static void buildInternalResourcesForNativeImage(Path target, Set<String> filter) throws IOException {
+    /**
+     * Unpacks internal resources after native-image write. This method is called reflectively by
+     * the {@code TruffleBaseFeature#afterAnalysis}.
+     */
+    static List<Path> buildInternalResourcesForNativeImage(Path target, Set<String> filter) throws IOException {
+        List<Path> result = new ArrayList<>();
         for (LanguageCache language : LanguageCache.languages().values()) {
             if (filter == null || filter.contains(language.getId())) {
                 for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
                     InternalResourceCache cache = language.getResourceCache(resourceType);
-                    cache.buildInternalResourcesForNativeImage(target);
+                    result.add(cache.buildInternalResourcesForNativeImage(target));
                 }
             }
         }
@@ -225,15 +242,30 @@ final class InternalResourceCache {
             if (filter == null || filter.contains(instrument.getId())) {
                 for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
                     InternalResourceCache cache = instrument.getResourceCache(resourceType);
-                    cache.buildInternalResourcesForNativeImage(target);
+                    result.add(cache.buildInternalResourcesForNativeImage(target));
                 }
             }
         }
+        return result;
     }
 
-    private void buildInternalResourcesForNativeImage(Path target) throws IOException {
-        Path resourceRoot = Files.createDirectories(findResourceRootOnNativeImage(target));
+    private Path buildInternalResourcesForNativeImage(Path target) throws IOException {
+        Path resourceRoot = findResourceRootOnNativeImage(target);
+        deleteIfExists(resourceRoot);
+        Files.createDirectories(resourceRoot);
         resource.unpackFiles(resourceRoot);
+        return resourceRoot;
+    }
+
+    private static void deleteIfExists(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
+                for (Path child : children) {
+                    deleteIfExists(child);
+                }
+            }
+        }
+        Files.deleteIfExists(path);
     }
 
     /**
