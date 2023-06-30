@@ -124,10 +124,10 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         access.registerReachabilityHandler(ManagementFeature::registerMBeanServerFactoryNewBuilder, method(access, "javax.management.MBeanServerFactory", "newBuilder", Class.class));
         access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
 
-        assert checkMemoryManagerBeans();
+        assert verifyMemoryManagerBeans();
     }
 
-    private static boolean checkMemoryManagerBeans() {
+    private static boolean verifyMemoryManagerBeans() {
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         List<MemoryPoolMXBean> memoryPools = managementSupport.getPlatformMXBeans(MemoryPoolMXBean.class);
         List<MemoryManagerMXBean> memoryManagers = managementSupport.getPlatformMXBeans(MemoryManagerMXBean.class);
@@ -136,12 +136,12 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         Set<String> memoryPoolNames = new HashSet<>();
         for (MemoryPoolMXBean memoryPool : memoryPools) {
             String memoryPoolName = memoryPool.getName();
-            assert checkObjectName(memoryPoolName);
+            assert verifyObjectName(memoryPoolName);
             memoryPoolNames.add(memoryPoolName);
         }
         for (MemoryManagerMXBean memoryManager : memoryManagers) {
             String memoryManagerName = memoryManager.getName();
-            assert checkObjectName(memoryManagerName);
+            assert verifyObjectName(memoryManagerName);
             memoryManagerNames.add(memoryManagerName);
             assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManagerName;
         }
@@ -151,7 +151,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         return true;
     }
 
-    private static boolean checkObjectName(String name) {
+    private static boolean verifyObjectName(String name) {
         assert !name.contains(":");
         assert !name.contains("=");
         assert !name.contains("\"");
