@@ -271,6 +271,10 @@ class NativeImageBenchmarkMixin(object):
         # We are skipping build assertions when a benchmark is not a part of a gate.
         return ['-J-ea', '-J-esa'] if is_gate else []
 
+    # Override and return False if this suite should not check for samples in runs with PGO
+    def checkSamplesInPgo(self):
+        return True
+
 
 def measureTimeToFirstResponse(bmSuite):
     protocolHost = bmSuite.serviceHost()
