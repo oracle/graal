@@ -1130,7 +1130,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
     },
-   },
   },
 
   "licenses" : {

@@ -61,11 +61,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
     @Override
     public TruffleRuntime getRuntime() {
-        TruffleRuntime runtime = createRuntime();
-        if (runtime == null) {
-            return new DefaultTruffleRuntime();
-        }
-        return runtime;
+        return createRuntime();
     }
 
     @Override
@@ -74,27 +70,38 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     }
 
     protected static TruffleRuntime createRuntime() {
-        if (!ModulesSupport.exportJVMCI(HotSpotTruffleRuntimeAccess.class)) {
-            return null;
+        String reason = ModulesSupport.exportJVMCI(HotSpotTruffleRuntimeAccess.class);
+        if (reason != null) {
+            return new DefaultTruffleRuntime(reason);
         }
-        Services.initializeJVMCI();
+        try {
+            Services.initializeJVMCI();
+        } catch (Error e) {
+            // hack to detect the exact error that is thrown when
+            if (e.getClass() == Error.class && e.getMessage().startsWith("The EnableJVMCI VM option must be true")) {
+                return new DefaultTruffleRuntime("JVMCI is not enabled on this JVM. JVMCI may be enabled using -XX:+EnableJVMCI.");
+            }
+            throw e;
+        }
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
         HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
         boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
         if (!useCompiler) {
             // compilation disabled in host VM -> fallback to default runtime
-            return null;
+            return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. JVMCI may be enabled using -XX:+EnableJVMCI.");
         }
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
+            // try LibGraal
             compilationSupport = new LibGraalTruffleCompilationSupport();
         } else {
+            // try jar graal
             try {
-                // jar graal
                 Module compilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.compiler").orElse(null);
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
-                    return null;
+                    return new DefaultTruffleRuntime(
+                                    "Libgraal compilation is not available on this JVM. Alternatively, the compiler module jdk.internal.vm.compiler was not found on the --upgrade-module-path.");
                 }
                 Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
                 Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");

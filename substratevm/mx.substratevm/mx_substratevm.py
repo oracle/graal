@@ -1192,7 +1192,7 @@ libgraal_build_args = [
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
     '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
-        # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
+    # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',

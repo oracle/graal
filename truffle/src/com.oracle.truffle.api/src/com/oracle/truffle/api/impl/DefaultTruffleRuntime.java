@@ -77,6 +77,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
+    /**
+     * Contains a reason why the default fallback engine was selected.
+     */
+    private final String fallbackReason;
 
     private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<>() {
 
@@ -97,6 +101,15 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     };
 
     public DefaultTruffleRuntime() {
+        this.fallbackReason = null;
+    }
+
+    public DefaultTruffleRuntime(String fallbackReason) {
+        this.fallbackReason = fallbackReason;
+    }
+
+    public String getFallbackReason() {
+        return fallbackReason;
     }
 
     /**

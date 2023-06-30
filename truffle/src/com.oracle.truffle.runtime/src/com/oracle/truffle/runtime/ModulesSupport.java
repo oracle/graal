@@ -42,16 +42,18 @@ package com.oracle.truffle.runtime;
 
 import java.lang.module.ModuleDescriptor.Requires;
 
+import com.oracle.truffle.api.Truffle;
+
 import jdk.internal.module.Modules;
 
 public final class ModulesSupport {
 
-    private static final boolean AVAILABLE;
+    private static final boolean ATTACH_AVAILABLE;
 
     static {
-        AVAILABLE = loadModulesSupportLibrary();
+        ATTACH_AVAILABLE = loadModulesSupportLibrary();
 
-        if (AVAILABLE) {
+        if (ATTACH_AVAILABLE) {
             // this is the only access we really need to request natively using JNI.
             // after that we can access through the Modules class
             addExports0(ModulesSupport.class.getModule().getLayer().findModule("java.base").orElseThrow(), "jdk.internal.module", ModulesSupport.class.getModule());
@@ -61,22 +63,37 @@ public final class ModulesSupport {
     private ModulesSupport() {
     }
 
-    public static boolean exportJVMCI(Class<?> toClass) {
+    /**
+     * This is invoked reflectively from {@link Truffle}.
+     */
+    public static String exportJVMCI(Class<?> toClass) {
         ModuleLayer layer = toClass.getModule().getLayer();
         if (layer == null) {
             /*
              * Truffle is running in an unnamed module, so we cannot export jvmci to it.
              */
-            return false;
+            if (ModulesSupport.class.getModule().getLayer() != null) {
+                /*
+                 * Even if the runtime is in the unnamed mode, make sure truffle runtime classes are
+                 * in a module layer and ensure they have access to JVMCI.
+                 */
+                exportJVMCI(ModulesSupport.class);
+            }
+            return "Truffle was loaded from the class-path. Use Truffle from the module-path instead.";
         }
 
         Module jvmciModule = layer.findModule("jdk.internal.vm.ci").orElse(null);
         if (jvmciModule == null) {
             // jvmci not found -> fallback to default runtime
-            return false;
+            return "JVMCI is not enabled for this JVM. Enable JVMCI using -XX:+EnableJVMCI.";
         }
+
+        if (!ATTACH_AVAILABLE) {
+            return "The Truffle attach library is not available.";
+        }
+
         addExportsRecursive(jvmciModule, toClass.getModule());
-        return true;
+        return null;
     }
 
     private static void addExportsRecursive(Module jvmciModule, Module runtimeModule) {
@@ -96,7 +113,7 @@ public final class ModulesSupport {
 
     public static void addExports(Module m1, String pn, Module m2) {
         // we check available to avoid illegal access errors for the Modules class
-        if (AVAILABLE) {
+        if (ATTACH_AVAILABLE) {
             Modules.addExports(m1, pn, m2);
         } else {
             throw new UnsupportedOperationException();
