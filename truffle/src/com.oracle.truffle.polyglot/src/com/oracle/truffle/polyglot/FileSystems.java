@@ -115,8 +115,8 @@ final class FileSystems {
         return new DeniedIOFileSystem();
     }
 
-    static FileSystem newLanguageHomeFileSystem(String hostTmpDir) {
-        FileSystem defaultFS = newDefaultFileSystem(hostTmpDir);
+    static FileSystem newLanguageHomeFileSystem() {
+        FileSystem defaultFS = newDefaultFileSystem(null);
         return new LanguageHomeFileSystem(new ReadOnlyFileSystem(defaultFS), new PathOperationsOnlyFileSystem(defaultFS));
     }
 

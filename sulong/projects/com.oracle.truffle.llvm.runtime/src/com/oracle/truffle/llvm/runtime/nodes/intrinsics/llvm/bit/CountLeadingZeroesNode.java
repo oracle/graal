@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,9 +32,30 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI8NodeGen;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class CountLeadingZeroesNode {
+
+    public static TypedBuiltinFactory getFactory(PrimitiveKind type) {
+        switch (type) {
+            case I8:
+                return TypedBuiltinFactory.simple2(CountLeadingZeroesI8NodeGen::create);
+            case I16:
+                return TypedBuiltinFactory.simple2(CountLeadingZeroesI16NodeGen::create);
+            case I32:
+                return TypedBuiltinFactory.simple2(CountLeadingZeroesI32NodeGen::create);
+            case I64:
+                return TypedBuiltinFactory.simple2(CountLeadingZeroesI64NodeGen::create);
+            default:
+                return null;
+        }
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)

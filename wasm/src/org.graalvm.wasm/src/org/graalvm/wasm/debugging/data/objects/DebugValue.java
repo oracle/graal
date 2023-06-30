@@ -50,12 +50,13 @@ import org.graalvm.wasm.debugging.data.DebugType;
  */
 public class DebugValue extends DebugBinding {
     private final String name;
-    private final DebugLocation loc;
+    private final DebugLocation location;
 
     public DebugValue(String elementName, DebugLocation location, DebugType type) {
         super(type);
+        assert location != null : "the location of a debug value must not be null";
         this.name = elementName;
-        this.loc = location;
+        this.location = location;
     }
 
     @Override
@@ -64,8 +65,8 @@ public class DebugValue extends DebugBinding {
     }
 
     @Override
-    public DebugLocation getLocation(DebugLocation location) {
-        return loc;
+    public DebugLocation getLocation(DebugLocation loc) {
+        return this.location;
     }
 
     @Override

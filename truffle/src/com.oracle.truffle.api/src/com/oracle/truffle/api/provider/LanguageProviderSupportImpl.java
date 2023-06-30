@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.provider;
 
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.impl.Accessor;
 
 import java.util.Collection;
+import java.util.List;
 
 final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport {
 
@@ -62,7 +64,8 @@ final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport
     }
 
     @Override
-    public <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type) {
-        return provider.loadTruffleService(type);
+    @SuppressWarnings("unchecked")
+    public List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider) {
+        return (List<FileTypeDetector>) provider.createFileTypeDetectors();
     }
 }

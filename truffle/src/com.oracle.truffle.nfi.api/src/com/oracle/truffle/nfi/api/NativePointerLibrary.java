@@ -69,7 +69,7 @@ public abstract class NativePointerLibrary extends Library {
     }
 
     @ExportLibrary(value = NativePointerLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
-    public static final class LongNativePointerLibrary {
+    static final class LongNativePointerLibrary {
 
         @ExportMessage
         public static boolean isPointer(Long receiver) {

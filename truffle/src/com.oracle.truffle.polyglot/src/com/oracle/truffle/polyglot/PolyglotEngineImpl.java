@@ -1722,14 +1722,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
                 }
                 FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newNoIOFileSystem();
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
             } else if (allowHostFileAccess) {
                 FileSystem fs = FileSystems.newDefaultFileSystem(tmpDir);
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
             } else if (customFileSystem != null) {
-                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
             } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem(tmpDir), tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
             }
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;

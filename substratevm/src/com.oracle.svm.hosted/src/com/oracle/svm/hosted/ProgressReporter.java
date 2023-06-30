@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.security.CodeSource;
@@ -78,6 +77,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -231,7 +231,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd() {
+    public void printInitializeEnd(List<Feature> features) {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
@@ -256,12 +256,17 @@ public class ProgressReporter {
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
         String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
+
+        printFeatures(features);
+
+        l().printLineSeparator();
+        printResourceInfo();
     }
 
-    public void printFeatures(List<Feature> features) {
+    private void printFeatures(List<Feature> features) {
         int numFeatures = features.size();
         if (numFeatures > 0) {
-            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").println();
+            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").a(":").println();
             features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
             for (Feature feature : features) {
                 printFeature(l(), feature);
@@ -283,6 +288,40 @@ public class ProgressReporter {
             printer.a(": ").a(description);
         }
         printer.println();
+    }
+
+    private void printResourceInfo() {
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+        recordJsonMetric(ResourceUsageKey.GC_MAX_HEAP, maxMemory);
+        long totalMemorySize = getOperatingSystemMXBean().getTotalMemorySize();
+        recordJsonMetric(ResourceUsageKey.MEMORY_TOTAL, totalMemorySize);
+
+        List<String> inputArguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
+        List<String> maxRAMPrecentageValues = inputArguments.stream().filter(arg -> arg.startsWith("-XX:MaxRAMPercentage")).toList();
+        String maxHeapSuffix = "determined at start";
+        if (maxRAMPrecentageValues.size() > 1) { // The driver sets this option once
+            maxHeapSuffix = "set via '%s'".formatted(maxRAMPrecentageValues.get(maxRAMPrecentageValues.size() - 1));
+        }
+        String xmxValueOrNull = inputArguments.stream().filter(arg -> arg.startsWith("-Xmx")).reduce((first, second) -> second).orElse(null);
+        if (xmxValueOrNull != null) { // -Xmx takes precedence over -XX:MaxRAMPercentage
+            maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
+        }
+
+        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
+        int availableProcessors = runtime.availableProcessors();
+        recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
+        String maxNumberOfThreadsSuffix = "determined at start";
+        if (NativeImageOptions.NumberOfThreads.hasBeenSet()) {
+            maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(NativeImageOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
+        }
+
+        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
+                        ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
+        l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
+                        maxNumberOfThreads, Utils.toPercentage(maxNumberOfThreads, availableProcessors), availableProcessors, maxNumberOfThreadsSuffix).println();
     }
 
     public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
@@ -310,35 +349,36 @@ public class ProgressReporter {
     }
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
-        String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
+        String actualFormat = "%,9d ";
+        String totalFormat = " (%4.1f%% of %,8d total)";
         long reachableTypes = universe.getTypes().stream().filter(t -> t.isReachable()).count();
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REACHABLE, reachableTypes);
-        l().a(actualVsTotalFormat, reachableTypes, reachableTypes / (double) totalTypes * 100, totalTypes)
-                        .a(" types ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
+                        .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
         long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
-        l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
-                        .a(" fields ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
+                        .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
         long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
-        l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
-                        .a(" methods ").doclink("reachable", "#glossary-reachability").println();
+        l().a(actualFormat, reachableMethods).doclink("reachable methods", "#glossary-reachability")
+                        .a(totalFormat, Utils.toPercentage(reachableMethods, totalMethods), totalMethods).println();
         if (numRuntimeCompiledMethods >= 0) {
             recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
-            l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
-                            .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
+            l().a(actualFormat, numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
+                            .a(totalFormat, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods).println();
         }
-        String typesFieldsMethodFormat = "%,8d types, %,5d fields, and %,5d methods ";
+        String typesFieldsMethodFormat = "%,9d types, %,5d fields, and %,5d methods ";
         int reflectClassesCount = ClassForNameSupport.count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectFieldsCount = rs.getReflectionFieldsCount();
@@ -360,7 +400,7 @@ public class ProgressReporter {
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
-            l().a("%,8d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
+            l().a("%,9d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
         }
     }
 
@@ -401,15 +441,15 @@ public class ProgressReporter {
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageFileSize * 100)
+        l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         int numResources = Resources.singleton().count();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
-        l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageFileSize * 100)
+        l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
-            DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageFileSize * 100)
+            DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), Utils.toPercentage(debugInfoSize, imageFileSize))
 
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
@@ -422,7 +462,7 @@ public class ProgressReporter {
         recordJsonMetric(ImageDetailKey.TOTAL_SIZE, imageFileSize);
         recordJsonMetric(ImageDetailKey.CODE_AREA_SIZE, codeAreaSize);
         recordJsonMetric(ImageDetailKey.NUM_COMP_UNITS, numCompilations);
-        l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), otherBytes / (double) imageFileSize * 100)
+        l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), Utils.toPercentage(otherBytes, imageFileSize))
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
@@ -746,8 +786,7 @@ public class ProgressReporter {
             p.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", ByteFormattingUtil.bytesToGiB(peakRSS));
         }
         recordJsonMetric(ResourceUsageKey.PEAK_RSS, (peakRSS >= 0 ? peakRSS : UNAVAILABLE_METRIC));
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
+        long processCPUTime = getOperatingSystemMXBean().getProcessCpuTime();
         double cpuLoad = UNAVAILABLE_METRIC;
         if (processCPUTime > 0) {
             cpuLoad = Utils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds;
@@ -789,6 +828,10 @@ public class ProgressReporter {
         return TimerCollection.singleton().get(type);
     }
 
+    private static com.sun.management.OperatingSystemMXBean getOperatingSystemMXBean() {
+        return (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    }
+
     private static class Utils {
         private static final double MILLIS_TO_SECONDS = 1000d;
         private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
@@ -819,6 +862,10 @@ public class ProgressReporter {
 
         private static String stringFilledWith(int size, String fill) {
             return new String(new char[size]).replace("\0", fill);
+        }
+
+        private static double toPercentage(long part, long total) {
+            return part / (double) total * 100;
         }
 
         private static String truncateClassOrPackageName(String classOrPackageName) {

@@ -50,7 +50,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
             assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
             return readableField.readValue(metaAccess, classInitializationSupport, receiver);
 
-        } else if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        } else if (!classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
             /*
              * The class is initialized at image run time. We must not use any field value from the
              * image builder VM, even if the class is already initialized there. We need to return

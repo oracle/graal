@@ -67,6 +67,9 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     private final int indexOffset;
 
     private DebugArrayDisplayValue(DebugContext context, String name, int dimension, int indexOffset, DebugLocation location, DebugType array) {
+        assert context != null : "the context provided to a debug array display value must not be null";
+        assert location != null : "the location provided to a debug array display value must not be null";
+        assert array != null : "the array type provided to a debug array display value must not be null";
         this.context = context;
         this.dimension = dimension;
         this.indexOffset = indexOffset;
