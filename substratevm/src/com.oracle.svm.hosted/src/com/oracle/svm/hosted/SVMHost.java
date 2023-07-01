@@ -86,6 +86,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -114,7 +115,6 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
-import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -126,6 +126,7 @@ import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
@@ -135,6 +136,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
@@ -307,29 +309,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Decide when the type should be initialized. */
-        classInitializationSupport.maybeInitializeHosted(analysisType);
-
-        /*
-         * For reachable classes, registering class's package in appropriate class loader.
-         */
-        Class<?> javaClass = analysisType.getJavaClass();
-        /**
-         * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
-         * may be different than the class used to load it during native-image generation.
-         */
-        ClassLoader classloader = javaClass.getClassLoader();
-        if (classloader == null) {
-            classloader = BootLoaderSupport.getBootLoader();
-        }
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
-        if (runtimeClassLoader != null) {
-            Package packageValue = javaClass.getPackage();
-            if (packageValue != null) {
-                DynamicHub typeHub = typeToHub.get(analysisType);
-                String packageName = typeHub.getPackageName();
-                ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
-            }
-        }
+        classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
@@ -337,31 +317,31 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
-        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
+        boolean initializedAtBuildTime = classInitializationSupport.maybeInitializeAtBuildTime(type);
+        assert !initializedAtBuildTime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
-        return !shouldInitializeAtRuntime;
+        return initializedAtBuildTime;
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass())).withFullInfopoints(
-                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        GraphBuilderConfiguration updatedConfig = config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
+                        .withFullInfopoints(
+                                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        if (parsingSupport != null) {
+            return parsingSupport.updateGraphBuilderConfiguration(updatedConfig, method);
+        }
+        return updatedConfig;
     }
 
     private boolean retainLocalVariables() {
         if (parseOnce) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
-             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
-             * reused by javac, local variables can still get illegal values. Since we cannot
-             * "restore" such illegal values during deoptimization, we cannot disable liveness
-             * analysis for deoptimization target methods.
-             *
-             * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
-             * later.
+             * bytecode-liveness. This greatly helps debugging. Note that when local variable
+             * numbers are reused by javac, local variables can still be assigned to illegal values.
              */
             return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
 
@@ -771,7 +751,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public InlineBeforeAnalysisGraphDecoder createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
-        return new InlineBeforeAnalysisGraphDecoder(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method), null);
+        return new InlineBeforeAnalysisGraphDecoderImpl(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method));
     }
 
     public static class Options {
@@ -1032,6 +1012,10 @@ public class SVMHost extends HostVM {
             annotationTypes.add(fieldType.getJavaClass());
         }
         return annotationTypes.toArray(new Class<?>[0]);
+    }
+
+    public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
+        return new SimulateClassInitializerSupport(aMetaAccess, this);
     }
 
     @Override

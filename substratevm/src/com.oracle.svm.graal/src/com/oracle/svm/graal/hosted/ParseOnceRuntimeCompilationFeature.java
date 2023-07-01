@@ -768,6 +768,21 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             return HostVM.PARSING_UNHANDLED;
         }
 
+        @Override
+        public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
+            if (method.isDeoptTarget()) {
+                /*
+                 * The assertion setting for the deoptTarget and the runtime compiled method must
+                 * match.
+                 *
+                 * Local variables are never retained to help ensure the state of the deoptimization
+                 * source will always be a superset of the deoptimization target.
+                 */
+                return config.withOmitAssertions(graphBuilderConfig.omitAssertions()).withRetainLocalVariables(false);
+            }
+            return config;
+        }
+
         @SuppressWarnings("try")
         private Object parseRuntimeCompiledMethod(BigBang bb, DebugContext debug, AnalysisMethod method) {
 

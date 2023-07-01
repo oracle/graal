@@ -332,6 +332,10 @@ public class BciBlockMapping implements JavaMethodContext {
         JSRData jsrData;
         List<TraversalStep> loopIdChain;
         boolean duplicate;
+        /**
+         * Denotes if this is a block representing an out of bounds branch target.
+         */
+        private boolean outOfBounds;
 
         public static class JSRData implements Cloneable {
             public EconomicMap<JsrScope, BciBlock> jsrAlternatives;
@@ -614,6 +618,10 @@ public class BciBlockMapping implements JavaMethodContext {
             properties.put("duplicate", this.duplicate);
             // JSRData?
         }
+
+        public boolean isOutOfBounds() {
+            return outOfBounds;
+        }
     }
 
     public static class ExceptionDispatchBlock extends BciBlock {
@@ -720,6 +728,11 @@ public class BciBlockMapping implements JavaMethodContext {
      */
     private BciBlock[] blocks;
     protected BciBlock[] blockMap;
+    /**
+     * Map from out of bounds BCIs to blocks representing them. Visiting such a block during
+     * bytecode parsing should trigger a bailout.
+     */
+    protected EconomicMap<Integer, BciBlock> branchTargetBlocksOOB;
     public final Bytecode code;
     public boolean hasJsrBytecodes;
 
@@ -1266,6 +1279,23 @@ public class BciBlockMapping implements JavaMethodContext {
     }
 
     private BciBlock makeBlock(int startBci) {
+        if (startBci >= blockMap.length) {
+            /*
+             * We have a successor BCI that is outside of the range of bytecodes. This means the
+             * predecssor block falls through on this control flow edge. The parser will throw an
+             * error if such a block is reachable.
+             */
+            if (branchTargetBlocksOOB == null) {
+                branchTargetBlocksOOB = EconomicMap.create();
+            }
+            BciBlock block = branchTargetBlocksOOB.get(startBci);
+            if (block == null) {
+                block = new BciBlock(startBci);
+                block.outOfBounds = true;
+                branchTargetBlocksOOB.put(startBci, block);
+            }
+            return block;
+        }
         BciBlock oldBlock = blockMap[startBci];
         if (oldBlock == null) {
             BciBlock newBlock = new BciBlock(startBci);

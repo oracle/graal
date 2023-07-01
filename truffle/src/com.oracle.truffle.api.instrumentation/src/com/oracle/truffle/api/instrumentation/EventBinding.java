@@ -156,6 +156,29 @@ public class EventBinding<T> {
         attachedSemaphore.release();
     }
 
+    /**
+     * Try to attach this binding, if not disposed or attached already. Works the same as
+     * {@link #attach()}, but returns <code>false</code> instead of throwing an exception when not
+     * successful.
+     * <p>
+     * The binding is attached automatically, when one of the {@link Instrumenter} attach methods
+     * were used. Use this for bindings created by {@link Instrumenter} create methods only.
+     *
+     * @return <code>true</code> when the binding was attached successfully, <code>false</code> when
+     *         disposed or attached already.
+     * @since 23.1
+     */
+    public final boolean tryAttach() {
+        Boolean wasAttached = attached.getAndSet(true);
+        if (Boolean.FALSE != wasAttached) {
+            // Attached already, or disposed
+            return false;
+        }
+        doAttach();
+        attachedSemaphore.release();
+        return true;
+    }
+
     void doAttach() {
         throw CompilerDirectives.shouldNotReachHere(this.toString() + ".doAttach()");
     }

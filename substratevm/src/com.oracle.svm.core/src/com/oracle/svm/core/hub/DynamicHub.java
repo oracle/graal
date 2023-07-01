@@ -72,6 +72,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import jdk.internal.access.JavaLangReflectAccess;
+import jdk.internal.reflect.FieldAccessor;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1881,6 +1884,9 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     @Alias //
     private static ReflectionFactory soleInstance;
 
+    @Alias //
+    private JavaLangReflectAccess langReflectAccess;
+
     /**
      * This substitution eliminates the SecurityManager check in the original method, which would
      * make some build-time verifications fail.
@@ -1890,15 +1896,20 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return soleInstance;
     }
 
-    /**
-     * Do not use the field handle based field accessor but the one based on unsafe. It takes effect
-     * when {@code Target_java_lang_reflect_Field#fieldAccessorField#fieldAccessor} is recomputed at
-     * runtime. See also GR-39586.
-     */
-    @TargetElement(onlyWith = JDK19OrLater.class)
     @Substitute
-    static boolean useFieldHandleAccessor() {
-        return false;
+    public FieldAccessor newFieldAccessor(Field field0, boolean override) {
+        Field field = field0;
+        Field root = langReflectAccess.getRoot(field);
+        if (root != null) {
+            // FieldAccessor will use the root unless the modifiers have
+            // been overridden
+            if (root.getModifiers() == field.getModifiers() || !override) {
+                field = root;
+            }
+        }
+        boolean isFinal = Modifier.isFinal(field.getModifiers());
+        boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
+        return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
 }
 

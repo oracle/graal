@@ -811,6 +811,8 @@ public abstract class Accessor {
 
         public abstract void initializeMultiThreading(Env env);
 
+        public abstract void finalizeThread(Env env, Thread thread);
+
         public abstract void disposeThread(Env env, Thread thread);
 
         public abstract void finalizeContext(Env localEnv);

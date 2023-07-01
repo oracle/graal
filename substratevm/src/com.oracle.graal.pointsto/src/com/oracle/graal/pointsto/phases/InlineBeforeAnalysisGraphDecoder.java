@@ -70,7 +70,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     public class InlineBeforeAnalysisMethodScope extends PEMethodScope {
 
-        private final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
+        public final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
 
         private boolean inliningAborted;
 
@@ -144,6 +144,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             canonical = canonicalizeUnsafeAccess(unsafeAccess);
         }
         canonical = super.canonicalizeFixedNode(methodScope, loopScope, canonical);
+        canonical = doCanonicalizeFixedNode(cast(methodScope), loopScope, canonical);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
          * alive, but we know it was just decoded and therefore not checked yet).
@@ -155,6 +156,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             maybeAbortInlining(methodScope, loopScope, canonical);
         }
         return canonical;
+    }
+
+    @SuppressWarnings("unused")
+    protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
+        return node;
     }
 
     /**

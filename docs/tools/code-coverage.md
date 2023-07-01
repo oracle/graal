@@ -237,6 +237,6 @@ Note that the Code Coverage Highlighter plugin looks for the `lcov.info` file in
 
 6. Open Visual Studio Code, then open the folder containing the `nodeapp.js` file and `coverage` directory and you should be greeted with an image similar to the following:
 
-![](img/vscode-coverage.png)
+![Visual Studio Code Coverage](img/vscode-coverage.png)
 
 If you wish to integrate the data gathered by the GraalVM code coverage tool with your own visualisation, the `--coverage.Output=json` option results in the output being a JSON file with the raw data gathered by the tracker.

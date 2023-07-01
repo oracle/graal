@@ -1,0 +1,17 @@
+# errors
+org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotation=ignore
+org.eclipse.jdt.core.compiler.problem.missingDeprecatedAnnotation=ignore
+# warnings
+org.eclipse.jdt.core.compiler.problem.redundantSpecificationOfTypeArguments=ignore
+org.eclipse.jdt.core.compiler.problem.deprecation=ignore
+org.eclipse.jdt.core.compiler.problem.localVariableHiding=ignore
+org.eclipse.jdt.core.compiler.problem.parameterAssignment=ignore
+org.eclipse.jdt.core.compiler.problem.unusedDeclaredThrownException=ignore
+org.eclipse.jdt.core.compiler.problem.reportMethodCanBeStatic=ignore
+org.eclipse.jdt.core.compiler.problem.unusedParameter=ignore
+org.eclipse.jdt.core.compiler.problem.unnecessaryTypeCheck=ignore
+org.eclipse.jdt.core.compiler.problem.emptyStatement=ignore
+org.eclipse.jdt.core.compiler.problem.missingHashCodeMethod=ignore
+org.eclipse.jdt.core.compiler.problem.unusedPrivateMember=ignore
+org.eclipse.jdt.core.compiler.problem.unusedObjectAllocation=ignore
+org.eclipse.jdt.core.compiler.problem.unusedLocal=ignore

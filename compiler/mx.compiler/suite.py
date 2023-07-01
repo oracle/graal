@@ -486,7 +486,7 @@ suite = {
       },
     },
 
-    "org.graalvm.compiler.truffle.test.jdk19" : {
+    "org.graalvm.compiler.truffle.test.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies": [
@@ -496,10 +496,9 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "overlayTarget" : "jdk.internal.vm.compiler.test",
-      "multiReleaseJarVersion" : "19",
+      "multiReleaseJarVersion" : "21",
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19+",
+      "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "jacoco": "exclude",
       "testProject" : True,

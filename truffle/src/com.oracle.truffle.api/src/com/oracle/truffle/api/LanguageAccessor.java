@@ -339,6 +339,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public void finalizeThread(TruffleLanguage.Env env, Thread current) {
+            env.getSpi().finalizeThread(env.context, current);
+        }
+
+        @Override
         public void disposeThread(TruffleLanguage.Env env, Thread current) {
             env.getSpi().disposeThread(env.context, current);
         }
