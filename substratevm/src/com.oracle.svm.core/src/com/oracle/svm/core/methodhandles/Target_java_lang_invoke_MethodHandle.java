@@ -75,9 +75,24 @@ final class Target_java_lang_invoke_MethodHandle {
     Object invokeBasic(Object... args) throws Throwable {
         Target_java_lang_invoke_MemberName memberName = internalMemberName();
         Object ret;
-        if (memberName != null) { /* Direct method handle */
+        if (memberName != null) {
+            /* Method handles associated with a member, typically direct method handles. */
+            boolean delegates = Target_java_lang_invoke_DelegatingMethodHandle.class.isInstance(this);
+            if (delegates && Util_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, true) == null) {
+                /*
+                 * Method handles can get associated with a member that we cannot resolve and use
+                 * directly, but interpreting the target handle's lambda form can still succeed. For
+                 * example, VarHandles create MethodHandleImpl.WrappedMember method handle objects
+                 * that are associated with universal methods such as VarHandle.getVolatile() which
+                 * are unsuitable for reflection because of their signature polymorphism, but their
+                 * lambda forms call implementation methods in VarHandle subclasses that we can use.
+                 */
+                var delegating = SubstrateUtil.cast(this, Target_java_lang_invoke_DelegatingMethodHandle.class);
+                return delegating.getTarget().invokeBasic(args);
+            }
             ret = Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
-        } else { /* Interpretation mode */
+        } else {
+            /* Interpretation mode */
             Target_java_lang_invoke_LambdaForm form = internalForm();
             Object[] interpreterArguments = new Object[args.length + 1];
             interpreterArguments[0] = this;
@@ -255,6 +270,12 @@ final class Target_java_lang_invoke_DirectMethodHandle {
     void ensureInitialized() {
         EnsureClassInitializedNode.ensureClassInitialized(member.getDeclaringClass());
     }
+}
+
+@TargetClass(className = "java.lang.invoke.DelegatingMethodHandle")
+final class Target_java_lang_invoke_DelegatingMethodHandle {
+    @Alias
+    native Target_java_lang_invoke_MethodHandle getTarget();
 }
 
 @TargetClass(className = "java.lang.invoke.MethodHandleImpl")
