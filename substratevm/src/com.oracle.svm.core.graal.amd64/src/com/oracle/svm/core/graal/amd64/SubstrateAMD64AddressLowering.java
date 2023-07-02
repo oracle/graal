@@ -25,12 +25,12 @@
 package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.amd64.AMD64MaskedAddressNode;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -99,7 +99,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
                         compression.getValue(),
                         (1L<<35)-1,
                         addr.getDisplacement(),
-                       compression.getEncoding().getShift()
+                        compression.getEncoding().getShift()
                 );
 //                addr.setBase(null);
 //                addr.setIndex(null);

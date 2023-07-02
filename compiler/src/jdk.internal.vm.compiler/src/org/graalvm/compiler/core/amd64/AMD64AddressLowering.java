@@ -60,6 +60,8 @@ public class AMD64AddressLowering extends AddressLowering {
         assert checkAddressBitWidth(lastChanged.getBase());
         assert checkAddressBitWidth(lastChanged.getIndex());
 
+
+
         return graph.unique(lastChanged);
     }
 

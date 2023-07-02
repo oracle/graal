@@ -22,27 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.amd64;
+package org.graalvm.compiler.core.amd64;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.amd64.AMD64BlockEndOp;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.nodes.ValueNode;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 @Opcode("AMD64_MASK_ADDRESS")
@@ -50,7 +43,7 @@ public final class AMD64MaskAddressOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64MaskAddressOp> TYPE = LIRInstructionClass.create(AMD64MaskAddressOp.class);
 
     @Alive({REG}) protected Value base; // todo illegal if missing, check if possible
-    @Use({REG}) protected Value index;
+    @Alive({REG}) protected Value index; // todo check if it should be alive or @Use
     @Def({REG}) protected Value result;
     @Temp({REG}) protected Value indexTmp;
     private int displacement;
@@ -72,16 +65,15 @@ public final class AMD64MaskAddressOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        masm.sfence();
+//        masm.sfence();
 
         masm.leaq(asRegister(indexTmp), new AMD64Address(Register.None, asRegister(index), Stride.fromLog2(shift), displacement));
+//        masm.leaq(asRegister(indexTmp), new AMD64Address(Register.None, asRegister(index), Stride.S1, 0));
         masm.movq(asRegister(result), mask);
         masm.andq(asRegister(result), asRegister(indexTmp));
-        masm.leaq(asRegister(result), new AMD64Address(asRegister(base), asRegister(result), Stride.S1, 0));
+//        masm.leaq(asRegister(result), new AMD64Address(asRegister(base), asRegister(result), Stride.S1, 0));
 
-//        masm.leaq(asRegister(result), new AMD64Address(asRegister(base), asRegister(index), Stride.fromLog2(shift), displacement));
-
-        masm.lfence();
+//        masm.lfence();
 
     }
 

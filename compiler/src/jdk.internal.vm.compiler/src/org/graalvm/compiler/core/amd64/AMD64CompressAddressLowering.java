@@ -78,6 +78,7 @@ public abstract class AMD64CompressAddressLowering extends AMD64AddressLowering 
         if (value instanceof CompressionNode) {
             CompressionNode compression = (CompressionNode) value;
 
+            // FIXME check if I need to mask something here
             if (compression.getOp() == CompressionNode.CompressionOp.Uncompress) {
                 return improveUncompression(addr, compression, other);
             }
