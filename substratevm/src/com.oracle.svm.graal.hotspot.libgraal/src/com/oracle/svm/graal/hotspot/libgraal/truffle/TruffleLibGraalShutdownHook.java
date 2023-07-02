@@ -57,7 +57,15 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
         registeredHook = new ShutdownHook(vm, new TruffleFromLibGraalCalls(env, runtimeClass));
     }
 
-    record ShutdownHook(JavaVM javaVm, TruffleFromLibGraalCalls calls) implements HotSpotVMEventListener {
+    static class ShutdownHook implements HotSpotVMEventListener {
+
+        private final JavaVM javaVm;
+        private final TruffleFromLibGraalCalls calls;
+
+        ShutdownHook(JavaVM javaVm, TruffleFromLibGraalCalls calls) {
+            this.javaVm = javaVm;
+            this.calls = calls;
+        }
 
         @Override
         @TruffleFromLibGraal(TruffleFromLibGraal.Id.OnIsolateShutdown)
