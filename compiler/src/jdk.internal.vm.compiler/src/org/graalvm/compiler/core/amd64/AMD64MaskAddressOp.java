@@ -65,16 +65,10 @@ public final class AMD64MaskAddressOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-//        masm.sfence();
 
         masm.leaq(asRegister(indexTmp), new AMD64Address(Register.None, asRegister(index), Stride.fromLog2(shift), displacement));
-//        masm.leaq(asRegister(indexTmp), new AMD64Address(Register.None, asRegister(index), Stride.S1, 0));
         masm.movq(asRegister(result), mask);
         masm.andq(asRegister(result), asRegister(indexTmp));
-//        masm.leaq(asRegister(result), new AMD64Address(asRegister(base), asRegister(result), Stride.S1, 0));
-
-//        masm.lfence();
-
     }
 
 

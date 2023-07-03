@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.amd64.AMD64MaskedAddressNode;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -36,9 +35,6 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * A phase the visits each address node and lowers into a machine dependent form.
@@ -76,13 +72,13 @@ public class AddressLoweringByNodePhase extends AddressLoweringPhase {
             } else {
                 continue;
             }
-            if (lowered instanceof AMD64MaskedAddressNode){
+            if (lowered instanceof AMD64MaskedAddressNode) {
                 // In this case, I need to fix the lowered node with the node that might be using it.
                 // The reason for that is the lack of derived references in SVM. Thus, the mask node,
                 // has as result of the uncompression an unknown reference (instead of a derived one).
 
                 // replace the old node usage with the new one
-                if(node.getUsageCount() == 1){
+                if (node.getUsageCount() == 1) {
                     ValueAnchorNode anchorNode = graph.add(new ValueAnchorNode(null));
                     ((AMD64MaskedAddressNode) lowered).setAnchorNode(anchorNode);
                     FixedNode fixedNode = (FixedNode) node.usages().iterator().next();
@@ -90,8 +86,8 @@ public class AddressLoweringByNodePhase extends AddressLoweringPhase {
 
                     node.replaceAtUsages(lowered);
 
-                } else /*if (node.getUsageCount() == 2)*/{
-                    while(node.usages().iterator().hasNext()){
+                } else {
+                    while (node.usages().iterator().hasNext()) {
                         ValueAnchorNode anchorNode = graph.addWithoutUnique(new ValueAnchorNode(null));
                         AMD64MaskedAddressNode newLowered = graph.addWithoutUnique(new AMD64MaskedAddressNode(lowered.getBase(), lowered.getIndex(), ((AMD64MaskedAddressNode) lowered).getMask(), ((AMD64MaskedAddressNode) lowered).getDisplacement(), ((AMD64MaskedAddressNode) lowered).getShift()));
                         newLowered.setAnchorNode(anchorNode);
@@ -102,50 +98,7 @@ public class AddressLoweringByNodePhase extends AddressLoweringPhase {
                 }
                 GraphUtil.killWithUnusedFloatingInputs(node);
                 continue;
-
-//                // fix the lowered node before each usage
-//                for (Node usage: lowered.usages()){
-////                    ValueAnchorNode anchorNode = graph.add(new ValueAnchorNode(null));
-//                    AMD64MaskedAddressNode copyOfLower = graph.unique((AMD64MaskedAddressNode)lowered.copyWithInputs());
-//                    copyOfLower.setAnchorNode(anchorNode);
-//                    graph.addBeforeFixed((FixedNode) usage, anchorNode);
-//                    usage.replaceAllInputs(lowered, copyOfLower);
-//                }
             }
-//            if (lowered instanceof AMD64MaskedAddressNode){
-//                AMD64MaskedAddressNode copynode = (AMD64MaskedAddressNode) lowered;
-//                int count = 0;
-//                ArrayList<Node> nodeUsages = (ArrayList<Node>) node.usages().snapshot();
-//                System.out.println();
-//                for(Node usageNode: nodeUsages){
-//                    System.out.println("Node usage class: " + usageNode.getClass().toString());
-//                    if(count > 0){
-//                        copynode = graph.unique((AMD64MaskedAddressNode) copynode.copyWithInputs(false));
-////                        usageNode.replaceAllInputs(node, copynode);
-//                    }else{
-////                        usageNode.replaceAllInputs(node, lowered);
-//                    }
-//                    ValueAnchorNode valueAnchorNode = graph.add(new ValueAnchorNode(null));
-//                    graph.addBeforeFixed((FixedNode) usageNode, valueAnchorNode);
-//                    copynode.setAnchorNode(valueAnchorNode);
-//                    count++;
-//                }
-////                for(Iterator<Node> nodeIterableIterator = node.usages().iterator(); nodeIterableIterator.hasNext();){
-////                    Node usageNode = nodeIterableIterator.next();
-////                    if(count > 0){
-////                        copynode = graph.unique((AMD64MaskedAddressNode) copynode.copyWithInputs());
-////                        usageNode.replaceAllInputs(node, copynode);
-////                    }else{
-////                        usageNode.replaceAllInputs(node, lowered);
-////                    }
-////                    ValueAnchorNode valueAnchorNode = graph.add(new ValueAnchorNode(null));
-////                    graph.addBeforeFixed((FixedNode) usageNode, valueAnchorNode);
-////                    copynode.setAnchorNode(valueAnchorNode);
-////                    count++;
-////                }
-//            }else{
-//                node.replaceAtUsages(lowered);
-//            }
             node.replaceAtUsages(lowered);
             GraphUtil.killWithUnusedFloatingInputs(node);
         }
