@@ -268,6 +268,7 @@ final class Target_java_lang_invoke_DirectMethodHandle {
 
     @Substitute
     void ensureInitialized() {
+        // This method is also intrinsified to avoid initialization altogether whenever possible.
         EnsureClassInitializedNode.ensureClassInitialized(member.getDeclaringClass());
     }
 }

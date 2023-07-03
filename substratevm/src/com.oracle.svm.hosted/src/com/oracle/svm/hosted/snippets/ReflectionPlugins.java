@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
@@ -87,6 +88,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -210,13 +212,50 @@ public final class ReflectionPlugins {
 
         registerConditionalFoldInvocationPlugins(plugins);
 
-        Registration r = new Registration(plugins, MethodHandles.class);
-        r.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
+        Registration mh = new Registration(plugins, MethodHandles.class);
+        mh.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
             }
         });
+
+        Registration dmh = new Registration(plugins, "java.lang.invoke.DirectMethodHandle");
+        dmh.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                JavaConstant constReceiver = receiver.get().asJavaConstant();
+                if (constReceiver == null || constReceiver.isNull()) {
+                    return false;
+                }
+                ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member"); // final
+                JavaConstant member = b.getConstantReflection().readFieldValue(memberField, constReceiver);
+                if (member == null || member.isNull()) {
+                    return false;
+                }
+                /*
+                 * The clazz field of MemberName qualifies as stable except when an object is cloned
+                 * and the new object's field is nulled. We should not observe it in that state.
+                 */
+                ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
+                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
+                ResolvedJavaType type = b.getConstantReflection().asJavaType(clazz);
+                if (type == null) {
+                    return false;
+                }
+                classInitializationPlugin.apply(b, type, () -> null, null);
+                return true;
+            }
+        });
+    }
+
+    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 
     /**

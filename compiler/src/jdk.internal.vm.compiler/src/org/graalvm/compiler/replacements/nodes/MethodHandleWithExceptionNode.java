@@ -77,7 +77,7 @@ public final class MethodHandleWithExceptionNode extends MacroWithExceptionNode 
         }
         assert invoke.graph() == null;
         invoke.setNodeSourcePosition(getNodeSourcePosition());
-        graph().addOrUniqueWithInputs(invoke);
+        invoke = graph().addOrUniqueWithInputs(invoke);
         invoke.setStateAfter(stateAfter());
         graph().replaceWithExceptionSplit(this, invoke);
         return invoke;
