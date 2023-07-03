@@ -224,6 +224,8 @@ public class NativeImageGeneratorRunner {
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
+                                /* exclude all truffle modules */
+                                potentialNeedModule.getName().startsWith("com.oracle.truffle.") ||
                                 /* llvm-backend optional dependencies */
                                 potentialNeedModule.getName().startsWith("com.oracle.svm.shadowed.")) {
                     continue;
