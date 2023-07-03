@@ -82,7 +82,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     /**
      * The format of the methods passed to {@link ResolvedJavaMethod#format(String)}.
      */
-    private static final String METHOD_FORMAT = "%H.%n(%p)";
+    public static final String METHOD_FORMAT = "%H.%n(%p)";
 
     /**
      * The format of the invoked methods passed to {@link ResolvedJavaMethod#format(String)}, which
