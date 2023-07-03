@@ -130,7 +130,7 @@ _graal_variants = [
     ('pargc', ['-XX:+UseParallelGC'], 12),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('zgc', ['-XX:+UseZGC'], 12),
-    ('gen-zgc', ['-XX:+UseZGC', '-XX:+ZGenerational'], 12),
+    # ('gen-zgc', ['-XX:+UseZGC', '-XX:+ZGenerational'], 12), # GR-45919 not yet supported
     ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
     ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
