@@ -71,7 +71,7 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
     }
 
     /*
-     * This method is intrinsified for partial evaluation. See HotSpotTruffleGraphBuilderPlugins for
+     * This method is intrinsified for partial evaluation. See HotSpotGraphBuilderPlugins for
      * details.
      */
     @Override
@@ -80,7 +80,7 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
     }
 
     /*
-     * This method is intrinsified for partial evaluation. See HotSpotTruffleGraphBuilderPlugins for
+     * This method is intrinsified for partial evaluation. See HotSpotGraphBuilderPlugins for
      * details.
      */
     @Override
