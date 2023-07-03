@@ -61,7 +61,7 @@ public class ReportUtils {
     public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%P):%R"));
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
     static final Comparator<InvokeInfo> invokeInfoBCIComparator = Comparator.comparing(i -> i.getPosition().getBCI());
-    static final Comparator<InvokeInfo> invokeInfoComparator = invokeInfoBCIComparator.thenComparing(i -> comparingMethodNames(i.getTargetMethod()));
+    static final Comparator<InvokeInfo> invokeInfoComparator = invokeInfoBCIComparator.thenComparing(i -> AnalysisMethod.comparableMethodSignature(i.getTargetMethod()));
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%P):%R"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 

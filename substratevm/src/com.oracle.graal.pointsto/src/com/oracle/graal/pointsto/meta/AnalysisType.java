@@ -874,6 +874,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return wrapped.getName();
     }
 
+    public final String getComparableName() {
+        /*
+         * Avoiding non-deterministic hash part of lambda names. Example of such class name e.g.
+         * Ljava/util/Spliterator$OfDouble$$Lambda$d28f9317da054138.0x00000007c1a64860; For more
+         * about Lambda names check GH issue https://github.com/openjdk/jdk/pull/10024/.
+         */
+        String name = getName();
+        return name.contains("$$Lambda") ? name.replaceAll("\\.0x[0-9a-fA-Fx]*", "") : name;
+    }
+
     @Override
     public String toJavaName() {
         return qualifiedName;

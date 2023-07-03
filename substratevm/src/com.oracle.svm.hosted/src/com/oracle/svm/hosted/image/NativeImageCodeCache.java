@@ -166,7 +166,7 @@ public abstract class NativeImageCodeCache {
     }
 
     protected static Comparator<Pair<HostedMethod, CompilationResult>> compilationsComparator() {
-        Comparator<Pair<HostedMethod, CompilationResult>> nameComparator = Comparator.comparing(o -> AnalysisMethod.comparingMethodNames(o.getLeft().wrapped));
+        Comparator<Pair<HostedMethod, CompilationResult>> nameComparator = Comparator.comparing(o -> AnalysisMethod.comparableMethodSignature(o.getLeft().wrapped));
         return nameComparator.thenComparing(o -> o.getRight().getTargetCodeSize());
     }
 
