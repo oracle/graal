@@ -1201,6 +1201,9 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.runtime to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.runtime.hotspot to org.graalvm.truffle, jdk.internal.vm.compiler",
+          "com.oracle.truffle.runtime.hotspot.libgraal to org.graalvm.truffle, jdk.internal.vm.compiler",
+          "com.oracle.truffle.runtime.jfr to com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.runtime.jfr.impl to com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
