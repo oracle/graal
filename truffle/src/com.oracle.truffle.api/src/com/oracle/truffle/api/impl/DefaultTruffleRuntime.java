@@ -256,6 +256,9 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                     // true (either explicitly or by default) which causes the jdk.internal.vm.ci
                     // module to be resolved.
                     loadMethod = null;
+                } catch (ServiceConfigurationError iae) {
+                    // The service is not accessible to JVMCI.
+                    loadMethod = null;
                 } catch (Throwable e) {
                     throw new InternalError(e);
                 }
