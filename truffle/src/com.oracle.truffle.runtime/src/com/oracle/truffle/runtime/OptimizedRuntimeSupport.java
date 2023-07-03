@@ -61,13 +61,11 @@ import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilerOptionsDescriptors;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import jdk.vm.ci.services.Services;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilerOptionsDescriptors;
 
 final class OptimizedRuntimeSupport extends RuntimeSupport {
 
@@ -370,9 +368,10 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
         return local;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
-        return Services.createTerminatingThreadLocal(initialValue, onThreadTermination);
+        return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
 
 }

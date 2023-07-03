@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -66,9 +65,9 @@ import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
 import com.oracle.truffle.runtime.BackgroundCompileQueue;
 import com.oracle.truffle.runtime.CompilationTask;
 import com.oracle.truffle.runtime.EngineData;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
@@ -90,7 +89,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -728,11 +726,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     public boolean isLibGraalCompilationEnabled() {
         return compilationSupport instanceof LibGraalTruffleCompilationSupport;
-    }
-
-    @SuppressWarnings("static-method")
-    public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
-        return Services.createTerminatingThreadLocal(initialValue, onThreadTermination);
     }
 
 }

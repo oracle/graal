@@ -46,6 +46,7 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -1196,6 +1197,18 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     public long getStackOverflowLimit() {
         throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
+        try {
+            Method m = Services.class.getMethod("createTerminatingThreadLocal", Supplier.class, Consumer.class);
+            return (ThreadLocal<T>) m.invoke(null, initialValue, onThreadTermination);
+        } catch (NoSuchMethodException e) {
+            return ThreadLocal.withInitial(initialValue);
+        } catch (ReflectiveOperationException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     public static class StackTraceHelper {
