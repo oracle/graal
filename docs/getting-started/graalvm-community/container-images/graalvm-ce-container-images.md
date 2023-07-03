@@ -7,7 +7,7 @@ permalink: /docs/getting-started/container-images/
 
 ## GraalVM Community Images
 
-To support container-based development, GraalVM Community container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
+To support container-based development, GraalVM Community Edition container images are published in the [GitHub Container Registry](https://github.com/graalvm/container/pkgs/container/graalvm-community).
 Learn here how to start using GraalVM Community images for Docker containers.
 
 You can pull a package by name or by name and version tag. To install GraalVM JDK from the command line, use:
