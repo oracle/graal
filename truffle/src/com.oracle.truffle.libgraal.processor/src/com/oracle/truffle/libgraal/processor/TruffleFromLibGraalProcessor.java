@@ -77,7 +77,7 @@ import javax.lang.model.util.ElementFilter;
 @SupportedAnnotationTypes({
                 "com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal",
                 "com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraalRepeated"})
-public class TruffleFromLibGraalProcessor extends AbstractProcessor {
+public class TruffleFromLibGraalProcessor extends BaseProcessor {
 
     /**
      * Captures the info defined by a

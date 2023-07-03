@@ -75,7 +75,7 @@ import javax.tools.StandardLocation;
 /**
  * {@link javax.annotation.processing.AbstractProcessor} subclass that provides extra functionality.
  */
-public abstract class AbstractProcessor extends javax.annotation.processing.AbstractProcessor {
+public abstract class BaseProcessor extends javax.annotation.processing.AbstractProcessor {
 
     /**
      * Gets the processing environment available to this processor.
