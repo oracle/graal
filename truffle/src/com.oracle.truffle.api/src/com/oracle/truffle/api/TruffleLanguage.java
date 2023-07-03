@@ -519,6 +519,11 @@ public abstract class TruffleLanguage<C> {
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
+        /**
+         * Declarative list of {@link InternalResource} classes supported by this language.
+         *
+         * @since 23.1
+         */
         Class<? extends InternalResource>[] internalResources() default {};
     }
 

@@ -65,8 +65,12 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -83,6 +87,12 @@ import static org.junit.Assert.assertTrue;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 
 public class InternalResourceTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        // GR-47044: Bundling of internal resources on the polyglot isolate is not yet implemented.
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     static class LibraryResource implements InternalResource {
 
@@ -208,6 +218,7 @@ public class InternalResourceTest {
 
     @Test
     public void testLanguageResourcesUnpackedOnce() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestLanguageResourcesUnpackedOnce.class);
         }
@@ -260,6 +271,7 @@ public class InternalResourceTest {
 
     @Test
     public void testInstrumentResourcesUnpackedOnce() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesUnpackedOnce.class);
         }
@@ -366,6 +378,7 @@ public class InternalResourceTest {
 
     @Test
     public void testAccessFileOutsideOfResourceRoot() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.execute(context, TestAccessFileOutsideOfResourceRoot.class);
         }
@@ -393,7 +406,7 @@ public class InternalResourceTest {
                 assertTrue(file.isRegularFile());
                 assertTrue(file.isReadable());
                 assertFalse(file.isWritable());
-                assertFalse(file.isExecutable());
+                assertFalse(file.isExecutable() && !OSUtils.isWindows());
                 assertEquals(Objects.requireNonNull(file.getName()).getBytes(StandardCharsets.UTF_8).length, file.size());
                 assertFalse(file.isSameFile(folder));
                 assertNotNull(file.getAttribute(TruffleFile.CREATION_TIME));
@@ -484,6 +497,7 @@ public class InternalResourceTest {
 
     @Test
     public void testAccessFileInResourceRoot() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.execute(context, TestAccessFileInResourceRoot.class);
         }

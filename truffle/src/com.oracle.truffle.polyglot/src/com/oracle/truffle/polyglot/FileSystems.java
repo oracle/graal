@@ -1997,7 +1997,14 @@ final class FileSystems {
             }
 
             boolean isRelativeResourceRoot() {
-                return delegate.getNameCount() == 1 && ".".equals(delegate.getFileName().toString());
+                if (!delegate.isAbsolute() && delegate.getNameCount() == 1) {
+                    Path name = delegate.getFileName();
+                    if (name == null) {
+                        throw CompilerDirectives.shouldNotReachHere("Path has a name component but has no file name " + delegate);
+                    }
+                    return ".".equals(name.toString());
+                }
+                return false;
             }
 
             @Override

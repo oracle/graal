@@ -92,7 +92,7 @@ final class InternalResourceCache {
                         root = findResourceRootOnNativeImage(findCacheRootOnNativeImage());
                     } else {
                         root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resource.name()), sanitize(resource.versionHash())));
-                        unpackFiles(root, resource);
+                        unpackFiles(root);
                     }
                     ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
                     result = FileSystems.newInternalResourceFileSystem(rootSupplier);
@@ -103,13 +103,17 @@ final class InternalResourceCache {
         return result;
     }
 
-    private static void unpackFiles(Path target, InternalResource resourceToUnpack) throws IOException {
+    private void unpackFiles(Path target) throws IOException {
         unpackLock.lock();
         try {
             if (!Files.exists(target)) {
-                Path owner = Files.createDirectories(target.getParent());
+                Path parent = target.getParent();
+                if (parent == null) {
+                    throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
+                }
+                Path owner = Files.createDirectories(Objects.requireNonNull(parent));
                 Path tmpDir = Files.createTempDirectory(owner, null);
-                resourceToUnpack.unpackFiles(tmpDir);
+                resource.unpackFiles(tmpDir);
                 try {
                     Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
                 } catch (FileAlreadyExistsException existsException) {
@@ -132,17 +136,6 @@ final class InternalResourceCache {
         if (!Files.isReadable(resourceRoot)) {
             throw new IOException("Resource cache root " + resourceRoot + " must be readable.");
         }
-    }
-
-    private static void unlink(Path f) throws IOException {
-        if (Files.isDirectory(f)) {
-            try (DirectoryStream<Path> children = Files.newDirectoryStream(f)) {
-                for (Path child : children) {
-                    unlink(child);
-                }
-            }
-        }
-        Files.delete(f);
     }
 
     private Path findResourceRootOnNativeImage(Path root) {
@@ -251,17 +244,17 @@ final class InternalResourceCache {
 
     private Path buildInternalResourcesForNativeImage(Path target) throws IOException {
         Path resourceRoot = findResourceRootOnNativeImage(target);
-        deleteIfExists(resourceRoot);
+        unlink(resourceRoot);
         Files.createDirectories(resourceRoot);
         resource.unpackFiles(resourceRoot);
         return resourceRoot;
     }
 
-    private static void deleteIfExists(Path path) throws IOException {
+    private static void unlink(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
                 for (Path child : children) {
-                    deleteIfExists(child);
+                    unlink(child);
                 }
             }
         }

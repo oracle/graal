@@ -43,8 +43,6 @@ package com.oracle.truffle.api;
 import java.io.IOException;
 import java.nio.file.Path;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
-
 /**
  * Represents an internal resource of a language that can be lazily unpacked to a cache user
  * directory.
@@ -57,9 +55,9 @@ public interface InternalResource {
      * Unpacks all resources to a given target directory. The target directory is guaranteed to be
      * writable and the unpacking is synchronized by a file system lock. If a resource was
      * previously cached then {@link #versionHash()} is invoked and the version string is compared.
-     * If it matches then {@link #unpackFiles(Env, Path)} will not be invoked and the directory will
-     * be used as previously unpacked. The target directory is guaranteed to exist and guaranteed to
-     * be empty.
+     * If it matches then {@link #unpackFiles(Path)} will not be invoked and the directory will be
+     * used as previously unpacked. The target directory is guaranteed to exist and guaranteed to be
+     * empty.
      * <p>
      * Ideally the result of this method should be idempotent in order to be safely cachable. Care
      * should be taken, if system properties are used that change the result of this method. It is
@@ -75,7 +73,7 @@ public interface InternalResource {
 
     /**
      * Returns a resource identifier that is a valid path component and unique per language. By
-     * default the canoncial class name is used for the internal resource.
+     * default, the canoncial class name is used for the internal resource.
      *
      * @since 23.1
      */

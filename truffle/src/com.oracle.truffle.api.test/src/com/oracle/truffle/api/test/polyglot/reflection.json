@@ -216,5 +216,11 @@
   {
     "name": "com.oracle.truffle.polyglot.PolyglotLanguageInstance",
     "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.InternalResourceCache",
+    "methods": [
+      { "name": "setTestCacheRoot", "parameterTypes": ["java.nio.file.Path", "boolean"] }
+    ]
   }
 ]

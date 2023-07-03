@@ -702,10 +702,11 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean inContextPreInitialization(Object polyglotObject) {
-            if (polyglotObject instanceof PolyglotContextImpl polyglotContext) {
-                return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
-            } else if (polyglotObject instanceof VMObject vmObject) {
-                return vmObject.getEngine().inEnginePreInitialization;
+            if (polyglotObject instanceof PolyglotLanguageContext languageContext) {
+                PolyglotContextImpl polyglotContext = languageContext.context;
+                return polyglotContext.getEngine().inEnginePreInitialization && polyglotContext.parent == null;
+            } else if (polyglotObject instanceof PolyglotEngineImpl polyglotEngine) {
+                return polyglotEngine.inEnginePreInitialization;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {

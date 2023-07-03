@@ -1447,6 +1447,11 @@ public abstract class TruffleInstrument {
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
+        /**
+         * Declarative list of {@link InternalResource} classes supported by this instrument.
+         *
+         * @since 23.1
+         */
         Class<? extends InternalResource>[] internalResources() default {};
     }
 

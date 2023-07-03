@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -2587,6 +2588,7 @@ public class ContextPreInitializationTest {
     @Test
     @SuppressWarnings("try")
     public void testLanguageInternalResources() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         setPatchable(FIRST);
         List<TruffleFile> files = new ArrayList<>();
         try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
@@ -2641,6 +2643,7 @@ public class ContextPreInitializationTest {
     @Test
     @SuppressWarnings("try")
     public void testSourcesForInternalResources() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         setPatchable(FIRST);
         List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
         try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
@@ -2682,6 +2685,7 @@ public class ContextPreInitializationTest {
     @Test
     @SuppressWarnings("try")
     public void testInstrumentInternalResources() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         setPatchable(FIRST);
         AtomicReference<TruffleFile> rootRef = new AtomicReference<>();
         ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {

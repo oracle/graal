@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 
 import java.io.BufferedInputStream;
@@ -68,7 +69,11 @@ final class LibNFIResource implements InternalResource {
         if (stream == null) {
             throw new NoSuchFileException(resource);
         }
-        Files.createDirectories(target.getParent());
+        Path parent = target.getParent();
+        if (parent == null) {
+            throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
+        }
+        Files.createDirectories(parent);
         try (BufferedInputStream in = new BufferedInputStream(stream)) {
             Files.copy(in, target);
         }
