@@ -1199,11 +1199,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.runtime to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.runtime.hotspot to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.runtime.hotspot.libgraal to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.runtime.jfr to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.runtime.jfr.impl to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "* to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
