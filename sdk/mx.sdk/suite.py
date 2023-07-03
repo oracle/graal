@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
+      "licenses" : ["GPLv2-CPE", "GPLv2", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
       "mavenId" : "lafo",
     },
   },
