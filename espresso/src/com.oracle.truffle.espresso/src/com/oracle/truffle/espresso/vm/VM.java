@@ -60,7 +60,6 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -152,6 +151,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
@@ -250,34 +250,26 @@ public final class VM extends NativeEnv {
     private JavaVersion findJavaVersion(TruffleObject libJava) {
         // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
         TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
-        if (jdkGetVersionInfo != null) {
-            JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
-            try {
-                getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
-            } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            int versionInfo = wrapper.jdkVersion();
-            wrapper.free(getNativeAccess());
+        if (jdkGetVersionInfo == null) {
+            return null;
+        }
+        JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
+        try {
+            getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
+        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        int versionInfo = wrapper.jdkVersion();
+        wrapper.free(getNativeAccess());
 
-            int major = (versionInfo & 0xFF000000) >> 24;
-            if (major == 1) {
-                // Version 1.X
-                int minor = (versionInfo & 0x00FF0000) >> 16;
-                return JavaVersion.forVersion(minor);
-            } else {
-                // Version X.Y
-                return JavaVersion.forVersion(major);
-            }
+        int major = (versionInfo & 0xFF000000) >> 24;
+        if (major == 1) {
+            // Version 1.X
+            int minor = (versionInfo & 0x00FF0000) >> 16;
+            return JavaVersion.forVersion(minor);
         } else {
-            TruffleObject probeJDK19 = getNativeAccess().lookupSymbol(libJava, "Java_java_lang_ref_Finalizer_isFinalizationEnabled");
-            if (probeJDK19 != null) {
-                // JDK 19+
-                return JavaVersion.latestSupported();
-            } else {
-                // JDK 14-17
-                return JavaVersion.forVersion(17);
-            }
+            // Version X.Y
+            return JavaVersion.forVersion(major);
         }
     }
 

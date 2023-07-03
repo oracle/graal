@@ -376,6 +376,14 @@ public final class EspressoContext {
                 vm.attachThread(Thread.currentThread());
                 // The Java version is extracted from libjava and is available after this line.
                 JavaVersion contextJavaVersion = vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                if (contextJavaVersion == null) {
+                    contextJavaVersion = javaVersionFromReleaseFile(vmProperties.javaHome());
+                    if (contextJavaVersion == null) {
+                        contextJavaVersion = JavaVersion.latestSupported();
+                        getLogger().warning(() -> "Couldn't find Java version for %s / %s: defaulting to %s".formatted(
+                                        vmProperties.javaHome(), vmProperties.bootLibraryPath(), JavaVersion.latestSupported()));
+                    }
+                }
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
                 this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
 
@@ -519,6 +527,29 @@ public final class EspressoContext {
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
+    }
+
+    private JavaVersion javaVersionFromReleaseFile(Path javaHome) {
+        Path releaseFilePath = javaHome.resolve("release");
+        if (!Files.isRegularFile(releaseFilePath)) {
+            return null;
+        }
+        try {
+            for (String line : Files.readAllLines(releaseFilePath)) {
+                if (line.startsWith("JAVA_VERSION=")) {
+                    String version = line.substring("JAVA_VERSION=".length()).trim();
+                    // JAVA_VERSION=<value> may be quoted or unquoted, both cases are supported.
+                    if (version.length() > 2 && version.startsWith("\"") && version.endsWith("\"")) {
+                        version = version.substring(1, version.length() - 1);
+                    }
+                    return JavaVersion.forVersion(version);
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            getLogger().log(Level.WARNING, "Error while trying to read Java version from release file", e);
+            // cannot read file, skip
+        }
+        return null; // JAVA_VERSION not found
     }
 
     public void preInitializeContext() {
