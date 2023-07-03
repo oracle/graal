@@ -89,9 +89,9 @@ public abstract class WasmCase {
         return options;
     }
 
-    public ArrayList<Source> getSources(EnumSet<WasmBinaryTools.WabtOption> options) throws IOException, InterruptedException {
+    public ArrayList<Source> getSources(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
         ArrayList<Source> sources = new ArrayList<>();
-        for (Map.Entry<String, byte[]> entry : createBinaries(options).entrySet()) {
+        for (Map.Entry<String, byte[]> entry : createBinaries(wabtOptions).entrySet()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(entry.getValue()), entry.getKey());
             sourceBuilder.cached(false);
             Source source = sourceBuilder.build();
@@ -100,7 +100,7 @@ public abstract class WasmCase {
         return sources;
     }
 
-    public abstract Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> options) throws IOException, InterruptedException;
+    public abstract Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
         return new WasmStringCase(name, data, program, new Properties());

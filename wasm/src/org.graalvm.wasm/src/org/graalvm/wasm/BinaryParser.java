@@ -251,7 +251,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     /**
      * Reads possible debug sections and stores their offset in the custom data array.
-     * 
+     *
      * @param name the name of the custom section
      * @param size the size of the custom section excluding the name
      * @param customData the custom data
@@ -1517,7 +1517,8 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void store(ParserState state, byte type, int n, long[] result) {
         int alignHint = readAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after the alignment bitfield
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
         final int memoryIndex;
         if (multiMemory && (alignHint & 0b0100_0000) != 0) {
             memoryIndex = readMemoryIndex();
@@ -1543,7 +1544,8 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void load(ParserState state, byte type, int n, long[] result) {
         final int alignHint = readAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after the alignment bitfield
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
         final int memoryIndex;
         if (multiMemory && (alignHint & 0b0100_0000) != 0) {
             memoryIndex = readMemoryIndex();
@@ -1993,8 +1995,9 @@ public class BinaryParser extends BinaryStreamParser {
                 bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetGlobalIndex, byteLength,
-                                bytecodeOffset, droppedDataInstanceOffset));
+                module.addLinkAction(
+                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetGlobalIndex, byteLength,
+                                                bytecodeOffset, droppedDataInstanceOffset));
             } else {
                 bytecode.addDataHeader(mode, byteLength);
                 final int bytecodeOffset = bytecode.location();

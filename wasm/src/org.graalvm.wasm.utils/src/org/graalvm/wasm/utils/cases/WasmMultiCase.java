@@ -58,13 +58,13 @@ public class WasmMultiCase extends WasmCase {
     }
 
     @Override
-    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> options) throws IOException, InterruptedException {
+    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
         HashMap<String, byte[]> binaries = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
             String filename = entry.getKey();
             Object content = entry.getValue();
             if (content instanceof String) {
-                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content, options));
+                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content, wabtOptions));
             } else if (content instanceof byte[]) {
                 binaries.put(filename, (byte[]) content);
             } else {

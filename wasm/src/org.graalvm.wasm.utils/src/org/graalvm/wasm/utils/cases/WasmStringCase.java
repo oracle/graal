@@ -57,7 +57,7 @@ public class WasmStringCase extends WasmCase {
     }
 
     @Override
-    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> options) throws IOException, InterruptedException {
-        return Collections.singletonMap(name(), WasmBinaryTools.compileWat(name(), program, options));
+    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
+        return Collections.singletonMap(name(), WasmBinaryTools.compileWat(name(), program, wabtOptions));
     }
 }

@@ -308,7 +308,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
 
     @Override
     public boolean isValidMemoryAddress(long address, int length) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return address >= 0 && address + length < memory.byteSize();
     }
 

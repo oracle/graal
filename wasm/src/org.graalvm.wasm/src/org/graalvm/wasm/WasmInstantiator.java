@@ -41,8 +41,11 @@
 
 package org.graalvm.wasm;
 
-import java.util.List;
-
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -60,15 +63,7 @@ import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
-
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
+import java.util.List;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.

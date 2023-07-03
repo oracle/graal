@@ -1636,7 +1636,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            memory_init(context, n, src, dst, dataIndex, memoryIndex);
+                            memory_init(n, src, dst, dataIndex, memoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1653,7 +1653,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            memory_copy(context, n, src, dst, destMemoryIndex, srcMemoryIndex);
+                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1663,7 +1663,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int val = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            memory_fill(context, n, val, dst, memoryIndex);
+                            memory_fill(n, val, dst, memoryIndex);
                             stackPointer -= 3;
                             offset += 4;
                             break;
@@ -1734,7 +1734,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            memory_init_unsafe(context, n, src, dst, dataIndex, memoryIndex);
+                            memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1773,7 +1773,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
-                            memory_init(context, n, src, dst, dataIndex, memoryIndex);
+                            memory_init(n, src, dst, dataIndex, memoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1784,7 +1784,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
-                            memory_init_unsafe(context, n, src, dst, dataIndex, memoryIndex);
+                            memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1795,7 +1795,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long n = popLong(frame, stackPointer - 1);
                             final long src = popLong(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
-                            memory_copy(context, n, src, dst, destMemoryIndex, srcMemoryIndex);
+                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1805,7 +1805,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long n = popLong(frame, stackPointer - 1);
                             final int val = popInt(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
-                            memory_fill(context, n, val, dst, memoryIndex);
+                            memory_fill(n, val, dst, memoryIndex);
                             stackPointer -= 3;
                             offset += 4;
                             break;
@@ -3228,7 +3228,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_init(WasmContext context, int length, int source, long destination, int dataIndex, int memoryIndex) {
+    private void memory_init(int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
@@ -3243,7 +3243,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_init_unsafe(WasmContext context, int length, int source, long destination, int dataIndex, int memoryIndex) {
+    private void memory_init_unsafe(int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         final long dataAddress = instance.dataInstanceAddress(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
@@ -3268,7 +3268,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_fill(WasmContext context, long length, int value, long offset, int memoryIndex) {
+    private void memory_fill(long length, int value, long offset, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         if (checkOutOfBounds(offset, length, memory.byteSize())) {
             enterErrorBranch();
@@ -3281,7 +3281,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_copy(WasmContext context, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
+    private void memory_copy(long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
         final WasmMemory destMemory = instance.memory(destMemoryIndex);
         final WasmMemory srcMemory = instance.memory(srcMemoryIndex);
         if (checkOutOfBounds(source, length, srcMemory.byteSize()) || checkOutOfBounds(destination, length, destMemory.byteSize())) {

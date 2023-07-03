@@ -368,13 +368,13 @@ public class Linker {
             final WasmModule importedModule = importedInstance.module();
             if (importedModule.exportedMemories().size() == 0) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT,
-                        String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
-                                importedModuleName, importedMemoryName, instance.name()));
+                                String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
+                                                importedModuleName, importedMemoryName, instance.name()));
             }
             final Integer exportedMemoryIndex = importedModule.exportedMemories().get(importedMemoryName);
             if (exportedMemoryIndex == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT,
-                        "Memory '" + importedMemoryName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
+                                "Memory '" + importedMemoryName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
             }
             final WasmMemory importedMemory = importedInstance.memory(exportedMemoryIndex);
             // Rules for limits matching:
@@ -401,7 +401,8 @@ public class Linker {
 
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset,
                     int droppedDataInstanceOffset) {
-        assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED, String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
+        assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
+                        String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.

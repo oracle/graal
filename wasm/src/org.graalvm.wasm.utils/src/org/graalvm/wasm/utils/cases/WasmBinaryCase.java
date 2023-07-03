@@ -56,7 +56,7 @@ public class WasmBinaryCase extends WasmCase {
     }
 
     @Override
-    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> options) {
+    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) {
         return Collections.singletonMap(name(), binary);
     }
 }
