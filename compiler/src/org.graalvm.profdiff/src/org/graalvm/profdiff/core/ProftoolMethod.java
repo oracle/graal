@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,9 @@ public class ProftoolMethod {
     private final String compilationId;
 
     /**
-     * The name of this method as reported by proftool. The names are unstable for lambdas and thus
-     * may be distinct from the name of the matching compilation unit.
+     * The name of this method as reported by proftool. In JIT, the names are unstable for lambdas,
+     * and they may be distinct from the names of matching compilation units. In AOT, the names are
+     * stable, and they match the names of compilation units.
      */
     private final String name;
 
