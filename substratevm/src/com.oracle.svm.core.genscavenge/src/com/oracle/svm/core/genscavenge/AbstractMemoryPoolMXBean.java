@@ -45,12 +45,14 @@ import sun.management.Util;
 
 public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
 
+    protected static final UnsignedWord UNDEFINED = WordFactory.signed(UNDEFINED_MEMORY_USAGE);
+    private static final UnsignedWord UNINITIALIZED = WordFactory.zero();
+
     private final String name;
     private final String[] managerNames;
     protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
-    private static final UnsignedWord UNDEFINED = WordFactory.zero();
-    protected UnsignedWord initialValue = UNDEFINED;
+    protected UnsignedWord initialValue = UNINITIALIZED;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
@@ -59,7 +61,7 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     }
 
     UnsignedWord getInitialValue() {
-        if (initialValue.equal(UNDEFINED)) {
+        if (initialValue.equal(UNINITIALIZED)) {
             initialValue = computeInitialValue();
         }
         return initialValue;
