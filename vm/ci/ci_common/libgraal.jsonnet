@@ -12,7 +12,8 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local arch(os_arch) = std.split(os_arch, "-")[1],
   local t(limit) = {timelimit: limit},
 
-  libgraal_build(build_args, usePGO = false):: {
+  libgraal_build(build_args):: {
+    local usePGO = std.length(std.find('-Ob', build_args)) == 0,
     local ee_build_version = if usePGO == false then 'build' else 'build-libgraal-pgo',
     local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else ee_build_version,
     run+: [

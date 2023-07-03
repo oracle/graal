@@ -188,43 +188,53 @@ public class SubstrateOptions {
      * for a description of the levels.
      */
     public enum OptimizationLevel {
-        O0("No optimizations", 0),
-        O1("Basic optimizations", 1),
-        O2("Advanced optimizations", 2),
-        O3("Aggressive optimizations", 3),
-        BUILD_TIME("Optimize for shortest build time", -1);
+        O0("No optimizations", "0"),
+        O1("Basic optimizations", "1"),
+        O2("Advanced optimizations", "2"),
+        O3("All optimizations for best performance", "3"),
+        BUILD_TIME("Optimize for fastest build time", "b");
 
         private final String description;
-        private final int level;
+        private final String optionSwitch;
 
-        OptimizationLevel(String description, int level) {
+        OptimizationLevel(String description, String optionSwitch) {
             this.description = description;
-            this.level = level;
+            this.optionSwitch = optionSwitch;
         }
 
         public String getDescription() {
             return description;
         }
 
-        /**
-         * Determine if this level is at least {@code other}.
-         */
-        public boolean isMinimalLevel(OptimizationLevel other) {
-            return this.level >= other.level;
+        public String getOptionSwitch() {
+            return optionSwitch;
         }
 
-        public int getLevel() {
-            return level;
+        /**
+         * Determine if this level is one of the given ones.
+         */
+        public boolean isOneOf(OptimizationLevel... levels) {
+            if (levels != null) {
+                for (OptimizationLevel level : levels) {
+                    if (level.equals(this)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
+
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time," +
-                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - aggressive optimizations.", type = OptionType.User)//
+    @Option(help = "Control code optimizations: b - optimize for fastest build time, " +
+                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
+
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+
             // `-g -O0` is recommended for a better debugging experience
             GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
@@ -233,6 +243,7 @@ public class SubstrateOptions {
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
+
         }
     };
 

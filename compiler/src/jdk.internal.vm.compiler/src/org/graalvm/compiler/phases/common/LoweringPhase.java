@@ -584,32 +584,29 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
         FixedWithNextNode lastFixedNode = b.getBeginNode();
         if (b.getBeginNode() instanceof LoopExitNode) {
-            /*
+            /**
              * If we are processing a loop exit block and there are floating nodes only used flowing
              * out of the loop via proxies we must lower any control flow before the loop exit,
-             * i.e., the fixed node to introduce new control flow after must be before the loop exit
-             * node.
+             * i.e., the fixed node that is used to introduce new control flow (after it) must be
+             * before the loop exit node.
              *
              * Consider the following piece of code
-             */
-           // @formatter:off
-                             /**
-                              * <pre>
-                              *             ifNode
-                              *       /              \
-                              * trueSuccessor         fN1                //  will be lowered to control flow
-                              *                     loopExitNode - proxy1(fN1)
-                              *                        use(proxy1)
-                              * </pre>
-                              */
-                             // @formatter:on
-            /*
+             *
+             * <pre>
+             *             ifNode
+             *       /              \
+             * trueSuccessor         fN1                //  will be lowered to control flow
+             *                     loopExitNode - proxy1(fN1)
+             *                        use(proxy1)
+             * </pre>
+             *
+             *
              * The floating node fN1 will be lowered to control flow - so for insertion we need a
              * fixed node before the loop exit. However, the loop exit is the begin node of the
              * basic block but there are floating nodes that need to be schedule before. This is
-             * special because all other begin nodes will not have inputs the loop exit with its
-             * proxy will. Thus in this case we need to create a begin node to act as the last fixed
-             * node for insertion. Then control flow can be inserted between ifNode and
+             * special because all other begin nodes will not have inputs but the loop exit via its
+             * proxies will. Thus, in this case we need to create a begin node to act as the last
+             * fixed node for insertion. Then control flow can be inserted between ifNode and
              * loopExitNode.
              *
              * Note that the control flow graph automatically creates a new basic block for every

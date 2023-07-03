@@ -166,7 +166,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
-    public CanonicalizerPhase copyWithoutDeadPhyCycleDetection() {
+    public CanonicalizerPhase copyWithoutDeadPhiCycleDetection() {
         EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
         newFeatures.remove(DEAD_PHI_CYCLE_DETECTION);
         return new CanonicalizerPhase(customSimplification, newFeatures);
@@ -323,20 +323,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         };
 
-        EconomicSet<PhiNode> phiPostProcessingWorkList = null;
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             for (Node n : tool.workList) {
                 processNode(n, tool);
                 ++sum;
-                if (features.contains(DEAD_PHI_CYCLE_DETECTION) && tool.allUsagesAvailable() && n.isAlive() && n instanceof PhiNode && ((PhiNode) n).isLoopPhi()) {
-                    if (phiPostProcessingWorkList == null) {
-                        phiPostProcessingWorkList = EconomicSet.create();
-                    }
-                    phiPostProcessingWorkList.add((PhiNode) n);
-                }
             }
         }
 
+        EconomicSet<PhiNode> phiPostProcessingWorkList = null;
         if (features.contains(DEAD_PHI_CYCLE_DETECTION) && graph.hasLoops()) {
             for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
                 for (PhiNode n : lb.phis()) {
