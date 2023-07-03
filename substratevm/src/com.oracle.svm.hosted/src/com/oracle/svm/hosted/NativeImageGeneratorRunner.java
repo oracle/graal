@@ -735,6 +735,9 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.runtime");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.truffle.enterprise");
         }
     }
 }
