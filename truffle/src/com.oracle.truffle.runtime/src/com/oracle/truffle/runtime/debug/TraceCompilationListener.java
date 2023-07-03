@@ -306,8 +306,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     /**
      * Determines if a failure is permanent.
      *
-     * @see OptimizedTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
-     *      boolean, int)
+     * @see OptimizedTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String,
+     *      boolean, boolean, int)
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;

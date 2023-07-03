@@ -66,10 +66,10 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  * Performance note: We do not require the metadata field to be {@code volatile}. As long as the
  * field is initialized under double-checked locking (as is done in
- * {@link OptimizedRuntimeSupport#pollBytecodeOSRBackEdge}, all threads will observe the same metadata
- * instance. The JMM guarantees that the instance's final fields will be safely initialized before
- * it is published; the non-final + non-volatile fields (e.g., the back edge counter) may not be,
- * but we tolerate this inaccuracy in order to avoid volatile accesses in the hot path.
+ * {@link OptimizedRuntimeSupport#pollBytecodeOSRBackEdge}, all threads will observe the same
+ * metadata instance. The JMM guarantees that the instance's final fields will be safely initialized
+ * before it is published; the non-final + non-volatile fields (e.g., the back edge counter) may not
+ * be, but we tolerate this inaccuracy in order to avoid volatile accesses in the hot path.
  */
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.

@@ -70,8 +70,8 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     /**
      * Description for a call to
-     * {@code com.oracle.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()}
-     * via a stub.
+     * {@code com.oracle.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()} via a
+     * stub.
      */
     static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(
                     SAFEPOINT,

@@ -1153,8 +1153,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     final OptionDescriptors getOptionDescriptors() {
-        // The engineOptions field needs to be initialized lazily because the OptimizedRuntimeAccessor
-        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime must be
+        // The engineOptions field needs to be initialized lazily because the
+        // OptimizedRuntimeAccessor
+        // cannot be used in the OptimizedTruffleRuntime constructor. The OptimizedTruffleRuntime
+        // must be
         // fully initialized before using the accessor otherwise a NullPointerException will be
         // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
         // still returns null.
