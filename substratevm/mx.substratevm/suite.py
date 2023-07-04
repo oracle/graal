@@ -243,7 +243,7 @@ suite = {
                 "java.compiler",
                 "jdk.jfr",
                 "jdk.management",
-                "jdk.management.jfr",
+                "jdk.zipfs",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -282,9 +282,6 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
-                ],
-                "jdk.management.agent": [
-                    "jdk.internal.agent",
                 ],
                 "jdk.jfr": [
                     "jdk.jfr.events",
@@ -1327,8 +1324,6 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
-                    "jdk.management.agent",
-                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

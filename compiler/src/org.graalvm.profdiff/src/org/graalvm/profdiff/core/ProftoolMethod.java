@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,19 +34,21 @@ public class ProftoolMethod {
     public static long BILLION = 1000000000;
 
     /**
-     * The compilation ID of this method or {@code null} if it does not have any.
+     * The compilation ID of this method. The value is {@code null} if the method does not have an
+     * ID or if it is unknown. The IDs are unknown in Native Image profiles.
      */
     private final String compilationId;
 
     /**
-     * The name of this method as reported by proftool. The name unstable for lambdas and different
-     * from the name of the matching compilation unit.
+     * The name of this method as reported by proftool. In JIT, the names are unstable for lambdas,
+     * and they may be distinct from the names of matching compilation units. In AOT, the names are
+     * stable, and they match the names of compilation units.
      */
     private final String name;
 
     /**
-     * The level of the compiler used that generated this method or {@code null} for e.g. the
-     * interpreter.
+     * The level (tier) of the compiler used that generated this method or {@code null} for the
+     * interpreter and Native Image methods.
      */
     private final Integer level;
 
@@ -63,7 +65,10 @@ public class ProftoolMethod {
     }
 
     /**
-     * Gets the compilation ID of this method.
+     * Gets the compilation ID of this method. Returns {@code null} if no compilation ID is assigned
+     * or the ID is unknown. The IDs are unknown in Native Image profiles.
+     *
+     * @return the compilation ID of this method or {@code null}
      */
     public String getCompilationId() {
         return compilationId;
@@ -77,7 +82,10 @@ public class ProftoolMethod {
     }
 
     /**
-     * Gets the level of the compiler that generated this method.
+     * Gets the level (tier) of the compiler that generated this method. Returns {@code null} for
+     * Native Image methods or the interpreter.
+     *
+     * @return the level (tier) of the compiler or {@code null}
      */
     public Integer getLevel() {
         return level;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.code;
 
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryManagerMXBean;
 
 import javax.management.MBeanNotificationInfo;
 import javax.management.NotificationEmitter;
@@ -35,40 +36,21 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.TimeUtils;
-import com.sun.management.GcInfo;
-
 import sun.management.Util;
 
-public final class IncrementalGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
+public final class CodeCacheManagerMXBean implements MemoryManagerMXBean, NotificationEmitter {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public IncrementalGarbageCollectorMXBean() {
+    CodeCacheManagerMXBean() {
     }
 
-    @Override
-    public long getCollectionCount() {
-        return HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionCount();
-    }
-
-    @Override
-    public long getCollectionTime() {
-        long nanos = HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
-        return TimeUtils.roundNanosToMillis(nanos);
-    }
-
-    @Override
-    public String[] getMemoryPoolNames() {
-        /* Return a new array each time because arrays are not immutable. */
-        return new String[]{
-                        GenScavengeMemoryPoolMXBeans.EDEN_SPACE,
-                        GenScavengeMemoryPoolMXBeans.SURVIVOR_SPACE};
-    }
+    public static final String CODE_CACHE_CODE_AND_DATA_POOL = "runtime code cache (code and data)";
+    public static final String CODE_CACHE_NATIVE_METADATA_POOL = "runtime code cache (native metadata)";
+    public static final String CODE_CACHE_MANAGER = "code cache";
 
     @Override
     public String getName() {
-        /* Changing this name will break assumptions we take in the object replacer. */
-        return GenScavengeMemoryPoolMXBeans.YOUNG_GEN_SCAVENGER;
+        return CODE_CACHE_MANAGER;
     }
 
     @Override
@@ -77,8 +59,13 @@ public final class IncrementalGarbageCollectorMXBean implements com.sun.manageme
     }
 
     @Override
+    public String[] getMemoryPoolNames() {
+        return new String[]{CODE_CACHE_CODE_AND_DATA_POOL, CODE_CACHE_NATIVE_METADATA_POOL};
+    }
+
+    @Override
     public ObjectName getObjectName() {
-        return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
+        return Util.newObjectName(ManagementFactory.MEMORY_MANAGER_MXBEAN_DOMAIN_TYPE, getName());
     }
 
     @Override
@@ -96,10 +83,5 @@ public final class IncrementalGarbageCollectorMXBean implements com.sun.manageme
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
         return new MBeanNotificationInfo[0];
-    }
-
-    @Override
-    public GcInfo getLastGcInfo() {
-        return null;
     }
 }

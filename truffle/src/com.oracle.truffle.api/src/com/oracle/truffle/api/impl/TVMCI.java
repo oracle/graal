@@ -114,7 +114,7 @@ public abstract class TVMCI {
                         packageName.equals("org.graalvm.graal.truffle") ||
                         packageName.equals("com.oracle.graal.truffle") ||
                         packageName.equals("com.oracle.truffle.api.impl") : //
-        TVMCI.class.getName() + " subclass is not in trusted package: " + getClass().getName();
+                        TVMCI.class.getName() + " subclass is not in trusted package: " + getClass().getName();
         return true;
     }
 

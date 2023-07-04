@@ -126,7 +126,7 @@ GraalVM Native Image deploys a number of internal features, which are excluded f
 The memory limit and number of threads used by the build process.
 
 More precisely, the memory limit of the Java heap, so actual memory consumption can be even higher.
-Please check the [peak RSS](glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
+Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
 By default, the process will only use _available_ memory: memory that the operating system can make available without swapping out memory used by other processes.
 Therefore, consider freeing up memory if your build process is slow, for example, by closing applications that you do not need.
 Note that, by default, the build process will not use more than 32GB available memory.
