@@ -1500,6 +1500,7 @@ suite = {
             ],
             "distDependencies": [
                 "SVM",
+                "sdk:JNIUTILS",
                 "sdk:NATIVEBRIDGE",
             ],
             "defaultBuild": False,

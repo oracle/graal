@@ -1227,6 +1227,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
+        "sdk:JNIUTILS",
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
