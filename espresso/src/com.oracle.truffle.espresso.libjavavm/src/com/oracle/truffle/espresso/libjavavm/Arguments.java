@@ -172,6 +172,13 @@ public final class Arguments {
                         ignoreUnrecognized = true;
                     } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = false;
+                    } else if (optionString.equals("-XX:+UnlockExperimentalVMOptions") ||
+                                    optionString.equals("-XX:+UnlockDiagnosticVMOptions")) {
+                        // approximate UnlockDiagnosticVMOptions as UnlockExperimentalVMOptions
+                        handler.setExperimental(true);
+                    } else if (optionString.equals("-XX:-UnlockExperimentalVMOptions") ||
+                                    optionString.equals("-XX:-UnlockDiagnosticVMOptions")) {
+                        handler.setExperimental(false);
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
                     } else if (optionString.startsWith("-Xcomp")) {
@@ -245,7 +252,11 @@ public final class Arguments {
 
     private static boolean isExperimentalFlag(String optionString) {
         // return false for "--experimental-options=[garbage]
-        return optionString.equals("--experimental-options") || optionString.equals("--experimental-options=true") || optionString.equals("--experimental-options=false");
+        return optionString.equals("--experimental-options") ||
+                        optionString.equals("--experimental-options=true") ||
+                        optionString.equals("--experimental-options=false") ||
+                        optionString.equals("-XX:+UnlockDiagnosticVMOptions") ||
+                        optionString.equals("-XX:-UnlockDiagnosticVMOptions");
     }
 
     private static boolean isXOption(String optionString) {

@@ -58,7 +58,7 @@ public class ArgumentsHandler {
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
 
-    private final boolean experimental;
+    private boolean experimental;
 
     private boolean helpVM = false;
     private boolean helpTools = false;
@@ -118,6 +118,10 @@ public class ArgumentsHandler {
 
     public void enableNativeAccess(String option) {
         modulePropertyCounter.enableNativeAccess(option);
+    }
+
+    public void setExperimental(boolean experimental) {
+        this.experimental = experimental;
     }
 
     /**

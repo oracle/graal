@@ -391,7 +391,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             value = arg.substring(idx + 1);
         }
         switch (name) {
-            case "UnlockDiagnosticVMOptions", "WhiteBoxAPI" -> espressoOptions.put("java." + name, value);
+            case "UnlockDiagnosticVMOptions", "UnlockExperimentalVMOptions" -> unrecognized.add("--experimental-options=" + value);
+            case "WhiteBoxAPI" -> espressoOptions.put("java." + name, value);
             case "TieredStopAtLevel" -> {
                 if ("0".equals(value)) {
                     espressoOptions.put("engine.Compilation", "false");

@@ -112,11 +112,6 @@ public final class EspressoEnv {
 
     public EspressoEnv(EspressoContext context, TruffleLanguage.Env env) {
         this.env = env;
-        if (!env.getOptions().get(EspressoOptions.UnlockDiagnosticVMOptions)) {
-            if (env.getOptions().hasBeenSet(EspressoOptions.WhiteBoxAPI)) {
-                throw new IllegalArgumentException("WhiteBoxAPI can only be used if diagnostic VM options are enabled");
-            }
-        }
 
         this.threadRegistry = new EspressoThreadRegistry(context);
         this.referenceDrainer = new EspressoReferenceDrainer(context);
