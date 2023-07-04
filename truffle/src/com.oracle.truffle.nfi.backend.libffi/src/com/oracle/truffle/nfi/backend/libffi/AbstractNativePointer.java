@@ -90,6 +90,6 @@ abstract class AbstractNativePointer implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return String.format("NativePointer(0x%016x)", nativePointer);
+        return "NativePointer(" + nativePointer + ")";
     }
 }

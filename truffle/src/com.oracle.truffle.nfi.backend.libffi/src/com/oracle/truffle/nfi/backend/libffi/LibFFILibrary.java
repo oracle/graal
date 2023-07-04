@@ -134,7 +134,7 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return String.format("LibFFILibrary(0x%016x)", handle);
+        return "LibFFILibrary(" + handle + ")";
     }
 
     private static final class Destructor extends NativeAllocation.Destructor {
