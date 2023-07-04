@@ -88,6 +88,8 @@ import java.lang.reflect.Method;
  * {@link MissingReflectionRegistrationError}.<br>
  * {@code declaringClass.getField("unregisteredNonexistentField")} will throw a
  * {@link MissingReflectionRegistrationError}.<br>
+ *
+ * @since 23.0
  */
 public final class MissingReflectionRegistrationError extends Error {
     @Serial private static final long serialVersionUID = 2764341882856270640L;
@@ -100,6 +102,9 @@ public final class MissingReflectionRegistrationError extends Error {
 
     private final Class<?>[] parameterTypes;
 
+    /**
+     * @since 23.0
+     */
     public MissingReflectionRegistrationError(String message, Class<?> elementType, Class<?> declaringClass, String elementName, Class<?>[] parameterTypes) {
         super(message);
         this.elementType = elementType;
@@ -112,6 +117,8 @@ public final class MissingReflectionRegistrationError extends Error {
      * @return The type of the element trying to be queried ({@link Class}, {@link Method},
      *         {@link Field} or {@link Constructor}), or null if the query is a bulk query (like
      *         {@link Class#getMethods()}).
+     *
+     * @since 23.0
      */
     public Class<?> getElementType() {
         return elementType;
@@ -120,6 +127,8 @@ public final class MissingReflectionRegistrationError extends Error {
     /**
      * @return The class on which the missing query was tried, or null on static queries (e.g.
      *         {@link Class#forName(String)}).
+     *
+     * @since 23.0
      */
     public Class<?> getDeclaringClass() {
         return declaringClass;
@@ -127,6 +136,8 @@ public final class MissingReflectionRegistrationError extends Error {
 
     /**
      * @return The name of the queried element, or bulk query method (e.g. {@code "getMethods"}).
+     *
+     * @since 23.0
      */
     public String getElementName() {
         return elementName;
@@ -135,6 +146,8 @@ public final class MissingReflectionRegistrationError extends Error {
     /**
      * @return The parameter types passed to the query, or null if the query doesn't take parameter
      *         types as argument.
+     *
+     * @since 23.0
      */
     public Class<?>[] getParameterTypes() {
         return parameterTypes;
