@@ -49,7 +49,6 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
-import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 
 public class InstructionModel implements InfoDumpable {
     public enum InstructionKind {
