@@ -27,6 +27,7 @@ package org.graalvm.profdiff.args;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.command.Command;
@@ -113,6 +114,20 @@ public class ArgumentParser {
     }
 
     /**
+     * Gets {@link CommandGroup the command group} argument if this parser contains a command group.
+     */
+    public Optional<CommandGroup> getCommandGroup() {
+        if (positionalArguments.isEmpty()) {
+            return Optional.empty();
+        }
+        Argument last = positionalArguments.get(positionalArguments.size() - 1);
+        if (last instanceof CommandGroup) {
+            return Optional.of((CommandGroup) last);
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Formats a usage string for the option arguments.
      */
     public String formatOptionUsage() {
@@ -165,13 +180,16 @@ public class ArgumentParser {
      * @return a usage string with a selected command
      */
     public String formatPositionalUsage(Command command) {
+        if (getCommandGroup().isEmpty()) {
+            throw new IllegalStateException("The parser must contain a command group to format the usage for a selected command.");
+        }
         StringBuilder sb = new StringBuilder();
         boolean isFirst = true;
         for (Argument argument : positionalArguments) {
             if (!isFirst) {
                 sb.append(' ');
             }
-            assert argument.isRequired() : "a command group implies positional arguments are required";
+            assert argument.isRequired() : "the presence of a command group implies all positional arguments are required";
             if (argument instanceof CommandGroup commandGroup) {
                 assert commandGroup.getCommandByName(command.getName()) == command : "the provided command must be part of the command group";
                 sb.append(command.getName());

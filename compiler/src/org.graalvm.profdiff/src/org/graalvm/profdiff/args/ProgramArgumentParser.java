@@ -25,7 +25,6 @@
 package org.graalvm.profdiff.args;
 
 import java.util.Formatter;
-import java.util.Optional;
 
 import org.graalvm.profdiff.command.Command;
 
@@ -122,20 +121,6 @@ public class ProgramArgumentParser extends ArgumentParser {
             fmt.format("%n%s", commandParser.formatPositionalHelp());
         }
         return fmt.toString();
-    }
-
-    /**
-     * Gets {@link CommandGroup the command group} argument if this parser contains a command group.
-     */
-    public Optional<CommandGroup> getCommandGroup() {
-        if (positionalArguments.isEmpty()) {
-            return Optional.empty();
-        }
-        Argument last = positionalArguments.get(positionalArguments.size() - 1);
-        if (last instanceof CommandGroup) {
-            return Optional.of((CommandGroup) last);
-        }
-        return Optional.empty();
     }
 
     /**

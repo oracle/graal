@@ -271,6 +271,12 @@ public class ArgumentParserTest {
         parser.addCommandGroup("--foo", "Foo group.");
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void formatUsageForCommandWithoutCommandGroup() {
+        ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
+        parser.formatPositionalUsage(new CommandFoo());
+    }
+
     @Test
     public void falseBooleanArgument() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArgumentParser parser = new ProgramArgumentParser("program", "Program description.");
