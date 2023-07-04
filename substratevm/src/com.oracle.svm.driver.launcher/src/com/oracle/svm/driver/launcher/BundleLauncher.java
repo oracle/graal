@@ -47,26 +47,12 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
-import static com.oracle.svm.driver.launcher.ContainerSupport.CONTAINER_GRAAL_VM_HOME;
-import static com.oracle.svm.driver.launcher.ContainerSupport.replaceContainerPaths;
-import static com.oracle.svm.driver.launcher.ContainerSupport.mountMappingFor;
-import static com.oracle.svm.driver.launcher.ContainerSupport.TargetPath;
-
 
 public class BundleLauncher {
 
-    public static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
-    public static final String BUNDLE_FILE_EXTENSION = ".nib";
-
-    public static final String INPUT_DIR_NAME = "input";
-    public static final String STAGE_DIR_NAME = "stage";
-    public static final String AUXILIARY_DIR_NAME = "auxiliary";
-    public static final String CLASSES_DIR_NAME = "classes";
-    public static final String CLASSPATH_DIR_NAME = "cp";
-    public static final String MODULE_PATH_DIR_NAME = "p";
-    public static final String OUTPUT_DIR_NAME = "output";
-    public static final String IMAGE_PATH_OUTPUT_DIR_NAME = "default";
-    public static final String AUXILIARY_OUTPUT_DIR_NAME = "other";
+    static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
+    private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
+    private static final String BUNDLE_FILE_EXTENSION = ".nib";
 
     private static Path rootDir;
     private static Path inputDir;
@@ -82,9 +68,9 @@ public class BundleLauncher {
     private static String newBundleName = null;
     private static boolean updateBundle = false;
 
-    public static boolean verbose = false;
+    private static boolean verbose = false;
 
-    public static ContainerSupport containerSupport;
+    private static ContainerSupport containerSupport;
 
     private static final List<String> launchArgs = new ArrayList<>();
     private static final List<String> applicationArgs = new ArrayList<>();
@@ -94,12 +80,12 @@ public class BundleLauncher {
     public static void main(String[] args) {
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
         bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
-        agentOutputDir = bundleFilePath.getParent().resolve(Paths.get(bundleName + "." + OUTPUT_DIR_NAME, "launcher"));
+        agentOutputDir = bundleFilePath.getParent().resolve(Paths.get(bundleName + ".output", "launcher"));
         unpackBundle(bundleFilePath);
 
         // if we did not create a run.json bundle is not executable, e.g. shared library bundles
         if (!Files.exists(stageDir.resolve("run.json"))) {
-            System.out.println("Bundle " + bundleFilePath + " is not executable!");
+            showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle " + bundleFilePath + " is not executable!");
             System.exit(1);
         }
 
@@ -125,10 +111,10 @@ public class BundleLauncher {
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .sorted()
                     .toList();
-            System.out.println("Executing [");
-            System.out.println(String.join(" \\\n", environmentList));
-            System.out.println(String.join(" \\\n", pb.command()));
-            System.out.println("]");
+            showMessage("Executing [");
+            showMessage(String.join(" \\\n", environmentList));
+            showMessage(String.join(" \\\n", pb.command()));
+            showMessage("]");
         }
 
         Process p = null;
@@ -151,7 +137,7 @@ public class BundleLauncher {
         System.exit(exitCode);
     }
 
-    public static boolean useContainer() {
+    private static boolean useContainer() {
         return containerSupport != null;
     }
 
@@ -163,15 +149,15 @@ public class BundleLauncher {
         if (useContainer()) {
             Path javaHome = javaExecutable.getParent().getParent();
 
-            Map<Path, TargetPath> mountMapping = mountMappingFor(javaHome, inputDir, outputDir);
+            Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(javaHome, inputDir, outputDir);
             if (Files.isDirectory(agentOutputDir)) {
-                mountMapping.put(agentOutputDir, TargetPath.of(agentOutputDir, false));
-                launcherEnvironment.put("LD_LIBRARY_PATH", CONTAINER_GRAAL_VM_HOME.resolve("lib").toString());
+                mountMapping.put(agentOutputDir, ContainerSupport.TargetPath.of(agentOutputDir, false));
+                launcherEnvironment.put("LD_LIBRARY_PATH", ContainerSupport.GRAAL_VM_HOME.resolve("lib").toString());
             }
 
-            containerSupport.initializeContainerImage();
-            command.addAll(containerSupport.createContainerCommand(launcherEnvironment, mountMapping));
-            command.add(CONTAINER_GRAAL_VM_HOME.resolve(javaHome.relativize(javaExecutable)).toString());
+            containerSupport.initializeImage();
+            command.addAll(containerSupport.createCommand(launcherEnvironment, mountMapping));
+            command.add(ContainerSupport.GRAAL_VM_HOME.resolve(javaHome.relativize(javaExecutable)).toString());
         } else {
             command.add(javaExecutable.toString());
         }
@@ -274,14 +260,16 @@ public class BundleLauncher {
                 Path outputDir = agentOutputDir.resolve(Paths.get("META-INF", "native-image", bundleName + "-agent"));
                 try {
                     Files.createDirectories(outputDir);
-                    System.out.println("Native image agent output written to " + agentOutputDir);
+                    showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Native image agent output written to " + agentOutputDir);
                     launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + outputDir);
                 } catch (IOException e) {
-                    System.out.println("Failed to create native image agent output dir");
+                    throw new Error("Failed to create native image agent output dir");
                 }
             } else if (arg.startsWith("--container")) {
                 if (useContainer()) {
                     throw new Error("native-image launcher allows option container to be specified only once.");
+                } else if (!System.getProperty("os.name").equals("Linux")) {
+                    throw new Error("container option is only supported for Linux");
                 }
                 Path dockerfile;
                 if (arg.indexOf(',') != -1) {
@@ -303,9 +291,9 @@ public class BundleLauncher {
                 } else {
                     dockerfile = stageDir.resolve("Dockerfile");
                 }
-                containerSupport = new ContainerSupport(dockerfile, stageDir);
+                containerSupport = new ContainerSupport(dockerfile, stageDir, Error::new, BundleLauncher::showWarning, BundleLauncher::showMessage);
                 if (arg.indexOf('=') != -1) {
-                    containerSupport.containerTool = arg.substring(arg.indexOf('=') + 1);
+                    containerSupport.tool = arg.substring(arg.indexOf('=') + 1);
                 }
             } else {
                 switch (arg) {
@@ -318,6 +306,13 @@ public class BundleLauncher {
                 }
             }
         }
+    }
+
+    private static void showMessage(String msg) {
+        System.out.println(msg);
+    }
+    private static void showWarning(String msg) {
+        System.out.println("Warning: " + msg);
     }
 
     private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
@@ -388,7 +383,7 @@ public class BundleLauncher {
                 walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
             }
         } catch (IOException e) {
-            System.out.println("Could not recursively delete path: " + toDelete);
+            showMessage("Could not recursively delete path: " + toDelete);
             e.printStackTrace();
         }
     }
@@ -396,7 +391,7 @@ public class BundleLauncher {
     private static void unpackBundle(Path bundleFilePath) {
         try {
             rootDir = createBundleRootDir();
-            inputDir = rootDir.resolve(INPUT_DIR_NAME);
+            inputDir = rootDir.resolve("input");
 
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
                 Enumeration<JarEntry> jarEntries = archive.entries();
@@ -424,11 +419,11 @@ public class BundleLauncher {
         }
 
         try {
-            stageDir = Files.createDirectories(inputDir.resolve(STAGE_DIR_NAME));
-            Path classesDir = inputDir.resolve(CLASSES_DIR_NAME);
-            classPathDir = Files.createDirectories(classesDir.resolve(CLASSPATH_DIR_NAME));
-            modulePathDir = Files.createDirectories(classesDir.resolve(MODULE_PATH_DIR_NAME));
-            outputDir = Files.createDirectories(rootDir.resolve(OUTPUT_DIR_NAME));
+            stageDir = Files.createDirectories(inputDir.resolve("stage"));
+            Path classesDir = inputDir.resolve("classes");
+            classPathDir = Files.createDirectories(classesDir.resolve("cp"));
+            modulePathDir = Files.createDirectories(classesDir.resolve("p"));
+            outputDir = Files.createDirectories(rootDir.resolve("output"));
         } catch (IOException e) {
             throw new Error("Unable to create bundle directory layout", e);
         }

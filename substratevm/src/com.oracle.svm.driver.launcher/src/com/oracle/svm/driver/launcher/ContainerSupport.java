@@ -42,30 +42,24 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 public class ContainerSupport {
-    public String containerTool;
-    public String bundleContainerTool;
-    public String containerToolVersion;
-    public String bundleContainerToolVersion;
-    public String containerImage;
-    public String bundleContainerImage;
+    public String tool;
+    public String bundleTool;
+    public String toolVersion;
+    public String bundleToolVersion;
+    public String image;
+    public String bundleImage;
     public Path dockerfile;
 
-    public static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
-    public static final String CONTAINER_TOOL_JSON_KEY = "containerTool";
-    public static final String CONTAINER_TOOL_VERSION_JSON_KEY = "containerToolVersion";
-    public static final String CONTAINER_IMAGE_JSON_KEY = "containerImage";
+    public static final List<String> SUPPORTED_TOOLS = List.of("podman", "docker");
+    public static final String TOOL_JSON_KEY = "containerTool";
+    public static final String TOOL_VERSION_JSON_KEY = "containerToolVersion";
+    public static final String IMAGE_JSON_KEY = "containerImage";
 
-    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
-
-    public static final Path CONTAINER_GRAAL_VM_HOME = Path.of("/graalvm");
+    public static final Path GRAAL_VM_HOME = Path.of("/graalvm");
 
     private final BiFunction<String, Throwable, Error> errorFunction;
     private final Consumer<String> warningPrinter;
     private final Consumer<String> messagePrinter;
-
-    public ContainerSupport(Path dockerfile, Path bundleStageDir) {
-        this(dockerfile, bundleStageDir, Error::new, (msg) -> System.out.println("Warning: " + msg), System.out::println);
-    }
 
     public ContainerSupport(Path dockerfile, Path bundleStageDir, BiFunction<String, Throwable, Error> errorFunction, Consumer<String> warningPrinter, Consumer<String> messagePrinter) {
         this.dockerfile = dockerfile;
@@ -79,64 +73,64 @@ public class ContainerSupport {
                 try (Reader reader = Files.newBufferedReader(containerFile)) {
                     Map<String, String> containerSettings = new HashMap<>();
                     new BundleContainerSettingsParser(containerSettings).parseAndRegister(reader);
-                    bundleContainerImage = containerSettings.getOrDefault(CONTAINER_IMAGE_JSON_KEY, bundleContainerImage);
-                    bundleContainerTool = containerSettings.getOrDefault(CONTAINER_TOOL_JSON_KEY, bundleContainerTool);
-                    bundleContainerToolVersion = containerSettings.getOrDefault(CONTAINER_TOOL_VERSION_JSON_KEY, bundleContainerToolVersion);
+                    bundleImage = containerSettings.getOrDefault(IMAGE_JSON_KEY, bundleImage);
+                    bundleTool = containerSettings.getOrDefault(TOOL_JSON_KEY, bundleTool);
+                    bundleToolVersion = containerSettings.getOrDefault(TOOL_VERSION_JSON_KEY, bundleToolVersion);
                 } catch (IOException e) {
                     throw errorFunction.apply("Failed to read bundle-file " + containerFile, e);
                 }
-                if (bundleContainerTool != null) {
-                    String containerToolVersionString = bundleContainerToolVersion == null ? "" : String.format(" (%s)", bundleContainerToolVersion);
-                    messagePrinter.accept(String.format("%sBundled native-image was created in a container with %s%s.%n", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, containerToolVersionString));
+                if (bundleTool != null) {
+                    String containerToolVersionString = bundleToolVersion == null ? "" : String.format(" (%s)", bundleToolVersion);
+                    messagePrinter.accept(String.format("%sBundled native-image was created in a container with %s%s.%n", BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX, bundleTool, containerToolVersionString));
                 }
             }
         }
     }
 
-    public int initializeContainerImage() {
+    public int initializeImage() {
         try {
-            containerImage = BundleLauncherUtil.digest(Files.readString(dockerfile));
+            image = BundleLauncherUtil.digest(Files.readString(dockerfile));
         } catch (IOException e) {
             throw errorFunction.apply("Could not read Dockerfile " + dockerfile, e);
         }
 
-        if (bundleContainerImage != null && !bundleContainerImage.equals(containerImage)) {
+        if (bundleImage != null && !bundleImage.equals(image)) {
             warningPrinter.accept("The bundled image was created with a different dockerfile.");
         }
 
-        if (bundleContainerTool != null && containerTool == null) {
-            containerTool = bundleContainerTool;
+        if (bundleTool != null && tool == null) {
+            tool = bundleTool;
         }
 
-        if (containerTool != null) {
-            if (!isToolAvailable(containerTool)) {
+        if (tool != null) {
+            if (!isToolAvailable(tool)) {
                 throw errorFunction.apply("Configured container tool not available.", null);
-            } else if (containerTool.equals("docker") && !isRootlessDocker()) {
+            } else if (tool.equals("docker") && !isRootlessDocker()) {
                 throw errorFunction.apply("Only rootless docker is supported for containerized builds.", null);
             }
-            containerToolVersion = getContainerToolVersion(containerTool);
+            toolVersion = getToolVersion(tool);
 
-            if (bundleContainerTool != null) {
-                if (!containerTool.equals(bundleContainerTool)) {
-                    warningPrinter.accept(String.format("The bundled image was created with container tool '%s' (using '%s').%n", bundleContainerTool, containerTool));
-                } else if (containerToolVersion != null && bundleContainerToolVersion != null && !containerToolVersion.equals(bundleContainerToolVersion)) {
-                    warningPrinter.accept(String.format("The bundled image was created with different %s version '%s' (installed '%s').%n", containerTool, bundleContainerToolVersion, containerToolVersion));
+            if (bundleTool != null) {
+                if (!tool.equals(bundleTool)) {
+                    warningPrinter.accept(String.format("The bundled image was created with container tool '%s' (using '%s').%n", bundleTool, tool));
+                } else if (toolVersion != null && bundleToolVersion != null && !toolVersion.equals(bundleToolVersion)) {
+                    warningPrinter.accept(String.format("The bundled image was created with different %s version '%s' (installed '%s').%n", tool, bundleToolVersion, toolVersion));
                 }
             }
         } else {
-            for (String tool : SUPPORTED_CONTAINER_TOOLS) {
+            for (String tool : SUPPORTED_TOOLS) {
                 if (isToolAvailable(tool)) {
                     if (tool.equals("docker") && !isRootlessDocker()) {
-                        messagePrinter.accept(BUNDLE_INFO_MESSAGE_PREFIX + "Rootless context missing for docker.");
+                        messagePrinter.accept(BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX + "Rootless context missing for docker.");
                         continue;
                     }
-                    containerTool = tool;
-                    containerToolVersion = getContainerToolVersion(tool);
+                    this.tool = tool;
+                    toolVersion = getToolVersion(tool);
                     break;
                 }
             }
-            if (containerTool == null) {
-                throw errorFunction.apply(String.format("Please install one of the following tools before running containerized native image builds: %s", SUPPORTED_CONTAINER_TOOLS), null);
+            if (tool == null) {
+                throw errorFunction.apply(String.format("Please install one of the following tools before running containerized native image builds: %s", SUPPORTED_TOOLS), null);
             }
         }
 
@@ -144,14 +138,14 @@ public class ContainerSupport {
     }
 
     private int createContainer() {
-        ProcessBuilder pbCheckForImage = new ProcessBuilder(containerTool, "images", "-q", containerImage + ":latest");
-        ProcessBuilder pb = new ProcessBuilder(containerTool, "build", "-f", dockerfile.toString(), "-t", containerImage, ".");
+        ProcessBuilder pbCheckForImage = new ProcessBuilder(tool, "images", "-q", image + ":latest");
+        ProcessBuilder pb = new ProcessBuilder(tool, "build", "-f", dockerfile.toString(), "-t", image, ".");
 
         String imageId = getFirstProcessResultLine(pbCheckForImage);
         if (imageId == null) {
             pb.inheritIO();
         } else {
-            messagePrinter.accept(String.format("%sReusing container image %s.%n", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
+            messagePrinter.accept(String.format("%sReusing container image %s.%n", BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX, image));
         }
 
         Process p = null;
@@ -160,7 +154,7 @@ public class ContainerSupport {
             int status = p.waitFor();
             if (status == 0 && imageId != null && !imageId.equals(getFirstProcessResultLine(pbCheckForImage))) {
                 try (var processResult = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                    messagePrinter.accept(String.format("%sUpdated container image %s.%n", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
+                    messagePrinter.accept(String.format("%sUpdated container image %s.%n", BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX, image));
                     processResult.lines().forEach(messagePrinter);
                 }
             }
@@ -180,7 +174,7 @@ public class ContainerSupport {
                 .anyMatch(Files::isExecutable);
     }
 
-    private String getContainerToolVersion(String tool) {
+    private String getToolVersion(String tool) {
         ProcessBuilder pb = new ProcessBuilder(tool, "--version");
         return getFirstProcessResultLine(pb);
     }
@@ -220,17 +214,17 @@ public class ContainerSupport {
     public static Map<Path, TargetPath> mountMappingFor(Path javaHome, Path inputDir, Path outputDir) {
         Map<Path, TargetPath> mountMapping = new HashMap<>();
         Path containerRoot = Paths.get("/");
-        mountMapping.put(javaHome, TargetPath.readonly(containerRoot.resolve(CONTAINER_GRAAL_VM_HOME)));
-        mountMapping.put(inputDir, ContainerSupport.TargetPath.readonly(containerRoot.resolve(BundleLauncher.INPUT_DIR_NAME)));
-        mountMapping.put(outputDir, ContainerSupport.TargetPath.of(containerRoot.resolve(BundleLauncher.OUTPUT_DIR_NAME), false));
+        mountMapping.put(javaHome, TargetPath.readonly(containerRoot.resolve(GRAAL_VM_HOME)));
+        mountMapping.put(inputDir, ContainerSupport.TargetPath.readonly(containerRoot.resolve("input")));
+        mountMapping.put(outputDir, ContainerSupport.TargetPath.of(containerRoot.resolve("output"), false));
         return mountMapping;
     }
 
-    public List<String> createContainerCommand(Map<String, String> containerEnvironment, Map<Path, TargetPath> mountMapping) {
+    public List<String> createCommand(Map<String, String> containerEnvironment, Map<Path, TargetPath> mountMapping) {
         List<String> containerCommand = new ArrayList<>();
 
         // run docker tool without network access and remove container after image build is finished
-        containerCommand.add(containerTool);
+        containerCommand.add(tool);
         containerCommand.add("run");
         containerCommand.add("--network=none");
         containerCommand.add("--rm");
@@ -255,14 +249,14 @@ public class ContainerSupport {
         });
 
         // specify container name
-        containerCommand.add(containerImage);
+        containerCommand.add(image);
 
         return containerCommand;
     }
 
-    public static void replaceContainerPaths(List<String> arguments, Path javaHome, Path bundleRoot) {
+    public static void replacePaths(List<String> arguments, Path javaHome, Path bundleRoot) {
         arguments.replaceAll(arg -> arg
-                .replace(javaHome.toString(), CONTAINER_GRAAL_VM_HOME.toString())
+                .replace(javaHome.toString(), GRAAL_VM_HOME.toString())
                 .replace(bundleRoot.toString(), "")
         );
     }

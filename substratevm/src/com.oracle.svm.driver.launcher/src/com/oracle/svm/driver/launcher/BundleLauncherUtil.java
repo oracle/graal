@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 public class BundleLauncherUtil {
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
-    public static String digest(String value) {
+    static String digest(String value) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             md.update(value.getBytes(StandardCharsets.UTF_8));
@@ -42,7 +42,7 @@ public class BundleLauncherUtil {
             throw new Error(ex);
         }
     }
-    public static String toHex(byte[] data) {
+    static String toHex(byte[] data) {
         StringBuilder r = new StringBuilder(data.length * 2);
         for (byte b : data) {
             r.append(HEX[(b >> 4) & 0xf]);
@@ -52,7 +52,7 @@ public class BundleLauncherUtil {
     }
 
     private static final Pattern SAFE_SHELL_ARG = Pattern.compile("[A-Za-z0-9@%_\\-+=:,./]+");
-    public static String quoteShellArg(String arg) {
+    static String quoteShellArg(String arg) {
         if (arg.isEmpty()) {
             return "''";
         }
