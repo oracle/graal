@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.driver.launcher.ContainerSupport;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -101,10 +102,6 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
-
-import static com.oracle.svm.driver.launcher.ContainerSupport.replaceContainerPaths;
-import static com.oracle.svm.driver.launcher.ContainerSupport.mountMappingFor;
-import static com.oracle.svm.driver.launcher.ContainerSupport.TargetPath;
 
 public class NativeImage {
 
@@ -1564,22 +1561,22 @@ public class NativeImage {
         List<String> command = new ArrayList<>();
         List<String> completeCommandList = new ArrayList<>();
 
-        if (useBundle() && bundleSupport.useContainer()) {
-            replaceContainerPaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
-            replaceContainerPaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
+        if (useBundle() && bundleSupport.useContainer) {
+            ContainerSupport.replacePaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
+            ContainerSupport.replacePaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
             Path binJava = Paths.get("bin", "java");
-            javaExecutable = BundleSupport.CONTAINER_GRAAL_VM_HOME.resolve(binJava).toString();
+            javaExecutable = ContainerSupport.GRAAL_VM_HOME.resolve(binJava).toString();
         }
 
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
-        if (useBundle() && bundleSupport.useContainer()) {
-            Map<Path, TargetPath> mountMapping = mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
-            mountMapping.put(argFile, TargetPath.readonly(argFile));
-            mountMapping.put(builderArgFile, TargetPath.readonly(builderArgFile));
+        if (useBundle() && bundleSupport.useContainer) {
+            Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
+            mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
+            mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));
 
-            List<String> containerCommand = bundleSupport.containerSupport.createContainerCommand(imageBuilderEnvironment, mountMapping);
+            List<String> containerCommand = bundleSupport.containerSupport.createCommand(imageBuilderEnvironment, mountMapping);
             command.addAll(containerCommand);
             completeCommandList.addAll(containerCommand);
         }
