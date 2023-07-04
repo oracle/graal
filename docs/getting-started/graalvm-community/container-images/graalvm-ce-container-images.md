@@ -12,12 +12,12 @@ Learn here how to start using GraalVM Community Edition images for Docker contai
 
 You can pull a package by name or by name and version tag. To install GraalVM JDK from the command line, use:
 ```shell
-docker pull ghcr.io/graalvm/jdk-community:20.0.1-ol9-20230622
+docker pull ghcr.io/graalvm/jdk-community:20.0.1-ol9
 ```
 
 Alternatively, use GraalVM JDK as a base image in [Dockerfile](https://docs.docker.com/engine/reference/builder/):
 ```shell
-FROM ghcr.io/graalvm/jdk-community:20.0.1-ol9-20230622
+FROM ghcr.io/graalvm/jdk-community:20.0.1-ol9
 ```
 
 There are different GraalVM Community Edition container images provided depending on the architecture and the Java version.
@@ -30,11 +30,11 @@ See what types of container images are available [here](https://github.com/graal
 
 1. Start a container and enter the `bash` session with the following run command:
     ```shell
-    docker run -it --rm ghcr.io/graalvm/jdk-community:20.0.1-ol9-20230622 bash
+    docker run -it --rm ghcr.io/graalvm/jdk-community:20.0.1-ol9 bash
     ```
 2. Check the `java` version:
     ```shell
-    →docker run -it --rm ghcr.io/graalvm/jdk-community:20.0.1-ol9-20230622 bash
+    →docker run -it --rm ghcr.io/graalvm/jdk-community:20.0.1-ol9 bash
     bash-4.4# java -version
     ```
 
@@ -45,13 +45,13 @@ Similar to any other available packages, you can install these components using 
 
 To pull a GraalVM Community Edition container image containing the [`gu` utility](../../../reference-manual/graalvm-updater.md) for installing additional components, run this command:
 ```
-docker pull ghcr.io/graalvm/graalvm-community:20.0.1-ol9-20230622
+docker pull ghcr.io/graalvm/graalvm-community:20.0.1-ol9
 ```
 
 Here is a sample command that maps the `/absolute/path/to/directory/no/trailing/slash` directory from the host system to the `/path/inside/container` inside the container.
 
 ```shell
-docker run -it --rm -v /absolute/path/to/directory/no/trailing/slash:/path/inside/container ghcr.io/graalvm/graalvm-community:20.0.1-ol9-20230622 bash
+docker run -it --rm -v /absolute/path/to/directory/no/trailing/slash:/path/inside/container ghcr.io/graalvm/graalvm-community:20.0.1-ol9 bash
 ```
 
 Using `ghcr.io/graalvm/native-image-community` you will always get the latest update available for GraalVM Community Native Image, the latest OS which is for now Oracle Linux 9 and Oracle Linux 9 slim, and the latest Java version.
