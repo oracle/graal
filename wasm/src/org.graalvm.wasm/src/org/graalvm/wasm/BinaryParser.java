@@ -446,7 +446,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readMemorySection() {
         final int memoryCount = readLength();
         final int startingMemoryIndex = module.memoryCount();
-        module.limits().checkMemoryCount(startingMemoryIndex + memoryCount);
+        module.limits().checkMemoryCount(startingMemoryIndex + memoryCount, multiMemory);
         for (int memoryIndex = startingMemoryIndex; memoryIndex != startingMemoryIndex + memoryCount; memoryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final boolean is64Bit = readMemoryLimits(longMultiResult);
@@ -1299,8 +1299,9 @@ public class BinaryParser extends BinaryStreamParser {
                         if (multiMemory) {
                             memoryIndex = readMemoryIndex();
                         } else {
-                            readMemoryIndex();
-                            memoryIndex = 0;
+                            memoryIndex = read1();
+                            assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            checkMemoryIndex(0);
                         }
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
@@ -1344,10 +1345,11 @@ public class BinaryParser extends BinaryStreamParser {
                             destMemoryIndex = readMemoryIndex();
                             srcMemoryIndex = readMemoryIndex();
                         } else {
-                            readMemoryIndex();
-                            readMemoryIndex();
-                            destMemoryIndex = 0;
-                            srcMemoryIndex = 0;
+                            destMemoryIndex = read1();
+                            srcMemoryIndex = read1();
+                            assertIntEqual(destMemoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            assertIntEqual(srcMemoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            checkMemoryIndex(0);
                         }
                         if (module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
@@ -1370,8 +1372,9 @@ public class BinaryParser extends BinaryStreamParser {
                         if (multiMemory) {
                             memoryIndex = readMemoryIndex();
                         } else {
-                            readMemoryIndex();
-                            memoryIndex = 0;
+                            memoryIndex = read1();
+                            assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            checkMemoryIndex(0);
                         }
                         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
@@ -1524,8 +1527,8 @@ public class BinaryParser extends BinaryStreamParser {
             memoryIndex = readMemoryIndex();
         } else {
             memoryIndex = 0;
+            checkMemoryIndex(0);
         }
-        assertUnsignedIntLess(memoryIndex, module.memoryCount(), Failure.UNKNOWN_MEMORY);
         final long memoryOffset;
         if (memory64) {
             memoryOffset = readUnsignedInt64(); // 64-bit store offset
@@ -1551,8 +1554,8 @@ public class BinaryParser extends BinaryStreamParser {
             memoryIndex = readMemoryIndex();
         } else {
             memoryIndex = 0;
+            checkMemoryIndex(0);
         }
-        assertUnsignedIntLess(memoryIndex, module.memoryCount(), Failure.UNKNOWN_MEMORY);
         final long memoryOffset;
         if (memory64) {
             memoryOffset = readUnsignedInt64(); // 64-bit load offset
@@ -1947,10 +1950,12 @@ public class BinaryParser extends BinaryStreamParser {
                 if (useMemoryIndex && multiMemory) {
                     memoryIndex = readMemoryIndex();
                 } else if (useMemoryIndex) {
-                    readMemoryIndex();
-                    memoryIndex = 0;
+                    memoryIndex = readUnsignedInt32();
+                    assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                    checkMemoryIndex(0);
                 } else {
                     memoryIndex = 0;
+                    checkMemoryIndex(0);
                 }
                 if (mode == SegmentMode.ACTIVE) {
                     if (module.memoryHasIndexType64(memoryIndex)) {
@@ -1971,8 +1976,9 @@ public class BinaryParser extends BinaryStreamParser {
                 if (multiMemory) {
                     memoryIndex = readMemoryIndex();
                 } else {
-                    readMemoryIndex();
-                    memoryIndex = 0;
+                    memoryIndex = readUnsignedInt32();
+                    assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                    checkMemoryIndex(0);
                 }
                 if (module.memoryHasIndexType64(memoryIndex)) {
                     readLongOffsetExpression(longMultiResult);
@@ -1990,7 +1996,7 @@ public class BinaryParser extends BinaryStreamParser {
 
             final int headerOffset = bytecode.location();
             if (mode == SegmentMode.ACTIVE) {
-                assertUnsignedIntLess(memoryIndex, module.memoryCount(), Failure.UNKNOWN_MEMORY);
+                checkMemoryIndex(memoryIndex);
                 final long currentOffsetAddress = offsetAddress;
                 bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();

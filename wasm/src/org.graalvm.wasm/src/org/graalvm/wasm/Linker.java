@@ -169,12 +169,8 @@ public class Linker {
         for (final Resolver resolver : sortedResolutions) {
             resolver.runActionOnce(context, failures);
             String moduleName = resolver.element.moduleName();
-            if (!moduleOrdering.contains(moduleName)) {
-                moduleOrdering.add(moduleName);
-            } else {
-                moduleOrdering.remove(moduleName);
-                moduleOrdering.add(moduleName);
-            }
+            moduleOrdering.remove(moduleName);
+            moduleOrdering.add(moduleName);
         }
     }
 

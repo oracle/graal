@@ -1104,7 +1104,7 @@ public abstract class SymbolTable {
 
     boolean memoryHasIndexType64(int index) {
         final MemoryInfo memory = memories[index];
-        return memory != null && memory.indexType64;
+        return memory.indexType64;
     }
 
     public long memoryInitialSize(int index) {
