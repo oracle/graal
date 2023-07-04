@@ -180,7 +180,9 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         // lbl:
         // arg0.append(4);
 
-        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
+        parse("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
@@ -203,8 +205,6 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
 
             b.endRoot();
         });
-
-        testOrdering(false, root, 1L, 2L, 4L);
     }
 
     @Test
@@ -851,7 +851,9 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         //   return 0;
         // }
 
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
+        parse("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -887,8 +889,6 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
             b.endFinallyTry();
             b.endRoot();
         });
-
-        testOrdering(false, root, 1L, 3L, 5L, 8L);
     }
 
     @Test
@@ -921,7 +921,9 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         //   return 0;
         // }
 
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
+        parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(); // a
@@ -970,8 +972,6 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
             b.endFinallyTry();
             b.endRoot();
         });
-
-        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L);
     }
 
     @Test

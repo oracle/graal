@@ -64,7 +64,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 @NodeChild("functionName")
 public abstract class SLFunctionLiteralNode extends SLExpressionNode {
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-neverdefault"})
     @Specialization
     public static SLFunction perform(
                     TruffleString functionName,

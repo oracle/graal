@@ -1657,6 +1657,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createDoEmitLeaves());
             builder.add(createAllocateNode());
             builder.add(createInFinallyTryHandler());
+            builder.add(createGetFinallyTryHandlerSequenceNumber());
             if (model.enableSerialization) {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
@@ -2024,7 +2025,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("HashMap<Integer, Integer> result = new HashMap<>()");
             b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
-            b.statement("assert !result.containsKey(site)");
+            b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, site.sp)");
             b.end(2);
             b.startReturn().string("result").end();
@@ -2627,19 +2628,18 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("curStack");
                     b.end(2);
                     b.newLine();
-                    b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.startIf().string("label.finallyTryOp != " + UNINIT).end().startBlock();
-                    // An earlier step has validated that the label is defined by an operation on
-                    // the stack. We should be able to find the defining FinallyTry context without
-                    // hitting an NPE.
-                    b.statement("FinallyTryContext ctx = finallyTryContext");
-                    b.startWhile().string("ctx.finallyTrySequenceNumber != label.finallyTryOp").end().startBlock();
-                    b.statement("ctx = ctx.parentContext");
+
+                    // Branches inside finally handlers can only be relative to the handler,
+                    // otherwise a finally handler emitted before a "return" could branch out of the
+                    // handler and circumvent the return.
+                    b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+
+                    b.startIf().string("label.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"Branches inside finally handlers can only target labels defined in the same handler.\"");
                     b.end();
 
-                    b.startIf().string("inFinallyTryHandler(ctx)").end().startBlock();
+                    b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
                     b.statement("finallyTryContext.finallyRelativeBranches.add(bci + 1)");
-                    b.end();
 
                     b.end();
                     yield new String[]{UNINIT};
@@ -3481,6 +3481,18 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startReturn();
             b.string("context != null && (!context.handlerIsSet() || inFinallyTryHandler(context.parentContext))");
+            b.end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createGetFinallyTryHandlerSequenceNumber() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "getFinallyTryHandlerSequenceNumber");
+            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn();
+            b.string("inFinallyTryHandler(context) ? context.finallyTrySequenceNumber : -1");
             b.end();
 
             return ex;
