@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,13 @@ public abstract class Writer {
     }
 
     /**
+     * Writes the given string to the output.
+     *
+     * @param output the string to be written
+     */
+    protected abstract void writeImpl(String output);
+
+    /**
      * Creates and returns a writer that writes to the standard output.
      *
      * @param optionValues the current option values
@@ -105,13 +112,6 @@ public abstract class Writer {
     public static StringBuilderWriter stringBuilder(OptionValues optionValues) {
         return new StringBuilderWriter(optionValues);
     }
-
-    /**
-     * Writes the given string to the output.
-     *
-     * @param output the string to be written
-     */
-    protected abstract void writeImpl(String output);
 
     /**
      * Write a string to the output with the current indentation level without a line separator at
