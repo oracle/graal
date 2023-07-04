@@ -775,7 +775,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
         GraalServiceThread thread = SubstrateUtil.cast(this, GraalServiceThread.class);
-        if (!LibGraal.attachCurrentThread(thread.isDaemon())) {
+        if (!LibGraal.attachCurrentThread(thread.isDaemon(), null)) {
             throw new InternalError("Couldn't attach to HotSpot runtime");
         }
     }
