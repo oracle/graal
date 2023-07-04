@@ -166,6 +166,7 @@ public class JmxCommonFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.CompilationMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryPoolMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.OperatingSystemMXBean"));
