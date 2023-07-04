@@ -153,23 +153,23 @@ public class OptionValues {
             return new OptionValues(hotCompilationUnitPolicy, optimizationContextTreeEnabled, diffCompilations, bciLongForm, false, false, false, false, false, alwaysPrintInlinerReasoning);
         }
 
-        public Builder withOptimizationContextTreeEnabled(boolean optimizationContextTreeEnabled) {
-            this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
+        public Builder withOptimizationContextTreeEnabled(boolean newOptimizationContextTreeEnabled) {
+            this.optimizationContextTreeEnabled = newOptimizationContextTreeEnabled;
             return this;
         }
 
-        public Builder withDiffCompilations(boolean diffCompilations) {
-            this.diffCompilations = diffCompilations;
+        public Builder withDiffCompilations(boolean newDiffCompilations) {
+            this.diffCompilations = newDiffCompilations;
             return this;
         }
 
-        public Builder withBCILongForm(boolean bciLongForm) {
-            this.bciLongForm = bciLongForm;
+        public Builder withBCILongForm(boolean newBciLongForm) {
+            this.bciLongForm = newBciLongForm;
             return this;
         }
 
-        public Builder withAlwaysPrintInlinerReasoning(boolean alwaysPrintInlinerReasoning) {
-            this.alwaysPrintInlinerReasoning = alwaysPrintInlinerReasoning;
+        public Builder withAlwaysPrintInlinerReasoning(boolean newAlwaysPrintInlinerReasoning) {
+            this.alwaysPrintInlinerReasoning = newAlwaysPrintInlinerReasoning;
             return this;
         }
     }
