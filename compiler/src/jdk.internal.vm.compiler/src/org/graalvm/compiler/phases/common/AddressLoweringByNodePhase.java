@@ -24,12 +24,9 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.core.amd64.AMD64MaskedAddressNode;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -70,33 +67,6 @@ public class AddressLoweringByNodePhase extends AddressLoweringPhase {
                 lowered = lowering.lower(address.getBase(), address.getOffset());
                 lowering.postProcess(lowered);
             } else {
-                continue;
-            }
-            if (lowered instanceof AMD64MaskedAddressNode) {
-                // In this case, I need to fix the lowered node with the node that might be using it.
-                // The reason for that is the lack of derived references in SVM. Thus, the mask node,
-                // has as result of the uncompression an unknown reference (instead of a derived one).
-
-                // replace the old node usage with the new one
-                if (node.getUsageCount() == 1) {
-                    ValueAnchorNode anchorNode = graph.add(new ValueAnchorNode(null));
-                    ((AMD64MaskedAddressNode) lowered).setAnchorNode(anchorNode);
-                    FixedNode fixedNode = (FixedNode) node.usages().iterator().next();
-                    graph.addBeforeFixed(fixedNode, anchorNode);
-
-                    node.replaceAtUsages(lowered);
-
-                } else {
-                    while (node.usages().iterator().hasNext()) {
-                        ValueAnchorNode anchorNode = graph.addWithoutUnique(new ValueAnchorNode(null));
-                        AMD64MaskedAddressNode newLowered = graph.addWithoutUnique(new AMD64MaskedAddressNode(lowered.getBase(), lowered.getIndex(), ((AMD64MaskedAddressNode) lowered).getMask(), ((AMD64MaskedAddressNode) lowered).getDisplacement(), ((AMD64MaskedAddressNode) lowered).getShift()));
-                        newLowered.setAnchorNode(anchorNode);
-                        FixedNode usageNode = (FixedNode) node.usages().iterator().next();
-                        graph.addBeforeFixed(usageNode, anchorNode);
-                        usageNode.replaceAllInputs(node, newLowered);
-                    }
-                }
-                GraphUtil.killWithUnusedFloatingInputs(node);
                 continue;
             }
             node.replaceAtUsages(lowered);

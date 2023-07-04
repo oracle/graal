@@ -312,7 +312,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     final void init(NodeClass<? extends Node> c) {
-         assert c.getJavaClass() == this.getClass();
+        assert c.getJavaClass() == this.getClass();
         this.nodeClass = c;
         id = INITIAL_ID;
         extraUsages = EMPTY_ARRAY;

@@ -72,7 +72,6 @@ public class SubstrateReferenceMapBuilder extends ReferenceMapBuilder {
 
         LIRKind kind = (LIRKind) value.getValueKind();
         if (offsetValid && !kind.isValue()) {
-            // FIXME: hack to make an error temporary disappear.
             if (kind.isUnknownReference()) {
                 throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
             } else if (kind.isDerivedReference()) {

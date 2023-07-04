@@ -835,10 +835,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @SuppressWarnings("static-method")
     public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {
-        assert node != null;
-        assert newNode != null;
-        assert node.isAlive();
-        assert newNode.isAlive() : "cannot add " + newNode + " before " + node;
+        assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
         assert newNode.next() == null : newNode;
         assert !(node instanceof AbstractMergeNode);

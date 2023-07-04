@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.amd64.AMD64MaskedAddressNode;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
@@ -52,7 +51,6 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
         assert SubstrateOptions.SpawnIsolates.getValue();
 
         CompressEncoding encoding = compression.getEncoding();
-        ValueNode idx = compression.getValue();
         if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
             return null;
         }
@@ -64,50 +62,6 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
                 return null;
             }
             base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
-
-            // FIXME
-            // TODO, if the displacement is below a certain threshold we can optimize probably.
-            //  which means assume that the displacement fits the shift and don't compute all the nodes
-            //  but only the AND node.
-            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress && compression.getEncoding().getShift() == 3 /*&& compression.graph().method() != null && compression.graph().method().format("%h.%n").equals("PrintStream.flush")*/) {
-                // ADDR is of the type [base + index*scale + displacement]
-                // TODO ConstantNode.forInt()
-
-//                ConstantNode maskNode = compression.graph().addWithoutUnique(new ConstantNode(JavaConstant.forLong((1L << 35)-1), IntegerStamp.create(64)));
-//                AMD64AddressNode indexAddressNode = compression.graph().addWithoutUnique(new AMD64AddressNode(null, compression.getValue()));
-//                indexAddressNode.setScale(Stride.fromLog2(encoding.getShift()));
-//                indexAddressNode.setDisplacement(addr.getDisplacement());
-//                indexAddressNode.setStamp(maskNode.stamp(NodeView.DEFAULT));
-//                FloatingWordCastNode compressAsAddress = compression.graph().addWithoutUnique(new FloatingWordCastNode(IntegerStamp.create(64), indexAddressNode));
-//                idx = compression.graph().addWithoutUnique(new AndNode(compressAsAddress, maskNode));
-//                FloatingWordCastNode finalIdx = compression.graph().addWithoutUnique(new FloatingWordCastNode(StampFactory.pointer(), idx));
-//
-//                ConstantNode scaleNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(encoding.getShift()), IntegerStamp.create(32)));
-//                LeftShiftNode shiftNode = compression.graph().addOrUnique(new LeftShiftNode(compressAsAddress, scaleNode));
-//                ConstantNode displacementNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forLong(addr.getDisplacement()), IntegerStamp.create(64)));
-//                AddNode addNode = compression.graph().addOrUnique(new AddNode(shiftNode, displacementNode));
-//                ConstantNode maskNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forLong((1L << 35)-1), IntegerStamp.create(64)));
-//                idx = compression.graph().addOrUnique(new AndNode(addNode, maskNode));
-
-//                addr.setBase(base);
-//                addr.setDisplacement(0);
-//                addr.setScale(Stride.S1);
-//                addr.setIndex(finalIdx);
-
-                return new AMD64MaskedAddressNode(
-                        base,
-                        compression.getValue(),
-                        (1L<<35)-1,
-                        addr.getDisplacement(),
-                        compression.getEncoding().getShift()
-                );
-//                addr.setBase(null);
-//                addr.setIndex(null);
-//                addr.setDisplacement(0);
-//                addr.setScale(Stride.S1);
-//
-//                return true;
-            }
         } else if (encodingBase != 0) {
             if (!updateDisplacement(addr, encodingBase, false)) {
                 return null;
@@ -117,7 +71,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
         Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setBase(base);
         addr.setScale(stride);
-        addr.setIndex(idx);
+        addr.setIndex(compression.getValue());
         return addr;
     }
 }
