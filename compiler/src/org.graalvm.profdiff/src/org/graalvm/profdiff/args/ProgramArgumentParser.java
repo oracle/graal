@@ -124,10 +124,11 @@ public class ProgramArgumentParser extends ArgumentParser {
     }
 
     /**
-     * Adds a positional argument that expects a command name. The returned {@link CommandGroup}
-     * should be populated with commands. The selected command from the command group will then
-     * parse the rest of the arguments. Only one command group per parser is possible, and it must
-     * be the last positional argument.
+     * Adds a positional argument that expects a command name. The caller should populate the
+     * returned {@link CommandGroup} with commands. This is a required argument. During parsing, the
+     * selected command parses the rest of the arguments (i.e., those values that come after the
+     * value of this argument). Only one command group per parser is possible, and it must be the
+     * last positional argument.
      *
      * @param name the name of the command group
      * @param help the help message for the command group
