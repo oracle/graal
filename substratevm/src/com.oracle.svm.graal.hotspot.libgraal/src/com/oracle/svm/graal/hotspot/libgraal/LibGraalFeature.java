@@ -94,9 +94,12 @@ import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrume
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
@@ -700,7 +703,27 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     @SuppressWarnings("unused")
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
-        VMRuntime.shutdown();
+        try {
+            String callback = LibGraalOptions.OnShutdownCallback.getValue();
+            if (callback != null) {
+                long offset = runtime.getVMConfig().jniEnvironmentOffset;
+                long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+                JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
+                int lastDot = callback.lastIndexOf('.');
+                if (lastDot < 1 || lastDot == callback.length() - 1) {
+                    throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
+                }
+                String cbClassName = callback.substring(0, lastDot);
+                String cbMethodName = callback.substring(lastDot + 1);
+                JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
+                                JNIUtil.getBinaryName(cbClassName), true);
+                JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
+                env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
+        } finally {
+            VMRuntime.shutdown();
+        }
     }
 }
 

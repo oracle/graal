@@ -139,8 +139,8 @@ public final class CompileTheWorld {
 
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle");
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
     }
 
     /**
