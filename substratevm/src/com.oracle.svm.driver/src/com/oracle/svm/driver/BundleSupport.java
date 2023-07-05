@@ -64,18 +64,17 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.core.util.json.JsonPrinter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.driver.launcher.BundleLauncher;
 import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
 import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
 import com.oracle.svm.driver.launcher.configuration.BundlePathMapParser;
-
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
@@ -124,7 +123,6 @@ final class BundleSupport {
 
     private static final String DEFAULT_DOCKERFILE = getDockerfile("Dockerfile");
     private static final String DEFAULT_DOCKERFILE_MUSLIB = getDockerfile("Dockerfile_muslib_extension");
-
 
     private static String getDockerfile(String name) {
         return NativeImage.getResource("/container-default/" + name);
@@ -210,8 +208,8 @@ final class BundleSupport {
             }
 
             Arrays.stream(options)
-                    .skip(1)
-                    .forEach(bundleSupport::parseExtendedOption);
+                            .skip(1)
+                            .forEach(bundleSupport::parseExtendedOption);
 
             if (bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
@@ -229,14 +227,14 @@ final class BundleSupport {
                         }
                         case BUILDER_ERROR ->
                             /* Exit, builder has handled error reporting. */
-                                throw NativeImage.showError(null, null, exitStatusCode);
+                            throw NativeImage.showError(null, null, exitStatusCode);
                         case OUT_OF_MEMORY -> {
                             nativeImage.showOutOfMemoryWarning();
                             throw NativeImage.showError(null, null, exitStatusCode);
                         }
                         default -> {
                             String message = String.format("Container build request for '%s' failed with exit status %d",
-                                    nativeImage.imageName, exitStatusCode);
+                                            nativeImage.imageName, exitStatusCode);
                             throw NativeImage.showError(message, null, exitStatusCode);
                         }
                     }
@@ -312,8 +310,8 @@ final class BundleSupport {
             }
             default -> {
                 String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
-                        .map(Enum::toString)
-                        .collect(Collectors.joining(", "));
+                                .map(Enum::toString)
+                                .collect(Collectors.joining(", "));
                 throw NativeImage.showError(String.format("Unknown option %s. Valid options are: %s.", optionKey, suggestedOptions));
             }
         }
@@ -479,7 +477,6 @@ final class BundleSupport {
         nativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestoreCanonicalization src: " + before + ", dst: " + after);
         return after;
     }
-
 
     Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
         Path destinationDir = switch (bundleMemberRole) {
@@ -733,22 +730,21 @@ final class BundleSupport {
 
         Path bundleLauncherFile = Paths.get("/").resolve(BundleLauncher.class.getName().replace(".", "/") + ".class");
         try (FileSystem fs = FileSystems.newFileSystem(BundleSupport.class.getResource(bundleLauncherFile.toString()).toURI(), new HashMap<>());
-                 Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherFile.getParent().toString()))
-        ) {
+                        Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherFile.getParent().toString()))) {
             walk.filter(Predicate.not(Files::isDirectory))
-                    .map(Path::toString)
-                    .forEach(sourcePath -> {
-                        Path target = rootDir.resolve(Paths.get("/").relativize(Paths.get(sourcePath)));
-                        try (InputStream source = BundleSupport.class.getResourceAsStream(sourcePath)) {
-                            Path bundleFileParent = target.getParent();
-                            if (bundleFileParent != null) {
-                                Files.createDirectories(bundleFileParent);
-                            }
-                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                        } catch (Exception e) {
-                            throw NativeImage.showError("Failed to write bundle-file " + target, e);
-                        }
-                    });
+                            .map(Path::toString)
+                            .forEach(sourcePath -> {
+                                Path target = rootDir.resolve(Paths.get("/").relativize(Paths.get(sourcePath)));
+                                try (InputStream source = BundleSupport.class.getResourceAsStream(sourcePath)) {
+                                    Path bundleFileParent = target.getParent();
+                                    if (bundleFileParent != null) {
+                                        Files.createDirectories(bundleFileParent);
+                                    }
+                                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                                } catch (Exception e) {
+                                    throw NativeImage.showError("Failed to write bundle-file " + target, e);
+                                }
+                            });
         } catch (Exception e) {
             throw NativeImage.showError("Failed to read bundle launcher resources '" + bundleLauncherFile.getParent() + "'", e);
         }
@@ -958,7 +954,7 @@ final class BundleSupport {
                 fileVersionKey = PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR;
                 int minor = Integer.parseInt(properties.getOrDefault(fileVersionKey, "-1"));
                 String message = String.format("The given bundle file %s was created with newer bundle-file-format version %d.%d" +
-                        " (current %d.%d). Update to the latest version of native-image.", bundleFileName, major, minor, BUNDLE_FILE_FORMAT_VERSION_MAJOR, BUNDLE_FILE_FORMAT_VERSION_MINOR);
+                                " (current %d.%d). Update to the latest version of native-image.", bundleFileName, major, minor, BUNDLE_FILE_FORMAT_VERSION_MAJOR, BUNDLE_FILE_FORMAT_VERSION_MINOR);
                 if (major > BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
                     throw NativeImage.showError(message);
                 } else if (major == BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
@@ -989,9 +985,9 @@ final class BundleSupport {
             nativeImage.showMessage("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName);
             nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr);
             nativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
-                    bundleVersion, currentVersion,
-                    bundleVendor, currentVendor,
-                    bundlePlatform, currentPlatform);
+                            bundleVersion, currentVersion,
+                            bundleVendor, currentVendor,
+                            bundlePlatform, currentPlatform);
         }
 
         private boolean forceBuilderOnClasspath() {

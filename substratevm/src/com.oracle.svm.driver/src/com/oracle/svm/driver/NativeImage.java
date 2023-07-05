@@ -69,7 +69,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.driver.launcher.ContainerSupport;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -92,6 +91,7 @@ import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.metainf.MetaInfFileType;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
@@ -2155,7 +2155,7 @@ public class NativeImage {
     }
 
     private void enableModulePathBuild() {
-        if (config.modulePathBuild == false) {
+        if (!config.modulePathBuild) {
             NativeImage.showError("Module options not allowed in this image build. Reason: " + config.imageBuilderModeEnforcer);
         }
         config.modulePathBuild = true;
@@ -2430,7 +2430,7 @@ public class NativeImage {
         return source.replace(target, replacement);
     }
 
-    private static String deletedFileSuffix = ".deleted";
+    private static final String deletedFileSuffix = ".deleted";
 
     protected static boolean isDeletedPath(Path toDelete) {
         return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
