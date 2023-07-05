@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.driver.launcher.configuration;
 
-import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
-
 import java.net.URI;
 import java.util.Map;
+
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 
 public class BundleEnvironmentParser extends BundleConfigurationParser {
     private static final String environmentKeyField = "key";

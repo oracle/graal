@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.driver.launcher.configuration;
 
-import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
-
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Map;
+
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 
 public class BundlePathMapParser extends BundleConfigurationParser {
 

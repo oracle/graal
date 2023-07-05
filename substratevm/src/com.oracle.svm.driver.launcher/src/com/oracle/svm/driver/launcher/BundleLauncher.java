@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.driver.launcher;
 
-import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
-import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -47,6 +44,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
+import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
+import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
 
 public class BundleLauncher {
 
@@ -75,7 +74,6 @@ public class BundleLauncher {
     private static final List<String> launchArgs = new ArrayList<>();
     private static final List<String> applicationArgs = new ArrayList<>();
     private static final Map<String, String> launcherEnvironment = new HashMap<>();
-
 
     public static void main(String[] args) {
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
@@ -106,11 +104,11 @@ public class BundleLauncher {
 
         if (verbose) {
             List<String> environmentList = pb.environment()
-                    .entrySet()
-                    .stream()
-                    .map(e -> e.getKey() + "=" + e.getValue())
-                    .sorted()
-                    .toList();
+                            .entrySet()
+                            .stream()
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .sorted()
+                            .toList();
             showMessage("Executing [");
             showMessage(String.join(" \\\n", environmentList));
             showMessage(String.join(" \\\n", pb.command()));
@@ -168,9 +166,9 @@ public class BundleLauncher {
         if (Files.isDirectory(classPathDir)) {
             try (Stream<Path> walk = Files.walk(classPathDir, 1)) {
                 walk.filter(path -> path.toString().endsWith(".jar") || Files.isDirectory(path))
-                        .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
-                        .map(Path::toString)
-                        .forEach(classpath::add);
+                                .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
+                                .map(Path::toString)
+                                .forEach(classpath::add);
             } catch (IOException e) {
                 throw new Error("Failed to iterate through directory " + classPathDir, e);
             }
@@ -179,14 +177,13 @@ public class BundleLauncher {
             command.add(String.join(File.pathSeparator, classpath));
         }
 
-
         List<String> modulePath = new ArrayList<>();
         if (Files.isDirectory(modulePathDir)) {
             try (Stream<Path> walk = Files.walk(modulePathDir, 1)) {
                 walk.filter(path -> Files.isDirectory(path) && !path.equals(modulePathDir))
-                        .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
-                        .map(Path::toString)
-                        .forEach(modulePath::add);
+                                .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
+                                .map(Path::toString)
+                                .forEach(modulePath::add);
             } catch (IOException e) {
                 throw new Error("Failed to iterate through directory " + modulePathDir, e);
             }
@@ -311,6 +308,7 @@ public class BundleLauncher {
     private static void showMessage(String msg) {
         System.out.println(msg);
     }
+
     private static void showWarning(String msg) {
         System.out.println("Warning: " + msg);
     }
@@ -359,6 +357,7 @@ public class BundleLauncher {
     }
 
     private static final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
+
     private static Path createBundleRootDir() throws IOException {
         Path bundleRoot = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -369,9 +368,11 @@ public class BundleLauncher {
     }
 
     private static final String deletedFileSuffix = ".deleted";
+
     private static boolean isDeletedPath(Path toDelete) {
         return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
     }
+
     private static void deleteAllFiles(Path toDelete) {
         try {
             Path deletedPath = toDelete;

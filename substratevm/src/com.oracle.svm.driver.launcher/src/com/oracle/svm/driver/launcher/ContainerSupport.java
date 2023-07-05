@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.driver.launcher;
 
-import com.oracle.svm.driver.launcher.configuration.BundleContainerSettingsParser;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -40,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+
+import com.oracle.svm.driver.launcher.configuration.BundleContainerSettingsParser;
 
 public class ContainerSupport {
     public String tool;
@@ -81,7 +81,8 @@ public class ContainerSupport {
                 }
                 if (bundleTool != null) {
                     String containerToolVersionString = bundleToolVersion == null ? "" : String.format(" (%s)", bundleToolVersion);
-                    messagePrinter.accept(String.format("%sBundled native-image was created in a container with %s%s.%n", BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX, bundleTool, containerToolVersionString));
+                    messagePrinter.accept(
+                                    String.format("%sBundled native-image was created in a container with %s%s.%n", BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX, bundleTool, containerToolVersionString));
                 }
             }
         }
@@ -170,8 +171,8 @@ public class ContainerSupport {
 
     private static boolean isToolAvailable(String toolName) {
         return Arrays.stream(System.getenv("PATH").split(":"))
-                .map(str -> Path.of(str).resolve(toolName))
-                .anyMatch(Files::isExecutable);
+                        .map(str -> Path.of(str).resolve(toolName))
+                        .anyMatch(Files::isExecutable);
     }
 
     private String getToolVersion() {
@@ -231,9 +232,9 @@ public class ContainerSupport {
 
         // inject environment variables into container
         containerEnvironment.forEach((key, value) -> {
-                    containerCommand.add("-e");
-                    containerCommand.add(key + "=" + BundleLauncherUtil.quoteShellArg(value));
-                });
+            containerCommand.add("-e");
+            containerCommand.add(key + "=" + BundleLauncherUtil.quoteShellArg(value));
+        });
 
         // mount java home, input and output directories and argument files for native image build
         mountMapping.forEach((source, target) -> {
@@ -256,8 +257,7 @@ public class ContainerSupport {
 
     public static void replacePaths(List<String> arguments, Path javaHome, Path bundleRoot) {
         arguments.replaceAll(arg -> arg
-                .replace(javaHome.toString(), GRAAL_VM_HOME.toString())
-                .replace(bundleRoot.toString(), "")
-        );
+                        .replace(javaHome.toString(), GRAAL_VM_HOME.toString())
+                        .replace(bundleRoot.toString(), ""));
     }
 }
