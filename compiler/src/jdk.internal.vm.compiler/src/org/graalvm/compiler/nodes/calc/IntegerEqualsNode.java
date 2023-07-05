@@ -198,25 +198,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 }
             }
 
-            if (forX instanceof AddNode) {
-                AddNode addNode = (AddNode) forX;
-                if (addNode.getX() == forY) {
-                    // (x + y) == x => y == 0
-                    return create(addNode.getY(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
-                } else if (addNode.getY() == forY) {
-                    // (x + y) == y => x == 0
-                    return create(addNode.getX(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
+            if (forX instanceof AddNode || forX instanceof XorNode) {
+                BinaryNode binaryNode = (BinaryNode) forX;
+                if (binaryNode.getX() == forY) {
+                    // (x op y) == x => y == 0 for op == + || op == ^
+                    return create(binaryNode.getY(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
+                } else if (binaryNode.getY() == forY) {
+                    // (x op y) == y => x == 0 for op == + || op == ^
+                    return create(binaryNode.getX(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
                 }
             }
 
-            if (forY instanceof AddNode) {
-                AddNode addNode = (AddNode) forY;
-                if (addNode.getX() == forX) {
-                    // x == (x + y) => y == 0
-                    return create(addNode.getY(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
-                } else if (addNode.getY() == forX) {
-                    // y == (x + y) => x == 0
-                    return create(addNode.getX(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
+            if (forY instanceof AddNode || forY instanceof XorNode) {
+                BinaryNode binaryNode = (BinaryNode) forY;
+                if (binaryNode.getX() == forX) {
+                    // x == (x op y) => y == 0 for op == + || op == ^
+                    return create(binaryNode.getY(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
+                } else if (binaryNode.getY() == forX) {
+                    // y == (x op y) => x == 0 for op == + || op == ^
+                    return create(binaryNode.getX(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
                 }
             }
 

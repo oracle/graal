@@ -196,6 +196,26 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         field = y == z ? 1 : 0;
     }
 
+    @Test
+    public void testXorNeutral() {
+        // (x ^ y) == x is equivalent to y == 0
+        test("testXorNeutralSnippet", "testXorNeutralReference");
+    }
+
+    public static void testXorNeutralSnippet(int x, int y) {
+        field = (x ^ y) == x ? 1 : 0;
+        field = x == (x ^ y) ? 1 : 0;
+        field = (x ^ y) == y ? 1 : 0;
+        field = y == (x ^ y) ? 1 : 0;
+    }
+
+    public static void testXorNeutralReference(int x, int y) {
+        field = y == 0 ? 1 : 0;
+        field = y == 0 ? 1 : 0;
+        field = x == 0 ? 1 : 0;
+        field = x == 0 ? 1 : 0;
+    }
+
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = getCanonicalizedGraph(snippet);
         StructuredGraph referenceGraph = getCanonicalizedGraph(referenceSnippet);
