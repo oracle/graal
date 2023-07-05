@@ -33,18 +33,22 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 import org.junit.Assert;
@@ -124,6 +128,33 @@ public class NativeImageResourceTest {
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    @Test
+    public void getConditionalDirectoryResource() throws IOException {
+        // check if resource is added conditionally
+        String directoryName = "/resourcesFromDir";
+        URL directory = NativeImageResourceUtils.class.getResource(directoryName);
+        Assert.assertNotNull("Resource " + directory + " is not found!", directory);
+
+        // check content of resource
+        List<String> expected = IntStream.range(0, 4).mapToObj(i -> "cond-resource" + i + ".txt").toList();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(directory.openStream()));
+        List<String> actual = new ArrayList<>();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            actual.add(line);
+        }
+
+        for (String resource : expected) {
+            // check if resource contains expected content
+            Assert.assertTrue(actual.contains(resource));
+
+            // check if we can get resource which directory contains
+            String resourceName = directoryName + "/" + resource;
+            URL resourceUrl = NativeImageResourceUtils.class.getResource(resourceName);
+            Assert.assertNotNull("Cannot find resource: " + resourceName, resourceUrl);
+        }
     }
 
     /**

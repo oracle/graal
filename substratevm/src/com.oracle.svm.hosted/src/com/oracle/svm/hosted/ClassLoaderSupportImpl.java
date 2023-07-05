@@ -175,7 +175,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) throws IOException {
         Map<Pair<ConfigurationCondition, String>, List<String>> matchedDirectoryResources = new HashMap<>();
-        Set<Pair<ConfigurationCondition, String>> allEntries = new HashSet<>();
+        Map<String, List<ConfigurationCondition>> conditionsForDirectory = new HashMap<>();
+        Set<String> allEntries = new HashSet<>();
 
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
@@ -188,15 +189,19 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             if (entry != root) {
                 relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
                 condition = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeAll);
-                allEntries.add(Pair.create(condition, relativeFilePath));
+                allEntries.add(relativeFilePath);
             } else {
-                relativeFilePath = "";
+                relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
                 condition = collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri());
             }
 
             if (Files.isDirectory(entry)) {
                 if (condition != null) {
                     matchedDirectoryResources.put(Pair.create(condition, relativeFilePath), new ArrayList<>());
+                    // add new condition for the directory (if that is the first condition, create
+                    // list)
+                    conditionsForDirectory.computeIfAbsent(relativeFilePath, k -> new ArrayList<>());
+                    conditionsForDirectory.get(relativeFilePath).add(condition);
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
@@ -215,7 +220,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         } else {
                             collector.addResourceConditionally(null, relativeFilePath, condition);
                         }
-                        collector.addResource(null, relativeFilePath, is, false);
                     } catch (IOException resourceException) {
                         collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                     }
@@ -223,16 +227,21 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             }
         }
 
-        for (Pair<ConfigurationCondition, String> entry : allEntries) {
-            ConfigurationCondition condition = entry.getLeft();
-            String entryName = entry.getRight();
-            int last = entryName.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
-            String key = last == -1 ? "" : entryName.substring(0, last);
-            List<String> dirContent = matchedDirectoryResources.get(Pair.create(condition, key));
-            if (dirContent != null && !dirContent.contains(entryName)) {
-                dirContent.add(entryName.substring(last + 1));
-            } else if (dirContent == null) {
-                collector.registerNegativeQuery(null, key);
+        for (String entry : allEntries) {
+            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
+            String parentDirectory = last == -1 ? "" : entry.substring(0, last);
+            // one parent can be added under various condition, so we have to add its content for
+            // all conditions
+            List<ConfigurationCondition> conditions = conditionsForDirectory.get(parentDirectory);
+            if (conditions != null) {
+                for (ConfigurationCondition condition : conditions) {
+                    List<String> dirContent = matchedDirectoryResources.get(Pair.create(condition, parentDirectory));
+                    if (dirContent != null && !dirContent.contains(entry)) {
+                        dirContent.add(entry.substring(last + 1));
+                    } else if (dirContent == null) {
+                        collector.registerNegativeQuery(null, key);
+                    }
+                }
             }
         }
 
@@ -240,10 +249,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             ConfigurationCondition condition = entry.getLeft();
             String dir = entry.getRight();
             content.sort(Comparator.naturalOrder());
+            String contentName = String.join(System.lineSeparator(), content);
             if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                collector.addDirectoryResource(null, dir, String.join(System.lineSeparator(), content), false);
+                collector.addDirectoryResource(null, dir, contentName, false);
             } else {
-                collector.addDirectoryResourceConditionally(null, dir, condition);
+                collector.addDirectoryResourceConditionally(null, dir, condition, contentName, false);
             }
         });
     }
@@ -262,7 +272,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         if (ConfigurationCondition.isAlwaysTrue(condition)) {
                             collector.addDirectoryResource(null, dirName, "", true);
                         } else {
-                            collector.addDirectoryResourceConditionally(null, dirName, condition);
+                            collector.addDirectoryResourceConditionally(null, dirName, condition, "", true);
                         }
                     }
                 } else {

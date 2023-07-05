@@ -431,8 +431,8 @@ public final class ResourcesFeature implements InternalFeature {
 
         // TODO if pass all gates - remove
         @Override
-        public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, dir), access.findClassByName(condition.getTypeName()));
+        public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
+            access.registerReachabilityHandler(e -> addDirectoryResource(module, dir, content, fromJar), access.findClassByName(condition.getTypeName()));
         }
     }
 

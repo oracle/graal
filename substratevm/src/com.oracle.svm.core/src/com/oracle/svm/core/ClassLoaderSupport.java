@@ -66,7 +66,7 @@ public abstract class ClassLoaderSupport {
 
         void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime);
 
-        void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition);
+        void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar);
 
     }
 
