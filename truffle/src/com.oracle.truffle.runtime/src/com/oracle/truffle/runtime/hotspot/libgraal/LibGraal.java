@@ -51,7 +51,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.runtime.ModulesSupport;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
