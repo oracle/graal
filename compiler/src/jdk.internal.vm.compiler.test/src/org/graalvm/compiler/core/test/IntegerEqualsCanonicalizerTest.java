@@ -216,6 +216,21 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         field = x == 0 ? 1 : 0;
     }
 
+    @Test
+    public void testXorEqualsZero() {
+        // (x ^ y) == 0 is equivalent to x == y
+        test("testXorEqualsZeroSnippet", "testXorEqualsZeroReference");
+    }
+
+    public static void testXorEqualsZeroSnippet(int x, int y) {
+        field = (x ^ y) == 0 ? 1 : 0;
+
+    }
+
+    public static void testXorEqualsZeroReference(int x, int y) {
+        field = x == y ? 1 : 0;
+    }
+
     private void test(String snippet, String referenceSnippet) {
         StructuredGraph graph = getCanonicalizedGraph(snippet);
         StructuredGraph referenceGraph = getCanonicalizedGraph(referenceSnippet);
@@ -231,5 +246,4 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         }
         return graph;
     }
-
 }
