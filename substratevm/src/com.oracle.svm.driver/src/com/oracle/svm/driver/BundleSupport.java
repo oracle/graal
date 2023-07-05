@@ -884,7 +884,7 @@ final class BundleSupport {
         return bundleFilePath;
     }
 
-    private Manifest createManifest() {
+    private static Manifest createManifest() {
         Manifest mf = new Manifest();
         Attributes attributes = mf.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
