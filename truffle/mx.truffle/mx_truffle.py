@@ -1140,7 +1140,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal SDK', 'jniutils'],
+    dependencies=['Graal SDK'],
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',

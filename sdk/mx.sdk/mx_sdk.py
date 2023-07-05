@@ -115,33 +115,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK'],
-    stability="supported",
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='JNIUtils',
-    short_name='jniutils',
-    dir_name='truffle',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    jar_distributions=[],
-    boot_jars=['sdk:JNIUTILS'],
-    stability="supported",
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='Native Bridge',
-    short_name='nativebridge',
-    dir_name='truffle',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['jniutils'],
-    jar_distributions=[],
-    boot_jars=['sdk:NATIVEBRIDGE'],
+    boot_jars=['sdk:GRAAL_SDK', 'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE'],
     stability="supported",
 ))
 
