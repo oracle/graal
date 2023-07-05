@@ -51,6 +51,9 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.runtime.ModulesSupport;
+
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
@@ -88,6 +91,7 @@ public class LibGraal {
 
     static {
         // Initialize JVMCI to ensure JVMCI opens its packages to Graal.
+        ModulesSupport.exportJVMCI(LibGraal.class);
         Services.initializeJVMCI();
     }
 
