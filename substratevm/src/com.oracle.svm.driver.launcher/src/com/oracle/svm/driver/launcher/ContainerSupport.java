@@ -108,7 +108,7 @@ public class ContainerSupport {
             } else if (tool.equals("docker") && !isRootlessDocker()) {
                 throw errorFunction.apply("Only rootless docker is supported for containerized builds.", null);
             }
-            toolVersion = getToolVersion(tool);
+            toolVersion = getToolVersion();
 
             if (bundleTool != null) {
                 if (!tool.equals(bundleTool)) {
@@ -118,14 +118,14 @@ public class ContainerSupport {
                 }
             }
         } else {
-            for (String tool : SUPPORTED_TOOLS) {
-                if (isToolAvailable(tool)) {
-                    if (tool.equals("docker") && !isRootlessDocker()) {
+            for (String supportedTool : SUPPORTED_TOOLS) {
+                if (isToolAvailable(supportedTool)) {
+                    if (supportedTool.equals("docker") && !isRootlessDocker()) {
                         messagePrinter.accept(BundleLauncher.BUNDLE_INFO_MESSAGE_PREFIX + "Rootless context missing for docker.");
                         continue;
                     }
-                    this.tool = tool;
-                    toolVersion = getToolVersion(tool);
+                    tool = supportedTool;
+                    toolVersion = getToolVersion();
                     break;
                 }
             }
@@ -168,13 +168,13 @@ public class ContainerSupport {
         }
     }
 
-    private boolean isToolAvailable(String tool) {
+    private static boolean isToolAvailable(String toolName) {
         return Arrays.stream(System.getenv("PATH").split(":"))
-                .map(str -> Path.of(str).resolve(tool))
+                .map(str -> Path.of(str).resolve(toolName))
                 .anyMatch(Files::isExecutable);
     }
 
-    private String getToolVersion(String tool) {
+    private String getToolVersion() {
         ProcessBuilder pb = new ProcessBuilder(tool, "--version");
         return getFirstProcessResultLine(pb);
     }

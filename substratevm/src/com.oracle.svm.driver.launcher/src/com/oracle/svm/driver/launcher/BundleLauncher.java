@@ -81,7 +81,7 @@ public class BundleLauncher {
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
         bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
         agentOutputDir = bundleFilePath.getParent().resolve(Paths.get(bundleName + ".output", "launcher"));
-        unpackBundle(bundleFilePath);
+        unpackBundle();
 
         // if we did not create a run.json bundle is not executable, e.g. shared library bundles
         if (!Files.exists(stageDir.resolve("run.json"))) {
@@ -257,11 +257,11 @@ public class BundleLauncher {
                     }
                 }
 
-                Path outputDir = agentOutputDir.resolve(Paths.get("META-INF", "native-image", bundleName + "-agent"));
+                Path configOutputDir = agentOutputDir.resolve(Paths.get("META-INF", "native-image", bundleName + "-agent"));
                 try {
-                    Files.createDirectories(outputDir);
+                    Files.createDirectories(configOutputDir);
                     showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Native image agent output written to " + agentOutputDir);
-                    launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + outputDir);
+                    launchArgs.add("-agentlib:native-image-agent=config-output-dir=" + configOutputDir);
                 } catch (IOException e) {
                     throw new Error("Failed to create native image agent output dir");
                 }
@@ -388,7 +388,7 @@ public class BundleLauncher {
         }
     }
 
-    private static void unpackBundle(Path bundleFilePath) {
+    private static void unpackBundle() {
         try {
             rootDir = createBundleRootDir();
             inputDir = rootDir.resolve("input");
