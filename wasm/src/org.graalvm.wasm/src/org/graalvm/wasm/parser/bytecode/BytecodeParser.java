@@ -141,49 +141,38 @@ public class BytecodeParser {
                     throw CompilerDirectives.shouldNotReachHere();
             }
             if (dataMode == SegmentMode.ACTIVE) {
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final long value;
+                switch (flags & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED:
+                        value = -1;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U8:
+                        value = rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U16:
+                        value = rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
+                        value = rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                long offsetAddress;
-                switch (flags & BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        offsetAddress = -1;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U8:
-                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U16:
-                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U32:
-                        offsetAddress = rawPeekU32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U64:
-                        offsetAddress = rawPeekI64(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
+                        value = rawPeekI64(bytecode, effectiveOffset);
                         effectiveOffset += 8;
                         break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int offsetGlobalIndex;
+                long offsetAddress;
+                if ((flags & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX) {
+                    offsetGlobalIndex = (int) value;
+                    offsetAddress = -1;
+                } else {
+                    offsetGlobalIndex = -1;
+                    offsetAddress = value;
                 }
                 if (offsetGlobalIndex != -1) {
                     int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
@@ -195,27 +184,31 @@ public class BytecodeParser {
                     }
                 }
 
-                final int memoryIndexEncoding = bytecode[effectiveOffset];
-                effectiveOffset++;
                 final int memoryIndex;
-                switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_ZERO:
-                        memoryIndex = 0;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
-                        memoryIndex = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
-                        memoryIndex = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
-                        memoryIndex = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
+                if ((flags & BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO) != 0) {
+                    memoryIndex = 0;
+                } else {
+                    final int memoryIndexEncoding = bytecode[effectiveOffset];
+                    effectiveOffset++;
+                    switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
+                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                            memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                            effectiveOffset++;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                            memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                            effectiveOffset += 2;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                            memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                            effectiveOffset += 4;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
                 }
 
                 // Reading of the data segment is called after linking, so initialize the memory

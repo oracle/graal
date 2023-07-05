@@ -61,6 +61,10 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
     }
 
+    private static boolean fitsIntoSixBits(int value) {
+        return Integer.compareUnsigned(value, 63) <= 0;
+    }
+
     private static boolean fitsIntoUnsignedByte(int value) {
         return Integer.compareUnsigned(value, 255) <= 0;
     }
@@ -501,65 +505,71 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     private void addDataHeader(int mode, int length, int globalIndex, long offsetAddress, int memoryIndex) {
         assert globalIndex == -1 || offsetAddress == -1 : "data header does not allow global index and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE : "invalid segment mode in data header";
-        int location = location();
+        int firstByteLocation = location();
         add1(0);
-        int flags = mode;
+        int firstByteFlags = mode;
         if (fitsIntoUnsignedByte(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U8;
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U8;
             add1(length);
         } else if (fitsIntoUnsignedShort(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U16;
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U16;
             add2(length);
         } else {
-            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_I32;
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_LENGTH_I32;
             add4(length);
         }
         if (globalIndex != -1) {
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX;
             if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U8;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U8;
                 add1(globalIndex);
             } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U16;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U16;
                 add2(globalIndex);
             } else {
-                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_I32;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U32;
                 add4(globalIndex);
             }
         }
         if (offsetAddress != -1) {
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_OFFSET;
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U8;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U16;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U16;
                 add2(offsetAddress);
             } else if (fitsIntoUnsignedInt(offsetAddress)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U32;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U32;
                 add4(offsetAddress);
             } else {
-                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U64;
+                firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_I64;
                 add8(offsetAddress);
             }
         }
-        set(location, (byte) flags);
+        if (memoryIndex == 0) {
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO;
+        }
+        set(firstByteLocation, (byte) firstByteFlags);
 
-        if (memoryIndex != -1) {
-            location = location();
+        if (memoryIndex != -1 && memoryIndex != 0) {
+            int secondByteLocation = location();
             add1(0);
-            flags = 0;
-            if (memoryIndex == 0) {
-                flags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_ZERO;
+            int secondByteFlags = 0;
+            if (fitsIntoSixBits(memoryIndex)) {
+                secondByteFlags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6;
+                secondByteFlags |= memoryIndex;
             } else if (fitsIntoUnsignedByte(memoryIndex)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8;
+                secondByteFlags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8;
                 add1(memoryIndex);
             } else if (fitsIntoUnsignedShort(memoryIndex)) {
-                flags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16;
+                secondByteFlags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16;
                 add2(memoryIndex);
             } else {
-                flags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32;
+                secondByteFlags |= BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32;
                 add4(memoryIndex);
             }
-            set(location, (byte) flags);
+            set(secondByteLocation, (byte) secondByteFlags);
         }
     }
 

@@ -521,52 +521,52 @@ public class BytecodeSuite {
 
     @Test
     public void testActiveDataHeaderMaxU8GlobalIndex() {
-        test(b -> b.addDataHeader(1, 255, -1, -1), new byte[]{0x50, 0x01, (byte) 0xFF});
+        test(b -> b.addDataHeader(1, 255, -1, -1), new byte[]{0x42, 0x01, (byte) 0xFF});
     }
 
     @Test
     public void testActiveDataHeaderMinU16GlobalIndex() {
-        test(b -> b.addDataHeader(1, 256, -1, -1), new byte[]{0x60, 0x01, 0x00, 0x01});
+        test(b -> b.addDataHeader(1, 256, -1, -1), new byte[]{0x44, 0x01, 0x00, 0x01});
     }
 
     @Test
     public void testActiveDataHeaderMaxU16GlobalIndex() {
-        test(b -> b.addDataHeader(1, 65535, -1, -1), new byte[]{0x60, 0x01, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addDataHeader(1, 65535, -1, -1), new byte[]{0x44, 0x01, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testActiveDataHeaderMinI32GlobalIndex() {
-        test(b -> b.addDataHeader(1, 65536, -1, -1), new byte[]{0x70, 0x01, 0x00, 0x00, 0x01, 0x00});
+        test(b -> b.addDataHeader(1, 65536, -1, -1), new byte[]{0x46, 0x01, 0x00, 0x00, 0x01, 0x00});
     }
 
     @Test
     public void testActiveDataHeaderMaxU8OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 255, -1), new byte[]{0x42, 0x01, (byte) 0xFF});
+        test(b -> b.addDataHeader(1, -1, 255, -1), new byte[]{0x52, 0x01, (byte) 0xFF});
     }
 
     @Test
     public void testActiveDataHeaderMinU16OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 256, -1), new byte[]{0x44, 0x01, 0x00, 0x01});
+        test(b -> b.addDataHeader(1, -1, 256, -1), new byte[]{0x54, 0x01, 0x00, 0x01});
     }
 
     @Test
     public void testActiveDataHeaderMaxU16OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 65535, -1), new byte[]{0x44, 0x01, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addDataHeader(1, -1, 65535, -1), new byte[]{0x54, 0x01, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testActiveDataHeaderMinU32OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 65536, -1), new byte[]{0x46, 0x01, 0x00, 0x00, 0x01, 0x00});
+        test(b -> b.addDataHeader(1, -1, 65536, -1), new byte[]{0x56, 0x01, 0x00, 0x00, 0x01, 0x00});
     }
 
     @Test
     public void testActiveDataHeaderMaxU32OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 4294967295L, -1), new byte[]{0x46, 0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        test(b -> b.addDataHeader(1, -1, 4294967295L, -1), new byte[]{0x56, 0x01, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testActiveDataHeaderMinI64OffsetAddress() {
-        test(b -> b.addDataHeader(1, -1, 4294967296L, -1), new byte[]{0x48, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
+        test(b -> b.addDataHeader(1, -1, 4294967296L, -1), new byte[]{0x58, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
     }
 
     @Test

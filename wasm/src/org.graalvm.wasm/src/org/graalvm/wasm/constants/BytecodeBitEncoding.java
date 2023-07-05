@@ -79,33 +79,34 @@ public class BytecodeBitEncoding {
 
     // Data sections
 
+    // byte 1
     public static final int DATA_SEG_LENGTH_MASK = 0b1100_0000;
     public static final int DATA_SEG_LENGTH_U8 = 0b0100_0000;
     public static final int DATA_SEG_LENGTH_U16 = 0b1000_0000;
     public static final int DATA_SEG_LENGTH_I32 = 0b1100_0000;
 
-    public static final int DATA_SEG_GLOBAL_INDEX_MASK = 0b0011_0000;
-    public static final int DATA_SEG_GLOBAL_INDEX_UNDEFINED = 0b0000_0000;
-    public static final int DATA_SEG_GLOBAL_INDEX_U8 = 0b0001_0000;
-    public static final int DATA_SEG_GLOBAL_INDEX_U16 = 0b0010_0000;
-    public static final int DATA_SEG_GLOBAL_INDEX_I32 = 0b0011_0000;
+    public static final int DATA_SEG_HAS_MEMORY_INDEX_ZERO = 0b0010_0000;
 
-    public static final int DATA_SEG_OFFSET_ADDRESS_MASK = 0b0000_1110;
-    public static final int DATA_SEG_OFFSET_ADDRESS_UNDEFINED = 0b0000_0000;
-    public static final int DATA_SEG_OFFSET_ADDRESS_U8 = 0b0000_0010;
-    public static final int DATA_SEG_OFFSET_ADDRESS_U16 = 0b0000_0100;
-    public static final int DATA_SEG_OFFSET_ADDRESS_U32 = 0b0000_0110;
-    public static final int DATA_SEG_OFFSET_ADDRESS_U64 = 0b0000_1000;
+    public static final int DATA_SEG_GLOBAL_INDEX_OR_OFFSET_MASK = 0b0001_0000;
+    public static final int DATA_SEG_GLOBAL_INDEX = 0b0000_0000;
+    public static final int DATA_SEG_OFFSET = 0b0001_0000;
+
+    public static final int DATA_SEG_VALUE_MASK = 0b0000_1110;
+    public static final int DATA_SEG_VALUE_UNDEFINED = 0b0000_0000;
+    public static final int DATA_SEG_VALUE_U8 = 0b0000_0010;
+    public static final int DATA_SEG_VALUE_U16 = 0b0000_0100;
+    public static final int DATA_SEG_VALUE_U32 = 0b0000_0110;
+    public static final int DATA_SEG_VALUE_I64 = 0b0000_1000;
 
     public static final int DATA_SEG_MODE_VALUE = 0b0000_0001;
 
-    // Data sections (byte 2)
-
-    public static final int DATA_SEG_MEMORY_INDEX_MASK = 0b0000_0011;
-    public static final int DATA_SEG_MEMORY_INDEX_ZERO = 0b0000_0000;
-    public static final int DATA_SEG_MEMORY_INDEX_U8 = 0b0000_0001;
-    public static final int DATA_SEG_MEMORY_INDEX_U16 = 0b0000_0010;
-    public static final int DATA_SEG_MEMORY_INDEX_I32 = 0b0000_0011;
+    // byte 2
+    public static final int DATA_SEG_MEMORY_INDEX_MASK = 0b1100_0000;
+    public static final int DATA_SEG_MEMORY_INDEX_U6 = 0b0000_0000;
+    public static final int DATA_SEG_MEMORY_INDEX_U8 = 0b0100_0000;
+    public static final int DATA_SEG_MEMORY_INDEX_U16 = 0b1000_0000;
+    public static final int DATA_SEG_MEMORY_INDEX_I32 = 0b1100_0000;
+    public static final int DATA_SEG_MEMORY_INDEX_VALUE = 0b0011_1111;
 
     // Runtime data sections
 

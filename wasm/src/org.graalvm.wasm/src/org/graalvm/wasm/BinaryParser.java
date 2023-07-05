@@ -1299,8 +1299,8 @@ public class BinaryParser extends BinaryStreamParser {
                         if (multiMemory) {
                             memoryIndex = readMemoryIndex();
                         } else {
-                            memoryIndex = read1();
-                            assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            read1();
+                            memoryIndex = 0;
                             checkMemoryIndex(0);
                         }
                         module.checkDataSegmentIndex(dataIndex);
@@ -1345,10 +1345,10 @@ public class BinaryParser extends BinaryStreamParser {
                             destMemoryIndex = readMemoryIndex();
                             srcMemoryIndex = readMemoryIndex();
                         } else {
-                            destMemoryIndex = read1();
-                            srcMemoryIndex = read1();
-                            assertIntEqual(destMemoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
-                            assertIntEqual(srcMemoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            read1();
+                            read1();
+                            destMemoryIndex = 0;
+                            srcMemoryIndex = 0;
                             checkMemoryIndex(0);
                         }
                         if (module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
@@ -1372,8 +1372,8 @@ public class BinaryParser extends BinaryStreamParser {
                         if (multiMemory) {
                             memoryIndex = readMemoryIndex();
                         } else {
-                            memoryIndex = read1();
-                            assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                            read1();
+                            memoryIndex = 0;
                             checkMemoryIndex(0);
                         }
                         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
@@ -1950,14 +1950,13 @@ public class BinaryParser extends BinaryStreamParser {
                 if (useMemoryIndex && multiMemory) {
                     memoryIndex = readMemoryIndex();
                 } else if (useMemoryIndex) {
-                    memoryIndex = readUnsignedInt32();
-                    assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
+                    readMemoryIndex();
+                    memoryIndex = 0;
                 } else {
                     memoryIndex = 0;
-                    checkMemoryIndex(0);
                 }
                 if (mode == SegmentMode.ACTIVE) {
+                    checkMemoryIndex(memoryIndex);
                     if (module.memoryHasIndexType64(memoryIndex)) {
                         readLongOffsetExpression(longMultiResult);
                         offsetAddress = longMultiResult[0];
@@ -1976,9 +1975,8 @@ public class BinaryParser extends BinaryStreamParser {
                 if (multiMemory) {
                     memoryIndex = readMemoryIndex();
                 } else {
-                    memoryIndex = readUnsignedInt32();
-                    assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
+                    readMemoryIndex();
+                    memoryIndex = 0;
                 }
                 if (module.memoryHasIndexType64(memoryIndex)) {
                     readLongOffsetExpression(longMultiResult);
