@@ -90,7 +90,10 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
      * treatment. This is done using an extra prefix argument which is interpreted as a pointer to
      * buffer where the values will be stored.
      *
-     * This is currently only allowed in custom conventions.
+     * This is currently only allowed in custom conventions. Some ABI allow return value which span
+     * multiple registers. This value thus has to be moved to the heap before returning to Java. A
+     * suitable
+     *
      */
     public boolean usesReturnBuffer() {
         return outgoing && returnSaving != null && returnSaving.length >= 2;

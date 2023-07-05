@@ -31,13 +31,12 @@ import jdk.internal.foreign.abi.VMStorage;
 @SuppressWarnings("unused")
 public final class Target_jdk_internal_foreign_abi_UpcallLinker {
 
-    @Alias private static MethodHandle MH_invokeInterpBindings;
+    @Alias public static MethodHandle MH_invokeInterpBindings;
 
     @Substitute
     static long makeUpcallStub(MethodHandle mh, ABIDescriptor abi, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
                     boolean needsReturnBuffer, long returnBufferSize) {
-        assert !needsReturnBuffer && returnBufferSize == 0;
-        var info = new JavaEntryPointInfo(mh.type());
+        var info = JavaEntryPointInfo.make(mh, abi, conv, needsReturnBuffer, returnBufferSize);
         return ForeignFunctionsRuntime.singleton().registerForUpcall(mh, info).rawValue();
     }
 
@@ -54,8 +53,8 @@ public final class Target_jdk_internal_foreign_abi_UpcallLinker {
 
         UnaryOperator<MethodHandle> doBindingsMaker;
 
-        Map<VMStorage, Integer> argIndices = HelpMEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.indexMap(argMoves);
-        Map<VMStorage, Integer> retIndices = HelpMEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.indexMap(retMoves);
+        Map<VMStorage, Integer> argIndices = Util_jdk_internal_foreign_abi_UpcallLinker.indexMap(argMoves);
+        Map<VMStorage, Integer> retIndices = Util_jdk_internal_foreign_abi_UpcallLinker.indexMap(retMoves);
         int spreaderCount = callingSequence.calleeMethodType().parameterCount();
         if (callingSequence.needsReturnBuffer()) {
             spreaderCount--; // return buffer is dropped from the argument list
@@ -97,7 +96,7 @@ public final class Target_jdk_internal_foreign_abi_UpcallLinker {
     }
 }
 
-final class HelpMEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE {
+final class Util_jdk_internal_foreign_abi_UpcallLinker {
     static Map<VMStorage, Integer> indexMap(Binding.Move[] moves) {
         return IntStream.range(0, moves.length)
                         .boxed()
@@ -129,8 +128,22 @@ final class Target_jdk_internal_foreign_abi_UpcallLinker_InvocationData {
 
 @TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", innerClass = "CallRegs")
 final class Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs {
-    @Alias
-    Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs(VMStorage[] argRegs, VMStorage[] retRegs) {
+    @Alias private VMStorage[] argRegs;
+    @Alias private VMStorage[] retRegs;
 
+    @Substitute
+    Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs(VMStorage[] argRegs, VMStorage[] retRegs) {
+        this.argRegs = argRegs;
+        this.retRegs = retRegs;
+    }
+
+    @Substitute
+    public VMStorage[] argRegs() {
+        return this.argRegs;
+    }
+
+    @Substitute
+    public VMStorage[] retRegs() {
+        return this.retRegs;
     }
 }

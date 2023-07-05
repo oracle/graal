@@ -441,14 +441,11 @@ class ABIs {
         }
 
         static class Upcalls {
-            static Stream<Binding.VMLoad> argMoveBindingsStream(CallingSequence callingSequence) {
-                return callingSequence.argumentBindings()
-                                .filter(Binding.VMLoad.class::isInstance)
-                                .map(Binding.VMLoad.class::cast);
-            }
 
             static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
-                return argMoveBindingsStream(callingSequence)
+                return callingSequence.argumentBindings()
+                                .filter(Binding.VMLoad.class::isInstance)
+                                .map(Binding.VMLoad.class::cast)
                                 .toArray(Binding.VMLoad[]::new);
             }
 
@@ -534,14 +531,14 @@ class ABIs {
             var callingSequence = makeCallingSequence(type, desc, true, optionSet);
 
             // From SharedUtil.arrangeUpcallHelper
-            // Nothing of importance there
 
             // From UpcallLinker.makeFactory
             Binding.VMLoad[] argMoves = Upcalls.argMoveBindings(callingSequence);
             Binding.VMStore[] retMoves = Upcalls.retMoveBindings(callingSequence);
             VMStorage[] args = Arrays.stream(argMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
             VMStorage[] rets = Arrays.stream(retMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
-            return new JavaEntryPointInfo(callingSequence.calleeMethodType());
+            Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs cr = new Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs(args, rets);
+            return JavaEntryPointInfo.make(callingSequence.callerMethodType(), cr, callingSequence.needsReturnBuffer(), callingSequence.returnBufferSize());
         }
 
         @Override
@@ -569,7 +566,7 @@ class ABIs {
                         Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.CPU);
-                        yield AssignedLocation.forRegister(reg);
+                        yield AssignedLocation.forRegister(reg, JavaKind.Long);
                     }
                     case X86_64Architecture.StorageType.VECTOR -> {
                         /*
@@ -579,7 +576,7 @@ class ABIs {
                         Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
                         assert reg.name.equals(move.debugName());
                         assert reg.getRegisterCategory().equals(AMD64.XMM);
-                        yield AssignedLocation.forRegister(reg);
+                        yield AssignedLocation.forRegister(reg, JavaKind.Double);
                     }
                     case X86_64Architecture.StorageType.STACK -> AssignedLocation.forStack(move.indexOrOffset());
                     default -> throw unsupportedFeature("Unhandled VMStorage: " + move);

@@ -63,7 +63,9 @@ class ForeignGraphKit extends HostedGraphKit {
         MetaAccessProvider metaAccess = getMetaAccess();
         ValueNode argumentArray = append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), ConstantNode.forInt(arguments.size(), getGraph()), false));
         for (int i = 0; i < arguments.size(); ++i) {
-            createStoreIndexed(argumentArray, i, JavaKind.Object, arguments.get(i));
+            var argument = arguments.get(i);
+            assert argument.getStackKind().equals(JavaKind.Object);
+            createStoreIndexed(argumentArray, i, JavaKind.Object, argument);
         }
         return argumentArray;
     }

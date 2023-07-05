@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.foreign;
 
+import java.lang.invoke.MethodType;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /** Downcall stubs will be synthesized in this class. */
@@ -50,11 +54,35 @@ public final class UpcallStubsHolder {
      * </pre>
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static String stubName(JavaEntryPointInfo nep, boolean java) {
-        StringBuilder builder = new StringBuilder("upcall_");
-        builder.append(nep.cMethodType().toString());
+    public static String stubName(JavaEntryPointInfo jep, boolean java) {
+        MethodType type = java ? jep.javaMethodType() : jep.cMethodType();
 
+        StringBuilder builder = new StringBuilder("upcall");
         builder.append(java ? "_java" : "_c");
+        builder.append("_(");
+        for (var param : type.parameterArray()) {
+            builder.append(JavaKind.fromJavaClass(param).getTypeChar());
+        }
+        builder.append(")");
+        builder.append(JavaKind.fromJavaClass(type.returnType()).getTypeChar());
+
+        if (jep.buffersReturn()) {
+            builder.append("_r");
+        }
+
+        StringBuilder assignmentsBuilder = new StringBuilder();
+        for (var assignment : jep.argumentsAssignment()) {
+            assignmentsBuilder.append(assignment);
+        }
+
+        assignmentsBuilder.append('_');
+        for (var assignment : jep.returnAssignment()) {
+            assignmentsBuilder.append(assignment);
+        }
+
+        builder.append('_');
+        builder.append(SubstrateUtil.digest(
+                        assignmentsBuilder.toString()));
 
         return builder.toString();
     }
