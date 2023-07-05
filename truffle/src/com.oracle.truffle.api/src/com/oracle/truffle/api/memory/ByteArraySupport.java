@@ -428,4 +428,20 @@ public abstract class ByteArraySupport {
      * @since 22.2
      */
     public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
+
+    public abstract byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    public abstract void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException;
+
+    public abstract short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    public abstract void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException;
+
+    public abstract int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    public abstract void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException;
+
+    public abstract long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    public abstract void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException;
 }

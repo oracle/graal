@@ -209,4 +209,52 @@ final class CheckedByteArraySupport extends ByteArraySupport {
         checkBounds(buffer, byteOffset, Double.BYTES);
         access.putDouble(buffer, byteOffset, value);
     }
+
+    @Override
+    public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Byte.BYTES);
+        return access.getByteVolatile(buffer, byteOffset);
+    }
+
+    @Override
+    public void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Byte.BYTES);
+        access.putByteVolatile(buffer, byteOffset, value);
+    }
+
+    @Override
+    public short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        return access.getShortVolatile(buffer, byteOffset);
+    }
+
+    @Override
+    public void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        access.putShortVolatile(buffer, byteOffset, value);
+    }
+
+    @Override
+    public int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        return access.getIntVolatile(buffer, byteOffset);
+    }
+
+    @Override
+    public void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        access.putIntVolatile(buffer, byteOffset, value);
+    }
+
+    @Override
+    public long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        return access.getLongVolatile(buffer, byteOffset);
+    }
+
+    @Override
+    public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        access.putLongVolatile(buffer, byteOffset, value);
+    }
 }

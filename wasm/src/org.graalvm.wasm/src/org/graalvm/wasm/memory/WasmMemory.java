@@ -243,6 +243,34 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void store_i64_16(Node node, long address, short value);
 
     public abstract void store_i64_32(Node node, long address, int value);
+
+    public abstract int atomic_load_i32(Node node, long address);
+
+    public abstract long atomic_load_i64(Node node, long address);
+
+    public abstract int atomic_load_i32_8u(Node node, long address);
+
+    public abstract int atomic_load_i32_16u(Node node, long address);
+
+    public abstract long atomic_load_i64_8u(Node node, long address);
+
+    public abstract long atomic_load_i64_16u(Node node, long address);
+
+    public abstract long atomic_load_i64_32u(Node node, long address);
+
+    public abstract void atomic_store_i32(Node node, long address, int value);
+
+    public abstract void atomic_store_i64(Node node, long address, long value);
+
+    public abstract void atomic_store_i32_8(Node node, long address, byte value);
+
+    public abstract void atomic_store_i32_16(Node node, long address, short value);
+
+    public abstract void atomic_store_i64_8(Node node, long address, byte value);
+
+    public abstract void atomic_store_i64_16(Node node, long address, short value);
+
+    public abstract void atomic_store_i64_32(Node node, long address, int value);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();

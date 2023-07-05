@@ -187,4 +187,44 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         UNSAFE.putDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
+
+    @Override
+    public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getByteVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        UNSAFE.putByteVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getShortVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        UNSAFE.putShortVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getIntVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        UNSAFE.putIntVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getLongVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        UNSAFE.putLongVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
 }

@@ -48,6 +48,8 @@ package com.oracle.truffle.api.memory;
  */
 @SuppressWarnings("PointlessArithmeticExpression")
 final class SimpleByteArraySupport extends ByteArraySupport {
+    private final SimpleByteArraySupportLock lock = new SimpleByteArraySupportLock();
+
     @Override
     public byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
         return buffer[byteOffset];
@@ -200,5 +202,69 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         assert byteOffset < Integer.MAX_VALUE;
         putDouble(buffer, (int) byteOffset, value);
+    }
+
+    @Override
+    public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            return getByte(buffer, (int) byteOffset);
+        }
+    }
+
+    @Override
+    public void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            putByte(buffer, (int) byteOffset, value);
+        }
+    }
+
+    @Override
+    public short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            return getShort(buffer, (int) byteOffset);
+        }
+    }
+
+    @Override
+    public void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            putShort(buffer, (int) byteOffset, value);
+        }
+    }
+
+    @Override
+    public int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            return getInt(buffer, (int) byteOffset);
+        }
+    }
+
+    @Override
+    public void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            putInt(buffer, (int) byteOffset, value);
+        }
+    }
+
+    @Override
+    public long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            return getLong(buffer, (int) byteOffset);
+        }
+    }
+
+    @Override
+    public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        synchronized (lock) {
+            assert byteOffset < Integer.MAX_VALUE;
+            putLong(buffer, (int) byteOffset, value);
+        }
     }
 }

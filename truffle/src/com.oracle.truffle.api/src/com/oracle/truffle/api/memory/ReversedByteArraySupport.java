@@ -172,4 +172,44 @@ final class ReversedByteArraySupport extends ByteArraySupport {
     public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         access.putLong(buffer, byteOffset, Long.reverseBytes(Double.doubleToLongBits(value)));
     }
+
+    @Override
+    public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return access.getByte(buffer, byteOffset);
+    }
+
+    @Override
+    public void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        access.putByteVolatile(buffer, byteOffset, value);
+    }
+
+    @Override
+    public short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getShortVolatile(buffer, byteOffset));
+    }
+
+    @Override
+    public void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        access.putShortVolatile(buffer, byteOffset, Short.reverseBytes(value));
+    }
+
+    @Override
+    public int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getIntVolatile(buffer, byteOffset));
+    }
+
+    @Override
+    public void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        access.putIntVolatile(buffer, byteOffset, Integer.reverseBytes(value));
+    }
+
+    @Override
+    public long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getLongVolatile(buffer, byteOffset));
+    }
+
+    @Override
+    public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        access.putLongVolatile(buffer, byteOffset, Long.reverseBytes(value));
+    }
 }
