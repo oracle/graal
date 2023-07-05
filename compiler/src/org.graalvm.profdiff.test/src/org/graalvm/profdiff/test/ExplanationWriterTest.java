@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.diff;
+package org.graalvm.profdiff.test;
 
+import org.graalvm.profdiff.command.ExplanationWriter;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.Writer;
+import org.junit.Test;
 
-/**
- * Describes a matching of two optimization trees.
- */
-public interface TreeMatching {
-    /**
-     * Writes a detailed summary of this tree matching.
-     *
-     * @param writer the destination writer
-     */
-    void write(Writer writer);
+import static org.junit.Assert.assertTrue;
+
+public class ExplanationWriterTest {
+    @Test
+    public void optimizationContextTree() {
+        var writer = Writer.stringBuilder(OptionValues.builder().withOptimizationContextTreeEnabled(true).build());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, false);
+        explanationWriter.explain();
+        assertTrue(writer.getOutput().contains("optimization-context tree"));
+    }
+
+    @Test
+    public void optimizationContextTreeDiff() {
+        var writer = Writer.stringBuilder(OptionValues.builder().withOptimizationContextTreeEnabled(true).withDiffCompilations(true).build());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, false);
+        explanationWriter.explain();
+        assertTrue(writer.getOutput().contains("the optimization-context trees of two paired compilations are diffed"));
+    }
 }

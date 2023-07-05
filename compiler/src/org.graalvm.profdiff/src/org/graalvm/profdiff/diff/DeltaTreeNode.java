@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,15 +167,15 @@ public class DeltaTreeNode<T extends TreeNode<T>> extends TreeNode<DeltaTreeNode
             writer.write(EditScript.INSERT_PREFIX);
         } else if (isDeletion()) {
             writer.write(EditScript.DELETE_PREFIX);
-        } else if (isRelabeling()) {
+        } else {
+            assert isRelabeling() : "the node represents one of the possible operations";
             writer.write(EditScript.RELABEL_PREFIX);
         }
         if (left != null) {
             left.writeHead(writer);
-        } else if (right != null) {
-            right.writeHead(writer);
         } else {
-            super.writeHead(writer);
+            assert right != null : "either node must not be null";
+            right.writeHead(writer);
         }
     }
 }

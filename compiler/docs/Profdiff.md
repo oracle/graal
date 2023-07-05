@@ -200,7 +200,7 @@ sorted. The goal is to establish a fixed order of optimization phases across com
 superfluous differences found by the tree diffing algorithm. This is enabled by default.
 
 Selected optimization phases are removed from the optimization tree when `--remove-detailed-phases` is enabled. These
-include the canonicalizer, dead code elimination, and inlining phases. This is enabled by default.
+include the canonicalizer and dead code elimination. This is enabled by default.
 
 If `--prune-identities` is enabled, only the differences with context between two
 optimization/inlining/optimization-context trees are displayed, i.e., the identities are pruned. This is enabled by

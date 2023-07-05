@@ -83,12 +83,12 @@ public class JITAOTCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, jitProftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        Experiment jit = ExperimentParser.parseOrPanic(ExperimentId.ONE, Experiment.CompilationKind.JIT, jitProftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
+        Experiment aot = ExperimentParser.parseOrPanic(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
         if (aotProftoolArgument.getValue() == null) {
             for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
                 if (!jitUnit.isHot()) {
@@ -105,6 +105,7 @@ public class JITAOTCommand implements Command {
         }
         aot.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit, aot));
     }
