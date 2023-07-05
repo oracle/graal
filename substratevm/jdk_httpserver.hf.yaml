@@ -1,0 +1,38 @@
+name: random-urls
+http:
+  host: http://localhost:8000
+  sharedConnections: 10
+# 5 users will be starting the scenario every second
+usersPerSec: 5
+duration: 10s
+scenario:
+  - test:
+      # Step `randomItem` randomly picks one item from the list below...
+      - randomItem:
+          list:
+            - src/com.oracle.svm.core/
+          # ... and stores it in users's session under key `my-random-path`
+          toVar: my-random-path
+      - httpRequest:
+          # HTTP request will read the variable from the session and format
+          # the path for the GET request
+          GET: /${my-random-path}
+          # We'll use different statistics metric for webpages and images
+          metric:
+            - .*\.html -> pages
+            - -> other
+          # Handler processes the response
+          handler:
+            # We'll check that the response was successful (status 200-299)
+            status:
+              range: 2xx
+            # When the response is fully processed we'll set variable `completed`
+            # in the session.
+            onCompletion:
+              set: completed <- yes
+          # For demonstration purposes we will set `sync: false`.
+          # Next step is executed immediately after we fire the request, not
+          # waiting for the response.
+          sync: false
+      # We'll wait for the `completed` var to be set in this step, though.
+      - awaitVar: completed

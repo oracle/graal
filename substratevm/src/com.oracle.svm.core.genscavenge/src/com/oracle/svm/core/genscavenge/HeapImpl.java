@@ -71,6 +71,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -117,6 +118,10 @@ public final class HeapImpl extends Heap {
 
     /** A cached list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
+
+    /** A cached list of all the loaded classes, if someone asks for it. */
+    private List<Class<?>> loadedClasses;
+    private long lastRuntimeLoadedClassesCount = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(int pageSize) {
@@ -320,6 +325,23 @@ public final class HeapImpl extends Heap {
     @Override
     public int getClassCount() {
         return imageHeapInfo.dynamicHubCount;
+    }
+
+    /** Returns an updated list of which classes are "loaded". */
+    @Override
+    public List<Class<?>> getLoadedClasses() {
+        long currentLoadedClassesCount = PredefinedClassesSupport.getRuntimeLoadedClassesCount();
+        if (lastRuntimeLoadedClassesCount != currentLoadedClassesCount) {
+            lastRuntimeLoadedClassesCount = currentLoadedClassesCount;
+            List<Class<?>> all = getAllClasses();
+            loadedClasses = new ArrayList<>(all.size());
+            for (Class<?> clazz : all) {
+                if (DynamicHub.fromClass(clazz).isLoaded()) {
+                    loadedClasses.add(clazz);
+                }
+            }
+        }
+        return loadedClasses;
     }
 
     @Override

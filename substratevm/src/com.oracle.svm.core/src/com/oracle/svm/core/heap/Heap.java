@@ -26,7 +26,6 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -39,7 +38,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
@@ -105,16 +103,7 @@ public abstract class Heap {
     public abstract int getClassCount();
 
     /** Returns all loaded classes in the heap (see {@link PredefinedClassesSupport}). */
-    public List<Class<?>> getLoadedClasses() {
-        List<Class<?>> all = getAllClasses();
-        ArrayList<Class<?>> loaded = new ArrayList<>(all.size());
-        for (Class<?> clazz : all) {
-            if (DynamicHub.fromClass(clazz).isLoaded()) {
-                loaded.add(clazz);
-            }
-        }
-        return loaded;
-    }
+    public abstract List<Class<?>> getLoadedClasses();
 
     /**
      * Get all known classes. Intentionally protected to prevent access to classes that have not
