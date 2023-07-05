@@ -68,11 +68,11 @@ namespace fs = std::filesystem;
 #endif
 #define GRAALVM_VERSION_STR STR(GRAALVM_VERSION)
 
-#if defined(LAUNCHER_CLASSPATH) && defined(LAUNCHER_MODULE_PATH)
-    #error only one of launcher classpath or module path should be defined
+#ifndef LAUNCHER_MODULE_PATH
+    #error launcher module path undefined
 #endif
-#if !defined(LAUNCHER_CLASSPATH) && !defined(LAUNCHER_MODULE_PATH)
-    #error launcher classpath or module path should be defined
+#ifndef LAUNCHER_LIBRARY_PATH
+    #error launcher library path undefined
 #endif
 
 #ifndef LIBLANG_RELPATH
@@ -385,6 +385,51 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         }
     }
 
+    /* construct module path - only needed for jvm mode */
+    std::stringstream modulePath;
+    modulePath << "--module-path=";
+    if (jvmMode) {
+        /* add the launcher module path */
+        const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
+        int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
+        for (int i = 0; i < launcherModulePathCnt; i++) {
+            modulePath << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
+            if (i < launcherModulePathCnt-1) {
+                modulePath << CP_SEP_STR;
+            }
+        }
+    }
+
+    /* construct java.library.path - only needed for jvm mode */
+    std::stringstream libraryPath;
+    libraryPath << "-Djava.library.path=";
+    if (jvmMode) {
+        /* add the library path */
+        const char *launcherLibraryPathEntries[] = LAUNCHER_LIBRARY_PATH;
+        int launcherLibraryPathCnt = sizeof(launcherLibraryPathEntries) / sizeof(*launcherLibraryPathEntries);
+        for (int i = 0; i < launcherLibraryPathCnt; i++) {
+            libraryPath << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
+            if (i < launcherLibraryPathCnt-1) {
+                libraryPath << CP_SEP_STR;
+            }
+        }
+    }
+
+    #if defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
+    if (jvmMode) {
+        const char *launcherLangHomeNames[] = LAUNCHER_LANG_HOME_NAMES;
+        const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
+        int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
+        for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
+            std::stringstream ss;
+            std::stringstream relativeHome;
+            relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
+            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << std::filesystem::canonical(relativeHome.str()).c_str();
+            vmArgs.push_back(ss.str());
+        }
+    }
+    #endif defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
+
     /* Handle launcher default vm arguments. We apply these first, so they can
        be overridden by explicit arguments on the commandline. */
     #ifdef LAUNCHER_DEFAULT_VM_ARGS
@@ -454,6 +499,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
         vmArgs.push_back("-Dgraalvm.locatorDisabled=true");
 #endif
+        vmArgs.push_back(libraryPath.str());
     }
 
     vmInitArgs->options = new JavaVMOption[vmArgs.size()];
