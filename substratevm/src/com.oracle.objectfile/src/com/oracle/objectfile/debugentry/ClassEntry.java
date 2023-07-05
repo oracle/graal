@@ -364,7 +364,6 @@ public class ClassEntry extends StructureTypeEntry {
      *
      * @return the highest code section offset for compiled method code belonging to this class
      */
-    @SuppressWarnings("unused")
     public int hipc() {
         assert hasCompiledEntries();
         return compiledEntries.get(compiledEntries.size() - 1).getPrimary().getHi();
@@ -379,9 +378,8 @@ public class ClassEntry extends StructureTypeEntry {
         if (files == null) {
             files = new ArrayList<>();
         }
-        assert !files.contains(file);
-        // cannot add files after index has been created
-        assert fileIndex == null;
+        assert !files.contains(file) : "caller should ensure file is only included once";
+        assert fileIndex == null : "cannot include files after index has been created";
         files.add(file);
     }
 
@@ -394,9 +392,8 @@ public class ClassEntry extends StructureTypeEntry {
         if (dirs == null) {
             dirs = new ArrayList<>();
         }
-        assert !dirs.contains(dirEntry);
-        // cannot add dirs after index has been created
-        assert dirIndex == null;
+        assert !dirs.contains(dirEntry) : "caller should ensure dir is only included once";
+        assert dirIndex == null : "cannot include dirs after index has been created";
         dirs.add(dirEntry);
     }
 
@@ -406,11 +403,9 @@ public class ClassEntry extends StructureTypeEntry {
      */
     public void buildFileAndDirIndexes() {
         // this is a one-off operation
-        assert fileIndex == null;
-        assert dirIndex == null;
+        assert fileIndex == null && dirIndex == null : "file and indexes can only be generated once";
         if (files == null) {
-            // should not have any dirs if we have no files
-            assert dirs == null;
+            assert dirs == null : "should not have included any dirs if we have no files";
             return;
         }
         int idx = 1;
