@@ -87,11 +87,6 @@ public class RuntimeState {
      */
     @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
-    /**
-     * The zeroth memory, stored separately from memories array for faster access.
-     */
-    @CompilationFinal private WasmMemory memory;
-
     @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
 
     /**
@@ -143,7 +138,6 @@ public class RuntimeState {
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
-        this.memory = null;
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
@@ -242,20 +236,13 @@ public class RuntimeState {
     }
 
     public WasmMemory memory(int index) {
-        if (index == 0) {
-            return memory;
-        } else {
-            return memories[index];
-        }
+        return memories[index];
     }
 
     public void setMemory(int index, WasmMemory memory) {
         ensureMemoriesCapacity(index);
         checkNotLinked();
         memories[index] = memory;
-        if (index == 0) {
-            this.memory = memory;
-        }
     }
 
     public WasmFunctionInstance functionInstance(WasmFunction function) {

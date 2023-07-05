@@ -235,6 +235,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int stackPointer = startStackPointer;
         int line = startLine;
 
+        final WasmMemory zeroMemory = instance.memory(0);
+
         check(bytecode.length, (1 << 31) - 1);
 
         int opcode = Bytecode.UNREACHABLE;
@@ -876,8 +878,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    int value = memory.load_i32(this, address);
+                    int value = zeroMemory.load_i32(this, address);
                     pushInt(frame, stackPointer - 1, value);
                     break;
                 }
@@ -888,8 +889,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    int value = memory.load_i32(this, address);
+                    int value = zeroMemory.load_i32(this, address);
                     pushInt(frame, stackPointer - 1, value);
                     break;
                 }
@@ -912,8 +912,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    load(memory, frame, stackPointer - 1, opcode, address);
+                    load(zeroMemory, frame, stackPointer - 1, opcode, address);
                     break;
                 }
                 case Bytecode.I64_LOAD_I32:
@@ -935,8 +934,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    load(memory, frame, stackPointer - 1, opcode, address);
+                    load(zeroMemory, frame, stackPointer - 1, opcode, address);
                     break;
                 }
                 case Bytecode.I32_STORE:
@@ -1017,8 +1015,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 2);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    store(memory, frame, stackPointer - 1, opcode, address);
+                    store(zeroMemory, frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
 
                     break;
@@ -1038,8 +1035,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 2);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    final WasmMemory memory = instance.memory(0);
-                    store(memory, frame, stackPointer - 1, opcode, address);
+                    store(zeroMemory, frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
 
                     break;
