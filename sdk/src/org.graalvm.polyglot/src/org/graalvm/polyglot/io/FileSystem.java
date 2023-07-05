@@ -495,7 +495,7 @@ public interface FileSystem {
      * @since 20.2.0
      */
     static FileSystem newDefaultFileSystem() {
-        return IOHelper.IMPL.newDefaultFileSystem();
+        return IOHelper.IMPL.newDefaultFileSystem(System.getProperty("java.io.tmpdir"));
     }
 
     /**

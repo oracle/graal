@@ -255,6 +255,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         public String getName() {
             return name;
         }
+
+        @Override
+        public String toString() {
+            return getName();
+        }
     }
 
     @Test

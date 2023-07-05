@@ -63,6 +63,8 @@ public class DebugArrayType extends DebugType {
      * @param dimensionSizes the number of elements in each dimension of the array
      */
     public DebugArrayType(String typeName, DebugType elementType, int[] dimensionSizes) {
+        assert elementType != null : "the element type of a debug array type must not be null";
+        assert dimensionSizes != null : "the sizes of the array dimensions of a debug array type must not be null";
         this.typeName = typeName;
         this.elementType = elementType;
         this.dimensionSizes = dimensionSizes;
@@ -97,6 +99,7 @@ public class DebugArrayType extends DebugType {
 
     @Override
     public int arrayDimensionSize(int dimension) {
+        assert dimension >= 0 && dimension < dimensionSizes.length : "tried to get size of invalid array dimension of debug array type";
         return dimensionSizes[dimension];
     }
 

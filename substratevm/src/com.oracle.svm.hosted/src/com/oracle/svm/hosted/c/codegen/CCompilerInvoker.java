@@ -516,7 +516,11 @@ public abstract class CCompilerInvoker {
     }
 
     public static Optional<Path> lookupSearchPath(String name) {
-        return Arrays.stream(System.getenv("PATH").split(File.pathSeparator))
+        String envPath = System.getenv("PATH");
+        if (envPath == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(envPath.split(File.pathSeparator))
                         .map(entry -> Paths.get(entry, name))
                         .filter(p -> Files.isExecutable(p) && !Files.isDirectory(p))
                         .findFirst();

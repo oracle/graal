@@ -410,7 +410,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 CEntryPointListenerSupport.singleton().errorThreadAttach(error);
                 return error;
             }
-            IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+
+            IsolateThread thread = WordFactory.nullPointer();
+            if (startedByIsolate) {
+                assert VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler).isNull();
+            } else {
+                thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+            }
+
             if (thread.isNull()) { // not attached
                 error = attachUnattachedThread(isolate, startedByIsolate, inCrashHandler, vmThreadSize);
                 if (error != CEntryPointErrors.NO_ERROR) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,7 +200,10 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
                      * We need to drop the stamp since the types we see during OSR may be too
                      * precise (if a branch was not parsed for example). In cases when this is
                      * possible, we insert a guard and narrow the OSRLocal stamp at its usages.
+                     * Right after graph building the stamps of phis can be too imprecise, so make
+                     * sure to infer a more precise one if possible.
                      */
+                    proxy.value().inferStamp();
                     Stamp narrowedStamp = proxy.value().stamp(NodeView.DEFAULT);
                     Stamp unrestrictedStamp = proxy.stamp(NodeView.DEFAULT).unrestricted();
                     ValueNode osrLocal;

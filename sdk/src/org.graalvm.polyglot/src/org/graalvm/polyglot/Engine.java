@@ -1195,7 +1195,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public FileSystem newDefaultFileSystem() {
+        public FileSystem newDefaultFileSystem(String hostTmpDir) {
             throw noPolyglotImplementationFound();
         }
 

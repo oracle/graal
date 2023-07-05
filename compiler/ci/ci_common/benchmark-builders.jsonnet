@@ -10,7 +10,7 @@
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.dacapo_timing,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo + {unicorn_pull_request_benchmarking:: 'libgraal'},
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_timing,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},

@@ -42,9 +42,9 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/aarch64.ad",
-          lineStart = 9717,
-          lineEnd   = 9799,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 9783,
+          lineEnd   = 9865,
+          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
           sha1      = "84da421c1489e188366d61bb4298e0425ccac14b")
 // @formatter:on
 public class AArch64NormalizedUnsignedCompareOp extends AArch64LIRInstruction {

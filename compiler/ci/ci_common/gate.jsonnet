@@ -191,7 +191,6 @@
   # fields of the denoted build.
   local gates = {
     "gate-compiler-test-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-17-linux-amd64": t("1:00:00"),
     "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
     "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
@@ -227,6 +226,8 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
+    "daily-compiler-test-labsjdk-21-windows-amd64": {},
+
     "daily-compiler-ctw-labsjdk-21-linux-aarch64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-amd64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-aarch64": {},
@@ -247,11 +248,6 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-test-labsjdk-17-linux-aarch64": {},
-    "weekly-compiler-test-labsjdk-17-windows-amd64": {},
-    "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
-    "weekly-compiler-test-labsjdk-17-darwin-aarch64": {},
-
     "weekly-compiler-test_vec16-labsjdk-21-linux-amd64": {},
     "weekly-compiler-test_avx0-labsjdk-21-linux-amd64": {},
     "weekly-compiler-test_avx1-labsjdk-21-linux-amd64": {},
@@ -260,8 +256,6 @@
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
-
-    "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
 
     "weekly-compiler-benchmarktest-labsjdk-21Debug-linux-amd64": t("3:00:00"),
 
@@ -384,7 +378,6 @@
       "bootstrap_full"
     ]
     for jdk in [
-      "17",
       "21"
     ]
     for os_arch in all_os_arches
@@ -394,7 +387,6 @@
     # probably require adding some capabilities.
     local all_zgc_builds = [self.make_build(jdk, os_arch, task).build
       for jdk in [
-        "17",
         "21"
       ]
       for os_arch in [

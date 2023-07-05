@@ -91,7 +91,7 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
 
     @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> initializeMetaData(type));
+        postTask(d -> type.getInitializeMetaDataTask().ensureDone());
     }
 
     @Override

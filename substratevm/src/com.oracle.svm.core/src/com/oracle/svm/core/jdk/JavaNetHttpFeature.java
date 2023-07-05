@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -31,11 +33,25 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
 @AutomaticallyRegisteredFeature
 public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalFeature {
+
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("java.net.http");
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return requiredModule().isPresent();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        JavaNetHttpFeature.class.getModule().addReads(requiredModule().get());
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -59,13 +75,19 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalF
 @AutomaticallyRegisteredFeature
 class SimpleWebServerFeature implements InternalFeature {
 
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("jdk.httpserver");
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 19;
+        return JavaVersionUtil.JAVA_SPEC >= 19 && requiredModule().isPresent();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        SimpleWebServerFeature.class.getModule().addReads(requiredModule().get());
+
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtRunTime("sun.net.httpserver.simpleserver.SimpleFileServerImpl", "Allocates InetAddress in class initializer");
     }

@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.24.0",
+    "mxversion": "6.27.1",
     "name": "substratevm",
     "version" : "23.1.0",
     "release" : False,
@@ -183,9 +183,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "compiler:GRAAL",
             ],
-            "requires" : [
-                "java.instrument",
-            ],
             "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
             },
@@ -244,13 +241,9 @@ suite = {
             ],
             "requires" : [
                 "java.compiler",
-                "java.logging",
-                "java.scripting",
-                "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
-                "jdk.management.jfr",
-                "jdk.unsupported",
+                "jdk.zipfs",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -289,12 +282,6 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
-                ],
-                "jdk.management.agent": [
-                    "jdk.internal.agent",
-                ],
-                "jdk.httpserver@19+": [
-                    "sun.net.httpserver.simpleserver",
                 ],
                 "jdk.jfr": [
                     "jdk.jfr.events",
@@ -536,9 +523,6 @@ suite = {
             "dependencies": [
                 "com.oracle.graal.pointsto",
             ],
-            "requires" : [
-                "jdk.unsupported" # sun.misc.Unsafe
-            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc"
@@ -613,13 +597,8 @@ suite = {
                 "com.oracle.graal.reachability"
             ],
             "requires" : [
-                "java.instrument",
-                "java.security.sasl",
-                "java.smartcardio",
-                "java.xml.crypto",
                 "jdk.jfr",
                 "jdk.management",
-                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -647,9 +626,6 @@ suite = {
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
                     "sun.management", # Needed for javadoc links (MappedMXBeanType)
                 ],
-                "java.rmi": [
-                    "sun.rmi.server",  # Needed for javadoc links (UnicastRef, UnicastRef2)
-                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
@@ -663,11 +639,6 @@ suite = {
                 "jdk.jfr": [
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
-                ],
-                "java.management.rmi": [
-                    "com.sun.jmx.remote.internal.rmi", # Needed for javadoc links (ProxyRef)
-                    "com.sun.jmx.remote.protocol.rmi", # Needed for javadoc links (ClientProvider, ServerProvider)
-                    "javax.management.remote.rmi", # Needed for javadoc links (RMIServer, RMIServerImpl_Stub, RMIConnection, RMIConnectionImpl_Stub)
                 ],
             },
             "javaCompliance" : "17+",
@@ -997,10 +968,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
-            ],
-            "requires" : [
-                "jdk.unsupported",
+                "com.oracle.svm.util",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
@@ -1281,9 +1249,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "requires" : [
-                "jdk.unsupported",
-            ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
@@ -1359,14 +1324,6 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
-                    "java.xml.crypto",
-                    "java.security.sasl",
-                    "java.smartcardio",
-                    "java.net.http",
-                    "jdk.sctp",
-                    "jdk.scripting.nashorn@11..14",
-                    "jdk.management.agent",
-                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1415,9 +1372,6 @@ suite = {
                     ],
                     "java.management": [
                         "sun.management",
-                    ],
-                    "java.xml.crypto": [
-                        "org.jcp.xml.dsig.internal.dom",
                     ],
                 },
             },

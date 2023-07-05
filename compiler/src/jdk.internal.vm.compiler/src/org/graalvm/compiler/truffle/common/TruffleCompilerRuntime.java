@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -137,6 +138,15 @@ public interface TruffleCompilerRuntime {
             return allowsInlining;
         }
     }
+
+    /**
+     * Notifies this runtime once {@code installedCode} has been installed in the code cache. On
+     * SubstrateVM this callback is currently unused.
+     *
+     * @param compilable the {@link TruffleCompilable compilable} to install code into
+     * @param installedCode code that has just been installed in the code cache
+     */
+    void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode);
 
     /**
      * Returns Truffle related method information during host compilation. Do not call this method
@@ -320,15 +330,6 @@ public interface TruffleCompilerRuntime {
      * @throws NoClassDefFoundError if resolution fails and {@code required == true}
      */
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
-
-    /**
-     * Gets the Graal option values for this runtime in an instance of {@code type}.
-     *
-     * @throws IllegalArgumentException if this runtime does not support {@code type}
-     */
-    default <T> T getGraalOptions(Class<T> type) {
-        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
-    }
 
     /**
      * Determines if {@code type} is a value type. Reference comparisons (==) between value type

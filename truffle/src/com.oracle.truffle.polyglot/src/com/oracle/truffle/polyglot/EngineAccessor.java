@@ -74,6 +74,8 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -292,22 +294,36 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
             // 1) Add known Truffle DynamicObjectLibraryProvider service.
             DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 2) Search guest languages using TruffleLanguageProvider lookup
-            LanguageCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 3) Search guest tools using TruffleInstrumentProvider lookup
-            InstrumentCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 4) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
-            // GR-46293 Remove the deprecated ServiceLoader lookup.
+            Class<? extends T> legacyInterface = null;
+            if (type == EagerExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.EagerExportProvider.class.asSubclass(type);
+            } else if (type == DefaultExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.DefaultExportProvider.class.asSubclass(type);
+            }
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
-                    ModuleUtils.exportToUnnamedModuleOf(loader);
+                    // 2) Lookup implementations of a module aware interface
                     for (T service : ServiceLoader.load(type, loader)) {
-                        found.putIfAbsent(service.getClass(), service);
+                        if (loaderSupplier.accepts(service.getClass())) {
+                            ModuleUtils.exportTransitivelyTo(service.getClass().getModule());
+                            found.putIfAbsent(service.getClass(), service);
+                        }
+                    }
+                    // 3) Lookup implementations of a legacy interface
+                    // GR-46293 Remove the deprecated service interface lookup.
+                    if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
+                        ModuleUtils.exportToUnnamedModuleOf(loader);
+                        for (T service : ServiceLoader.load(legacyInterface, loader)) {
+                            if (loaderSupplier.accepts(service.getClass())) {
+                                found.putIfAbsent(service.getClass(), service);
+                            }
+                        }
                     }
                 }
             }
@@ -2035,6 +2051,10 @@ final class EngineAccessor extends Accessor {
             this.hashCode = loader == null ? 0 : loader.hashCode();
         }
 
+        boolean supportsLegacyProviders() {
+            return true;
+        }
+
         boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
             return true;
         }
@@ -2079,6 +2099,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        boolean supportsLegacyProviders() {
+            return false;
+        }
+
+        @Override
         boolean accepts(Class<?> clazz) {
             return clazz.getModule().isNamed();
         }
@@ -2103,6 +2128,11 @@ final class EngineAccessor extends Accessor {
 
         WeakModulePathLoaderSupplier(ClassLoader loader) {
             super(loader);
+        }
+
+        @Override
+        boolean supportsLegacyProviders() {
+            return false;
         }
 
         @Override

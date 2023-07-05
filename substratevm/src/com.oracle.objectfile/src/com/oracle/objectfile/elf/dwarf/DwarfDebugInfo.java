@@ -79,40 +79,45 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_class_layout1 = 6;
     public static final int DW_ABBREV_CODE_class_layout2 = 7;
     public static final int DW_ABBREV_CODE_class_pointer = 8;
-    public static final int DW_ABBREV_CODE_method_location = 9;
-    public static final int DW_ABBREV_CODE_static_field_location = 10;
-    public static final int DW_ABBREV_CODE_array_layout = 11;
-    public static final int DW_ABBREV_CODE_array_pointer = 12;
-    public static final int DW_ABBREV_CODE_interface_layout = 13;
-    public static final int DW_ABBREV_CODE_interface_pointer = 14;
-    public static final int DW_ABBREV_CODE_indirect_layout = 15;
-    public static final int DW_ABBREV_CODE_indirect_pointer = 16;
+    public static final int DW_ABBREV_CODE_foreign_pointer = 9;
+    public static final int DW_ABBREV_CODE_foreign_typedef = 10;
+    public static final int DW_ABBREV_CODE_foreign_struct = 11;
+    public static final int DW_ABBREV_CODE_method_location = 12;
+    public static final int DW_ABBREV_CODE_static_field_location = 13;
+    public static final int DW_ABBREV_CODE_array_layout = 14;
+    public static final int DW_ABBREV_CODE_array_pointer = 15;
+    public static final int DW_ABBREV_CODE_interface_layout = 16;
+    public static final int DW_ABBREV_CODE_interface_pointer = 17;
+    public static final int DW_ABBREV_CODE_indirect_layout = 18;
+    public static final int DW_ABBREV_CODE_indirect_pointer = 19;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_declaration = 17;
-    public static final int DW_ABBREV_CODE_method_declaration_static = 18;
-    public static final int DW_ABBREV_CODE_field_declaration1 = 19;
-    public static final int DW_ABBREV_CODE_field_declaration2 = 20;
-    public static final int DW_ABBREV_CODE_field_declaration3 = 21;
-    public static final int DW_ABBREV_CODE_field_declaration4 = 22;
-    public static final int DW_ABBREV_CODE_class_constant = 23;
-    public static final int DW_ABBREV_CODE_header_field = 24;
-    public static final int DW_ABBREV_CODE_array_data_type = 25;
-    public static final int DW_ABBREV_CODE_super_reference = 26;
-    public static final int DW_ABBREV_CODE_interface_implementor = 27;
+    public static final int DW_ABBREV_CODE_method_declaration = 20;
+    public static final int DW_ABBREV_CODE_method_declaration_static = 21;
+    public static final int DW_ABBREV_CODE_field_declaration1 = 22;
+    public static final int DW_ABBREV_CODE_field_declaration2 = 23;
+    public static final int DW_ABBREV_CODE_field_declaration3 = 24;
+    public static final int DW_ABBREV_CODE_field_declaration4 = 25;
+    public static final int DW_ABBREV_CODE_class_constant = 26;
+    public static final int DW_ABBREV_CODE_header_field = 27;
+    public static final int DW_ABBREV_CODE_array_data_type1 = 28;
+    public static final int DW_ABBREV_CODE_array_data_type2 = 29;
+    public static final int DW_ABBREV_CODE_array_subrange = 30;
+    public static final int DW_ABBREV_CODE_super_reference = 31;
+    public static final int DW_ABBREV_CODE_interface_implementor = 32;
     /* Level 2+K DIEs (where inline depth K >= 0) */
-    public static final int DW_ABBREV_CODE_inlined_subroutine = 28;
-    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 29;
+    public static final int DW_ABBREV_CODE_inlined_subroutine = 33;
+    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 34;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 30;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 31;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 32;
-    public static final int DW_ABBREV_CODE_method_local_declaration1 = 33;
-    public static final int DW_ABBREV_CODE_method_local_declaration2 = 34;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 35;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 36;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 37;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 38;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 39;
     /* Level 3 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_location1 = 35;
-    public static final int DW_ABBREV_CODE_method_parameter_location2 = 36;
-    public static final int DW_ABBREV_CODE_method_local_location1 = 37;
-    public static final int DW_ABBREV_CODE_method_local_location2 = 38;
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 40;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 41;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 42;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 43;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
@@ -124,8 +129,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_pointer_type = 0x0f;
     public static final int DW_TAG_compile_unit = 0x11;
     public static final int DW_TAG_structure_type = 0x13;
+    public static final int DW_TAG_typedef = 0x16;
     public static final int DW_TAG_union_type = 0x17;
     public static final int DW_TAG_inheritance = 0x1c;
+    public static final int DW_TAG_subrange_type = 0x21;
     public static final int DW_TAG_base_type = 0x24;
     public static final int DW_TAG_constant = 0x27;
     public static final int DW_TAG_subprogram = 0x2e;
@@ -152,6 +159,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_abstract_origin = 0x31;
     public static final int DW_AT_accessibility = 0x32;
     public static final int DW_AT_artificial = 0x34;
+    public static final int DW_AT_count = 0x37;
     public static final int DW_AT_data_member_location = 0x38;
     @SuppressWarnings("unused") public static final int DW_AT_decl_column = 0x39;
     public static final int DW_AT_decl_file = 0x3a;
@@ -239,6 +247,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final byte DW_ATE_signed = 0x5;
     public static final byte DW_ATE_signed_char = 0x6;
     public static final byte DW_ATE_unsigned = 0x7;
+    public static final byte DW_ATE_unsigned_char = 0x8;
 
     /*
      * CIE and FDE entries.
@@ -573,6 +582,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setTypeIndex(TypeEntry typeEntry, int idx) {
+        assert idx >= 0;
         DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
         assert typeProperties.getTypeInfoIndex() == -1 || typeProperties.getTypeInfoIndex() == idx;
         typeProperties.setTypeInfoIndex(idx);
@@ -589,6 +599,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setIndirectTypeIndex(TypeEntry typeEntry, int idx) {
+        assert idx >= 0;
         DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
         assert typeProperties.getIndirectTypeInfoIndex() == -1 || typeProperties.getIndirectTypeInfoIndex() == idx;
         typeProperties.setIndirectTypeInfoIndex(idx);
@@ -605,6 +616,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setLayoutIndex(ClassEntry classEntry, int idx) {
+        assert idx >= 0 || idx == -1;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
         assert classProperties.layoutIndex == -1 || classProperties.layoutIndex == idx;
@@ -620,6 +632,19 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     void setIndirectLayoutIndex(ClassEntry classEntry, int idx) {
+        // The layout index of a POINTER type is set to the type index of its referent.
+        // If the pointer type is generated before its referent that means it can be set
+        // with value -1 (unset) on the first sizing pass. The indirect layout will
+        // be reset to a positive offset on the second pass before it is used to write
+        // the referent of the pointer type. Hence the condition in the following assert.
+        assert idx >= 0 || idx == -1;
+        // Note however, that this possibility needs to be finessed when writing
+        // a foreign struct ADDRESS field of POINTER type (i.e. an embedded field).
+        // If the struct is generated before the POINTER type then the layout index will
+        // still be -1 during the second write pass when the field type needs to be
+        // written. This possibility is handled by typing the field using the typeIdx
+        // of the referent. the latter is guaranteed to have been set during the first pass.
+
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
         assert classProperties.indirectLayoutIndex == -1 || classProperties.indirectLayoutIndex == idx;

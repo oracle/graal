@@ -52,11 +52,6 @@ public interface TruffleCompiler {
     void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener);
 
     /**
-     * Returns a unique name for the configuration in use by this compiler.
-     */
-    String getCompilerConfigurationName();
-
-    /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
      * finalization tasks. This is typically performed when the process exits.
      */

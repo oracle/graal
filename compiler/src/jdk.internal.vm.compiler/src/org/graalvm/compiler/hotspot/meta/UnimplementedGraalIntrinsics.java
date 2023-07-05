@@ -440,17 +440,6 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$UnaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
                             // @formatter:on
             );
-            if (JAVA_SPEC >= 21) {
-                // JDK-8304303
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiEnd()V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiHideFrames(Z)V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiMount(Z)V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiMount(ZZ)V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiStart()V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiUnmount(ZZ)V");
-                add(toBeInvestigated, "java/lang/VirtualThread.notifyJvmtiUnmount(Z)V");
-            }
-
             // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8294198
             add(toBeInvestigated,
                             "java/lang/Double.isFinite(D)Z",

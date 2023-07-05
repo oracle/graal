@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,4 +33,123 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMBuiltin extends LLVMExpressionNode {
 
+    public interface ScalarBuiltinFactory {
+
+        LLVMExpressionNode create(LLVMExpressionNode[] args);
+    }
+
+    public interface ScalarBuiltinFactory1 extends ScalarBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(LLVMExpressionNode[] args) {
+            return create(args[1]);
+        }
+
+        LLVMExpressionNode create(LLVMExpressionNode arg);
+    }
+
+    public interface ScalarBuiltinFactory2 extends ScalarBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(LLVMExpressionNode[] args) {
+            return create(args[1], args[2]);
+        }
+
+        LLVMExpressionNode create(LLVMExpressionNode arg1, LLVMExpressionNode arg2);
+    }
+
+    public interface ScalarBuiltinFactory3 extends ScalarBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(LLVMExpressionNode[] args) {
+            return create(args[1], args[2], args[3]);
+        }
+
+        LLVMExpressionNode create(LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3);
+    }
+
+    public interface VectorBuiltinFactory {
+
+        LLVMExpressionNode create(int vectorSize, LLVMExpressionNode[] args);
+    }
+
+    public interface VectorBuiltinFactory1 extends VectorBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(int vectorSize, LLVMExpressionNode[] args) {
+            return create(vectorSize, args[1]);
+        }
+
+        LLVMExpressionNode create(int vectorSize, LLVMExpressionNode arg);
+    }
+
+    public interface VectorBuiltinFactory2 extends VectorBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(int vectorSize, LLVMExpressionNode[] args) {
+            return create(vectorSize, args[1], args[2]);
+        }
+
+        LLVMExpressionNode create(int vectorSize, LLVMExpressionNode arg1, LLVMExpressionNode arg2);
+    }
+
+    public interface VectorBuiltinFactory3 extends VectorBuiltinFactory {
+
+        @Override
+        default LLVMExpressionNode create(int vectorSize, LLVMExpressionNode[] args) {
+            return create(vectorSize, args[1], args[2], args[3]);
+        }
+
+        LLVMExpressionNode create(int vectorSize, LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3);
+    }
+
+    public interface TypedBuiltinFactory {
+
+        ScalarBuiltinFactory getScalar();
+
+        VectorBuiltinFactory getVector();
+
+        static TypedBuiltinFactory vector(ScalarBuiltinFactory f, VectorBuiltinFactory v) {
+            return new TypedBuiltinFactory() {
+
+                @Override
+                public ScalarBuiltinFactory getScalar() {
+                    return f;
+                }
+
+                @Override
+                public VectorBuiltinFactory getVector() {
+                    return v;
+                }
+            };
+        }
+
+        static TypedBuiltinFactory vector1(ScalarBuiltinFactory1 f, VectorBuiltinFactory1 v) {
+            return vector(f, v);
+        }
+
+        static TypedBuiltinFactory vector2(ScalarBuiltinFactory2 f, VectorBuiltinFactory2 v) {
+            return vector(f, v);
+        }
+
+        static TypedBuiltinFactory vector3(ScalarBuiltinFactory3 f, VectorBuiltinFactory3 v) {
+            return vector(f, v);
+        }
+
+        static TypedBuiltinFactory simple(ScalarBuiltinFactory f) {
+            return vector(f, null);
+        }
+
+        static TypedBuiltinFactory simple1(ScalarBuiltinFactory1 f) {
+            return vector(f, null);
+        }
+
+        static TypedBuiltinFactory simple2(ScalarBuiltinFactory2 f) {
+            return vector(f, null);
+        }
+
+        static TypedBuiltinFactory simple3(ScalarBuiltinFactory3 f) {
+            return vector(f, null);
+        }
+    }
 }

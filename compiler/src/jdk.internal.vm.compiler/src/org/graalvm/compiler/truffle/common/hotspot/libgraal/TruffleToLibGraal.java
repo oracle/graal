@@ -61,7 +61,7 @@ public @interface TruffleToLibGraal {
         InitializeCompiler,
         RegisterRuntime,
         ListCompilerOptions,
-        ExistsCompilerOption,
+        CompilerOptionExists,
         ValidateCompilerOption,
         InitializeRuntime,
         InstallTruffleCallBoundaryMethod,

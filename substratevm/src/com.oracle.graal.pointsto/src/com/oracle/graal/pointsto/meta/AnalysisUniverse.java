@@ -702,6 +702,10 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
+    public void initializeMetaData(AnalysisType type) {
+        bb.initializeMetaData(type);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }

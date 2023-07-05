@@ -3,24 +3,21 @@ layout: ohc
 permalink: /getting-started/
 ---
 
-# Get Started with Oracle GraalVM
+# Getting Started with Oracle GraalVM
 
-Here you will find information about downloading and installing Oracle GraalVM, running basic applications with it, and adding support for its accompanying features.
-You will also learn about the polyglot capabilities of Oracle GraalVM and see how to build a platform-specific native executable from a JVM-based application.
+Oracle GraalVM compiles your Java applications ahead of time into standalone binaries that start instantly, provide peak performance with no warmup, and use fewer resources.
 
-If you are new to Oracle GraalVM or have little experience using it, we recommend you to start with the [Oracle GraalVM Overview](../../enterprise-overview/architecture-overview.md) page.
-It provides information about Oracle GraalVM's architecture, available distributions, supported platforms, licensing and support, core and additional features, and much more.
+Here you will find information about installing Oracle GraalVM and running basic applications with it.
 
-If you have already installed Oracle GraalVM and have experience using it, you can skip this getting started guide and proceed to the in-depth [Reference Manuals](../../reference-manual/reference-manuals.md).
+If you are new to Oracle GraalVM, we recommend starting with the [GraalVM Overview](../../introduction.md), where you will find information about GraalVM's benefits, distributions available, supported platforms, features support, and licensing.
 
-## Download Oracle GraalVM
+If you have Oracle GraalVM already installed and have experience using it, you can skip this page and proceed to the in-depth [reference manuals](../../reference-manual/reference-manuals.md).
+## How Can I Get Oracle GraalVM?
 
 You can get Oracle GraalVM by:
-- downloading from [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
+- downloading from [Oracle Java Downloads](https://www.oracle.com/uk/java/technologies/downloads/).
 - subscribing to [Oracle Java SE Subscription and Oracle Java SE Desktop Subscription](https://www.oracle.com/uk/java/java-se-subscription/). The subscription includes entitlement to Oracle GraalVM.
 - subscribing to [Oracle Cloud](https://www.oracle.com/cloud). Oracle GraalVM is free to use, including support, for Oracle Cloud subscribers.
-
-## Install Oracle GraalVM
 
 Choose your operating system and proceed to the installation steps for your specific platform:
 
@@ -29,20 +26,15 @@ Choose your operating system and proceed to the installation steps for your spec
   * [Cloud Shell](oci/cloud-shell.md)
   * [Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
   * [DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
-* [Linux](installation-linux.md)
-* [macOS](installation-macos.md)
-* [Windows](installation-windows.md)
+* [Linux](linux.md)
+* [macOS](macos.md)
+* [Windows](windows.md)
 * [Container Images](container-images/graalvm-ee-container-images.md)
 
-## Running Applications
+## Start Running Applications
 
-The core distribution of GraalVM includes the JDK, the Graal compiler, and Native Image.
-Having installed GraalVM, you can already run any Java application unmodified.
-
-Other features can be installed on request, using **gu**&emdash;the GraalVM Updater tool to install additional language runtimes and utilities.
-Further below you will find information on how to add other optionally available language runtimes including JavaScript and Node.js.
-
-### Java
+The core distribution of Oracle GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and others.
+You can use the GraalVM JDK just like any other JDK in your IDE, so having installed Oracle GraalVM, you can run any Java application unmodified.
 
 The `java` launcher runs the JVM with Graal as the last-tier compiler.
 Check the installed Java version:
@@ -50,7 +42,9 @@ Check the installed Java version:
 $JAVA_HOME/bin/java -version
 ```
 
-Take a look at this typical `HelloWorld` class:
+Using [GraalVM Native Image](../../reference-manual/native-image/README.md) you can compile Java bytecode into a platform-specific, self-contained native executable to achieve faster startup and a smaller footprint for your application.
+
+Compile this simplest _HelloWorld.java_ application to bytecode and then build a native executable:
 ```java
 public class HelloWorld {
   public static void main(String[] args) {
@@ -59,35 +53,10 @@ public class HelloWorld {
 }
 ```
 
-Run the following commands to compile this class to bytecode and then run it:
 ```shell
 javac HelloWorld.java
-java HelloWorld
-Hello World!
 ```
-
-You can find many larger Java examples in [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
-For more information on the Graal compiler, see the [compiler documentation](../../reference-manual/java/compiler.md).
-For more extensive documentation on running Java, check [this reference documentation](../../reference-manual/java/README.md).
-
-### Native Image
-
-With [Native Image](../../reference-manual/native-image/README.md) you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
-
-The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
-```java
-public class HelloWorld {
-  public static void main(String[] args) {
-    System.out.println("Hello, World!");
-  }
-}
-```
-
-> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
-
-Compile _HelloWorld.java_ to bytecode and then build a native executable:
 ```shell
-javac HelloWorld.java
 native-image HelloWorld
 ```
 
@@ -98,88 +67,27 @@ Invoking it runs the natively compiled code of the `HelloWorld` class as follows
 Hello, World!
 ```
 
-More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
-
-### JavaScript and Node.js
-
-GraalVM supports running JavaScript applications.
-The JavaScript runtime is optionally available and can be installed with this command:
-```shell
-gu install js
-```
-
-It installs the `js` launcher in the `$JAVA_HOME/bin` directory.
-With the JavaScript runtime installed, you can run plain JavaScript code, both in REPL mode and by running script files directly:
-```shell
-$JAVA_HOME/bin/js
-> 1 + 2
-3
-```
-
-GraalVM also supports running Node.js applications.
-The Node.js runtime is not installed by default, but can be easily added with this command:
-```shell
-gu install nodejs
-```
-
-Both `node` and  `npm` launchers then become available in the `$JAVA_HOME/bin` directory.
-
-```shell
-$JAVA_HOME/bin/node -v
-$JAVA_HOME/bin/npm show <package name> version
-```
-
-More than 100,000 npm packages are regularly tested and are compatible with Oracle GraalVM, including modules such as express, react, async, request, browserify, grunt, mocha, and underscore.
-To install a Node.js module, use the `npm` executable from the _$JAVA_HOME/bin_ directory, which is installed together with `node`.
-The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
-
-Install the modules `colors`, `ansispan`, and `express` using `npm install`.
-After the modules are installed, you can use them from your application.
-```shell
-$JAVA_HOME/bin/npm install colors ansispan express
-```
-
-Copy the following code snippet and save it as a file named _app.js_ in the same directory where you installed the Node.js modules:
-```js
-const http = require("http");
-const span = require("ansispan");
-require("colors");
-
-http.createServer(function (request, response) {
-    response.writeHead(200, {"Content-Type": "text/html"});
-    response.end(span("Hello Graal.js!".green));
-}).listen(8000, function() { console.log("Graal.js server running at http://127.0.0.1:8000/".red); });
-
-setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
-```
-
-Run _app.js_ on Oracle GraalVM using the `node` command:
-
-```shell
-$JAVA_HOME/bin/node app.js
-```
-
-For more detailed documentation and information on compatibility with Node.js, see [JavaScript and Node.js](../../reference-manual/js/README.md).
-
-## Combine Languages
-
-Oracle GraalVM allows you to call one programming language into another and exchange data between them.
-For example, running `js --jvm --polyglot example.js` runs `example.js` in a polyglot context.
-If the program calls any code in other supported languages, Oracle GraalVM runs that code in the same runtime as the `example.js` application.
-For more information on running polyglot applications, see [Polyglot Programming](../../reference-manual/polyglot-programming.md).
+> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
 
 ## What to Read Next
 
 ### New Users
-Since this guide is intended mainly for users new to Oracle GraalVM, or users who are familiar with Oracle GraalVM but may have little experience using it, consider investigating more complex [example applications](https://github.com/graalvm/graalvm-demos).
+
+Continue to [Native Image basics](../../reference-manual/native-image/NativeImageBasics.md) to gradually educate yourself about the technology.
+For users who are familiar with GraalVM Native Image but may have little experience using it, proceed to [User Guides](../../reference-manual/native-image/guides/guides.md).
+
+For more information on the Graal compiler, see the [compiler documentation](../../reference-manual/java/compiler.md). 
+Larger Java examples can be found in the [GraalVM Demos repository on GitHub](https://github.com/graalvm/graalvm-demos).
 
 ### Oracle Cloud Users
+
 Oracle Cloud users considering Oracle GraalVM for their cloud workloads are invited to read [Oracle GraalVM on OCI](oci/installation-compute-instance-with-OL.md).
 This page focuses on using Oracle GraalVM with an Oracle Cloud Infrastructure Compute instance.
 
 ### Advanced Users
-If you are mostly interested in Oracle GraalVM support for a specific language, or want more in-depth details about Oracle GraalVM's diverse features, proceed to [Reference Manuals](../../reference-manual/reference-manuals.md).
 
-If you are considering Oracle GraalVM as a platform for your future language or tool implementation, go to [Oracle GraalVM as a Platform](../../../truffle/docs/README.md).
+Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation. 
 
-You can find information on Oracle GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in [GraalVM SDK Javadoc](https://docs.oracle.com/en/graalvm/enterprise/22/sdk/index.html).
+You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [Oracle GraalVM Java API Reference](https://docs.oracle.com/en/graalvm/jdk/17/sdk/).
+
+We also recommend checking the [GraalVM Team Blog](https://medium.com/graalvm).

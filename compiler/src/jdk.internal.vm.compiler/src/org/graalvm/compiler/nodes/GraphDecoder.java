@@ -214,11 +214,11 @@ public class GraphDecoder {
             return false;
         }
 
-        public NodeSourcePosition getCallerBytecodePosition() {
-            return getCallerBytecodePosition(null);
+        public NodeSourcePosition getCallerNodeSourcePosition() {
+            return null;
         }
 
-        public NodeSourcePosition getCallerBytecodePosition(NodeSourcePosition position) {
+        public NodeSourcePosition getNodeSourcePosition(NodeSourcePosition position) {
             return position;
         }
 
@@ -1425,10 +1425,10 @@ public class GraphDecoder {
                 }
             }
             if (graph.trackNodeSourcePosition() && position != null) {
-                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
-                node.setNodeSourcePosition(callerBytecodePosition);
-                if (node instanceof DeoptimizingGuard) {
-                    ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+                NodeSourcePosition newPosition = methodScope.getNodeSourcePosition(position);
+                node.setNodeSourcePosition(newPosition);
+                if (node instanceof DeoptimizingGuard deoptGuard && !newPosition.equals(position)) {
+                    deoptGuard.addCallerToNoDeoptSuccessorPosition(newPosition.getCaller());
                 }
             }
         }

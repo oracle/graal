@@ -33,8 +33,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -42,6 +40,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -328,7 +327,13 @@ public final class Target_java_lang_ClassLoader {
 final class Target_java_lang_AssertionStatusDirectives {
 }
 
-class PackageFieldTransformer implements FieldValueTransformer {
+class PackageFieldTransformer implements FieldValueTransformerWithAvailability {
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
     @Override
     public Object transform(Object receiver, Object originalValue) {
         assert receiver instanceof ClassLoader;

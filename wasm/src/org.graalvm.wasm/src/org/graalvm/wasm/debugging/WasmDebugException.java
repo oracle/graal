@@ -45,7 +45,7 @@ import java.io.Serial;
 /**
  * Exception used when extracting debugging information fails.
  */
-public class WasmDebugException extends RuntimeException {
+public class WasmDebugException extends Exception {
 
     @Serial private static final long serialVersionUID = 7954285969375752092L;
 

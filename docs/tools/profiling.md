@@ -102,7 +102,7 @@ algorithm.
     ```
     It should produce a file called `flamegraph.svg` containing something like this:
 
-    ![](img/profiler_flamegraph.png)
+    ![Profiler Flamegraph](img/profiler_flamegraph.png)
 
     You can zoom into the graph by clicking on elements.
 

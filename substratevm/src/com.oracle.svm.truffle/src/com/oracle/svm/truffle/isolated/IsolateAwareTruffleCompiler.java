@@ -222,11 +222,6 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     }
 
     @Override
-    public String getCompilerConfigurationName() {
-        return delegate.getCompilerConfigurationName(); // constant
-    }
-
-    @Override
     public void teardown() {
         if (SubstrateOptions.shouldCompileInIsolates()) {
             tearDownIsolateOnShutdown();

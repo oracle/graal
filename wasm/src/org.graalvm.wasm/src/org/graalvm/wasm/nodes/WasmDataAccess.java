@@ -47,6 +47,9 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
  * Interface for accessing the data needed for debugging.
  */
 public interface WasmDataAccess {
+
+    boolean isValidStackIndex(MaterializedFrame frame, int index);
+
     int loadI32FromStack(MaterializedFrame frame, int index);
 
     long loadI64FromStack(MaterializedFrame frame, int index);
@@ -54,6 +57,8 @@ public interface WasmDataAccess {
     float loadF32FromStack(MaterializedFrame frame, int index);
 
     double loadF64FromStack(MaterializedFrame frame, int index);
+
+    boolean isValidLocalIndex(MaterializedFrame frame, int index);
 
     int loadI32FromLocals(MaterializedFrame frame, int index);
 
@@ -63,6 +68,8 @@ public interface WasmDataAccess {
 
     double loadF64FromLocals(MaterializedFrame frame, int index);
 
+    boolean isValidGlobalIndex(int index);
+
     int loadI32FromGlobals(int index);
 
     long loadI64FromGlobals(int index);
@@ -70,6 +77,8 @@ public interface WasmDataAccess {
     float loadF32FromGlobals(int index);
 
     double loadF64FromGlobals(int index);
+
+    boolean isValidMemoryAddress(long address, int length);
 
     byte loadI8FromMemory(long address);
 

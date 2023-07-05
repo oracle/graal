@@ -303,7 +303,7 @@ public class TruffleCompilerOptions {
         }
     }
 
-    public static boolean existsOption(String key) {
+    public static boolean optionExists(String key) {
         return TruffleCompilerImpl.OPTION_DESCRIPTORS.get(key) != null;
     }
 

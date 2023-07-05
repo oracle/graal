@@ -269,19 +269,19 @@ final class WhiteListParser extends ConfigurationParser {
         private final BigBang bb;
 
         SignaturePredicate(AnalysisType owner, List<? extends ResolvedJavaType> params, BigBang bb) {
-            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrapped();
+            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrappedWithResolve();
             this.params = Objects.requireNonNull(params, "Params must be non null.");
             this.bb = Objects.requireNonNull(bb, "BigBang must be non null.");
         }
 
         @Override
         public boolean test(ResolvedJavaMethod t) {
-            Signature signaure = t.getSignature();
-            if (params.size() != signaure.getParameterCount(false)) {
+            Signature signature = t.getSignature();
+            if (params.size() != signature.getParameterCount(false)) {
                 return false;
             }
-            for (int i = 0; i < signaure.getParameterCount(false); i++) {
-                ResolvedJavaType st = bb.getUniverse().lookup(signaure.getParameterType(i, owner));
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                ResolvedJavaType st = bb.getUniverse().lookup(signature.getParameterType(i, owner));
                 ResolvedJavaType pt = params.get(i);
                 if (!pt.equals(st)) {
                     return false;

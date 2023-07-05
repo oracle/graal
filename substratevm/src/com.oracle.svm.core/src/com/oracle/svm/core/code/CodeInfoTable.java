@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,6 +50,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -296,6 +299,13 @@ class CodeInfoFeature implements InternalFeature {
         ImageSingletons.add(RuntimeCodeInfoHistory.class, new RuntimeCodeInfoHistory());
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
+
+        List<MemoryManagerMXBean> memoryManagers = List.of(new CodeCacheManagerMXBean());
+        List<MemoryPoolMXBean> memoryPools = CodeCachePoolMXBean.getMemoryPools();
+
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, memoryManagers);
+        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, memoryPools);
     }
 
     @Override

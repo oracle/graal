@@ -324,18 +324,18 @@ public final class EngineData {
     }
 
     /**
-     * Checks if the {@link OptimizedCallTarget} for the given {@link RootNode} should be compiled.
-     * The {@link OptimizedRuntimeOptions#Compilation Compilation} and
+     * Checks if a {@link OptimizedCallTarget} should be compiled. The
+     * {@link OptimizedRuntimeOptions#Compilation Compilation} and
      * {@link OptimizedRuntimeOptions#CompileOnly CompileOnly} options are used to determine if the
      * calltarget should be compiled.
      */
-    boolean acceptForCompilation(RootNode rootNode) {
+    boolean acceptForCompilation(OptimizedCallTarget target) {
         if (!compilation) {
             return false;
         }
         Pair<List<String>, List<String>> value = getCompileOnly();
         if (value != null) {
-            String name = rootNode.getName();
+            String name = target.getName();
             List<String> includes = value.getLeft();
             boolean included = includes.isEmpty();
             if (name != null) {

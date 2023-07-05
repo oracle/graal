@@ -1140,7 +1140,7 @@ class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
         self._svm_ee_supported = self._svm_supported and has_component('svmee', stage1=True)
-        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows() or (mx.is_darwin() and has_component('svmee', stage1=True)))
+        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows())
         self._separate_debuginfo_ext = {
             'linux': '.debug',
             'windows': '.pdb',
@@ -1182,8 +1182,6 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
-        if mx.is_darwin():
-            flags += ['-H:+UseOldDebugInfo']
         if self.generate_separate_debug_info(image_config):
             flags += ['-H:+StripDebugInfo']
         return flags
@@ -2310,7 +2308,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
     def get_build_args(self):
         build_args = [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config),
-            '-H:NumberOfThreads=' + str(self.parallelism),
+            '--parallelism=' + str(self.parallelism),
             '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]
@@ -2675,7 +2673,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         self.main_comp_dir_name = component.dir_name
 
         name = '_'.join([component.installable_id, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
-        self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
+        dir_name = component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else component.standalone_dir_name
+        self.base_dir_name = graalvm.string_substitutions.substitute(dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 

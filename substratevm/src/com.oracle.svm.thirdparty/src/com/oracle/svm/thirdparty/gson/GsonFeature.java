@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.thirdparty.gson;
 
+import java.util.Optional;
+
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Support for the Gson library on SubstrateVM.
@@ -36,25 +38,33 @@ import com.oracle.svm.core.util.VMError;
  * to be registered manually by the user using the {@link RuntimeReflection runtime reflection
  * support} of Substrate VM. It is not feasible to automatically detect all necessary classes.
  * <p>
- * This feature registers parts of {@link sun.misc.Unsafe} as reflectively accessible. Gson uses it
+ * This feature registers parts of {@code sun.misc.Unsafe} as reflectively accessible. Gson uses it
  * internally to instantiate classes that do not have a no-argument constructor.
  */
 public final class GsonFeature implements Feature {
 
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("jdk.unsupported");
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName("com.google.gson.Gson") != null;
+        /* `sun.misc.Unsafe` is in `jdk.unsupported` */
+        return requiredModule().isPresent();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            /* Reflection usage in com.google.gson.internal.UnsafeAllocator.create(). */
-            RuntimeReflection.register(sun.misc.Unsafe.class);
-            RuntimeReflection.register(sun.misc.Unsafe.class.getDeclaredField("theUnsafe"));
-            RuntimeReflection.register(sun.misc.Unsafe.class.getDeclaredMethod("allocateInstance", Class.class));
-        } catch (NoSuchFieldException | NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
+        Class<?> gsonClass = access.findClassByName("com.google.gson.Gson");
+        if (gsonClass != null) {
+            access.registerReachabilityHandler(GsonFeature::makeUnsafeReflectivelyAccessible, gsonClass);
         }
+    }
+
+    private static void makeUnsafeReflectivelyAccessible(DuringAnalysisAccess a) {
+        Class<?> unsafeClass = a.findClassByName("sun.misc.Unsafe");
+        RuntimeReflection.register(unsafeClass);
+        RuntimeReflection.register(ReflectionUtil.lookupField(unsafeClass, "theUnsafe"));
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(unsafeClass, "allocateInstance", Class.class));
     }
 }

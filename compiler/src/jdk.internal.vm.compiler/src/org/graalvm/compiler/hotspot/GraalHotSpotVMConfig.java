@@ -129,6 +129,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
+    private final boolean useSHA3Intrinsics = getFlag("UseSHA3Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
@@ -154,6 +155,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean useSHA512Intrinsics() {
         return useSHA512Intrinsics && sha512ImplCompress != 0 && sha512ImplCompressMultiBlock != 0;
+    }
+
+    public boolean useSHA3Intrinsics() {
+        return useSHA3Intrinsics && sha3ImplCompress != 0 && sha3ImplCompressMultiBlock != 0;
     }
 
     public boolean useMontgomeryMultiplyIntrinsic() {
@@ -303,11 +308,20 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
         }
     }
+
+    public final boolean doJVMTIVirtualThreadTransitions = getFlag("DoJVMTIVirtualThreadTransitions", Boolean.class, false, JDK >= 20);
+
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
     public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle", -1, JDK >= 20 && (!JVMCI || jvmciGE(JVMCI_23_0_b06)));
 
+    public final int threadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool", -1, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+    public final int threadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool", -1, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+
+    public final int javaLangThreadIsInVTMSTransitonOffset = getFieldValue("java_lang_Thread::_jvmti_is_in_VTMS_transition_offset", Integer.class, "int", -1, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+    public final long virtualThreadVTMSNotifyJvmtiEvents = getFieldAddress("JvmtiVTMSTransitionDisabler::_VTMS_notify_jvmti_events", "bool", -1L, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
 
     public final int threadJFRThreadLocalOffset = getFieldOffset("Thread::_jfr_thread_local", Integer.class, "JfrThreadLocal", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
 
@@ -790,6 +804,15 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long fremAddress = getAddress("SharedRuntime::frem");
     public final long dremAddress = getAddress("SharedRuntime::drem");
+
+    public final long jvmtiVThreadStart = getAddress("SharedRuntime::notify_jvmti_vthread_start", 0L, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+    public final long jvmtiVThreadEnd = getAddress("SharedRuntime::notify_jvmti_vthread_end", 0L, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+    public final long jvmtiVThreadMount = getAddress("SharedRuntime::notify_jvmti_vthread_mount", 0L, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+    public final long jvmtiVThreadUnmount = getAddress("SharedRuntime::notify_jvmti_vthread_unmount", 0L, JDK >= 21 && jvmciGE(JVMCI_23_1_b07));
+
+    public boolean supportJVMTIVThreadNotification() {
+        return jvmtiVThreadStart != 0L && jvmtiVThreadEnd != 0L && jvmtiVThreadMount != 0L && jvmtiVThreadUnmount != 0L;
+    }
 
     public final int jvmciCountersSize = getFlag("JVMCICounterSize", Integer.class);
 

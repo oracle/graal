@@ -5,6 +5,7 @@
   "type": "object",
   "required": ["classes", "fields", "methods", "constructors"],
   "default": {},
+  "additionalProperties": false,
   "properties": {
     "classes": {
       "title": "The classes and interfaces included in the generated image",
@@ -25,6 +26,7 @@
         "type": "object",
         "required": ["declaringClass", "name"],
         "default": {},
+        "additionalProperties": false,
         "properties": {
           "declaringClass": {
             "default": "",
@@ -48,6 +50,7 @@
         "type": "object",
         "required": ["declaringClass", "name", "parameterTypes"],
         "default": {},
+        "additionalProperties": false,
         "properties": {
           "declaringClass": {
             "default": "",
@@ -81,6 +84,7 @@
         "type": "object",
         "required": ["declaringClass", "parameterTypes"],
         "default": {},
+        "additionalProperties": false,
         "properties": {
           "declaringClass": {
             "default": "",
