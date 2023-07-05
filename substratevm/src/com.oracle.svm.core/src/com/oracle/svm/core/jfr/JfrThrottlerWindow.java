@@ -39,9 +39,9 @@ public class JfrThrottlerWindow {
     public volatile double maxSampleablePopulation;
 
     // Set by user
-    public volatile long samplesPerWindow;
-    public volatile long windowDurationNs;
-    public volatile long debt;
+    public long samplesPerWindow;
+    public long windowDurationNs;
+    public long debt;
 
     public JfrThrottlerWindow() {
         windowDurationNs = 0;

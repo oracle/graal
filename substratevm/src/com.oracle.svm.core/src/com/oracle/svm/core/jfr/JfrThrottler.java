@@ -26,8 +26,6 @@
 
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-
 import com.oracle.svm.core.locks.VMMutex;
 
 /**
@@ -45,23 +43,21 @@ public class JfrThrottler {
 
     private final VMMutex mutex;
 
-    public UninterruptibleUtils.AtomicBoolean disabled;
+    public volatile boolean disabled;
     private JfrThrottlerWindow window0;
     private JfrThrottlerWindow window1;
     private volatile JfrThrottlerWindow activeWindow;
-    public volatile long eventSampleSize;
-    public volatile long periodNs;
-    private volatile double ewmaPopulationSizeAlpha = 0;
-    private volatile double avgPopulationSize = 0;
-    private volatile boolean reconfigure;
-    private volatile long accumulatedDebtCarryLimit;
-    private UninterruptibleUtils.AtomicLong accumulatedDebtCarryCount;
+    public long eventSampleSize;
+    public long periodNs;
+    private double ewmaPopulationSizeAlpha = 0;
+    private double avgPopulationSize = 0;
+    private boolean reconfigure;
+    private long accumulatedDebtCarryLimit;
+    private long accumulatedDebtCarryCount;
 
     public JfrThrottler(VMMutex mutex) {
-        accumulatedDebtCarryLimit = 0;
-        accumulatedDebtCarryCount = new UninterruptibleUtils.AtomicLong(0);
         reconfigure = false;
-        disabled = new UninterruptibleUtils.AtomicBoolean(true);
+        disabled = true;
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
         activeWindow = window0;
@@ -91,7 +87,7 @@ public class JfrThrottler {
 
     public boolean setThrottle(long eventSampleSize, long periodMs) {
         if (eventSampleSize == EVENT_THROTTLER_OFF) {
-            disabled.set(true);
+            disabled = true;
             return true;
         }
 
@@ -104,7 +100,7 @@ public class JfrThrottler {
         } finally {
             mutex.unlock();
         }
-        disabled.set(false);
+        disabled = false;
         return true;
     }
 
@@ -115,7 +111,7 @@ public class JfrThrottler {
      * next window (which gets reset before becoming active again).
      */
     public boolean sample() {
-        if (disabled.get()) {
+        if (disabled) {
             return true;
         }
         JfrThrottlerWindow window = activeWindow;
@@ -175,11 +171,11 @@ public class JfrThrottler {
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
         assert mutex.isOwner();
-        if (accumulatedDebtCarryCount.get() == accumulatedDebtCarryLimit) {
-            accumulatedDebtCarryCount.set(1);
+        if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
+            accumulatedDebtCarryCount = 1;
             return 0; // reset because new settings have been applied
         }
-        accumulatedDebtCarryCount.incrementAndGet();
+        accumulatedDebtCarryCount++;
         // Did we sample less than we were supposed to?
         return lastWindow.samplesExpected() - lastWindow.samplesTaken();
     }
@@ -216,7 +212,7 @@ public class JfrThrottler {
             setSamplePointsAndWindowDuration();
             accumulatedDebtCarryLimit = computeAccumulatedDebtCarryLimit(next.windowDurationNs);
             // This effectively means we reset the debt count upon reconfiguration
-            accumulatedDebtCarryCount.set(accumulatedDebtCarryLimit);
+            accumulatedDebtCarryCount = accumulatedDebtCarryLimit;
             avgPopulationSize = 0;
             ewmaPopulationSizeAlpha = 1.0 / windowLookback(next);
             reconfigure = false;
