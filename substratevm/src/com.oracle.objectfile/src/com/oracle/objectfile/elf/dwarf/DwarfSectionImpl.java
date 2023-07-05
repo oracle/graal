@@ -466,6 +466,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_LINE_SECTION_NAME, pos);
     }
 
+    protected int writeRangesSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_RANGES_SECTION_NAME, pos);
+    }
+
     protected int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
         return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_ABBREV_SECTION_NAME, pos);
     }
@@ -812,6 +816,21 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         dwarfSections.setIndirectTypeIndex(typeEntry, pos);
     }
 
+    protected int getCUIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getCUIndex(classEntry);
+    }
+
+    protected void setCUIndex(ClassEntry classEntry, int idx) {
+        dwarfSections.setCUIndex(classEntry, idx);
+    }
+
+    protected void setLayoutIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setLayoutIndex(classEntry, pos);
+    }
+
     protected int getLayoutIndex(ClassEntry classEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
@@ -830,8 +849,37 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getIndirectLayoutIndex(classEntry);
     }
 
-    protected void setLayoutIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setLayoutIndex(classEntry, pos);
+    protected void setCodeRangesIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setCodeRangesIndex(classEntry, pos);
+    }
+
+    protected int getCodeRangesIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getCodeRangesIndex(classEntry);
+    }
+
+    protected void setLineIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setLineIndex(classEntry, pos);
+    }
+
+    protected int getLineIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLineIndex(classEntry);
+    }
+
+    protected void setLinePrologueSize(ClassEntry classEntry, int pos) {
+        dwarfSections.setLinePrologueSize(classEntry, pos);
+    }
+
+    protected int getLinePrologueSize(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLinePrologueSize(classEntry);
     }
 
     protected void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
