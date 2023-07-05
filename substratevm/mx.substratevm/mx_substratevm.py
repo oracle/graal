@@ -938,7 +938,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle Macro', 'SubstrateVM Static Libraries'],
+    dependencies=['GraalVM compiler', 'Truffle API', 'Truffle Macro', 'SubstrateVM Static Libraries'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -1172,7 +1172,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 ))
 
 libgraal_jar_distributions = [
-    'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE',
+    'sdk:NATIVEBRIDGE',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
 libgraal_build_args = [
@@ -1225,7 +1225,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
     dir_name=False,
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['nativebridge'],
     jar_distributions=[],
     builder_jar_distributions=[],
     support_distributions=[],

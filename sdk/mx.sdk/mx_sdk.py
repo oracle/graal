@@ -119,6 +119,31 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='JNIUtils',
+    short_name='jniutils',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=[],
+    boot_jars=['sdk:JNIUTILS'],
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Native Bridge',
+    short_name='nativebridge',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['jniutils'],
+    jar_distributions=[],
+    boot_jars=['sdk:NATIVEBRIDGE'],
+    stability="supported",
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -133,7 +158,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
@@ -147,7 +171,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['LLVM_TOOLCHAIN'],
     stability="supported",
 ))
-
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
