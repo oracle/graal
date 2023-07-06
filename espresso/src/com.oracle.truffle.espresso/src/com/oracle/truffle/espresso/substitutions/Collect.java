@@ -41,7 +41,7 @@ public @interface Collect {
      * Anchor class(es).
      *
      * <p>
-     * One collector class will generated per anchor class, in the same package. The generated
+     * One collector class will be generated per anchor class, in the same package. The generated
      * collector provides a public static method
      * {@code <T> List<T> AnchorClassCollector.getInstances(Class<? extends T> componentType)} to
      * gather instances of all annotated classes. An empty constructor is required, or a static
@@ -65,7 +65,7 @@ public @interface Collect {
      * The name of a static instance provider method with no argument in the annotated class.
      * <p>
      * If left to {@code ""}, an empty constructor method will be used instead. Mostly useful to
-     * keep the simpleton property of the class if an instance is needed somewhere else than in the
+     * keep the singleton property of the class if an instance is needed somewhere else than in the
      * collector.
      */
     String getter() default "";

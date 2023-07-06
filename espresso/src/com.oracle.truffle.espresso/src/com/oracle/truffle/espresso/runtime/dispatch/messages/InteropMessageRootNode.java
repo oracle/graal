@@ -30,7 +30,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public final class InteropMessageRootNode extends RootNode {
-    private final InteropMessage node;
+    @Child InteropMessage node;
     private final UncaughtExceptionHandler interopExceptionHandler;
 
     public InteropMessageRootNode(TruffleLanguage<?> language, InteropMessage node) {
