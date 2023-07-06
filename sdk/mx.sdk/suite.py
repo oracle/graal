@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"],
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
       "mavenId" : "lafo",
     },
   },
@@ -368,6 +368,10 @@ suite = {
     "Apache-2.0-wrk-a211dd5" : {
       "name" : "Modified Apache 2.0 License",
       "url" : "https://raw.githubusercontent.com/wg/wrk/a211dd5a7050b1f9e8a9870b95513060e72ac4a0/LICENSE"
+    },
+    "ICU" : {
+      "name" : "Unicode/ICU License",
+      "url" : "https://raw.githubusercontent.com/unicode-org/icu/main/LICENSE",
     },
 },
 
