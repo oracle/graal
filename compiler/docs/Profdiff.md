@@ -213,18 +213,20 @@ If `--inliner-reasoning` is enabled, reasons for all inlining decisions are prin
 
 ## Hot compilation units
 
-Proftool samples the number of cycles spent executing each compilation unit. The tool marks some of the compilation
-units with the highest timeshare as *hot*. This is a different term than "hot" in the context of HotSpot. More
-precisely, the tool marks some *compilations units* as hot, whereas all the available methods (rather than their
-compilations) are considered hot in HotSpot's terminology.
+Proftool samples the number of cycles spent executing each native method. Profdiff reports two numbers for each
+compilation unit, e.g., `20.00% of Graal execution, 10.00% of total`. This means that proftool sampled 10% of all cycles
+in this compilation unit, and relative to only Graal-compiled compilation units, 20% of cycles were sampled in this
+compilation unit. For compilation fragments, profdiff reports the statistics of the compilation unit from which the
+fragment originates.
 
-The algorithm to mark hot methods works as follows:
+Profdiff marks some of the compilation units with the highest timeshare as *hot*. Note that this is a different term
+than "hot" in the context of HotSpot. The algorithm to mark hot compilation units works as follows:
 
 - for each experiment separately
-  - sort all graal-compiled compilation units by their execution period (highest first)
+  - sort all Graal-compiled compilation units by their sampled execution period (highest first)
   - mark the first compilation as hot (the number can be adjusted by the `--hot-min-limit` parameter)
-  - keep marking the compilations as hot while the total timeshare of hot compilations is less than
-    90% (`--hot-percentile`) of total graal-compiled method execution and the number of hot compilations is less than
+  - keep marking the compilations as hot while the total timeshare of hot compilation units is less than
+    90% (`--hot-percentile`) of total Graal-compiled method execution and the number of hot compilations is less than
     10 (`--hot-max-limit`)
 
 ## Node source positions
