@@ -107,7 +107,7 @@ public class ProgressReporter {
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
-    public static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
+    public static final String DOCS_BASE_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
@@ -222,6 +222,11 @@ public class ProgressReporter {
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
                         .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
+        if (!linkStrategy.isTerminalSupported()) {
+            l().a("For detailed information and explanations on the build output, visit:").println();
+            l().a(DOCS_BASE_URL).println();
+            l().printLineSeparator();
+        }
         stagePrinter.start(BuildStage.INITIALIZING);
     }
 
@@ -1405,6 +1410,10 @@ public class ProgressReporter {
     }
 
     public interface LinkStrategy {
+        default boolean isTerminalSupported() {
+            return false;
+        }
+
         void link(AbstractPrinter<?> printer, String text, String url);
 
         String asDocLink(String text, String htmlAnchor);
@@ -1415,7 +1424,7 @@ public class ProgressReporter {
         }
 
         default void doclink(AbstractPrinter<?> printer, String text, String htmlAnchor) {
-            link(printer, text, STAGE_DOCS_URL + htmlAnchor);
+            link(printer, text, DOCS_BASE_URL + htmlAnchor);
         }
     }
 
@@ -1432,6 +1441,11 @@ public class ProgressReporter {
     }
 
     static final class LinkyStrategy implements LinkStrategy {
+        @Override
+        public boolean isTerminalSupported() {
+            return true;
+        }
+
         /**
          * Adding link part individually for {@link LinePrinter#getCurrentTextLength()}.
          */
@@ -1442,7 +1456,7 @@ public class ProgressReporter {
 
         @Override
         public String asDocLink(String text, String htmlAnchor) {
-            return String.format(ANSI.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
+            return String.format(ANSI.LINK_FORMAT, DOCS_BASE_URL + htmlAnchor, text);
         }
     }
 
