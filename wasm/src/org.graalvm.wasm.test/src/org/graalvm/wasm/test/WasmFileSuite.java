@@ -71,6 +71,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.MemoryRegistry;
+import org.graalvm.wasm.RuntimeState;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
@@ -230,7 +231,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                         }
                     }
                     List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
-                    instanceList.sort(Comparator.comparing(instance -> wasmContext.linker().moduleOrdering().indexOf(instance.name())));
+                    instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
                     for (WasmInstance instance : instanceList) {
                         if (!instance.isBuiltin()) {
                             wasmContext.reinitInstance(instance, reinitMemory);

@@ -109,6 +109,8 @@ public class RuntimeState {
 
     @CompilationFinal private Linker.LinkState linkState;
 
+    @CompilationFinal private int startFunctionIndex;
+
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalAddresses.length) {
             final int[] nGlobalAddresses = new int[globalAddresses.length * 2];
@@ -145,6 +147,7 @@ public class RuntimeState {
         this.dataInstances = null;
         this.elementInstances = null;
         this.droppedDataInstanceOffset = droppedDataInstanceOffset;
+        this.startFunctionIndex = -1;
     }
 
     private void checkNotLinked() {
@@ -389,5 +392,13 @@ public class RuntimeState {
         }
         assert index < elementInstances.length;
         return elementInstances[index];
+    }
+
+    public int startFunctionIndex() {
+        return startFunctionIndex;
+    }
+
+    public void setStartFunctionIndex(int index) {
+        this.startFunctionIndex = index;
     }
 }

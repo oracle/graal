@@ -59,9 +59,11 @@ import org.graalvm.wasm.nodes.WasmFunctionNode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import static org.graalvm.wasm.Assert.assertByteEqual;
@@ -93,12 +95,6 @@ public class Linker {
 
     private ResolutionDag resolutionDag;
 
-    private List<String> moduleOrdering;
-
-    public List<String> moduleOrdering() {
-        return moduleOrdering;
-    }
-
     public void tryLink(WasmInstance instance) {
         // The first execution of a WebAssembly call target will trigger the linking of the modules
         // that are inside the current context (which will happen behind the call boundary).
@@ -129,8 +125,8 @@ public class Linker {
             final WasmContext context = WasmContext.get(null);
             Map<String, WasmInstance> instances = context.moduleInstances();
             ArrayList<Throwable> failures = new ArrayList<>();
-            runLinkActions(context, instances, failures);
-            linkTopologically(context, failures);
+            final int maxStartFunctionIndex = runLinkActions(context, instances, failures);
+            linkTopologically(context, failures, maxStartFunctionIndex);
             assignTypeEquivalenceClasses();
             for (WasmInstance instance : instances.values()) {
                 if (instance.isLinkInProgress()) {
@@ -143,8 +139,10 @@ public class Linker {
         }
     }
 
-    private static void runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+        int maxStartFunctionIndex = 0;
         for (WasmInstance instance : instances.values()) {
+            maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
             if (instance.isNonLinked()) {
                 instance.setLinkInProgress();
                 try {
@@ -161,16 +159,22 @@ public class Linker {
                 }
             }
         }
+        return maxStartFunctionIndex;
     }
 
-    private void linkTopologically(WasmContext context, ArrayList<Throwable> failures) {
+    private void linkTopologically(WasmContext context, ArrayList<Throwable> failures, int maxStartFunctionIndex) {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
-        moduleOrdering = new ArrayList<>();
+        Set<String> moduleOrdering = new LinkedHashSet<>();
         for (final Resolver resolver : sortedResolutions) {
             resolver.runActionOnce(context, failures);
             String moduleName = resolver.element.moduleName();
             moduleOrdering.remove(moduleName);
             moduleOrdering.add(moduleName);
+        }
+        int i = 0;
+        for (String moduleName : moduleOrdering) {
+            context.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
+            i++;
         }
     }
 
@@ -195,7 +199,7 @@ public class Linker {
 
     private void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
         List<WasmInstance> instanceList = new ArrayList<>(instances.values());
-        instanceList.sort(Comparator.comparing(instance -> moduleOrdering.indexOf(instance.name())));
+        instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
         for (WasmInstance instance : instanceList) {
             if (instance.isLinkInProgress()) {
                 try {
