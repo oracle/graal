@@ -381,7 +381,7 @@ public class ProgressReporter {
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
         String stubsFormat = "%,8d stubs";
-        recordJsonMetric(AnalysisResults.FOREIGN_FUNCTIONS_DOWNCALL_STUBS, (numForeignFunctionsDowncallStubs >= 0 ? numForeignFunctionsDowncallStubs : UNAVAILABLE_METRIC));
+        recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALL_STUBS, (numForeignFunctionsDowncallStubs >= 0 ? numForeignFunctionsDowncallStubs : UNAVAILABLE_METRIC));
         if (numForeignFunctionsDowncallStubs >= 0) {
             l().a(stubsFormat, numForeignFunctionsDowncallStubs)
                             .a(" registered for foreign downcalls").println();

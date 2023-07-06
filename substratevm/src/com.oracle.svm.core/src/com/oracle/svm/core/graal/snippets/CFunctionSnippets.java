@@ -200,7 +200,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 
     class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
-        private static final ForeignCallDescriptor DUMMY_DESCRIPTOR = new ForeignCallDescriptor("unreachable", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
+        private static final ForeignCallDescriptor PLACEHOLDER_DESCRIPTOR = new ForeignCallDescriptor("unreachable", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
 
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
@@ -224,7 +224,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             args.addConst("oldThreadStatus", oldThreadStatus);
             args.addConst("enableCapture", captureFunction != null);
             /* We cannot pass null as const argument, so we pass a dummy instead */
-            args.addConst("captureFunction", captureFunction == null ? DUMMY_DESCRIPTOR : captureFunction);
+            args.addConst("captureFunction", captureFunction == null ? PLACEHOLDER_DESCRIPTOR : captureFunction);
             args.add("statesToCapture", statesToCapture);
             args.add("captureBuffer", buffer);
 

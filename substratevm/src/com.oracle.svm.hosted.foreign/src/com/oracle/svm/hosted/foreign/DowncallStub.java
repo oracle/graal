@@ -42,8 +42,8 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
+import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
-import com.oracle.svm.core.foreign.Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle;
 import com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -66,8 +66,8 @@ import jdk.vm.ci.meta.Signature;
  * float, double, pointer) which fit in a register --- done by HotSpot's implementation using method
  * handles (or specialized classes);</li>
  * <li>Unbox the arguments (the arguments are in an array of Objects, due to funneling through
- * {@link Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle#linkToNative})
- * --- done by {@link DowncallStub#adaptArguments};</li>
+ * {@link LinkToNativeSupportImpl#linkToNative}) --- done by
+ * {@link DowncallStub#adaptArguments};</li>
  * <li>Further adapt arguments as to satisfy SubstrateVM's backends --- done by
  * {@link DowncallStub#adaptArguments}, see {@link AbiUtils.Adaptation}</li>
  * <li>Transform HotSpot's memory moves into ones for SubstrateVM --- done by
@@ -108,7 +108,7 @@ class DowncallStub extends NonBytecodeMethod {
 
     /**
      * The arguments follow the structure described in
-     * {@link Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle#linkToNative(Object...)}.
+     * {@link LinkToNativeSupportImpl#linkToNative(Object...)}.
      */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {

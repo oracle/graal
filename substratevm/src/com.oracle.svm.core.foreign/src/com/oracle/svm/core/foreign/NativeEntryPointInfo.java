@@ -155,9 +155,6 @@ public final class NativeEntryPointInfo {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(methodType, capturesState, needsTransition);
-        result = 31 * result + Arrays.hashCode(parameterAssignments);
-        result = 31 * result + Arrays.hashCode(returnBuffering);
-        return result;
+        return Objects.hash(methodType, capturesState, needsTransition, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
     }
 }

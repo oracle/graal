@@ -109,9 +109,6 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(kind, outgoing);
-        result = 31 * result + Arrays.hashCode(fixedParameterAssignment);
-        result = 31 * result + Arrays.hashCode(returnSaving);
-        return result;
+        return Objects.hash(kind, outgoing, Arrays.hashCode(fixedParameterAssignment), Arrays.hashCode(returnSaving));
     }
 }

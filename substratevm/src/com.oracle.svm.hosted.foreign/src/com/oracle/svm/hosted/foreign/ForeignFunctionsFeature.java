@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
+import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -140,6 +142,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             ImageSingletons.add(AbiUtils.class, AbiUtils.create());
             ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
             ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
+            ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
 
             var access = (FeatureImpl.DuringSetupAccessImpl) a;
             ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);

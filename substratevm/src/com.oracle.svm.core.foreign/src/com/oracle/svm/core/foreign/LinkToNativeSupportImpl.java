@@ -27,18 +27,10 @@ package com.oracle.svm.core.foreign;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 
-/**
- * Substitutes a method which is defined in substrate itself.
- *
- * TODO Once panama is out of preview, this should just be the implementation of the substituted
- * method.
- */
-@TargetClass(className = "com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle")
-public final class Target_com_oracle_svm_core_methodhandles_Util_java_lang_invoke_MethodHandle {
+public final class LinkToNativeSupportImpl implements LinkToNativeSupport {
     /**
      * Arguments follow the same structure as described in {@link NativeEntryPointInfo}, with an
      * additional {@link Target_jdk_internal_foreign_abi_NativeEntryPoint} (NEP) as the last
@@ -52,8 +44,8 @@ public final class Target_com_oracle_svm_core_methodhandles_Util_java_lang_invok
      *
      * where <actual arg i>s are the arguments which end up being passed to the C native function
      */
-    @Substitute
-    private static Object linkToNative(Object... args) throws Throwable {
+    @Override
+    public Object linkToNative(Object... args) throws Throwable {
         Target_jdk_internal_foreign_abi_NativeEntryPoint nep = (Target_jdk_internal_foreign_abi_NativeEntryPoint) args[args.length - 1];
         StubPointer pointer = WordFactory.pointer(nep.downcallStubAddress);
         /* The nep argument will be dropped in the invoked function */
