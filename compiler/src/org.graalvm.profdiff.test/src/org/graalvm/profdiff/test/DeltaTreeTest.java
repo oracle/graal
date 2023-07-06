@@ -59,6 +59,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class DeltaTreeTest {
     private static class MockTreeNode extends TreeNode<MockTreeNode> {
@@ -197,6 +198,10 @@ public class DeltaTreeTest {
             return false;
         });
         assertNull(deltaTree.getRoot());
+
+        var writer = Writer.stringBuilder(new OptionValues());
+        deltaTree.accept(new DeltaTreeWriterVisitor<>(writer));
+        assertTrue(writer.getOutput().contains("no differences"));
     }
 
     @Test
