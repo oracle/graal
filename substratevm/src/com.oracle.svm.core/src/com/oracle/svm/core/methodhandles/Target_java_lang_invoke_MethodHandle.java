@@ -35,6 +35,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -122,7 +123,11 @@ final class Target_java_lang_invoke_MethodHandle {
     @Substitute(polymorphicSignature = true)
     @TargetElement(onlyWith = JDK21OrLater.class)
     static Object linkToNative(Object... args) throws Throwable {
-        return Util_java_lang_invoke_MethodHandle.linkToNative(args);
+        if (LinkToNativeSupport.isAvailable()) {
+            return LinkToNativeSupport.singleton().linkToNative(args);
+        } else {
+            throw unsupportedFeature("Foreign downcalls feature is not enabled. Make sure you are using a JDK >= 21 and that preview features are enabled.");
+        }
     }
 }
 
@@ -239,10 +244,6 @@ final class Util_java_lang_invoke_MethodHandle {
                 executable.override = oldOverride;
             }
         }
-    }
-
-    static Object linkToNative(@SuppressWarnings("unused") Object... ignoreArgs) throws Throwable {
-        throw unsupportedFeature("Foreign downcalls feature is not enabled. Make sure you are using a JDK >= 21 and that preview features are enabled.");
     }
 }
 

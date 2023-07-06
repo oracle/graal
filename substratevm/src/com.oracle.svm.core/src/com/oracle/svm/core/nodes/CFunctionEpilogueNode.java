@@ -76,12 +76,8 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     public CFunctionEpilogueNode(int oldThreadStatus, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
         super(TYPE, StampFactory.forVoid());
         this.oldThreadStatus = oldThreadStatus;
-        if ((captureFunction != null) && ((statesToCapture == null) || (captureBuffer == null))) {
-            throw new IllegalArgumentException("The states to capture and capture buffer must be specified since a capture function was provided.");
-        }
-
-        if ((captureFunction == null) && ((statesToCapture != null) || (captureBuffer != null))) {
-            throw new IllegalArgumentException("The states to capture and capture buffer must not be specified since a capture function was not provided.");
+        if (!captureArgumentsAreCoherent(captureFunction, statesToCapture, captureBuffer)) {
+            throw new IllegalArgumentException("Capture arguments are not coherent: " + captureFunction + " " + statesToCapture + " " + captureBuffer);
         }
         this.captureFunction = captureFunction;
         this.statesToCapture = statesToCapture;
@@ -160,5 +156,10 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
 
     public ForeignCallDescriptor getCaptureFunction() {
         return captureFunction;
+    }
+
+    public static boolean captureArgumentsAreCoherent(ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
+        return ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
+                        ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
     }
 }

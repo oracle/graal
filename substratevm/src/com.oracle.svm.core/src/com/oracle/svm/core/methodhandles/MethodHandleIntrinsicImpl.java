@@ -180,7 +180,7 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
             }
 
             case LinkToNative: {
-                return Util_java_lang_invoke_MethodHandle.linkToNative(args);
+                return Target_java_lang_invoke_MethodHandle.linkToNative(args);
             }
 
             /*

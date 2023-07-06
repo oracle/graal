@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.replacements;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.vm.ci.code.CallingConvention;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -59,6 +58,7 @@ import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -202,6 +202,13 @@ public class SubstrateGraphKit extends GraphKit {
 
     public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
                     CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
+        assert CFunctionEpilogueNode.captureArgumentsAreCoherent(captureFunction, statesToCapture, captureBuffer);
+
+        var fixedStatesToCapture = statesToCapture;
+        if (fixedStatesToCapture != null) {
+            fixedStatesToCapture = append(new FixedValueAnchorNode(fixedStatesToCapture));
+        }
+
         /*
          * State capture require the epilogue (and thus prologue) to be emitted
          */
@@ -225,7 +232,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, captureFunction, statesToCapture, captureBuffer);
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, captureFunction, fixedStatesToCapture, captureBuffer);
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
