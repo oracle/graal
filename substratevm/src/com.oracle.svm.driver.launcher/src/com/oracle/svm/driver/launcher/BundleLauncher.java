@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.driver.launcher;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,6 +46,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
@@ -52,6 +57,7 @@ public class BundleLauncher {
     static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
     private static final String BUNDLE_FILE_EXTENSION = ".nib";
+    private static final String HELP_TEXT = getResource("/com/oracle/svm/driver/launcher/BundleLauncherHelp.txt");
 
     private static Path rootDir;
     private static Path inputDir;
@@ -74,6 +80,15 @@ public class BundleLauncher {
     private static final List<String> launchArgs = new ArrayList<>();
     private static final List<String> applicationArgs = new ArrayList<>();
     private static final Map<String, String> launcherEnvironment = new HashMap<>();
+
+    static String getResource(String resourceName) {
+        try (InputStream input = BundleLauncher.class.getResourceAsStream(resourceName)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            return reader.lines().collect(Collectors.joining("\n"));
+        } catch (IOException e) {
+            throw new Error(e);
+        }
+    }
 
     public static void main(String[] args) {
         bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
@@ -294,6 +309,10 @@ public class BundleLauncher {
                 }
             } else {
                 switch (arg) {
+                    case "--help" -> {
+                        showMessage(HELP_TEXT);
+                        System.exit(0);
+                    }
                     case "--verbose" -> verbose = true;
                     case "--" -> {
                         applicationArgs.addAll(argQueue);
