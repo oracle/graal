@@ -350,6 +350,7 @@ public final class UnimplementedGraalIntrinsics {
             // without JIT implementation
             add(ignore,
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
+                            "jdk/internal/misc/Unsafe.storeStoreFence()V",
                             "jdk/internal/vm/Continuation.doYield()I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
