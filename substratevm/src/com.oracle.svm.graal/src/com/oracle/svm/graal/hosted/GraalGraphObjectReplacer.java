@@ -26,9 +26,10 @@ package com.oracle.svm.graal.hosted;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -95,11 +96,11 @@ import jdk.vm.ci.meta.Signature;
 public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
     private final AnalysisUniverse aUniverse;
-    private final HashMap<AnalysisMethod, SubstrateMethod> methods = new HashMap<>();
-    private final HashMap<AnalysisField, SubstrateField> fields = new HashMap<>();
-    private final HashMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new HashMap<>();
-    private final HashMap<AnalysisType, SubstrateType> types = new HashMap<>();
-    private final HashMap<Signature, SubstrateSignature> signatures = new HashMap<>();
+    private final ConcurrentMap<AnalysisMethod, SubstrateMethod> methods = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisField, SubstrateField> fields = new ConcurrentHashMap<>();
+    private final ConcurrentMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisType, SubstrateType> types = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Signature, SubstrateSignature> signatures = new ConcurrentHashMap<>();
     private final SubstrateProviders sProviders;
     private final SubstrateUniverseFactory universeFactory;
     private SubstrateGraalRuntime sGraalRuntime;
@@ -234,14 +235,17 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateMethod sMethod = methods.get(aMethod);
         if (sMethod == null) {
             assert !(original instanceof HostedMethod) : "too late to create new method";
-            sMethod = universeFactory.createMethod(aMethod, stringTable);
-            methods.put(aMethod, sMethod);
+            SubstrateMethod newMethod = universeFactory.createMethod(aMethod, stringTable);
+            sMethod = methods.putIfAbsent(aMethod, newMethod);
+            if (sMethod == null) {
+                sMethod = newMethod;
 
-            /*
-             * The links to other meta objects must be set after adding to the methods to avoid
-             * infinite recursion.
-             */
-            sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
+                /*
+                 * The links to other meta objects must be set after adding to the methods to avoid
+                 * infinite recursion.
+                 */
+                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
+            }
         }
         return sMethod;
     }
@@ -258,29 +262,24 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             throw new InternalError(original.toString());
         }
         SubstrateField sField = fields.get(aField);
-
         if (sField == null) {
             assert !(original instanceof HostedField) : "too late to create new field";
-            sField = universeFactory.createField(aField, stringTable);
-            fields.put(aField, sField);
+            SubstrateField newField = universeFactory.createField(aField, stringTable);
+            sField = fields.putIfAbsent(aField, newField);
+            if (sField == null) {
+                sField = newField;
 
-            sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
+                sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
+                aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
+                aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
+            }
         }
         return sField;
     }
 
     private synchronized SubstrateFieldLocationIdentity createFieldLocationIdentity(FieldLocationIdentity original) {
         assert !(original instanceof SubstrateFieldLocationIdentity) : original;
-
-        SubstrateFieldLocationIdentity dest = fieldLocationIdentities.get(original);
-        if (dest == null) {
-            SubstrateField destField = createField(original.getField());
-            dest = new SubstrateFieldLocationIdentity(destField, original.isImmutable());
-            fieldLocationIdentities.put(original, dest);
-        }
-        return dest;
+        return fieldLocationIdentities.computeIfAbsent(original, (id) -> new SubstrateFieldLocationIdentity(createField(id.getField()), id.isImmutable()));
     }
 
     public SubstrateField getField(AnalysisField field) {
@@ -311,22 +310,24 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         AnalysisType aType = toAnalysisType(original);
         VMError.guarantee(aType.isLinked(), "Types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
-
         if (sType == null) {
             VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
             aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
-            sType = new SubstrateType(aType.getJavaKind(), hub);
-            types.put(aType, sType);
-            hub.setMetaType(sType);
-            aUniverse.getHeapScanner().rescanField(hub, dynamicHubMetaTypeField);
+            SubstrateType newType = new SubstrateType(aType.getJavaKind(), hub);
+            sType = types.putIfAbsent(aType, newType);
+            if (sType == null) {
+                sType = newType;
+                hub.setMetaType(sType);
+                aUniverse.getHeapScanner().rescanField(hub, dynamicHubMetaTypeField);
 
-            sType.setRawAllInstanceFields(createAllInstanceFields(aType));
-            aUniverse.getHeapScanner().rescanField(sType, substrateTypeRawAllInstanceFieldsField);
-            createType(aType.getSuperclass());
-            createType(aType.getComponentType());
-            for (AnalysisType aInterface : aType.getInterfaces()) {
-                createType(aInterface);
+                sType.setRawAllInstanceFields(createAllInstanceFields(aType));
+                aUniverse.getHeapScanner().rescanField(sType, substrateTypeRawAllInstanceFieldsField);
+                createType(aType.getSuperclass());
+                createType(aType.getComponentType());
+                for (AnalysisType aInterface : aType.getInterfaces()) {
+                    createType(aInterface);
+                }
             }
         }
         return sType;
@@ -356,18 +357,21 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
         SubstrateSignature sSignature = signatures.get(original);
         if (sSignature == null) {
-            sSignature = new SubstrateSignature();
-            signatures.put(original, sSignature);
+            SubstrateSignature newSignature = new SubstrateSignature();
+            sSignature = signatures.putIfAbsent(original, newSignature);
+            if (sSignature == null) {
+                sSignature = newSignature;
 
-            SubstrateType[] parameterTypes = new SubstrateType[original.getParameterCount(false)];
-            for (int index = 0; index < original.getParameterCount(false); index++) {
-                parameterTypes[index] = createType(original.getParameterType(index, null));
+                SubstrateType[] parameterTypes = new SubstrateType[original.getParameterCount(false)];
+                for (int index = 0; index < original.getParameterCount(false); index++) {
+                    parameterTypes[index] = createType(original.getParameterType(index, null));
+                }
+                /*
+                 * The links to other meta objects must be set after adding to the signatures to
+                 * avoid infinite recursion.
+                 */
+                sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
             }
-            /*
-             * The links to other meta objects must be set after adding to the signatures to avoid
-             * infinite recursion.
-             */
-            sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
         }
         return sSignature;
     }
