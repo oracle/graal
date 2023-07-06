@@ -861,7 +861,8 @@ suite = {
         "com.oracle.svm.driver.launcher": {
             "subDir": "src",
             "sourceDirs": [
-                "src"
+                "src",
+                "resources"
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
