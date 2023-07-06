@@ -49,6 +49,7 @@ import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
@@ -96,6 +97,7 @@ import sun.util.locale.LocaleObjectCache;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
+import sun.util.resources.ParallelListResourceBundle;
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -466,24 +468,57 @@ public class LocalizationFeature implements InternalFeature {
         }
     }
 
+    /* List of getters to query `LocaleData` for resource bundles. */
+    private static final List<BiFunction<LocaleData, Locale, ResourceBundle>> localeDataBundleGetters = List.of(
+                    LocaleData::getCalendarData,
+                    LocaleData::getCurrencyNames,
+                    LocaleData::getLocaleNames,
+                    LocaleData::getTimeZoneNames,
+                    LocaleData::getBreakIteratorInfo,
+                    LocaleData::getBreakIteratorResources,
+                    LocaleData::getCollationData,
+                    LocaleData::getDateFormatData,
+                    LocaleData::getNumberFormatData);
+
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void addResourceBundles() {
-        for (Locale locale : allLocales) {
-            prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
-            prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale), locale);
-            prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale), locale);
-            prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class, locale).getTimeZoneNames(locale), locale);
-            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorInfo(locale), locale);
-            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale), locale);
-            prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale), locale);
-            prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale), locale);
-            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale), locale);
+        /*
+         * The lookup of localized objects may require the use of more than one
+         * `LocaleProviderAdapter`, so we need resource bundles from all of them.
+         */
+        LocaleProviderAdapter.getAdapterPreference().stream()
+                        .map(LocaleProviderAdapter::forType)
+                        .filter(ResourceBundleBasedAdapter.class::isInstance)
+                        .map(ResourceBundleBasedAdapter.class::cast)
+                        .map(ResourceBundleBasedAdapter::getLocaleData)
+                        .forEach(localeData -> {
+                            for (var locale : allLocales) {
+                                for (var localeDataBundleGetter : localeDataBundleGetters) {
+                                    ResourceBundle bundle;
+                                    try {
+                                        bundle = localeDataBundleGetter.apply(localeData, locale);
+                                    } catch (MissingResourceException e) {
+                                        continue; /* No bundle for this `locale`. */
+                                    }
+                                    if (bundle instanceof ParallelListResourceBundle) {
+                                        /* Make sure the `bundle` content is complete. */
+                                        localeData.setSupplementary((ParallelListResourceBundle) bundle);
+                                    }
+                                    prepareBundle(bundle, locale);
+                                }
+                            }
+                        });
+
+        if (!optimizedMode && !substituteLoadLookup) {
+            /*
+             * No eager loading of bundle content, so we need to include the
+             * `sun.text.resources.FormatData` bundle supplement as well.
+             */
+            prepareBundle("sun.text.resources.JavaTimeSupplementary");
         }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
-                        "sun.text.resources.FormatData",
-                        "sun.util.logging.resources.logging",
-                        "sun.util.resources.TimeZoneNames"
+                        "sun.util.logging.resources.logging"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
             prepareBundle(bundleName);
@@ -492,11 +527,6 @@ public class LocalizationFeature implements InternalFeature {
         for (String bundleName : Options.IncludeResourceBundles.getValue().values()) {
             processRequestedBundle(bundleName);
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, locale)).getLocaleData();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
