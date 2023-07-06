@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -33,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 public interface ObservableImageHeapMapProvider {
     <K, V> ConcurrentMap<K, V> createMap();
 
-    static <K, V> Map<K, V> create() {
+    static <K, V> ConcurrentMap<K, V> create() {
         return ImageSingletons.lookup(ObservableImageHeapMapProvider.class).createMap();
     }
 }
