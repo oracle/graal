@@ -46,13 +46,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.provider.TruffleLanguageProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 
 /**
  * Allows to export messages of Truffle libraries. The exported library {@link ExportLibrary#value()
@@ -366,18 +365,14 @@ public @interface ExportLibrary {
      * for each library. The library may be used for implicit and explicit receivers, dynamic
      * dispatch and default exports. Merged libraries are currently not supported for AOT enabled
      * exports. A {@link #useForAOTPriority() priority} must be set in order to resolve a
-     * deterministic order for AOT initialized exports. The exported library must be registered in
-     * the {@link Registration#aotLibraryExports} or
-     * {@code TruffleInstrument.Registration#aotLibraryExports} to be loaded by
-     * {@link TruffleLanguageProvider#loadTruffleService(Class)} or
-     * {@code TruffleInstrumentProvider#loadTruffleService(Class)}.
+     * deterministic order for AOT initialized exports.
      * <p>
      * All exported libraries with AOT enabled are loaded and initialized eagerly when a library
      * that supports AOT is used for the first time. In order for this to work the exported library
-     * automatically generates subclass of {@link EagerExportProvider} and the exported library must
-     * be registered using the {@link Registration#aotLibraryExports}. When the language is compiled
-     * using native-image then this is not necessary as native-image compilation discovers all AOT
-     * exports for a library during native image generation.
+     * automatically generates subclass of {@link EagerExportProvider}, that must be registered in
+     * the module descriptor as a provided service. When the language is compiled using native-image
+     * then this is not necessary as native-image compilation discovers all AOT exports for a
+     * library during native image generation.
      *
      * @since 21.2
      */

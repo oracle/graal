@@ -3188,6 +3188,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             debug.log("Ignoring block %s", block);
             return;
         }
+        if (block.isOutOfBounds()) {
+            throw new PermanentBailoutException("Block that is reached by a fall through end of code is reached.");
+        }
         try (Indent indent = debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, firstInstruction, block.isLoopHeader())) {
 
             lastInstr = firstInstruction;

@@ -60,9 +60,4 @@ final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSup
     public Collection<String> getServicesClassNames(Object truffleInstrumentProvider) {
         return ((TruffleInstrumentProvider) truffleInstrumentProvider).getServicesClassNames();
     }
-
-    @Override
-    public <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type) {
-        return ((TruffleInstrumentProvider) truffleInstrumentProvider).loadTruffleService(type);
-    }
 }

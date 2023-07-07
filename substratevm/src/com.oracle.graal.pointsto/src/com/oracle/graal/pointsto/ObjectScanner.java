@@ -154,7 +154,7 @@ public class ObjectScanner {
                 /* The value is not available yet. */
                 return;
             }
-            JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+            JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -197,7 +197,7 @@ public class ObjectScanner {
             if (!arrayType.getComponentType().isPrimitive()) {
                 ImageHeapArray heapArray = (ImageHeapArray) array;
                 for (int idx = 0; idx < heapArray.getLength(); idx++) {
-                    final JavaConstant element = (JavaConstant) heapArray.getElement(idx);
+                    final JavaConstant element = heapArray.readElementValue(idx);
                     if (element.isNull()) {
                         scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                     } else {

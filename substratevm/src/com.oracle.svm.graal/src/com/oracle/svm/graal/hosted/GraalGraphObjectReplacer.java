@@ -112,6 +112,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private final Field substrateTypeRawAllInstanceFieldsField;
     private final Field substrateMethodImplementationsField;
 
+    private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
+
     /**
      * Tracks whether it is legal to create new types.
      */
@@ -160,7 +162,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             HotSpotBackendFactory factory = (HotSpotBackendFactory) source;
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
             if (!factory.getArchitecture().equals(hostArch.getClass())) {
-                throw new UnsupportedFeatureException("Non-host archtecture HotSpotBackendFactory should not appear in the image: " + source);
+                throw new UnsupportedFeatureException("Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
             }
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
@@ -201,7 +203,11 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         assert dest != null;
-        String className = dest.getClass().getName();
+        Class<?> destClass = dest.getClass();
+        if (jvmciCleanerClass.isAssignableFrom(destClass)) {
+            throw new UnsupportedFeatureException(jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
+        }
+        String className = destClass.getName();
         assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
         assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
         assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;

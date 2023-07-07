@@ -123,7 +123,9 @@ class CVTypeSectionBuilder {
                 case ARRAY:
                 case ENUM:
                 case INSTANCE:
-                case INTERFACE: {
+                case INTERFACE:
+                    // TODO continue treat foreign types as interfaces/classes but fix this later
+                case FOREIGN: {
                     typeRecord = buildStructureTypeEntry((StructureTypeEntry) typeEntry);
                     break;
                 }

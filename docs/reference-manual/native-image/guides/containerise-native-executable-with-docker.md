@@ -117,5 +117,5 @@ With GraalVM Native Image you have the ability to build a statically linked nati
 ### Related Documentation
 
 * [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68)
-* [GraalVM Community Images](../../../getting-started/graalvm-community/container-images/graalvm-ce-container-images.md)
+* [GraalVM Community Images](https://github.com/graalvm/container/)
 * [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)

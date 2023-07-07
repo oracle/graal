@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -61,7 +60,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 @SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
-    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "defaultExportProviders", "eagerExportProviders");
+    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services");
 
     @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
@@ -84,13 +83,6 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             processingTruffleInstrument = false;
         } else {
             emitError("Registered instrument class must subclass TruffleInstrument.", annotatedElement);
-            return false;
-        }
-        if (!validateDefaultExportProviders(annotatedElement, registrationMirror, context)) {
-            return false;
-        }
-
-        if (!validateEagerExportProviders(annotatedElement, registrationMirror, context)) {
             return false;
         }
         assertNoErrorExpected(annotatedElement);
@@ -130,15 +122,6 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleInstrument_Registration);
                 generateGetServicesClassNames(registration, builder, context);
-                break;
-            }
-            case "loadTruffleService": {
-                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
-                                types.TruffleInstrument_Registration);
-                List<? extends TypeMirror> defaultExportProviders = resolveDefaultExportProviders(registration, context);
-                List<? extends TypeMirror> eagerExportProviders = resolveEagerExportProviders(registration, context);
-                generateLoadTruffleService(builder, context, List.of(types.DefaultExportProvider, types.EagerExportProvider),
-                                List.of(defaultExportProviders, eagerExportProviders));
                 break;
             }
             default:

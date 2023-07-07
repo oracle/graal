@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.logging.LogManager;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -36,13 +34,13 @@ class FormatAccessors {
 
     // format string for printing the log record
     private static String getLoggingProperty(String name) {
-        return LogManager.getLogManager().getProperty(name);
+        return JavaLoggingModule.logManagerGetProperty(name);
     }
 
     private static String format = null;
 
     @SuppressWarnings("unused")
-    public static String getFormat(java.util.logging.SimpleFormatter parent) {
+    public static String getFormat(Object parent) {
         if (format == null) {
             /*
              * If multiple threads are doing the initialization at the same time it is not a problem
@@ -55,12 +53,12 @@ class FormatAccessors {
     }
 
     @SuppressWarnings("unused")
-    public static void setFormat(java.util.logging.SimpleFormatter parent, String f) {
+    public static void setFormat(Object parent, String f) {
         format = f;
     }
 }
 
-@TargetClass(value = java.util.logging.SimpleFormatter.class)
+@TargetClass(className = "java.util.logging.SimpleFormatter", onlyWith = JavaLoggingModule.IsPresent.class)
 public final class Target_java_util_logging_SimpleFormatter {
 
     @Alias @InjectAccessors(FormatAccessors.class)//

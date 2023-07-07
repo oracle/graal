@@ -46,6 +46,7 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -67,6 +68,7 @@ import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -91,6 +93,9 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -106,6 +111,13 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * Processes all {@link Lowerable} nodes to do their lowering.
  */
 public abstract class LoweringPhase extends BasePhase<CoreProviders> {
+
+    public static class Options {
+        //@formatter:off
+        @Option(help = "Print schedule result pre lowering to TTY.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> PrintLoweringScheduleToTTY = new OptionKey<>(false);
+        //@formatter:on
+    }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class DummyGuardHandle extends ValueNode implements GuardedNode {
@@ -242,7 +254,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         Mark expectedMark = graph.getMark();
         lower(graph, context, LoweringMode.VERIFY_LOWERING);
         Mark mark = graph.getMark();
-        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(expectedMark).snapshot();
+        assert mark.equals(expectedMark) || graph.getNewNodes(mark).count() == 0 : graph + ": a second round in the current lowering phase introduced these new nodes: " +
+                        graph.getNewNodes(expectedMark).snapshot();
         return true;
     }
 
@@ -268,6 +281,10 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
         OptionValues options = graph.getOptions();
         new SchedulePhase(immutableSchedule, options).apply(graph, context);
+
+        if (Options.PrintLoweringScheduleToTTY.getValue(graph.getOptions())) {
+            TTY.printf("%s%n", graph.getLastSchedule().print());
+        }
 
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
@@ -565,7 +582,50 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     @SuppressWarnings("try")
     private AnchoringNode process(CoreProviders context, final HIRBlock b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
 
-        final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
+        FixedWithNextNode lastFixedNode = b.getBeginNode();
+        if (b.getBeginNode() instanceof LoopExitNode) {
+            /**
+             * If we are processing a loop exit block and there are floating nodes only used flowing
+             * out of the loop via proxies we must lower any control flow before the loop exit,
+             * i.e., the fixed node that is used to introduce new control flow (after it) must be
+             * before the loop exit node.
+             *
+             * Consider the following piece of code
+             *
+             * <pre>
+             *             ifNode
+             *       /              \
+             * trueSuccessor         fN1                //  will be lowered to control flow
+             *                     loopExitNode - proxy1(fN1)
+             *                        use(proxy1)
+             * </pre>
+             *
+             *
+             * The floating node fN1 will be lowered to control flow - so for insertion we need a
+             * fixed node before the loop exit. However, the loop exit is the begin node of the
+             * basic block but there are floating nodes that need to be schedule before. This is
+             * special because all other begin nodes will not have inputs but the loop exit via its
+             * proxies will. Thus, in this case we need to create a begin node to act as the last
+             * fixed node for insertion. Then control flow can be inserted between ifNode and
+             * loopExitNode.
+             *
+             * Note that the control flow graph automatically creates a new basic block for every
+             * loop exit because its a valid implementation of AbstractBeginNode.
+             */
+            FixedNode pred = (FixedNode) lastFixedNode.predecessor();
+            if (!(pred instanceof FixedWithNextNode)) {
+                // insert begin node to have a valid FixedWithNextNode to insert after before the
+                // loop exit
+                AbstractBeginNode begin = b.getBeginNode().graph().add(new BeginNode());
+                pred.replaceFirstSuccessor(lastFixedNode, begin);
+                begin.setNext(lastFixedNode);
+                lastFixedNode = begin;
+            } else {
+                lastFixedNode = (FixedWithNextNode) pred;
+            }
+        }
+
+        final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, lastFixedNode, schedule.getNodeToBlockMap());
 
         DebugContext debug = startAnchor.asNode().getDebug();
 

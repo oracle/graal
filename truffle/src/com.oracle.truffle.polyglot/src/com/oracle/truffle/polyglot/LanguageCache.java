@@ -217,16 +217,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
     }
 
-    static <T> Iterable<T> loadTruffleService(Class<T> type) {
-        List<T> result = new ArrayList<>();
-        for (LanguageCache cache : languages().values()) {
-            for (T service : cache.providerAdapter.loadTruffleService(type)) {
-                result.add(service);
-            }
-        }
-        return result;
-    }
-
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
@@ -249,7 +239,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 continue;
             }
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
-            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            if (supplier.supportsLegacyProviders()) {
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            }
         }
 
         Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
@@ -277,6 +269,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        ModuleUtils.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
@@ -609,13 +602,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     List<? extends FileTypeDetector> getFileTypeDetectors() {
         List<FileTypeDetector> result = fileTypeDetectors;
         if (result == null) {
-            Iterable<FileTypeDetector> detectors = providerAdapter.loadTruffleService(FileTypeDetector.class);
-            if (detectors instanceof List) {
-                result = (List<FileTypeDetector>) detectors;
-            } else {
-                result = new ArrayList<>();
-                detectors.forEach(result::add);
-            }
+            result = providerAdapter.createFileTypeDetectors();
             fileTypeDetectors = result;
         }
         return result;
@@ -672,7 +659,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        protected <T> Iterable<T> loadTruffleService(Class<T> type) {
+        protected List<TruffleLanguageProvider> createFileTypeDetectors() {
             return List.of();
         }
     }
@@ -686,7 +673,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         Collection<String> getServicesClassNames();
 
-        <T> Iterable<T> loadTruffleService(Class<T> type);
+        List<FileTypeDetector> createFileTypeDetectors();
     }
 
     /**
@@ -724,13 +711,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            if (FileTypeDetector.class == type) {
-                return (Iterable<T>) provider.createFileTypeDetectors();
-            } else {
-                return List.of();
-            }
+        public List<FileTypeDetector> createFileTypeDetectors() {
+            return provider.createFileTypeDetectors();
         }
     }
 
@@ -767,8 +749,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            return EngineAccessor.LANGUAGE_PROVIDER.loadTruffleService(provider, type);
+        public List<FileTypeDetector> createFileTypeDetectors() {
+            return EngineAccessor.LANGUAGE_PROVIDER.createFileTypeDetectors(provider);
         }
     }
 }

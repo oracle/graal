@@ -26,8 +26,6 @@
 
 package com.oracle.svm.hosted.jdk;
 
-import java.lang.reflect.Method;
-import java.rmi.Remote;
 import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -148,11 +146,11 @@ public class JmxCommonFeature implements InternalFeature {
      * Proxy registration also registers the methods of these MXBeans for reflection. This is
      * important because they are accessed in many places in the JMX infrastructure. For example:
      * <ul>
-     * <li>{@link com.sun.jmx.remote.internal.rmi.ProxyRef#invoke(Remote, Method, Object[], long)}
+     * <li>{@code com.sun.jmx.remote.internal.rmi.ProxyRef#invoke(Remote, Method, Object[], long)}
      * </li>
      * <li>{@code com.sun.jmx.mbeanserver.MXBeanIntrospector}</li>
-     * <li>{@link com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory}</li>
-     * <li>{@link com.sun.jmx.mbeanserver.MXBeanProxy}</li>
+     * <li>{@code com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory}</li>
+     * <li>{@code com.sun.jmx.mbeanserver.MXBeanProxy}</li>
      * <li>{@code javax.management.MBeanServerInvocationHandler#isLocal(Object, Method)}</li>
      * </ul>
      * </p>
@@ -168,6 +166,7 @@ public class JmxCommonFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.CompilationMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryPoolMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.OperatingSystemMXBean"));
@@ -194,7 +193,7 @@ public class JmxCommonFeature implements InternalFeature {
      * <li>{@link javax.management.openmbean.CompositeData}</li>
      * <li>{@link javax.management.openmbean.ArrayType}</li> These
      * {@link javax.management.openmbean.OpenType}s are reflectively accessed at multiple points in
-     * the remote JMX infrastructure (See {@link sun.management.MappedMXBeanType},
+     * the remote JMX infrastructure (See {@code sun.management.MappedMXBeanType},
      * {@code com.sun.jmx.mbeanserver.MXBeanMapping#makeOpenClass(Type, javax.management.openmbean.OpenType)})
      */
     private static void configureSerialization(BeforeAnalysisAccess access) {
@@ -256,11 +255,11 @@ public class JmxCommonFeature implements InternalFeature {
      * This method configures reflection metadata shared between both JMX client and server.
      * <ul>
      * <li>All <i>*Skel</i> and <i>*Stub</i> classes must be registered for reflection along with
-     * their constructors. See {@link sun.rmi.server.Util} for an example.</li>
+     * their constructors. See {@code sun.rmi.server.Util} for an example.</li>
      *
      * <li>All methods of <i>*Info</i> classes with static <i>from</i> methods must be registered
      * for reflection. For example see:
-     * {@link com.sun.management.GcInfo#from(javax.management.openmbean.CompositeData)} and
+     * {@code com.sun.management.GcInfo#from(javax.management.openmbean.CompositeData)} and
      * {@link java.lang.management.MemoryUsage#from(javax.management.openmbean.CompositeData)}. This
      * is because these classes have their methods reflectively accessed from their static
      * <i>from</i> methods. Remote JMX infrastructure uses the following pattern: the <i>*Info</i>
@@ -268,11 +267,11 @@ public class JmxCommonFeature implements InternalFeature {
      * static <i>from</i>method. (ie. SomeInfo would correspond to <i>SomeInfoCompositeData extends
      * LazyCompositeData </i>).</li>
      *
-     * <li>{@link javax.management.remote.rmi.RMIServer} requires registration of all its methods as
-     * they are used from {@link javax.management.remote.rmi.RMIServerImpl_Stub}.</li>
-     * <li>{@link javax.management.remote.rmi.RMIConnection} requires registration of all its
+     * <li>{@code javax.management.remote.rmi.RMIServer} requires registration of all its methods as
+     * they are used from {@code javax.management.remote.rmi.RMIServerImpl_Stub}.</li>
+     * <li>{@code javax.management.remote.rmi.RMIConnection} requires registration of all its
      * methods as they are used from
-     * {@link javax.management.remote.rmi.RMIConnectionImpl_Stub}.</li>
+     * {@code javax.management.remote.rmi.RMIConnectionImpl_Stub}.</li>
      * </ul>
      */
     private static void configureReflection(BeforeAnalysisAccess access) {

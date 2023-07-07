@@ -49,7 +49,7 @@
  * notifying of increments to the values of the counters.
  *
  * The other public functions here are operations on the data allocated here, for the convenience of
- * the code in Target_sun_misc_Signal.
+ * the code in Target_jdk_internal_misc_Signal.
  *
  * The state for handling signals is global to a process, and has no knowledge of isolates. That
  * imposes the restriction that only one isolate at a time may register to receive signals.

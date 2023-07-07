@@ -34,22 +34,26 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -57,11 +61,10 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 @AutomaticallyRegisteredFeature
 public class ClassInitializationFeature implements InternalFeature {
@@ -118,10 +121,10 @@ public class ClassInitializationFeature implements InternalFeature {
 
     private Object checkImageHeapInstance(Object obj) {
         /*
-         * Note that computeInitKind also memoizes the class as InitKind.BUILD_TIME, which means
-         * that the user cannot later manually register it as RERUN or RUN_TIME.
+         * Note that initializeAtBuildTime also memoizes the class as InitKind.BUILD_TIME, which
+         * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
-        if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
+        if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
             String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
             msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
                             " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
@@ -169,16 +172,21 @@ public class ClassInitializationFeature implements InternalFeature {
      */
     @Override
     @SuppressWarnings("try")
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void afterAnalysis(AfterAnalysisAccess a) {
+        AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             assert classInitializationSupport.checkDelayedInitialization();
 
-            classInitializationSupport.doLateInitialization(universe, metaAccess);
+            if (SimulateClassInitializerSupport.singleton().isEnabled()) {
+                /* Simulation of class initializer replaces the "late initialization". */
+            } else {
+                classInitializationSupport.doLateInitialization(universe, metaAccess);
+            }
 
             if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
-                reportClassInitializationInfo(SubstrateOptions.reportsPath());
+                reportClassInitializationInfo(access, SubstrateOptions.reportsPath());
             }
             if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
                 reportTrackedClassInitializationTraces(SubstrateOptions.reportsPath());
@@ -202,21 +210,32 @@ public class ClassInitializationFeature implements InternalFeature {
      * Prints a file for every type of class initialization. Each file contains a list of classes
      * that belong to it.
      */
-    private void reportClassInitializationInfo(String path) {
+    private void reportClassInitializationInfo(AfterAnalysisAccessImpl access, String path) {
         ReportUtils.report("class initialization report", path, "class_initialization_report", "csv", writer -> {
             writer.println("Class Name, Initialization Kind, Reason for Initialization");
-            reportKind(writer, BUILD_TIME);
-            reportKind(writer, RERUN);
-            reportKind(writer, RUN_TIME);
+            reportKind(access, writer, BUILD_TIME);
+            reportKind(access, writer, RERUN);
+            reportKind(access, writer, RUN_TIME);
         });
     }
 
-    private void reportKind(PrintWriter writer, InitKind kind) {
+    private void reportKind(AfterAnalysisAccessImpl access, PrintWriter writer, InitKind kind) {
         List<Class<?>> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
         allClasses.sort(Comparator.comparing(Class::getTypeName));
         allClasses.forEach(clazz -> {
             writer.print(clazz.getTypeName() + ", ");
-            writer.print(kind + ", ");
+            boolean simulated = false;
+            if (kind != BUILD_TIME) {
+                Optional<AnalysisType> type = access.getMetaAccess().optionalLookupJavaType(clazz);
+                if (type.isPresent()) {
+                    simulated = SimulateClassInitializerSupport.singleton().isClassInitializerSimulated(type.get());
+                }
+            }
+            if (simulated) {
+                writer.print("SIMULATED, ");
+            } else {
+                writer.print(kind + ", ");
+            }
             writer.println(classInitializationSupport.reasonForClass(clazz));
         });
     }

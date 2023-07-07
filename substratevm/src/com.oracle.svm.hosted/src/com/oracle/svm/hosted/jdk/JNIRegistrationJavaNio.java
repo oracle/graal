@@ -46,6 +46,24 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements InternalFeature {
 
+    private static final boolean isJdkSctpModulePresent;
+    private static final boolean isJavaNamingModulePresent;
+
+    static {
+        Module thisModule = JNIRegistrationJavaNio.class.getModule();
+        var sctpModule = ModuleLayer.boot().findModule("jdk.sctp");
+        if (sctpModule.isPresent()) {
+            thisModule.addReads(sctpModule.get());
+        }
+        isJdkSctpModulePresent = sctpModule.isPresent();
+
+        var namingModule = ModuleLayer.boot().findModule("java.naming");
+        if (namingModule.isPresent()) {
+            thisModule.addReads(namingModule.get());
+        }
+        isJavaNamingModulePresent = namingModule.isPresent();
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
@@ -59,7 +77,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
             rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
-            if (isLinux()) {
+            if (isLinux() && isJdkSctpModulePresent) {
                 rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
@@ -88,7 +106,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerUnixNativeDispatcherInit, method(a, "sun.nio.fs.UnixNativeDispatcher", "init"));
-            if (isLinux()) {
+            if (isLinux() && isJdkSctpModulePresent) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNio::registerSctpChannelImplInitIDs, method(a, "sun.nio.ch.sctp.SctpChannelImpl", "initIDs"));
             }
 
@@ -97,7 +115,10 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerIocpInitIDs, method(a, "sun.nio.ch.Iocp", "initIDs"));
         }
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerConnectionCreateInetSocketAddress, method(a, "com.sun.jndi.ldap.Connection", "createInetSocketAddress", String.class, int.class));
+        if (isJavaNamingModulePresent) {
+            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerConnectionCreateInetSocketAddress,
+                            method(a, "com.sun.jndi.ldap.Connection", "createInetSocketAddress", String.class, int.class));
+        }
 
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));

@@ -27,16 +27,15 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-import sun.misc.Signal;
-import sun.misc.SignalHandler;
+import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
 public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
@@ -61,7 +60,7 @@ final class DumpRuntimeCompilationStartupHook implements RuntimeSupport.Hook {
     }
 }
 
-class DumpRuntimeCompilation implements SignalHandler {
+class DumpRuntimeCompilation implements Signal.Handler {
     static void install() {
         Signal.handle(new Signal("USR2"), new DumpRuntimeCompilation());
     }

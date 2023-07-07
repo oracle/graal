@@ -122,6 +122,8 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidDumpUsagePhase.run",
                     "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
                     "com.oracle.graal.pointsto.phases.InlineBeforeAnalysis.decodeGraph",
+                    "com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport.decodeGraph",
+                    "com.oracle.svm.hosted.classinitialization.SimulateClassInitializerAbortException.doAbort",
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpBasic",
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.GraphManager.peRoot"));
 

@@ -96,7 +96,7 @@ static void os__signal_notify(int sig) {
   sig_sem__signal();
 }
 
-// sun.misc.Signal
+// jdk.internal.misc.Signal
 // NOTE that this is a workaround for an apparent kernel bug where if
 // a signal handler for SIGBREAK is installed then that signal handler
 // takes priority over the console control handler for CTRL_CLOSE_EVENT.

@@ -156,6 +156,11 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             public String getName() {
                 return ROOT;
             }
+
+            @Override
+            public String toString() {
+                return getName();
+            }
         }.getCallTarget();
         compileAndAssertLatency(target);
         Assert.assertNull(directCallNode.getClonedCallTarget());
