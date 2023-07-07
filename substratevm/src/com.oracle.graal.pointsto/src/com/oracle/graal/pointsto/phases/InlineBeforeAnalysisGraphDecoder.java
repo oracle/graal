@@ -269,7 +269,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) replacement;
         registerNode(loopScope, invokableData.orderId, invoke, true, false);
         InvokeData invokeData = new InvokeData(invoke, invokableData.contextType, invokableData.orderId, -1, intrinsifiedMethodHandle, invokableData.stateAfterOrderId,
-                invokableData.nextOrderId, invokableData.exceptionOrderId, invokableData.exceptionStateOrderId, invokableData.exceptionNextOrderId);
+                        invokableData.nextOrderId, invokableData.exceptionOrderId, invokableData.exceptionStateOrderId, invokableData.exceptionNextOrderId);
 
         CallTargetNode callTarget;
         if (invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNode t) {
