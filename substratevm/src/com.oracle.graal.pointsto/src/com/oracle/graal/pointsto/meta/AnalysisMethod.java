@@ -389,16 +389,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             declaringClass.forAllSuperTypes(superType -> {
                 /*
                  * Iterate all the super types (including this type itself) looking for installed
-                 * override notifications. If this method resolves in a super type, and it has an
+                 * override notifications. If this method is found in a super type, and it has an
                  * override handler installed in that type, pass this method to the callback. It
                  * doesn't matter if the superMethod is actually reachable, only if it has any
-                 * override handlers installed.
+                 * override handlers installed. Note that ResolvedJavaType.resolveMethod() cannot be
+                 * used here because it only resolves methods declared by the type itself or if the
+                 * method's declaring class is assignable from the type.
                  */
-                AnalysisMethod superMethod = resolveInType(superType);
+                AnalysisMethod superMethod = findInType(superType);
                 if (superMethod != null) {
                     superMethod.notifyMethodOverride(AnalysisMethod.this);
                 }
             });
+        }
+    }
+
+    /** Find if the type declares a method with the same name and signature as this method. */
+    private AnalysisMethod findInType(AnalysisType type) {
+        try {
+            return type.findMethod(wrapped.getName(), getSignature());
+        } catch (UnsupportedFeatureException | LinkageError e) {
+            /* Ignore linking errors and deleted methods. */
+            return null;
         }
     }
 
