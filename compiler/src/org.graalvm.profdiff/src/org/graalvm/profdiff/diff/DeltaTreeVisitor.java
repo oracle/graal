@@ -33,14 +33,19 @@ import org.graalvm.profdiff.core.TreeNode;
  */
 public interface DeltaTreeVisitor<T extends TreeNode<T>> {
     /**
-     * Notifies the visitor before a delta tree is visited.
+     * Notifies the visitor before a non-empty delta tree is visited.
      */
     void beforeVisit();
 
     /**
-     * Notifies the visitor after a delta tree is visited.
+     * Notifies the visitor after a non-empty delta tree is visited.
      */
     void afterVisit();
+
+    /**
+     * Notifies the visitor that an empty delta tree is visited.
+     */
+    void visitEmptyTree();
 
     /**
      * Visits a delta node that representing an identity operation.
