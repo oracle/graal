@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.serviceprovider;
+package com.oracle.svm.core.jdk;
 
-import java.lang.Runtime.Version;
+import java.util.function.BooleanSupplier;
 
-/**
- * Interface to query which JDK version Graal is running on.
- */
-public final class JavaVersionUtil {
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-    /**
-     * The value of calling {@link Version#feature()} on {@link Runtime#version()}.
-     */
-    public static final int JAVA_SPEC = Runtime.version().feature();
-
-    /**
-     * Return the value of JVM specification vendor
-     */
-    public static final String JVM_SPEC_VENDOR = System.getProperty("java.vm.specification.vendor");
-
-    private JavaVersionUtil() {
+public class OracleJdk11Only implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC == 11 && JavaVersionUtil.JVM_SPEC_VENDOR.startsWith("Oracle") ;
     }
 }

@@ -324,7 +324,7 @@ final class Target_javax_crypto_JceSecurity {
      *
      * This is only used in {@link KeyAgreement}, it's safe to remove.
      */
-    @Alias @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    @Alias @TargetElement(onlyWith = OracleJdk11Only.class) //
     @InjectAccessors(JceSecurityAccessor.class) //
     static SecureRandom RANDOM;
 
