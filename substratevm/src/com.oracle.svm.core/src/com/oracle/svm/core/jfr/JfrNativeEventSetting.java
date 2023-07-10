@@ -44,6 +44,7 @@ public class JfrNativeEventSetting {
     public JfrNativeEventSetting() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThresholdTicks() {
         return thresholdTicks;
     }

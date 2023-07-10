@@ -91,4 +91,9 @@ public final class JfrEvent {
     public boolean shouldEmit() {
         return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
     }
+
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
+    public boolean shouldEmit(long startTicks) {
+        return shouldEmit() && JfrTicks.elapsedTicks() - startTicks > SubstrateJVM.get().getThreshold(this);
+    }
 }

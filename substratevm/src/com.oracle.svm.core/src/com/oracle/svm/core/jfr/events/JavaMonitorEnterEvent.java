@@ -47,7 +47,7 @@ public class JavaMonitorEnterEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit0(Object obj, long previousOwnerTid, long startTicks) {
-        if (JfrEvent.JavaMonitorEnter.shouldEmit()) {
+        if (JfrEvent.JavaMonitorEnter.shouldEmit(startTicks)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

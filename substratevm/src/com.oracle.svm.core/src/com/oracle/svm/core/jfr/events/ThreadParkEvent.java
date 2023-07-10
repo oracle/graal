@@ -47,7 +47,7 @@ public class ThreadParkEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, boolean isAbsolute, long time) {
-        if (JfrEvent.ThreadPark.shouldEmit()) {
+        if (JfrEvent.ThreadPark.shouldEmit(startTicks)) {
             Class<?> parkedClass = null;
             if (obj != null) {
                 parkedClass = obj.getClass();

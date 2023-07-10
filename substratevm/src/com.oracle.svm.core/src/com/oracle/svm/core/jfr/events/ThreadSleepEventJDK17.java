@@ -48,7 +48,7 @@ public class ThreadSleepEventJDK17 {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long time, long startTicks) {
-        if (ThreadSleep.shouldEmit()) {
+        if (ThreadSleep.shouldEmit(startTicks)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
