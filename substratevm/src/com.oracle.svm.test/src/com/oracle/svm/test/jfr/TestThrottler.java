@@ -147,8 +147,8 @@ public class TestThrottler extends JfrRecordingTest {
 
     /**
      * This test checks the projected population after a window rotation. This is a test of the EWMA
-     * calculation. Window lookback is 25 and windowDuration is un-normalized because period is not
-     * greater than 1s.
+     * calculation. Window lookback is 25 and windowDuration is un-normalized because the period is
+     * not greater than 1s.
      */
     @Test
     public void testEWMA() {
@@ -292,8 +292,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
-    public void testDistributionEarlyBurst() { // maybe this is 41000 instead of 50000 because
-                                               // projected population size is low
+    public void testDistributionEarlyBurst() {
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
         final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
@@ -311,8 +310,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
-    public void testDistributionLateBurst() { // *** I think its [NOT] bursting every window by
-                                              // accident. windowCount=10000 not 1000
+    public void testDistributionLateBurst() {
         final int maxPopPerWindow = 2000;
         final int expectedSamplesPerWindow = 50;
         final int accumulatedDebtCarryLimit = 10; // 1000 / windowDurationMs
@@ -385,7 +383,7 @@ public class TestThrottler extends JfrRecordingTest {
         sampleVariance = sampleVariance / (sampleSize - 1);
         double populationStdev = Math.sqrt(populationVariance);
         double sampleStdev = Math.sqrt(sampleVariance);
-        expectNear(populationStdev, sampleStdev, 0.5); // 0.5 value copied from Hotspot test
+        expectNear(populationStdev, sampleStdev, 0.5); // 0.5 value to match Hotspot test
         expectNear(populationMean, sampleMean, populationStdev);
     }
 
