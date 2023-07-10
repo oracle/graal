@@ -9,7 +9,7 @@ redirect_from: /$version/reference-manual/native-image/JFR/
 # JDK Flight Recorder (JFR) with Native Image
 
 JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM. 
-GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event`](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.jfr/jdk/jfr/Event.html) API with a similar experience to using JFR in the Java HotSpot VM.
+GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/20/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
 To record JFR events when running a native executable, JFR support and JFR recording must be enabled. 
 
@@ -117,10 +117,10 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 ## Current Limitations
 
-The JFR support is still limited, for example, most VM-internal events and advanced features such as stack traces or memory leak detection are still missing. A subset of JFR features are currently available: custom and system events and disk-based recordings.
-Note that: 
-- JFR events recording is not supported on GraalVM distribution for Windows. 
-- JFR is only supported with native executables built on GraalVM JDK 11.
+The JFR support is still limited, for example, most VM-internal events and advanced features such as stack traces or memory leak detection are still missing. 
+A subset of JFR features are currently available: custom and system events and disk-based recordings.
+Note that JFR events recording is not supported on GraalVM distribution for Windows. 
+JFR is supported with native executables built on GraalVM based on JDK 11 or higher version.
 
 ### Further Reading
 
