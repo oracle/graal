@@ -48,6 +48,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.services.Services;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.
@@ -106,7 +107,10 @@ public interface CompilationResultBuilderFactory {
                         CompilationResult compilationResult,
                         Register uncompressedNullRegister,
                         LIR lir) {
-            if (!isVerifierInitialized) {
+            if (Services.IS_IN_NATIVE_IMAGE) {
+                // LIR instruction verifier uses URLClassLoader which is excluded from
+                // libgraal due to the image size increase it causes.
+            } else if (!isVerifierInitialized) {
                 synchronized (lirInstructionVerifiers) {
                     if (!isVerifierInitialized) {
                         String lirInstructionVerifierPath = Options.LIRInstructionVerifierPath.getValue(options);

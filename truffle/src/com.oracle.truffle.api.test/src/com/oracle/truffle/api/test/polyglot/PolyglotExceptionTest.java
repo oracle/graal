@@ -68,6 +68,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
@@ -424,13 +426,22 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         if (ImageInfo.inImageCode() || TruffleTestAssumptions.isStrongEncapsulation()) {
             test.run();
         } else {
+            List<String> vmOptions = new ArrayList<>();
             /*
              * Limits the maximum heap size to prevent hotspot crashes when the operating system is
              * unable to commit the reserved memory. This can happen when the physical memory is
              * unable to hold a large heap and the swap space is not configured or is too small.
              */
-            String[] vmOptions = {"-Xmx1G"};
-            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions).run();
+            vmOptions.add("-Xmx1G");
+            /*
+             * The optimized HotSpot runtime is initialized lazily. We have to use synchronous
+             * compilation to prevent OOM in the compiler thread.
+             */
+            if (Truffle.getRuntime().getClass() != DefaultTruffleRuntime.class) {
+                vmOptions.add("-Dpolyglot.engine.CompileImmediately=true");
+                vmOptions.add("-Dpolyglot.engine.BackgroundCompilation=false");
+            }
+            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions.toArray(new String[0])).run();
         }
     }
 

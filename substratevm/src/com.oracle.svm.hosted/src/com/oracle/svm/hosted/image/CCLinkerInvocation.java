@@ -242,7 +242,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     protected List<String> getNativeLinkerOptions() {
         return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values())
-                        .flatMap(Collection::stream).collect(Collectors.toList());
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toList());
     }
 
     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
@@ -484,7 +485,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             /* Put .lib and .exp files in a temp dir as we don't usually need them. */
             cmd.add("/IMPLIB:" + getTempDirectory().resolve(imageName + ".lib"));
 
-            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+            if (SubstrateOptions.useDebugInfoGeneration()) {
                 cmd.add("/DEBUG");
 
                 if (SubstrateOptions.DeleteLocalSymbols.getValue()) {

@@ -56,6 +56,8 @@ public class DebugEnumType extends DebugType {
     private final EconomicMap<Long, String> values;
 
     public DebugEnumType(String typeName, DebugType baseType, EconomicMap<Long, String> values) {
+        assert baseType != null : "the base type (underlying representation) of an enum type must not be null";
+        assert values != null : "the possible values of an enum type must not be null";
         this.typeName = typeName;
         this.baseType = baseType;
         this.values = values;

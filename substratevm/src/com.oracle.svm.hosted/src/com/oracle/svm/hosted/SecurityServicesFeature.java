@@ -56,10 +56,12 @@ import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,14 +79,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslClientFactory;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
-import javax.smartcardio.TerminalFactory;
-import javax.xml.crypto.dsig.TransformService;
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -158,13 +152,36 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String[] emptyStringArray = new String[0];
 
     /** The list of known service classes defined by the JCA. */
-    private static final Class<?>[] knownServices = {AlgorithmParameterGenerator.class, AlgorithmParameters.class,
-                    CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
-                    Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
-                    KeyGenerator.class, KeyInfoFactory.class, KeyManagerFactory.class, KeyPairGenerator.class,
-                    KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
-                    SaslClientFactory.class, SaslServerFactory.class, SecretKeyFactory.class, SecureRandom.class, Signature.class,
-                    TerminalFactory.class, TransformService.class, TrustManagerFactory.class, XMLSignatureFactory.class};
+    private static final List<Class<?>> knownServices;
+
+    private static final boolean isMscapiModulePresent;
+
+    static {
+        List<Class<?>> classList = new ArrayList<>(List.of(
+                        AlgorithmParameterGenerator.class, AlgorithmParameters.class,
+                        CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
+                        Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
+                        KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
+                        SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
+
+        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServerFactory"));
+        }
+        if (ModuleLayer.boot().findModule("java.xml.crypto").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.TransformService"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.XMLSignatureFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.keyinfo.KeyInfoFactory"));
+        }
+        if (ModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
+        }
+
+        isMscapiModulePresent = ModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
+
+        knownServices = Collections.unmodifiableList(classList);
+    }
 
     private ImageClassLoader loader;
     /** Given a service type will return its constructor parameters, if any. */
@@ -242,7 +259,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * SeedGenerator.getSystemEntropy().
          */
         rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
             rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
@@ -257,7 +274,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
+        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
 
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
@@ -318,12 +335,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         if (isPosix()) {
-            access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
-            /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+            Optional<Method> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
+            optMethodGetUnixInfo.ifPresent(m -> {
+                access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
+                /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
+                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+            });
         }
 
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
             /* Resolve calls to sun_security_mscapi* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
@@ -404,20 +424,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        /*
-         * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the new
-         * signature first and fall back to the old one in case we're on a JDK without the change.
-         */
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
-                                        .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
-                        method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
-                        method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
-                        method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
-                        method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        if (isMscapiModulePresent) {
+            /*
+             * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the
+             * new signature first and fall back to the old one in case we're on a JDK without the
+             * change.
+             */
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
+                                            .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                            method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                            method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                            method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                            method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        }
     }
 
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
@@ -449,7 +472,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static Set<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
-        Set<Class<?>> allKnownServices = new HashSet<>(Arrays.asList(knownServices));
+        Set<Class<?>> allKnownServices = new HashSet<>(knownServices);
         for (String value : Options.AdditionalSecurityServiceTypes.getValue().values()) {
             for (String serviceClazzName : value.split(",")) {
                 Class<?> serviceClazz = access.findClassByName(serviceClazzName);
@@ -460,7 +483,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return allKnownServices;
     }
 
-    private void registerSpecialReachabilityHandlers(BeforeAnalysisAccess access) {
+    private Class<?> classSaslClient;
+    private Class<?> classSaslServer;
+
+    private void registerSASLReachabilityHandlers(BeforeAnalysisAccess access) {
         /*
          * Sasl does not conform to the JCA - the service has no getInstance method. We instead use
          * the Sasl facade class for our reachability handlers.
@@ -475,10 +501,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             }
 
             Class<?> saslClass = saslClassLookup.getOrFail();
+
+            classSaslClient = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClient");
+            classSaslServer = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServer");
+
             Method createSaslClient = ReflectionUtil.lookupMethod(saslClass, "createSaslClient", String[].class, String.class, String.class, String.class, Map.class, CallbackHandler.class);
-            access.registerReachabilityHandler(a -> registerServices(a, createSaslClient, SaslClient.class), createSaslClient);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslClient, classSaslClient), createSaslClient);
             Method createSaslServer = ReflectionUtil.lookupMethod(saslClass, "createSaslServer", String.class, String.class, String.class, Map.class, CallbackHandler.class);
-            access.registerReachabilityHandler(a -> registerServices(a, createSaslServer, SaslServer.class), createSaslServer);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslServer, classSaslServer), createSaslServer);
         } catch (ReflectionUtil.ReflectionUtilError e) {
             trace(saslRegistrationFailureMessage, e);
         }
@@ -516,7 +546,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             }
         }
 
-        registerSpecialReachabilityHandlers(access);
+        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+            registerSASLReachabilityHandlers(access);
+        }
 
         /*
          * On Oracle JDK the SecureRandom service implementations are not automatically discovered
@@ -544,9 +576,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         registerServices(access, trigger, serviceType);
     }
 
-    private static String getServiceType(Class<?> serviceClass) {
+    private String getServiceType(Class<?> serviceClass) {
+        Objects.requireNonNull(serviceClass);
         // Checkstyle: allow Class.getSimpleName
-        if (serviceClass == SaslClient.class || serviceClass == SaslServer.class) {
+        if (serviceClass == classSaslClient || serviceClass == classSaslServer) {
             return serviceClass.getSimpleName() + "Factory";
         }
         return serviceClass.getSimpleName();

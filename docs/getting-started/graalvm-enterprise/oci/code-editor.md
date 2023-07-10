@@ -9,9 +9,9 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the Oracle Cloud Console and your local development environment. The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
 
-Oracle GraalVM for JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
+Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
-> Note: Oracle GraalVM is available on Oracle Cloud Infrastructure at no additional cost.
+> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
 ## Create and Run a Java Application in OCI Code Editor
 

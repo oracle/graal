@@ -125,15 +125,15 @@ For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to
 
 1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
 
-![](images/add-project-default-sdk.png)
+![Intellij IDEA: Add Project Name](images/add-project-default-sdk.png)
 
 2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the folder with the spinner icon:
 
-![](images/generate-project-sources.png)
+![Intellij IDEA: Generate Project Sources](images/generate-project-sources.png)
 
 3&#46; Enable the Java on Truffle execution mode. From the main menu select **Run**, then **Run…**. Click **Edit Configurations** and choose **Environment**. Put the `-truffle -XX:+IgnoreUnrecognizedVMOptions` command in **VM options** and press Apply.
 
-![](images/pass-vmoption.png)
+![Intellij IDEA: Enable Environment Configuration](images/pass-vmoption.png)
 
 It is necessary to specify `-XX:+IgnoreUnrecognizedVMOptions` because Intellij automatically adds a `-javaagent` argument which is not supported yet.
 
@@ -146,7 +146,7 @@ For example, starting a debugger session from IntelliJ IDEA is based on the Run 
 To ensure you attach the debugger to your Java application in the same environment, navigate in the main menu to Run -> Debug… -> Edit Configurations, expand Environment, check the JRE value and VM options values.
 It should show GraalVM as project's JRE and VM options should include `-truffle -XX:+IgnoreUnrecognizedVMOptions`: `-truffle` to run Java on Truffle, and `-XX:+IgnoreUnrecognizedVMOptions` as a temporary workaround since the Java on Truffle runtime does not yet support attaching Java agents.
 
-![](images/debug-configuration.png)
+![Intellij IDEA: Debug Configuration](images/debug-configuration.png)
 
 ## What to Read Next
 

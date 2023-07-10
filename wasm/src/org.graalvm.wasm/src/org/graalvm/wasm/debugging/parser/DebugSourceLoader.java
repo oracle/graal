@@ -91,7 +91,7 @@ public class DebugSourceLoader {
                 reader = Files.newBufferedReader(path);
             }
             s = Source.newBuilder(language, reader, fileName.toString()).build();
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             return null;
         }
         cache.put(path, s);

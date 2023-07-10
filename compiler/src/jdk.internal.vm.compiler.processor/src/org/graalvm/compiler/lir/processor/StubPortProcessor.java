@@ -78,14 +78,16 @@ public class StubPortProcessor extends AbstractProcessor {
         int lineEnd = getAnnotationValue(annotationMirror, "lineEnd", Integer.class);
         String commit = getAnnotationValue(annotationMirror, "commit", String.class);
         String sha1 = getAnnotationValue(annotationMirror, "sha1", String.class);
+        String ignore = getAnnotationValue(annotationMirror, "ignore", String.class);
 
+        Diagnostic.Kind kind = "".equals(ignore) ? Diagnostic.Kind.ERROR : Diagnostic.Kind.NOTE;
         String urlHumanSuffix = path + "#L" + lineStart + "-L" + lineEnd;
         String url = JDK_LATEST + path;
         String sha1Latest;
         try {
             sha1Latest = digest(proxy, md, url, lineStart - 1, lineEnd);
         } catch (FileNotFoundException e) {
-            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
+            env().getMessager().printMessage(kind,
                             String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match : " +
                                             "File not found in the latest commit.",
                                             commit,
@@ -98,7 +100,6 @@ public class StubPortProcessor extends AbstractProcessor {
             String urlOld = JDK_COMMIT + commit + '/' + path;
             String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
 
-            Diagnostic.Kind kind = Diagnostic.Kind.ERROR;
             String extraMessage = "";
 
             if (sha1.equals(sha1Old)) {
@@ -170,7 +171,7 @@ public class StubPortProcessor extends AbstractProcessor {
             String newFullFile = newUrlIn.lines().skip(newLineStartExclusive).limit(newLineEnd - newLineStartExclusive).collect(Collectors.joining("\n"));
             int idx = newFullFile.indexOf(oldSnippet);
             if (idx != -1) {
-                return newLineStartExclusive + newFullFile.substring(0, idx).split("\n").length;
+                return newLineStartExclusive + (int) newFullFile.substring(0, idx).lines().count();
             }
         }
         return -1;

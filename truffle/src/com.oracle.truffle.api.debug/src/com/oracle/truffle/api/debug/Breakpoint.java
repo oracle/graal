@@ -562,12 +562,8 @@ public class Breakpoint {
                 locationsInExecutedSources = locations;
                 EventBinding<?> loadBinding = instrumenter.createLoadSourceSectionBinding(filters.nearestFilter, filters.sectionFilter, locations, true);
                 if (sourceBinding.compareAndSet(null, loadBinding)) {
-                    try {
-                        loadBinding.attach();
-                    } catch (IllegalStateException ex) {
-                        // uninstall can dispose the binding concurrently
-                        assert loadBinding.isDisposed();
-                    }
+                    loadBinding.tryAttach();
+                    // uninstall can dispose the binding concurrently
                 }
             } else {
                 boolean needExecBinding;
@@ -615,7 +611,8 @@ public class Breakpoint {
             if (doAssign) {
                 assignAt(section);
             } else if (execBinding != null) {
-                execBinding.attach();
+                execBinding.tryAttach();
+                // uninstall can dispose the binding concurrently
             }
         }
 

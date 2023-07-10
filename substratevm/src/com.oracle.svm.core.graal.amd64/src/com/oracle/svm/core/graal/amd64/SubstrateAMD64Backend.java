@@ -91,6 +91,8 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
 import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
+import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -715,6 +717,19 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else {
                 emitMove(result, value);
             }
+        }
+
+        @Override
+        public void emitProcid(AllocatableValue dst) {
+            // GR-43733: Replace string by feature when we remove support for Java 17
+            if (supportsCPUFeature("RDPID")) {
+                append(new AMD64ReadProcid(dst));
+            } else {
+                AMD64ReadTimestampCounterWithProcid procid = new AMD64ReadTimestampCounterWithProcid();
+                append(procid);
+                emitMove(dst, procid.getProcidResult());
+            }
+            getArithmetic().emitAnd(dst, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(0xfff)));
         }
 
         @Override

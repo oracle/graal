@@ -140,7 +140,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
             try (StopTimer t = TimerCollection.createTimerAndStart("(postlink)")) {
-                linkCompiledBatches(executor, debug, numBatches);
+                linkCompiledBatches(debug, threadPool, executor, numBatches);
             }
         }
     }
@@ -198,7 +198,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         });
     }
 
-    private void linkCompiledBatches(BatchExecutor executor, DebugContext debug, int numBatches) {
+    private void linkCompiledBatches(DebugContext debug, ForkJoinPool threadPool, BatchExecutor executor, int numBatches) {
         List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
         nativeLink(debug, getLinkedFilename(), compiledBatches, basePath, this::getFunctionName);
 
@@ -222,7 +222,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
         codeAreaSize = textSectionInfo.getCodeSize();
 
-        buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
+        buildRuntimeMetadata(threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
     }
 
     private Path getBitcodePath(int id) {

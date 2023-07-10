@@ -59,7 +59,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     public class InlineBeforeAnalysisMethodScope extends PEMethodScope {
 
-        private final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
+        public final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
 
         private boolean inliningAborted;
 

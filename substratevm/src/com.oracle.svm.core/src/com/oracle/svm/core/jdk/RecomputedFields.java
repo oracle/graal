@@ -234,9 +234,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
 }
 
 /**
- * The atomic field updaters access fields using {@link sun.misc.Unsafe}. The static analysis needs
- * to know about all these fields, so we need to find the original field (the updater only stores
- * the field offset) and mark it as unsafe accessed.
+ * The atomic field updaters access fields using {@code Unsafe}. The static analysis needs to know
+ * about all these fields, so we need to find the original field (the updater only stores the field
+ * offset) and mark it as unsafe accessed.
  */
 @AutomaticallyRegisteredFeature
 class AtomicFieldUpdaterFeature implements InternalFeature {

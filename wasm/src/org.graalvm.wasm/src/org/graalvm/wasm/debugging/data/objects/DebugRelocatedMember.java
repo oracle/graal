@@ -54,6 +54,8 @@ public class DebugRelocatedMember extends DebugObject {
     private final DebugObject object;
 
     public DebugRelocatedMember(DebugLocation objectLocation, DebugObject object) {
+        assert objectLocation != null : "the location of a relocatable debug member must not be null";
+        assert object != null : "the object reference of a relocatable debug member must not be null";
         this.objectLocation = objectLocation;
         this.object = object;
     }

@@ -640,13 +640,13 @@ local devkits = graal_common.devkits;
      name: 'gate-vm-style-jdk20-linux-amd64',
     },
 
-    vm.vm_java_20 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
+    vm.vm_java_21 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
      ],
      timelimit: '1:00:00',
-     name: 'gate-vm-native-sulong-linux-amd64',
+     name: 'gate-vm-native-sulong-' + self.jdk_version + '-linux-amd64',
     },
   ] + (import 'libgraal.jsonnet').builds,
 

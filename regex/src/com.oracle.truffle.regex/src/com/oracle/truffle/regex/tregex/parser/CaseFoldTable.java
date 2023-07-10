@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.ibm.icu.lang.UCharacter;
+import java.util.function.BiPredicate;
+
+import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -48,8 +51,6 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-
-import java.util.function.BiPredicate;
 
 public class CaseFoldTable {
 

@@ -147,16 +147,6 @@ final class InstrumentCache {
         }
     }
 
-    static <T> Iterable<T> loadTruffleService(Class<T> type) {
-        List<T> result = new ArrayList<>();
-        for (InstrumentCache cache : load()) {
-            for (T service : cache.providerAdapter.loadTruffleService(type)) {
-                result.add(service);
-            }
-        }
-        return result;
-    }
-
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
@@ -169,7 +159,9 @@ final class InstrumentCache {
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
-            loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            if (supplier.supportsLegacyProviders()) {
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            }
         }
         /*
          * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
@@ -189,6 +181,7 @@ final class InstrumentCache {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
+        ModuleUtils.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
@@ -286,8 +279,6 @@ final class InstrumentCache {
         String getInstrumentClassName();
 
         Collection<String> getServicesClassNames();
-
-        <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
     /**
@@ -324,11 +315,6 @@ final class InstrumentCache {
         public Collection<String> getServicesClassNames() {
             return provider.getServicesClassNames();
         }
-
-        @Override
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            return List.of();
-        }
     }
 
     /**
@@ -362,11 +348,6 @@ final class InstrumentCache {
         @Override
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
-        }
-
-        @Override
-        public <T> Iterable<T> loadTruffleService(Class<T> type) {
-            return EngineAccessor.INSTRUMENT_PROVIDER.loadTruffleService(provider, type);
         }
     }
 }

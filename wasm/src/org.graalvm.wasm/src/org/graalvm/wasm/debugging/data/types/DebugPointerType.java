@@ -56,6 +56,7 @@ public class DebugPointerType extends DebugType {
     protected final DebugType baseType;
 
     public DebugPointerType(DebugType baseType) {
+        assert baseType != null : "the base type of a debug pointer must not be null";
         this.baseType = baseType;
     }
 
@@ -85,7 +86,7 @@ public class DebugPointerType extends DebugType {
         if (pointerLocation.isInvalid()) {
             return DebugConstantObject.UNDEFINED;
         }
-        final String name = context.elementName().orElse("");
+        final String name = context.elementNameOrEmpty();
         return new DebugValue("*" + name, pointerLocation, baseType);
     }
 

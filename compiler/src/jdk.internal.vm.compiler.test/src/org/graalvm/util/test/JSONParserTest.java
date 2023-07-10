@@ -153,6 +153,41 @@ public class JSONParserTest {
         // Assert.assertTrue(result.contains("\\u09af")); //unicode used, no quoting
     }
 
+    @Test
+    public void parseAllowedKeysSimple() {
+        String source = " { \"foo\": 1, \"notFoo\": 2, \"bar\": 3 } ";
+        JSONParser parser = new JSONParser(source);
+        EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo", "bar", "baz"));
+        Assert.assertEquals(2, map.size());
+        Assert.assertEquals(1, map.get("foo"));
+        Assert.assertEquals(3, map.get("bar"));
+    }
+
+    @Test
+    public void parseAllowedKeysEarlyExit() {
+        String source = "{\"foo\": 1, invalid syntax ";
+        JSONParser parser = new JSONParser(source);
+        EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo"));
+        Assert.assertEquals(1, map.size());
+        Assert.assertEquals(1, map.get("foo"));
+    }
+
+    @Test
+    public void parseAllowedKeysEmpty() {
+        Assert.assertTrue(new JSONParser("invalid syntax").parseAllowedKeys(List.of()).isEmpty());
+    }
+
+    @Test
+    public void parseAllowedKeysErrors() {
+        for (String source : List.of("", "[]", "{,}", "{\"a\": 1,}", "{\"a\": 1 \"")) {
+            try {
+                new JSONParser(source).parseAllowedKeys(List.of("foo"));
+                Assert.fail("Should have failed to parse: " + source);
+            } catch (JSONParserException ignored) {
+            }
+        }
+    }
+
     private static void testErrorIntl(String json, String expectedMessage) {
         JSONParser parser = new JSONParser(json);
         try {

@@ -272,6 +272,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         private final NodeMap<TypeFlow<?>> nodeFlows;
 
         private final boolean allowConstantFolding;
+        private final boolean allowOptimizeReturnParameter;
         private final EconomicSet<ValueNode> unreachableValues = EconomicSet.create();
 
         /**
@@ -300,6 +301,19 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * to support it within deoptimization targets and runtime-compiled methods.
              */
             this.allowConstantFolding = method.isOriginalMethod() && strengthenGraphWithConstants;
+
+            /*
+             * In deoptimization target methods optimizing the return parameter can make new values
+             * live across deoptimization entrypoints.
+             *
+             * In runtime-compiled methods invokes may be intrinsified during runtime partial
+             * evaluation and change the behavior of the invoke. This would be a problem if the
+             * behavior of the method completely changed; however, currently this intrinsification
+             * is used to improve the stamp of the returned value, but not to alter the semantics.
+             * Hence, it is preferred to continue to use the return value of the invoke (as opposed
+             * to the parameter value).
+             */
+            this.allowOptimizeReturnParameter = method.isOriginalMethod();
 
             this.toTargetFunction = bb.getHostVM().getStrengthenGraphsToTargetFunction(method.getMultiMethodKey());
         }
@@ -537,11 +551,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            if (getAnalysis().optimizeReturnedParameter() && !methodFlow.getMethod().isDeoptTarget()) {
-                /*
-                 * Optimizing the return parameter can make new values live across deoptimization
-                 * entrypoints.
-                 */
+            if (allowOptimizeReturnParameter && getAnalysis().optimizeReturnedParameter()) {
                 optimizeReturnedParameter(callees, arguments, node, tool);
             }
 
@@ -553,8 +563,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         /**
          * If all possible callees return the same parameter, then we can replace the invoke with
          * that parameter at all usages. This is the same that would happen when the callees are
-         * inlined. So we get a bit of the befits of method inlining without actually performing the
-         * inlining.
+         * inlined. So we get a bit of the benefits of method inlining without actually performing
+         * the inlining.
          */
         private void optimizeReturnedParameter(Collection<AnalysisMethod> callees, NodeInputList<ValueNode> arguments, FixedNode invoke, SimplifierTool tool) {
             int returnedParameterIndex = -1;

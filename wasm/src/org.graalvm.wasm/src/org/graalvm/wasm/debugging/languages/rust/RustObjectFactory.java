@@ -74,7 +74,7 @@ public class RustObjectFactory extends DebugObjectFactory {
     @Override
     protected DebugType createEnumType(String name, DebugType baseType, EconomicMap<Long, String> values) {
         final EconomicMap<Long, String> updatedValues = EconomicMap.create(values.size());
-        MapCursor<Long, String> cursor = values.getEntries();
+        final MapCursor<Long, String> cursor = values.getEntries();
         while (cursor.advance()) {
             updatedValues.put(cursor.getKey(), name + "::" + cursor.getValue());
         }
