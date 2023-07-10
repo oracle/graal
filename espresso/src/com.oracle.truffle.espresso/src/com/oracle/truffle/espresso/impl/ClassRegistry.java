@@ -449,7 +449,7 @@ public abstract class ClassRegistry {
 
         if (superKlass != null) {
             if (!Klass.checkAccess(superKlass, klass, true)) {
-                throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
+                //throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
                 throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is not a permitted subclass of class " + superKlassType);

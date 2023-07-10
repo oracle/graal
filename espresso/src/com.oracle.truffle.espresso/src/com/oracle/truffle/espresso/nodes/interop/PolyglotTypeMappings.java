@@ -55,6 +55,7 @@ public class PolyglotTypeMappings {
     private final OptionMap<String> typeConverters;
     private UnmodifiableEconomicMap<String, TypeConverter> typeConverterFunctions;
     private UnmodifiableEconomicMap<String, ObjectKlass> espressoForeignCollections;
+    private UnmodifiableEconomicMap<String, InternalTypeConverter> internalTypeConverterFunctions;
     private final boolean builtinCollections;
 
     public PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters, boolean builtinCollections) {
@@ -77,7 +78,7 @@ public class PolyglotTypeMappings {
                 Klass parent = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
                 if (parent != null && parent.isInterface()) {
                     temp.put(mapping, (ObjectKlass) parent);
-                    parent.isInterfaceMapped = true;
+                    parent.typeConversionState = 3;
                 } else {
                     throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
                 }
@@ -115,9 +116,9 @@ public class PolyglotTypeMappings {
                 StaticObject conversionReceiver = context.getAllocator().createNew(conversionKlass);
                 temp.put(type, new TypeConverterImpl(conversionReceiver, DirectCallNode.create(conversionMethod.getCallTarget())));
             }
-            addInternalConverters(temp);
             typeConverterFunctions = EconomicMap.create(temp);
         }
+        addInternalConverters();
         if (builtinCollections) {
             EconomicMap<String, ObjectKlass> temp = EconomicMap.create(6);
             addInternalEspressoCollections(temp, context.getMeta());
@@ -138,9 +139,11 @@ public class PolyglotTypeMappings {
         return espressoForeignCollections.get(metaName);
     }
 
-    private void addInternalConverters(EconomicMap<String, TypeConverter> converters) {
+    private void addInternalConverters() {
+        EconomicMap<String, InternalTypeConverter> converters = EconomicMap.create(2);
         converters.put("java.util.Optional", new OptionalTypeConverter());
         converters.put("java.math.BigDecimal", new BigDecimalTypeConverter());
+        internalTypeConverterFunctions = EconomicMap.create(converters);
     }
 
     @TruffleBoundary
@@ -150,7 +153,7 @@ public class PolyglotTypeMappings {
     }
 
     public boolean hasMappings() {
-        return hasInterfaceMappings || typeConverterFunctions != null;
+        return hasInterfaceMappings || typeConverterFunctions != null || internalTypeConverterFunctions != null;
     }
 
     public boolean hasInterfaceMappings() {
@@ -174,11 +177,29 @@ public class PolyglotTypeMappings {
         return mapTypeConversion(name);
     }
 
+    @TruffleBoundary
+    public InternalTypeConverter mapInternalTypeConversion(String metaName) {
+        if (internalTypeConverterFunctions == null) {
+            return null;
+        }
+        return internalTypeConverterFunctions.get(metaName);
+    }
+
+    @TruffleBoundary
+    public InternalTypeConverter mapInternalTypeConversion(Klass klass) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (internalTypeConverterFunctions == null) {
+            return null;
+        }
+        String name = klass.getNameAsString().replace('/', '.');
+        return mapInternalTypeConversion(name);
+    }
+
     public interface TypeConverter {
         Object convert(StaticObject foreign);
+    }
 
-        boolean isInternal();
-
+    public interface InternalTypeConverter {
         StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso);
     }
 
@@ -194,24 +215,9 @@ public class PolyglotTypeMappings {
         public Object convert(StaticObject foreign) {
             return callNode.call(receiver, foreign);
         }
-
-        public boolean isInternal() {
-            return false;
-        }
-
-        @SuppressWarnings("unused")
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere();
-        }
     }
 
-    public final class OptionalTypeConverter implements TypeConverter {
-
-        @Override
-        public boolean isInternal() {
-            return true;
-        }
+    public final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
@@ -229,19 +235,9 @@ public class PolyglotTypeMappings {
                 throw EspressoError.shouldNotReachHere();
             }
         }
-
-        @Override
-        public Object convert(StaticObject foreign) {
-            throw new UnsupportedOperationException();
-        }
     }
 
-    public final class BigDecimalTypeConverter implements TypeConverter {
-
-        @Override
-        public boolean isInternal() {
-            return true;
-        }
+    public final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
@@ -270,11 +266,6 @@ public class PolyglotTypeMappings {
         @TruffleBoundary
         private StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
             return StaticObject.wrap(bigInteger.toByteArray(), meta);
-        }
-
-        @Override
-        public Object convert(StaticObject foreign) {
-            throw new UnsupportedOperationException();
         }
     }
 }

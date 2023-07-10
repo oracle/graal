@@ -3551,7 +3551,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject defaultValue,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached ToReference.DynamicToReference toEspresso,
+                        @Cached ToReference.ToJavaLangObject toEspresso,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3564,10 +3564,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     if (result == unwrappedDefaultValue) {
                         return defaultValue;
                     }
-                    return toEspresso.execute(result, getMeta().java_lang_Object);
+                    return toEspresso.execute(result);
                 } else {
                     Object result = interop.readHashValueOrDefault(receiver, key, defaultValue);
-                    return toEspresso.execute(result, getMeta().java_lang_Object);
+                    return toEspresso.execute(result);
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();

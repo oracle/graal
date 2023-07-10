@@ -221,11 +221,31 @@ public abstract class ToEspressoNode extends EspressoNode {
                 // check if there's a specific type mapping available
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverter.execute(metaName);
                 if (converter != null) {
-                    if (converter.isInternal()) {
-                        return converter.convertInternal(interop, value, getMeta(), converterToEspresso);
-                    } else {
-                        return converter.convert(StaticObject.createForeign(getLanguage(), targetType, value, interop));
-                    }
+                    return converter.convert(StaticObject.createForeign(getLanguage(), targetType, value, interop));
+                }
+                throw new ClassCastException();
+            } catch (ClassCastException e) {
+                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
+            }
+        }
+
+        @Specialization(guards = {
+                        "!interop.isNull(value)",
+                        "isInternalTypeConverterEnabled(targetType)",
+                        "!isStaticObject(value)"
+        })
+        public Object doInternalTypeConverter(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverter,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            try {
+                Object metaObject = getMetaObjectOrThrow(value, interop);
+                String metaName = getMetaName(metaObject, interop);
+
+                // check if there's a specific type mapping available
+                PolyglotTypeMappings.InternalTypeConverter converter = lookupInternalTypeConverter.execute(metaName);
+                if (converter != null) {
+                    return converter.convertInternal(interop, value, getMeta(), converterToEspresso);
                 }
                 throw new ClassCastException();
             } catch (ClassCastException e) {
@@ -265,11 +285,15 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     public static boolean isTypeMappingEnabled(Klass klass) {
-        return klass.isInterfaceMapped;
+        return klass.typeConversionState == 3;
     }
 
     public static boolean isTypeConverterEnabled(Klass klass) {
         return klass.isTypeMapped();
+    }
+
+    public static boolean isInternalTypeConverterEnabled(Klass klass) {
+        return klass.isInternalTypeMapped();
     }
 
     public static boolean isForeignException(Klass klass, Meta meta) {

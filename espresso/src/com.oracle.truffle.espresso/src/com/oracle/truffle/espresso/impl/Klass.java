@@ -109,8 +109,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
-    @CompilationFinal public boolean isInterfaceMapped;
-    @CompilationFinal public int typeConversionState = -1;
+    @CompilationFinal public byte typeConversionState = -1;
 
     @ExportMessage
     boolean isMemberReadable(String member,
@@ -1599,10 +1598,33 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     public final boolean isTypeMapped() {
         if (typeConversionState == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotInterfaceMappings().mapTypeConversion(this);
-            typeConversionState = converter != null ? 1 : 0;
+            computeTypeConversionState();
         }
         return typeConversionState == 1;
+    }
+
+    @TruffleBoundary
+    private void computeTypeConversionState() {
+        PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotInterfaceMappings().mapTypeConversion(this);
+        if (converter != null) {
+            typeConversionState = 1;
+        } else {
+            PolyglotTypeMappings.InternalTypeConverter internalConverter = getContext().getPolyglotInterfaceMappings().mapInternalTypeConversion(this);
+            if (internalConverter != null) {
+                typeConversionState = 2;
+            }
+        }
+        if (typeConversionState == -1) {
+            typeConversionState = (byte) 0;
+        }
+    }
+
+    public final boolean isInternalTypeMapped() {
+        if (typeConversionState == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == 2;
     }
 
     // region jdwp-specific

@@ -83,14 +83,7 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
 
     @Override
     public boolean containsKey(Object key) {
-        try {
-            Interop.readHashValue(this, key);
-            return true;
-        } catch (UnknownKeyException e) {
-            return false;
-        } catch (InteropException e) {
-            throw new UnsupportedOperationException();
-        }
+        return Interop.isHashEntryReadable(this, key);
     }
 
     @Override
@@ -151,11 +144,6 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         } else {
             throw new UnsupportedOperationException();
         }
-    }
-
-    @Override
-    public void putAll(Map<? extends K, ? extends V> m) {
-        super.putAll(m);
     }
 
     @Override
@@ -381,6 +369,19 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         public V setValue(V value) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
+
+    @Override
+    public void putAll(Map<? extends K, ? extends V> m) {
+        super.putAll(m);
     }
 
     @Override

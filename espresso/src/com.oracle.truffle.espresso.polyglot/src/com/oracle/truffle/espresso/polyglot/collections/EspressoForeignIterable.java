@@ -41,11 +41,9 @@
 package com.oracle.truffle.espresso.polyglot.collections;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
-import com.oracle.truffle.espresso.polyglot.StopIterationException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
@@ -68,54 +66,10 @@ public class EspressoForeignIterable<T> implements Iterable<T> {
     public Iterator<T> iterator() {
         assert Interop.hasIterator(this);
         try {
-            return new Itr(Interop.getIterator(this));
+            return EspressoForeignIterator.create(Interop.getIterator(this));
         } catch (Exception e) {
             return (Iterator<T>) EMPTY_ITERATOR;
         }
-    }
-
-    // Copied from AbstractList
-    private final class Itr implements Iterator<T> {
-
-        private final Object foreignIterator;
-
-        private Itr(Object foreignIterator) {
-            this.foreignIterator = foreignIterator;
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                return Interop.hasIteratorNextElement(foreignIterator);
-            } catch (UnsupportedMessageException e) {
-                return false;
-            }
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public T next() {
-            try {
-                return (T) Interop.getIteratorNextElement(foreignIterator);
-            } catch (UnsupportedMessageException | StopIterationException e) {
-                throw new NoSuchElementException();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    @Override
-    public void forEach(Consumer<? super T> action) {
-        Iterable.super.forEach(action);
-    }
-
-    @Override
-    public Spliterator<T> spliterator() {
-        return Iterable.super.spliterator();
     }
 
     @Override
@@ -125,5 +79,23 @@ public class EspressoForeignIterable<T> implements Iterable<T> {
         } catch (UnsupportedMessageException e) {
             return super.toString();
         }
+    }
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
+
+    @Override
+    public void forEach(Consumer<? super T> action) {
+        Iterable.super.forEach(action);
+    }
+
+    @Override
+    public Spliterator<T> spliterator() {
+        return Iterable.super.spliterator();
     }
 }

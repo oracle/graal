@@ -43,7 +43,6 @@ package com.oracle.truffle.espresso.polyglot.collections;
 import java.util.AbstractCollection;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
@@ -52,7 +51,6 @@ import java.util.stream.Stream;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
-import com.oracle.truffle.espresso.polyglot.StopIterationException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignCollection<T> extends AbstractCollection<T> implements Collection<T> {
@@ -62,43 +60,15 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     public Iterator<T> iterator() {
         assert Interop.hasIterator(this);
         try {
-            return new Itr<>(Interop.getIterator(this));
-        } catch (Exception e) {
+            return EspressoForeignIterator.create(Interop.getIterator(this));
+        } catch (UnsupportedMessageException e) {
             return (Iterator<T>) EspressoForeignIterable.EMPTY_ITERATOR;
-        }
-    }
-
-    private static final class Itr<T> implements Iterator<T> {
-
-        private final Object foreignIterator;
-
-        private Itr(Object foreignIterator) {
-            this.foreignIterator = foreignIterator;
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                return Interop.hasIteratorNextElement(foreignIterator);
-            } catch (UnsupportedMessageException e) {
-                return false;
-            }
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public T next() {
-            try {
-                return (T) Interop.getIteratorNextElement(foreignIterator);
-            } catch (UnsupportedMessageException | StopIterationException e) {
-                throw new NoSuchElementException();
-            }
         }
     }
 
     @Override
     public int size() {
-        // If/When iterator size becomes available through interop, switch to use that
+        // (GR-47128) If/When iterator size becomes available through interop, switch to use that
         Iterator<T> it = iterator();
         int count = 0;
         while (it.hasNext()) {
@@ -141,8 +111,25 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
 
     @Override
     public boolean isEmpty() {
-        return size() == 0;
+        return !iterator().hasNext();
     }
+
+    @Override
+    public String toString() {
+        try {
+            return Interop.asString(Interop.toDisplayString(this));
+        } catch (UnsupportedMessageException e) {
+            return super.toString();
+        }
+    }
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
 
     @Override
     public boolean contains(Object o) {
@@ -207,14 +194,5 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     @Override
     public <T1> T1[] toArray(IntFunction<T1[]> generator) {
         return super.toArray(generator);
-    }
-
-    @Override
-    public String toString() {
-        try {
-            return Interop.asString(Interop.toDisplayString(this));
-        } catch (UnsupportedMessageException e) {
-            return super.toString();
-        }
     }
 }

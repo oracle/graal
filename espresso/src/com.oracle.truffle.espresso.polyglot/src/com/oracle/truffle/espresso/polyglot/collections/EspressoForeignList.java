@@ -124,7 +124,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
         Objects.checkIndex(index, size() + 1);
         try {
             long size = Interop.getArraySize(foreignObject);
-            if (Interop.isArrayElementWritable(foreignObject, size)) {
+            if (Interop.isArrayElementInsertable(foreignObject, size)) {
                 // shift elements to the right if any
                 long cur = size;
                 while (cur > index) {
@@ -168,6 +168,85 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
             return super.toString();
         }
     }
+
+    @Override
+    public Iterator<T> iterator() {
+        return new Itr();
+    }
+
+    // Copied from AbstractList
+    private class Itr implements Iterator<T> {
+        /**
+         * Index of element to be returned by subsequent call to next.
+         */
+        int cursor = 0;
+
+        /**
+         * Index of element returned by most recent call to next or previous. Reset to -1 if this
+         * element is deleted by a call to remove.
+         */
+        int lastRet = -1;
+
+        /**
+         * The modCount value that the iterator believes that the backing List should have. If this
+         * expectation is violated, the iterator has detected concurrent modification.
+         */
+        int expectedModCount = modCount;
+
+        @Override
+        public boolean hasNext() {
+            return cursor != size();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public T next() {
+            checkForComodification();
+            try {
+                int i = cursor;
+                T next = get(i);
+                lastRet = i;
+                cursor = i + 1;
+                return next;
+            } catch (IndexOutOfBoundsException e) {
+                checkForComodification();
+                throw new NoSuchElementException();
+            }
+        }
+
+        @Override
+        public void remove() {
+            if (lastRet < 0) {
+                throw new UnsupportedOperationException();
+            }
+            checkForComodification();
+
+            try {
+                EspressoForeignList.this.remove(lastRet);
+                if (lastRet < cursor) {
+                    cursor--;
+                }
+                lastRet = -1;
+                expectedModCount = modCount;
+            } catch (IndexOutOfBoundsException e) {
+                throw new ConcurrentModificationException();
+            }
+        }
+
+        final void checkForComodification() {
+            if (modCount != expectedModCount) {
+                throw new ConcurrentModificationException();
+            }
+        }
+    }
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
@@ -248,77 +327,6 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @SuppressWarnings("unchecked")
     public <T1> T1[] toArray(T1[] a) {
         return super.toArray(a);
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return new Itr();
-    }
-
-    // Copied from AbstractList
-    private class Itr implements Iterator<T> {
-        /**
-         * Index of element to be returned by subsequent call to next.
-         */
-        int cursor = 0;
-
-        /**
-         * Index of element returned by most recent call to next or previous. Reset to -1 if this
-         * element is deleted by a call to remove.
-         */
-        int lastRet = -1;
-
-        /**
-         * The modCount value that the iterator believes that the backing List should have. If this
-         * expectation is violated, the iterator has detected concurrent modification.
-         */
-        int expectedModCount = modCount;
-
-        @Override
-        public boolean hasNext() {
-            return cursor != size();
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public T next() {
-            checkForComodification();
-            try {
-                int i = cursor;
-                T next = get(i);
-                lastRet = i;
-                cursor = i + 1;
-                return next;
-            } catch (IndexOutOfBoundsException e) {
-                checkForComodification();
-                throw new NoSuchElementException();
-            }
-        }
-
-        @Override
-        public void remove() {
-            if (lastRet < 0) {
-                throw new UnsupportedOperationException();
-            }
-            checkForComodification();
-
-            try {
-                EspressoForeignList.this.remove(lastRet);
-                if (lastRet < cursor) {
-                    cursor--;
-                }
-                lastRet = -1;
-                expectedModCount = modCount;
-            } catch (IndexOutOfBoundsException e) {
-                throw new ConcurrentModificationException();
-            }
-        }
-
-        final void checkForComodification() {
-            if (modCount != expectedModCount) {
-                throw new ConcurrentModificationException();
-            }
-        }
     }
 
     @Override

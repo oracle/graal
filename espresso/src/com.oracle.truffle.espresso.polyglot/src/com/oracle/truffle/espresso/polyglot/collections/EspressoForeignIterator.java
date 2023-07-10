@@ -50,6 +50,9 @@ import java.util.function.Consumer;
 
 public class EspressoForeignIterator<E> implements Iterator<E> {
 
+    /* VM creates a instance of EspressoForeignIterator */
+    static native <T> Iterator<T> create(Object foreignIterator);
+
     @Override
     public boolean hasNext() {
         try {
@@ -73,6 +76,23 @@ public class EspressoForeignIterator<E> implements Iterator<E> {
     }
 
     @Override
+    public String toString() {
+        try {
+            return Interop.asString(Interop.toDisplayString(this));
+        } catch (UnsupportedMessageException e) {
+            return super.toString();
+        }
+    }
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
+
+    @Override
     public void forEachRemaining(Consumer<? super E> action) {
         Iterator.super.forEachRemaining(action);
     }
@@ -82,12 +102,4 @@ public class EspressoForeignIterator<E> implements Iterator<E> {
         Iterator.super.remove();
     }
 
-    @Override
-    public String toString() {
-        try {
-            return Interop.asString(Interop.toDisplayString(this));
-        } catch (UnsupportedMessageException e) {
-            return super.toString();
-        }
-    }
 }

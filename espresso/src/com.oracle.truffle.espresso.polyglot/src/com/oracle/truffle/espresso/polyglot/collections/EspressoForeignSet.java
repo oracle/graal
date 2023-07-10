@@ -53,6 +53,15 @@ import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignSet<T> extends EspressoForeignCollection<T> implements Set<T> {
+
+    /*
+     * Below are all methods that delegate directly to super. This is done to assist the
+     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
+     * done. This also means that for all of those methods the behavior will be determined by the
+     * guest side rather than the host. As a consequence, any host-side method overriding of these
+     * methods will not take effect when passed to the Espresso guest.
+     */
+
     @Override
     public int size() {
         return super.size();

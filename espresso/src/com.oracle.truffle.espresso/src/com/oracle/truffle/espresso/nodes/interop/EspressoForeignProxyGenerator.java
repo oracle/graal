@@ -153,25 +153,30 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         this.className = nextClassName(proxyClassContext(referencedTypes()));
     }
 
+    private enum ProxyType {
+        LIST,
+        GENERIC
+    }
+
     public static class GeneratedProxyBytes {
         public final byte[] bytes;
         public final String name;
-        private final String proxyType;
+        private final ProxyType proxyType;
         private final ObjectKlass superklass;
 
         GeneratedProxyBytes(byte[] bytes, String name, ObjectKlass superKlass) {
             this.bytes = bytes;
             this.name = name;
             this.superklass = superKlass;
-            this.proxyType = superKlass == superklass.getMeta().polyglot.EspressoForeignList ? "List" : "Generic";
+            this.proxyType = superKlass == superklass.getMeta().polyglot.EspressoForeignList ? ProxyType.LIST : ProxyType.GENERIC;
         }
 
         public ProxyKlass getProxyKlass(EspressoContext context, ObjectKlass proxyKlass) {
             switch (proxyType) {
-                case "List": {
+                case LIST: {
                     return new ListProxyKlass(proxyKlass, context);
                 }
-                case "Generic": {
+                case GENERIC: {
                     return new ProxyKlass(proxyKlass);
                 }
                 default:
