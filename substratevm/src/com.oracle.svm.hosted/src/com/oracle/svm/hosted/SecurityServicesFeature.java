@@ -281,7 +281,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
             rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
         }
 

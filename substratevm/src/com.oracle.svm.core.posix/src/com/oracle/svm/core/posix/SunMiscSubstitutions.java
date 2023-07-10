@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -111,10 +112,21 @@ final class Util_jdk_internal_misc_Signal {
     private static final long sunMiscSignalErrorHandler = -1;
 
     /**
-     * Register a Java signal handler with the the C signal handling mechanism.
+     * Returns whether the currently installed signal handler matched the passed dispatcher.
      *
-     * This implementation does not complain (by returning -1) about registering signal handlers for
-     * signals that the VM itself uses.
+     * Note this method can race with signal installation unless proper locking is used.
+     */
+    static boolean isCurrentDispatcher(int sig, SignalDispatcher dispatcher) {
+        Signal.sigaction handler = StackValue.get(Signal.sigaction.class);
+        Signal.sigaction(sig, WordFactory.nullPointer(), handler);
+        return handler.sa_handler() == dispatcher;
+    }
+
+    /**
+     * Register a Java signal handler with the C signal handling mechanism.
+     *
+     * This code is only called from the substitute Target_jdk_internal_misc_Signal#handle0, which
+     * is called from within a static synchronized call to ensure race-free execution.
      */
     static long handle0(int sig, long nativeH) {
         if (!SubstrateOptions.EnableSignalHandling.getValue()) {
@@ -126,6 +138,24 @@ final class Util_jdk_internal_misc_Signal {
         if ((newDispatcher == CSunMiscSignal.countingHandlerFunctionPointer()) && (CSunMiscSignal.signalRangeCheck(sig) != 1)) {
             return sunMiscSignalErrorHandler;
         }
+
+        /*
+         * If the segfault handler is registered, then the user cannot override this handler within
+         * Java code.
+         */
+        if (SubstrateSegfaultHandler.isInstalled() && (sig == Signal.SignalEnum.SIGSEGV.getCValue() || sig == Signal.SignalEnum.SIGBUS.getCValue())) {
+            return sunMiscSignalErrorHandler;
+        }
+
+        /*
+         * If the following signals are ignored, then a handler should not be registered for them.
+         */
+        if (sig == Signal.SignalEnum.SIGHUP.getCValue() || sig == Signal.SignalEnum.SIGINT.getCValue() || sig == Signal.SignalEnum.SIGTERM.getCValue()) {
+            if (isCurrentDispatcher(sig, Signal.SIG_IGN())) {
+                return sunMiscSignalIgnoreHandler;
+            }
+        }
+
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
         CIntPointer sigset = StackValue.get(CIntPointer.class);
@@ -371,15 +401,15 @@ final class Util_jdk_internal_misc_Signal {
 }
 
 @AutomaticallyRegisteredFeature
-class IgnoreSIGPIPEFeature implements InternalFeature {
+class IgnoreSignalsFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSIGPIPEStartupHook());
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSignalsStartupHook());
     }
 }
 
-final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
+final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
 
     @CEntryPoint(publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
@@ -388,29 +418,48 @@ final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
     }
 
     private static final CEntryPointLiteral<Signal.SignalDispatcher> NOOP_SIGNAL_HANDLER = //
-                    CEntryPointLiteral.create(IgnoreSIGPIPEStartupHook.class, "noopSignalHandler", int.class);
+                    CEntryPointLiteral.create(IgnoreSignalsStartupHook.class, "noopSignalHandler", int.class);
 
     /**
+     * HotSpot ignores the SIGPIPE and SIGXFSZ signals (see <a
+     * href=https://github.com/openjdk/jdk/blob/fc76687c2fac39fcbf706c419bfa170b8efa5747/src/hotspot/os/posix/signals_posix.cpp#L608>signals_posix.cpp</a>).
+     * When signal handling is enabled we do the same thing.
+     * <p>
      * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
      * default action is to terminate the process, will instead return an error code from the
      * specific write operation.
-     *
+     * <p>
      * From pipe(7): If all file descriptors referring to the read end of a pipe have been closed,
      * then a write(2) will cause a SIGPIPE signal to be generated for the calling process. If the
      * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
-     *
+     * <p>
      * Note that the handler must be an empty function and not SIG_IGN. The problem is SIG_IGN is
      * inherited to subprocess but we only want to affect the current process.
-     *
+     * <p>
      * From signal(7): A child created via fork(2) inherits a copy of its parent's signal
      * dispositions. During an execve(2), the dispositions of handled signals are reset to the
      * default; the dispositions of ignored signals are left unchanged.
      */
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
-            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), NOOP_SIGNAL_HANDLER.getFunctionPointer());
-            VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
+            synchronized (Target_jdk_internal_misc_Signal.class) {
+                installNoopHandler(Signal.SignalEnum.SIGPIPE);
+                installNoopHandler(Signal.SignalEnum.SIGXFSZ);
+            }
+        }
+    }
+
+    private static void installNoopHandler(Signal.SignalEnum signal) {
+        int signum = signal.getCValue();
+        if (Util_jdk_internal_misc_Signal.isCurrentDispatcher(signum, Signal.SIG_DFL())) {
+            /*
+             * Replace with no-op signal handler if a custom one has not already been installed.
+             */
+            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(signum, NOOP_SIGNAL_HANDLER.getFunctionPointer());
+            if (signalResult == Signal.SIG_ERR()) {
+                throw VMError.shouldNotReachHere(String.format("IgnoreSignalsStartupHook: Could not install signal: %s", signal));
+            }
         }
     }
 }
