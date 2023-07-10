@@ -67,7 +67,7 @@ class JfrGCEventSupport {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
-        if (JfrEvent.GarbageCollection.shouldEmit()) {
+        if (JfrEvent.GarbageCollection.shouldEmit(start)) {
             long pauseTime = JfrTicks.elapsedTicks() - start;
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
@@ -88,7 +88,7 @@ class JfrGCEventSupport {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGCPhasePauseEvent(UnsignedWord gcEpoch, int level, String name, long startTicks) {
         JfrEvent event = getGCPhasePauseEvent(level);
-        if (event.shouldEmit()) {
+        if (event.shouldEmit(startTicks)) {
             long end = JfrTicks.elapsedTicks();
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);

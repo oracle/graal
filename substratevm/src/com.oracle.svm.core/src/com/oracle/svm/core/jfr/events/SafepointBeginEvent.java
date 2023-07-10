@@ -52,7 +52,7 @@ public class SafepointBeginEvent {
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(UnsignedWord safepointId, int numJavaThreads, long startTicks) {
-        if (JfrEvent.SafepointBegin.shouldEmit()) {
+        if (JfrEvent.SafepointBegin.shouldEmit(startTicks)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
