@@ -26,7 +26,6 @@
 
 package com.oracle.svm.test.jfr;
 
-import static com.oracle.svm.test.jfr.AbstractJfrTest.getDefaultConfiguration;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
