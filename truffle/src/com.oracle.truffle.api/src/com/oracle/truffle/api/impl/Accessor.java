@@ -62,6 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -758,6 +759,10 @@ public abstract class Accessor {
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
 
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
+
+        public abstract String getOSName();
+
+        public abstract String getCPUArchitecture();
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -895,6 +900,8 @@ public abstract class Accessor {
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
+
+        public abstract InternalResource.Env createInternalResourceEnv(BooleanSupplier contextPreinitializationCheck);
 
     }
 

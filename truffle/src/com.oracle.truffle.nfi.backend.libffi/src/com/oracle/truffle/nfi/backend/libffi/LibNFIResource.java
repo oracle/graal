@@ -55,7 +55,12 @@ final class LibNFIResource implements InternalResource {
     private static final String RESOURCES_ROOT = "META-INF/resources";
 
     @Override
-    public void unpackFiles(Path targetDirectory) throws IOException {
+    public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+        if (env.inNativeImageBuild() && !env.inContextPreinitialization()) {
+            // The trufflenfi is fully intrinsified in the native-image. We don't need to copy it
+            // into resources folder.
+            return;
+        }
         String relativeResourcePath = "bin/" + System.mapLibraryName("trufflenfi");
         unpackResource(targetDirectory, relativeResourcePath);
         relativeResourcePath = "include/trufflenfi.h";
@@ -80,7 +85,7 @@ final class LibNFIResource implements InternalResource {
     }
 
     @Override
-    public String versionHash() {
+    public String versionHash(Env env) {
         // sha-256 of com.oracle.truffle.nfi.native/src/* and
         // com.oracle.truffle.nfi.native/include/*
         return "c19bdea84348e744485977f888a0d4b3a44b7497ff2e56c95f4e87dcbc8e1116";

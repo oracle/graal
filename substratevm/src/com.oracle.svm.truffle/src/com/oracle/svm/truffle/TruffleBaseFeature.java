@@ -151,6 +151,7 @@ import com.oracle.truffle.api.staticobject.StaticShape;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.polyglot.Engine;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -1047,10 +1048,13 @@ public final class TruffleBaseFeature implements InternalFeature {
                     BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
                 });
             }
-            List<Path> internalResourceFolders = invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "buildInternalResourcesForNativeImage",
-                            List.of(Path.class, Set.class), resourcesDir, null);
-            for (Path internalResourceFolder : internalResourceFolders) {
-                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCE, internalResourceFolder);
+            try {
+                List<Path> internalResourceFolders = Engine.copyResources(resourcesDir);
+                for (Path internalResourceFolder : internalResourceFolders) {
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCE, internalResourceFolder);
+                }
+            } catch (IOException ioe) {
+                throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
             }
         }
     }

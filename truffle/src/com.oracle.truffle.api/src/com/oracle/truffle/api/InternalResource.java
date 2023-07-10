@@ -42,6 +42,8 @@ package com.oracle.truffle.api;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 /**
  * Represents an internal resource of a language that can be lazily unpacked to a cache user
@@ -54,10 +56,10 @@ public interface InternalResource {
     /**
      * Unpacks all resources to a given target directory. The target directory is guaranteed to be
      * writable and the unpacking is synchronized by a file system lock. If a resource was
-     * previously cached then {@link #versionHash()} is invoked and the version string is compared.
-     * If it matches then {@link #unpackFiles(Path)} will not be invoked and the directory will be
-     * used as previously unpacked. The target directory is guaranteed to exist and guaranteed to be
-     * empty.
+     * previously cached then {@link #versionHash(Env)} is invoked and the version string is
+     * compared. If it matches then {@link #unpackFiles(Path,Env)} will not be invoked and the
+     * directory will be used as previously unpacked. The target directory is guaranteed to exist
+     * and guaranteed to be empty.
      * <p>
      * Ideally the result of this method should be idempotent in order to be safely cachable. Care
      * should be taken, if system properties are used that change the result of this method. It is
@@ -69,7 +71,7 @@ public interface InternalResource {
      * @param targetDirectory the target directory to extract files to
      * @since 23.1
      */
-    void unpackFiles(Path targetDirectory) throws IOException;
+    void unpackFiles(Path targetDirectory, Env env) throws IOException;
 
     /**
      * Returns a resource identifier that is a valid path component and unique per language. By
@@ -88,6 +90,58 @@ public interface InternalResource {
      *
      * @since 23.1
      */
-    String versionHash();
+    String versionHash(Env env);
 
+    /**
+     * Access to common utilities for unpacking resource files.
+     *
+     * @since 23.1
+     */
+    final class Env {
+
+        private final BooleanSupplier contextPreinitializationCheck;
+
+        Env(BooleanSupplier contextPreinitializationCheck) {
+            this.contextPreinitializationCheck = Objects.requireNonNull(contextPreinitializationCheck);
+        }
+
+        /**
+         * Returns {@code true} if the engine causing the resource unpacking is being
+         * pre-initialized.
+         *
+         * @since 23.1
+         */
+        public boolean inContextPreinitialization() {
+            return contextPreinitializationCheck.getAsBoolean();
+        }
+
+        /**
+         * Returns {@code true} if resource unpacking happens during the native image build.
+         *
+         * @since 23.1
+         */
+        public boolean inNativeImageBuild() {
+            return TruffleOptions.AOT;
+        }
+
+        /**
+         * Returns the processor architecture. The value can be used to resolve an architecture
+         * specific files during resource unpacking.
+         *
+         * @since 23.1
+         */
+        public String getCPUArchitecture() {
+            return LanguageAccessor.ENGINE.getCPUArchitecture();
+        }
+
+        /**
+         * Returns the operating system. The value can be used to resolve an OS specific files
+         * during resource unpacking.
+         *
+         * @since 23.1
+         */
+        public String getOSName() {
+            return LanguageAccessor.ENGINE.getOSName();
+        }
+    }
 }

@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
@@ -583,6 +584,11 @@ final class LanguageAccessor extends Accessor {
                     yield singleNonEmpty != null ? singleNonEmpty : OptionDescriptors.EMPTY;
                 }
             };
+        }
+
+        @Override
+        public InternalResource.Env createInternalResourceEnv(BooleanSupplier contextPreinitializationCheck) {
+            return new InternalResource.Env(contextPreinitializationCheck);
         }
     }
 

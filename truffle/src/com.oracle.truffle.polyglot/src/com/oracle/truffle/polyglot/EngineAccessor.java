@@ -2066,7 +2066,8 @@ final class EngineAccessor extends Accessor {
                 TruffleFile root = polyglotLanguage.internalResources.get(resourceType);
                 if (root == null) {
                     InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceType);
-                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(languageContext.getEngine(), resourceCache.getResourceFileSystem());
+                    PolyglotEngineImpl polyglotEngine = languageContext.getEngine();
+                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
                     root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
                     var prevValue = polyglotLanguage.internalResources.putIfAbsent(resourceType, root);
                     root = prevValue != null ? prevValue : root;
@@ -2076,7 +2077,8 @@ final class EngineAccessor extends Accessor {
                 TruffleFile root = polyglotInstrument.internalResources.get(resourceType);
                 if (root == null) {
                     InternalResourceCache resourceCache = polyglotInstrument.cache.getResourceCache(resourceType);
-                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotInstrument.getEngine(), resourceCache.getResourceFileSystem());
+                    PolyglotEngineImpl polyglotEngine = polyglotInstrument.getEngine();
+                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
                     root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
                     var prevValue = polyglotInstrument.internalResources.putIfAbsent(resourceType, root);
                     root = prevValue != null ? prevValue : root;
@@ -2085,6 +2087,16 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
+        }
+
+        @Override
+        public String getOSName() {
+            return InternalResourceCache.getOSName();
+        }
+
+        @Override
+        public String getCPUArchitecture() {
+            return InternalResourceCache.getCPUArchitecture();
         }
     }
 

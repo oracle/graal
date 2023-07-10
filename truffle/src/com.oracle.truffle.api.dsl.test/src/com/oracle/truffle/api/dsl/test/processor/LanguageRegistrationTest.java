@@ -290,7 +290,7 @@ public class LanguageRegistrationTest {
     static class ProxyInternalResource implements InternalResource {
 
         @Override
-        public void unpackFiles(Path targetDirectory) {
+        public void unpackFiles(Path targetDirectory, Env env) {
         }
 
         @Override
@@ -299,7 +299,7 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        public String versionHash() {
+        public String versionHash(Env env) {
             return "1";
         }
     }

@@ -65,9 +65,11 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -101,7 +103,7 @@ public class InternalResourceTest {
         static int unpackedCalled;
 
         @Override
-        public void unpackFiles(Path targetDirectory) throws IOException {
+        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
             unpackedCalled++;
             for (String resource : RESOURCES) {
                 Files.createFile(targetDirectory.resolve(resource));
@@ -109,7 +111,7 @@ public class InternalResourceTest {
         }
 
         @Override
-        public String versionHash() {
+        public String versionHash(Env env) {
             return "1";
         }
 
@@ -126,7 +128,7 @@ public class InternalResourceTest {
         static int unpackedCalled;
 
         @Override
-        public void unpackFiles(Path targetDirectory) throws IOException {
+        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
             unpackedCalled++;
             for (String resource : RESOURCES) {
                 Files.createFile(targetDirectory.resolve(resource));
@@ -134,7 +136,7 @@ public class InternalResourceTest {
         }
 
         @Override
-        public String versionHash() {
+        public String versionHash(Env env) {
             return "1";
         }
 
@@ -152,7 +154,7 @@ public class InternalResourceTest {
         static String linkName;
 
         @Override
-        public void unpackFiles(Path targetDirectory) throws IOException {
+        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
             Path sources = Files.createDirectory(targetDirectory.resolve("sources"));
             folderName = targetDirectory.relativize(sources).toString();
             Path source = Files.writeString(sources.resolve("source"), "source");
@@ -168,7 +170,7 @@ public class InternalResourceTest {
         }
 
         @Override
-        public String versionHash() {
+        public String versionHash(Env env) {
             return "1";
         }
 
@@ -500,6 +502,49 @@ public class InternalResourceTest {
         Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.execute(context, TestAccessFileInResourceRoot.class);
+        }
+    }
+
+    @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestExplicitResourceRoot extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String explicitCacheRoot = (String) contextArguments[0];
+            LibraryResource.unpackedCalled = 0;
+            SourcesResource.unpackedCalled = 0;
+            TruffleFile libRoot = env.getInternalResource(LibraryResource.class);
+            assertTrue(libRoot.getCanonicalFile().getPath().startsWith(explicitCacheRoot));
+            verifyResources(libRoot, LibraryResource.RESOURCES);
+            TruffleFile srcRoot = env.getInternalResource(SourcesResource.class);
+            assertTrue(srcRoot.getCanonicalFile().getPath().startsWith(explicitCacheRoot));
+            verifyResources(srcRoot, SourcesResource.RESOURCES);
+            assertEquals(0, LibraryResource.unpackedCalled);
+            assertEquals(0, SourcesResource.unpackedCalled);
+            return "";
+        }
+    }
+
+    @Test
+    public void testExplicitResourceRoot() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        // Prepare standalone resources
+        Path cacheRoot = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot, TestUtils.getDefaultLanguageId(TestExplicitResourceRoot.class));
+        // Reset cached resource root
+        TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
+        // Set explicit resource root
+        System.setProperty("polyglot.engine.ResourcesFolder", cacheRoot.toString());
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestExplicitResourceRoot.class, cacheRoot.toRealPath().toString());
+        } finally {
+            // Clean explicit resource root
+            System.getProperties().remove("polyglot.engine.ResourcesFolder");
+            // Reset cached resource root
+            TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
+            TemporaryResourceCacheRoot.delete(cacheRoot);
         }
     }
 

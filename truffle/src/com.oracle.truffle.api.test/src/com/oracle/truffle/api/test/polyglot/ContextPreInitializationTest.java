@@ -2610,7 +2610,7 @@ public class ContextPreInitializationTest {
             assertFalse(files.isEmpty());
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
-        buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
+        Engine.copyResources(runtimeCacheRoot, FIRST);
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 try {
@@ -2661,7 +2661,7 @@ public class ContextPreInitializationTest {
             assertFalse(sources.isEmpty());
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
-        buildInternalResourcesForNativeImage(runtimeCacheRoot, FIRST);
+        Engine.copyResources(runtimeCacheRoot, FIRST);
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 try {
@@ -2705,7 +2705,7 @@ public class ContextPreInitializationTest {
         doContextPreinitialize(FIRST);
         assertNull(rootRef.get());
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
-        buildInternalResourcesForNativeImage(runtimeCacheRoot, ContextPreInitializationFirstInstrument.ID);
+        Engine.copyResources(runtimeCacheRoot, ContextPreInitializationFirstInstrument.ID);
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").allowIO(IOAccess.ALL).build()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -2715,12 +2715,6 @@ public class ContextPreInitializationTest {
                 assertTrue(root.getAbsoluteFile().toString().startsWith(runtimeCacheRoot.toString()));
             }
         }
-    }
-
-    private static void buildInternalResourcesForNativeImage(Path root, String... ids) throws ClassNotFoundException {
-        Class<?> internalResourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache");
-        ReflectionUtils.invokeStatic(internalResourceCacheClass, "buildInternalResourcesForNativeImage", new Class<?>[]{Path.class, Set.class},
-                        root, Set.of(ids));
     }
 
     private static boolean executedWithXCompOptions() {
@@ -2811,6 +2805,7 @@ public class ContextPreInitializationTest {
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
+        ContextPreInitializationResource.preInitialization = true;
         setPreInitializeOption(languages);
         try {
             final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
@@ -2818,6 +2813,7 @@ public class ContextPreInitializationTest {
             ReflectionUtils.setAccessible(preInitMethod, true);
             preInitMethod.invoke(null);
         } finally {
+            ContextPreInitializationResource.preInitialization = false;
             // PreinitializeContexts should only be set during pre-initialization, not at runtime
             clearPreInitializeOption();
         }
@@ -3586,10 +3582,13 @@ public class ContextPreInitializationTest {
 
         static int unpackCount;
 
+        static boolean preInitialization;
+
         @Override
-        public void unpackFiles(Path targetDirectory) throws IOException {
+        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
             unpackCount++;
             Files.writeString(targetDirectory.resolve(FILE_NAME), FILE_CONTENT);
+            assertEquals(preInitialization, env.inContextPreinitialization());
         }
 
         @Override
@@ -3598,7 +3597,7 @@ public class ContextPreInitializationTest {
         }
 
         @Override
-        public String versionHash() {
+        public String versionHash(Env env) {
             return "1";
         }
     }

@@ -362,6 +362,22 @@ public final class Engine implements AutoCloseable {
         return dispatch.getCachedSources(receiver);
     }
 
+    /**
+     * Unpacks the language or instrument internal resources specified by the {@code components}
+     * into the {@code targetFolder} directory.
+     *
+     * @param targetFolder the folder to unpack resources into
+     * @param components names of languages or instruments whose resources should be unpacked. If no
+     *            languages or instruments are provided, then all installed languages and
+     *            instruments are used
+     * @return list of folders created in the {@code targetFolder}
+     * @throws IOException in case of an IO error
+     * @since 23.1
+     */
+    public static List<Path> copyResources(Path targetFolder, String... components) throws IOException {
+        return getImpl().copyResources(targetFolder, components);
+    }
+
     static AbstractPolyglotImpl getImpl() {
         try {
             return ImplHolder.IMPL;
@@ -689,7 +705,7 @@ public final class Engine implements AutoCloseable {
             String systemPropertyPrefix = "polyglot.";
             synchronized (properties) {
                 for (Object systemKey : properties.keySet()) {
-                    if ("polyglot.engine.AllowExperimentalOptions".equals(systemKey)) {
+                    if ("polyglot.engine.AllowExperimentalOptions".equals(systemKey) || "polyglot.engine.ResourcesFolder".equals(systemKey)) {
                         continue;
                     }
                     String key = (String) systemKey;
@@ -1168,6 +1184,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public AbstractHostAccess createHostAccess() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public List<Path> copyResources(Path targetFolder, String... components) {
             throw noPolyglotImplementationFound();
         }
 

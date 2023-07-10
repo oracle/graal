@@ -162,9 +162,19 @@ supr java.lang.Object
 hfds id,name,polyglotInstrument,version
 
 CLSS public abstract interface com.oracle.truffle.api.InternalResource
-meth public abstract java.lang.String versionHash()
-meth public abstract void unpackFiles(java.nio.file.Path) throws java.io.IOException
+innr public final static Env
+meth public abstract java.lang.String versionHash(com.oracle.truffle.api.InternalResource$Env)
+meth public abstract void unpackFiles(java.nio.file.Path,com.oracle.truffle.api.InternalResource$Env) throws java.io.IOException
 meth public java.lang.String name()
+
+CLSS public final static com.oracle.truffle.api.InternalResource$Env
+ outer com.oracle.truffle.api.InternalResource
+meth public boolean inContextPreinitialization()
+meth public boolean inNativeImageBuild()
+meth public java.lang.String getCPUArchitecture()
+meth public java.lang.String getOSName()
+supr java.lang.Object
+hfds contextPreinitializationCheck
 
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)
