@@ -117,10 +117,8 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 ## Current Limitations
 
-The JFR support is still limited, for example, most VM-internal events and advanced features such as stack traces or memory leak detection are still missing. 
 A subset of JFR features are currently available: custom and system events and disk-based recordings.
 Note that JFR events recording is not supported on GraalVM distribution for Windows. 
-JFR is supported with native executables built on GraalVM based on JDK 11 or later.
 
 ### Further Reading
 
