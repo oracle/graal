@@ -51,6 +51,7 @@
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
+    tags+: ["bench-compiler"],
     python_version : "3",
     environment+: {
       BENCH_RESULTS_FILE_PATH : "bench-results.json"

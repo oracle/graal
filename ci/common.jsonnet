@@ -165,6 +165,10 @@ local common_json = import "../common.json";
     post_merge: {
       targets+: ["post-merge"],
     },
+    opt_post_merge: {
+      targets+: ["opt-post-merge"],
+      tags+: []
+    },
     daily: {
       targets+: ["daily"],
     },
@@ -173,7 +177,7 @@ local common_json = import "../common.json";
     },
     monthly: {
       targets+: ["monthly"],
-    },
+    }
   },
 
   # Hardware definitions and common fields
