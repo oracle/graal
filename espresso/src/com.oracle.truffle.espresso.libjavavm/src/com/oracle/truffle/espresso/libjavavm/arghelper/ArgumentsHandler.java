@@ -27,6 +27,8 @@ import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
 import static com.oracle.truffle.espresso.libjavavm.Arguments.warn;
 
 import java.io.PrintStream;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -58,6 +60,9 @@ public class ArgumentsHandler {
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
 
+    private final Set<String> ignoredXXOptions;
+    private final Map<String, String> mappedXXOptions;
+
     private boolean experimental;
 
     private boolean helpVM = false;
@@ -69,7 +74,10 @@ public class ArgumentsHandler {
     private boolean helpInternal = false;
 
     @SuppressWarnings("this-escape")
-    public ArgumentsHandler(Context.Builder builder, JNIJavaVMInitArgs args) {
+    public ArgumentsHandler(Context.Builder builder, Set<String> ignoredXXOptions, Map<String, String> mappedXXOptions, JNIJavaVMInitArgs args) {
+        assert mappedXXOptions.values().stream().allMatch(s -> s.contains("."));
+        this.ignoredXXOptions = ignoredXXOptions;
+        this.mappedXXOptions = mappedXXOptions;
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder, this);
@@ -145,13 +153,12 @@ public class ArgumentsHandler {
      */
     public void handleXXArg(String optionString) {
         String arg = optionString.substring("-XX:".length());
-        String group;
+        String group = "java";
         String name;
         String value;
         if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
             name = arg.substring(1);
             value = Boolean.toString(arg.charAt(0) == '+');
-            group = "java";
         } else {
             int idx = arg.indexOf('=');
             if (idx < 0) {
@@ -161,7 +168,18 @@ public class ArgumentsHandler {
                 name = arg.substring(0, idx);
                 value = arg.substring(idx + 1);
             }
-            group = "java";
+        }
+        if (ignoredXXOptions.contains(name)) {
+            // ignore
+            warn("Ignoring option: " + optionString);
+            return;
+        }
+        String mapped = mappedXXOptions.get(name);
+        if (mapped != null) {
+            int idx = mapped.indexOf('.');
+            assert idx > 0;
+            group = mapped.substring(0, idx);
+            name = mapped;
         }
         try {
             parsePolyglotOption(group, name, value, optionString);
@@ -171,15 +189,6 @@ public class ArgumentsHandler {
                 throw abort(e.getMessage().replace(arg, optionString));
             }
             /* Ignore, and try to pass it as a vm arg */
-        }
-        if ("ReservedCodeCacheSize".equals(name) || "TieredStopAtLevel".equals(name)) {
-            // ignore
-            warn("Ignoring option: " + optionString);
-            return;
-        }
-        if ("TieredCompilation".equals(name)) {
-            parsePolyglotOption("engine", "engine.MultiTier", value, optionString);
-            return;
         }
         // Pass as host vm arg
         nativeAccess.init(true);

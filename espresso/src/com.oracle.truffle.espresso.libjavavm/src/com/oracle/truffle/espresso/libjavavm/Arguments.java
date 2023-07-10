@@ -29,6 +29,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -65,6 +67,14 @@ public final class Arguments {
     private Arguments() {
     }
 
+    private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
+                    "ReservedCodeCacheSize",
+                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    "TieredStopAtLevel");
+
+    private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
+                    "TieredCompilation", "engine.MultiTier");
+
     public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
         Pointer p = (Pointer) args.getOptions();
         int count = args.getNOptions();
@@ -72,7 +82,7 @@ public final class Arguments {
         String bootClasspathPrepend = null;
         String bootClasspathAppend = null;
 
-        ArgumentsHandler handler = new ArgumentsHandler(builder, args);
+        ArgumentsHandler handler = new ArgumentsHandler(builder, IGNORED_XX_OPTIONS, MAPPED_XX_OPTIONS, args);
         List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = false;
