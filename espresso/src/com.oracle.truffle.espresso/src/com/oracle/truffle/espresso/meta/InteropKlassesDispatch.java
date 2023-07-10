@@ -40,6 +40,19 @@ import com.oracle.truffle.espresso.runtime.dispatch.staticobject.MapInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ThrowableInterop;
 
 public class InteropKlassesDispatch {
+    public static final int BASE_INTEROP_ID = 0;
+    public static final int ESPRESSO_INTEROP_ID = 1;
+    public static final int FOREIGN_EXCEPTION_INTEROP_ID = 2;
+    public static final int INTERRUPTED_EXCEPTION_INTEROP_ID = 3;
+    public static final int ITERABLE_INTEROP_ID = 4;
+    public static final int ITERATOR_INTEROP_ID = 5;
+    public static final int LIST_INTEROP_ID = 6;
+    public static final int MAP_ENTRY_INTEROP_ID = 7;
+    public static final int MAP_INTEROP_ID = 8;
+    public static final int THROWABLE_INTEROP_ID = 9;
+
+    public static final int DISPATCH_TOTAL = THROWABLE_INTEROP_ID + 1;
+
     /**
      * Represents all known guest classes with special interop library handling. Each entry in the
      * array represents mutually exclusive groups of classes. Classes within a single entry are
@@ -100,5 +113,31 @@ public class InteropKlassesDispatch {
             }
         }
         return result;
+    }
+
+    public static int dispatchToId(Class<?> dispatch) {
+        if (dispatch == BaseInterop.class) {
+            return BASE_INTEROP_ID;
+        } else if (dispatch == EspressoInterop.class) {
+            return ESPRESSO_INTEROP_ID;
+        } else if (dispatch == ForeignExceptionInterop.class) {
+            return FOREIGN_EXCEPTION_INTEROP_ID;
+        } else if (dispatch == InterruptedExceptionInterop.class) {
+            return INTERRUPTED_EXCEPTION_INTEROP_ID;
+        } else if (dispatch == IterableInterop.class) {
+            return ITERABLE_INTEROP_ID;
+        } else if (dispatch == IteratorInterop.class) {
+            return ITERATOR_INTEROP_ID;
+        } else if (dispatch == ListInterop.class) {
+            return LIST_INTEROP_ID;
+        } else if (dispatch == MapEntryInterop.class) {
+            return MAP_ENTRY_INTEROP_ID;
+        } else if (dispatch == MapInterop.class) {
+            return MAP_INTEROP_ID;
+        } else if (dispatch == ThrowableInterop.class) {
+            return THROWABLE_INTEROP_ID;
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 }

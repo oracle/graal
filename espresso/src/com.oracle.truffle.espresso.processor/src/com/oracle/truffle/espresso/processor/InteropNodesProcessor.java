@@ -174,7 +174,8 @@ public class InteropNodesProcessor extends BaseProcessor {
 
         // For all messages, add a line in registerMessages, and create the corresponding class/
         for (Message m : nodes) {
-            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORY, ".register(cls, ", ProcessorUtils.stringify(m.targetMessage), ", ", clsName, "Factory.", m.clsName, "Gen::create);");
+            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORY, ".register(cls, ", INTEROP_MESSAGE, ".Message.", ProcessorUtils.capitalize(m.targetMessage), ", ", clsName, "Factory.", m.clsName,
+                            "Gen::create);");
             nodesClass.withInnerClass(m.cls);
         }
         nodesClass.withMethod(registerMessages);

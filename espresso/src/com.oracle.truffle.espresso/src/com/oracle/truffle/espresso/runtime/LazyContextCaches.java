@@ -23,15 +23,18 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
+import com.oracle.truffle.espresso.nodes.quick.VolatileArrayAccess;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 public class LazyContextCaches extends ContextAccessImpl {
@@ -39,6 +42,7 @@ public class LazyContextCaches extends ContextAccessImpl {
 
     public LazyContextCaches(EspressoContext context) {
         super(context);
+        this.messages = new CallTarget[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.values().length];
     }
 
     @CompilationFinal //
@@ -78,13 +82,33 @@ public class LazyContextCaches extends ContextAccessImpl {
 
     // region Shared Interop
 
-    // Maps interop messages to their implementation. The key depends on both the interop message
+    // Maps interop messages to their implementation. The index depends on both the interop message
     // and the dispatch class of the receiver.
-    private final ConcurrentHashMap<InteropMessageFactory.Key, CallTarget> sharedInteropCache = new ConcurrentHashMap<>();
+    private final CallTarget[] messages;
+    // Marker object for interop messages with no implementation that should resolve to the default.
+    private static final CallTarget NO_IMPL = new RootNode(null) {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+    }.getCallTarget();
 
-    public CallTarget getInteropMessage(String message, Class<?> dispatch, Supplier<CallTarget> supplier) {
-        InteropMessageFactory.Key key = new InteropMessageFactory.Key(dispatch, message);
-        return sharedInteropCache.computeIfAbsent(key, (unused) -> supplier.get());
+    public CallTarget getInteropMessage(InteropMessage.Message message, int dispatch) {
+        int index = InteropMessageFactory.getIndex(dispatch, message);
+        CallTarget target = messages[index];
+        if (target == null) {
+            CallTarget toRegister = InteropMessageFactory.createInteropMessageTarget(getContext().getLanguage(), dispatch, message);
+            if (toRegister == null) {
+                toRegister = NO_IMPL;
+            }
+            target = VolatileArrayAccess.compareAndExchange(messages, index, null, toRegister);
+        }
+        return interpretCacheTarget(target);
+    }
+
+    public static CallTarget interpretCacheTarget(CallTarget target) {
+        return target == NO_IMPL ? null : target;
     }
     // endregion Shared Interop
 }

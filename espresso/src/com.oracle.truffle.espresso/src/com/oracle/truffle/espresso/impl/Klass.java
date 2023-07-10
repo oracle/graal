@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -658,6 +659,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             if (getMeta().getContext().metaInitialized()) {
                 result = getMeta().resolveDispatch(this);
                 dispatch = result;
+                dispatchId = InteropKlassesDispatch.dispatchToId(result);
             } else {
                 /*
                  * Meta is not fully initialized: return the generic interop, without updating the
@@ -668,6 +670,28 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     return BaseInterop.class;
                 }
                 return EspressoInterop.class;
+            }
+        }
+        return result;
+    }
+
+    public int getDispatchId() {
+        int result = dispatchId;
+        if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getMeta().getContext().metaInitialized()) {
+                dispatch = getMeta().resolveDispatch(this);
+                result = dispatchId = InteropKlassesDispatch.dispatchToId(dispatch);
+            } else {
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return InteropKlassesDispatch.BASE_INTEROP_ID;
+                }
+                return InteropKlassesDispatch.ESPRESSO_INTEROP_ID;
             }
         }
         return result;
@@ -712,6 +736,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @CompilationFinal //
     private Class<?> dispatch;
+    @CompilationFinal //
+    private int dispatchId = -1;
 
     @CompilationFinal //
     private StaticObject typeName;

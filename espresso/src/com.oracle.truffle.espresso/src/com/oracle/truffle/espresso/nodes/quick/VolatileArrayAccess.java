@@ -46,13 +46,26 @@ public class VolatileArrayAccess {
         return U.getIntVolatile(array, offsetFor(array, index));
     }
 
-    public static <T> void volatileWrite(T[] array, int index, Object value) {
+    public static <T> void volatileWrite(T[] array, int index, T value) {
         U.putObjectVolatile(array, offsetFor(array, index), value);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T volatileRead(T[] array, int index) {
         return (T) U.getObjectVolatile(array, offsetFor(array, index));
+    }
+
+    public static <T> boolean compareAndSet(T[] array, int index, T expected, T value) {
+        return U.compareAndSwapObject(array, offsetFor(array, index), expected, value);
+    }
+
+    public static <T> T compareAndExchange(T[] array, int index, T expected, T value) {
+        boolean success = compareAndSet(array, index, expected, value);
+        if (success) {
+            return value;
+        } else {
+            return volatileRead(array, index);
+        }
     }
 
     @SuppressWarnings("unused")

@@ -56,9 +56,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.ArrayIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.HashIterator;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodesCollector;
 
 /**
  * Implementation of Espresso interop in a way that can be safely shared across contexts until code
@@ -71,25 +70,19 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodesCollect
  * In case an implementation cannot be found, the message will return the default value, as defined
  * in {@link InteropLibrary}.
  * 
- * @see #getTarget(StaticObject, EspressoContext, String)
+ * @see #getTarget(StaticObject, EspressoContext, InteropMessage.Message)
  * @see InteropMessageFactory
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class SharedInterop {
-    static {
-        for (InteropNodes nodes : InteropNodesCollector.getInstances(InteropNodes.class)) {
-            nodes.register();
-        }
-    }
-
     @TruffleBoundary
-    private static CallTarget getTarget(StaticObject receiver, EspressoContext ctx, String message) {
+    private static CallTarget getTarget(StaticObject receiver, EspressoContext ctx, InteropMessage.Message message) {
         assert !StaticObject.isNull(receiver);
         // Find not shared dispatch class.
-        Class<?> dispatch = receiver.getKlass().getDispatch();
-        ctx.getLogger().log(Level.FINER, () -> "Looking up shared target for : " + message + " for dispatch class " + dispatch.getSimpleName());
-        return ctx.getLazyCaches().getInteropMessage(message, dispatch, InteropMessageFactory.getFactory(ctx.getLanguage(), dispatch, message));
+        int dispatch = receiver.getKlass().getDispatchId();
+        ctx.getLogger().log(Level.FINER, () -> "Looking up shared target for : " + message + " for dispatch class " + receiver.getKlass().getDispatch().getSimpleName());
+        return ctx.getLazyCaches().getInteropMessage(message, dispatch);
     }
 
     private static UnsupportedMessageException unsupported() throws UnsupportedMessageException {
@@ -106,7 +99,7 @@ public class SharedInterop {
     public static boolean isNull(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isNull");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsNull);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -117,7 +110,7 @@ public class SharedInterop {
     public static boolean isBoolean(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isBoolean");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsBoolean);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -128,7 +121,7 @@ public class SharedInterop {
     public static boolean asBoolean(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "asBoolean");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsBoolean);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -139,7 +132,7 @@ public class SharedInterop {
     public static boolean isExecutable(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isExecutable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsExecutable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -150,7 +143,7 @@ public class SharedInterop {
     public static Object execute(StaticObject receiver, Object[] arguments,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "execute");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.Execute);
         if (target != null) {
             return callNode.call(target, receiver, arguments);
         }
@@ -161,7 +154,7 @@ public class SharedInterop {
     public static boolean hasExecutableName(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasExecutableName");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasExecutableName);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -172,7 +165,7 @@ public class SharedInterop {
     public static Object getExecutableName(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExecutableName");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExecutableName);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -183,7 +176,7 @@ public class SharedInterop {
     public static boolean hasDeclaringMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasDeclaringMetaObject");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasDeclaringMetaObject);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -194,7 +187,7 @@ public class SharedInterop {
     public static Object getDeclaringMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getDeclaringMetaObject");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetDeclaringMetaObject);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -205,7 +198,7 @@ public class SharedInterop {
     public static boolean isInstantiable(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isInstantiable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsInstantiable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -216,7 +209,7 @@ public class SharedInterop {
     public static Object instantiate(StaticObject receiver, Object[] args,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "instantiate");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.Instantiate);
         if (target != null) {
             return callNode.call(target, receiver, args);
         }
@@ -227,7 +220,7 @@ public class SharedInterop {
     public static boolean isString(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isString");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsString);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -238,7 +231,7 @@ public class SharedInterop {
     public static String asString(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asString");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsString);
         if (target != null) {
             return (String) callNode.call(target, receiver);
         }
@@ -250,7 +243,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asTruffleString");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsTruffleString);
         if (target != null) {
             return (TruffleString) callNode.call(target, receiver);
         }
@@ -261,7 +254,7 @@ public class SharedInterop {
     public static boolean isNumber(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isNumber");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsNumber);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -272,7 +265,7 @@ public class SharedInterop {
     public static boolean fitsInByte(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInByte");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInByte);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -283,7 +276,7 @@ public class SharedInterop {
     public static boolean fitsInShort(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInShort");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInShort);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -294,7 +287,7 @@ public class SharedInterop {
     public static boolean fitsInInt(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInInt");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInInt);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -305,7 +298,7 @@ public class SharedInterop {
     public static boolean fitsInLong(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInLong");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInLong);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -316,7 +309,7 @@ public class SharedInterop {
     public static boolean fitsInFloat(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInFloat");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInFloat);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -327,7 +320,7 @@ public class SharedInterop {
     public static boolean fitsInDouble(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "fitsInDouble");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.FitsInDouble);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -338,7 +331,7 @@ public class SharedInterop {
     public static byte asByte(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asByte");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsByte);
         if (target != null) {
             return (byte) callNode.call(target, receiver);
         }
@@ -349,7 +342,7 @@ public class SharedInterop {
     public static short asShort(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asShort");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsShort);
         if (target != null) {
             return (short) callNode.call(target, receiver);
         }
@@ -360,7 +353,7 @@ public class SharedInterop {
     public static int asInt(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asInt");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsInt);
         if (target != null) {
             return (int) callNode.call(target, receiver);
         }
@@ -371,7 +364,7 @@ public class SharedInterop {
     public static long asLong(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asLong");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsLong);
         if (target != null) {
             return (long) callNode.call(target, receiver);
         }
@@ -382,7 +375,7 @@ public class SharedInterop {
     public static float asFloat(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asFloat");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsFloat);
         if (target != null) {
             return (float) callNode.call(target, receiver);
         }
@@ -393,7 +386,7 @@ public class SharedInterop {
     public static double asDouble(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asDouble");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsDouble);
         if (target != null) {
             return (double) callNode.call(target, receiver);
         }
@@ -404,7 +397,7 @@ public class SharedInterop {
     public static boolean hasMembers(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasMembers");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasMembers);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -415,7 +408,7 @@ public class SharedInterop {
     public static Object getMembers(StaticObject receiver, boolean includeInternal,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getMembers");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetMembers);
         if (target != null) {
             return callNode.call(target, receiver, includeInternal);
         }
@@ -426,7 +419,7 @@ public class SharedInterop {
     public static boolean isMemberReadable(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberReadable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberReadable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -437,7 +430,7 @@ public class SharedInterop {
     public static Object readMember(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readMember");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadMember);
         if (target != null) {
             return callNode.call(target, receiver, member);
         }
@@ -448,7 +441,7 @@ public class SharedInterop {
     public static boolean isMemberModifiable(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberModifiable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberModifiable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -459,7 +452,7 @@ public class SharedInterop {
     public static boolean isMemberInsertable(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberInsertable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberInsertable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -470,7 +463,7 @@ public class SharedInterop {
     public static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeMember");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteMember);
         if (target != null) {
             callNode.call(target, receiver, member, value);
             return;
@@ -482,7 +475,7 @@ public class SharedInterop {
     public static boolean isMemberRemovable(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberRemovable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberRemovable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -493,7 +486,7 @@ public class SharedInterop {
     public static void removeMember(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "removeMember");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.RemoveMember);
         if (target != null) {
             callNode.call(target, receiver, member);
             return;
@@ -505,7 +498,7 @@ public class SharedInterop {
     public static boolean isMemberInvocable(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberInvocable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberInvocable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -516,7 +509,7 @@ public class SharedInterop {
     public static Object invokeMember(StaticObject receiver, String member, Object[] arguments,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "invokeMember");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.InvokeMember);
         if (target != null) {
             return callNode.call(target, receiver, member, arguments);
         }
@@ -527,7 +520,7 @@ public class SharedInterop {
     public static boolean isMemberInternal(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMemberInternal");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMemberInternal);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -538,7 +531,7 @@ public class SharedInterop {
     public static boolean hasMemberReadSideEffects(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasMemberReadSideEffects");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasMemberReadSideEffects);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -549,7 +542,7 @@ public class SharedInterop {
     public static boolean hasMemberWriteSideEffects(StaticObject receiver, String member,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasMemberWriteSideEffects");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasMemberWriteSideEffects);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, member);
         }
@@ -560,7 +553,7 @@ public class SharedInterop {
     public static boolean hasHashEntries(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasHashEntries");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasHashEntries);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -571,7 +564,7 @@ public class SharedInterop {
     public static long getHashSize(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getHashSize");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetHashSize);
         if (target != null) {
             return (long) callNode.call(target, receiver);
         }
@@ -582,7 +575,7 @@ public class SharedInterop {
     public static boolean isHashEntryReadable(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryReadable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryReadable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, key);
         }
@@ -593,7 +586,7 @@ public class SharedInterop {
     public static Object readHashValue(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readHashValue");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadHashValue);
         if (target != null) {
             return callNode.call(target, receiver, key);
         }
@@ -605,7 +598,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readHashValueOrDefault");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadHashValueOrDefault);
         if (target != null) {
             return callNode.call(target, receiver, key);
         }
@@ -620,7 +613,7 @@ public class SharedInterop {
     public static boolean isHashEntryModifiable(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryModifiable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryModifiable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, key);
         }
@@ -631,7 +624,7 @@ public class SharedInterop {
     public static boolean isHashEntryInsertable(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryInsertable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryInsertable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, key);
         }
@@ -643,7 +636,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryWritable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryWritable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -654,7 +647,7 @@ public class SharedInterop {
     public static void writeHashEntry(StaticObject receiver, Object key, Object value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeHashEntry");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteHashEntry);
         if (target != null) {
             callNode.call(target, receiver, key, value);
             return;
@@ -666,7 +659,7 @@ public class SharedInterop {
     public static boolean isHashEntryRemovable(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryRemovable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryRemovable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, key);
         }
@@ -677,7 +670,7 @@ public class SharedInterop {
     public static void removeHashEntry(StaticObject receiver, Object key,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "removeHashEntry");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.RemoveHashEntry);
         if (target != null) {
             callNode.call(target, receiver, key);
             return;
@@ -690,7 +683,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) {
-        CallTarget target = getTarget(receiver, ctx, "isHashEntryExisting");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsHashEntryExisting);
         if (target != null) {
             callNode.call(target, receiver);
         }
@@ -702,7 +695,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getHashEntriesIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetHashEntriesIterator);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -714,7 +707,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getHashKeysIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetHashKeysIterator);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -727,7 +720,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getHashValuesIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetHashValuesIterator);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -739,7 +732,7 @@ public class SharedInterop {
     public static boolean hasArrayElements(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasArrayElements");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasArrayElements);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -750,7 +743,7 @@ public class SharedInterop {
     public static Object readArrayElement(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readArrayElement");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadArrayElement);
         if (target != null) {
             return callNode.call(target, receiver, index);
         }
@@ -761,7 +754,7 @@ public class SharedInterop {
     public static long getArraySize(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getArraySize");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetArraySize);
         if (target != null) {
             return (long) callNode.call(target, receiver);
         }
@@ -772,7 +765,7 @@ public class SharedInterop {
     public static boolean isArrayElementReadable(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isArrayElementReadable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsArrayElementReadable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, index);
         }
@@ -783,7 +776,7 @@ public class SharedInterop {
     public static void writeArrayElement(StaticObject receiver, long index, Object value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeArrayElement");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteArrayElement);
         if (target != null) {
             callNode.call(target, receiver, index, value);
             return;
@@ -795,7 +788,7 @@ public class SharedInterop {
     public static void removeArrayElement(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "removeArrayElement");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.RemoveArrayElement);
         if (target != null) {
             callNode.call(target, receiver, index);
             return;
@@ -807,7 +800,7 @@ public class SharedInterop {
     public static boolean isArrayElementModifiable(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isArrayElementModifiable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsArrayElementModifiable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, index);
         }
@@ -818,7 +811,7 @@ public class SharedInterop {
     public static boolean isArrayElementInsertable(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isArrayElementInsertable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsArrayElementInsertable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, index);
         }
@@ -829,7 +822,7 @@ public class SharedInterop {
     public static boolean isArrayElementRemovable(StaticObject receiver, long index,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isArrayElementRemovable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsArrayElementRemovable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, index);
         }
@@ -840,7 +833,7 @@ public class SharedInterop {
     public static boolean hasBufferElements(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasBufferElements");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasBufferElements);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -852,7 +845,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "isBufferWritable");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsBufferWritable);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -867,7 +860,7 @@ public class SharedInterop {
     public static long getBufferSize(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getBufferSize");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetBufferSize);
         if (target != null) {
             return (long) callNode.call(target, receiver);
         }
@@ -878,7 +871,7 @@ public class SharedInterop {
     public static byte readBufferByte(StaticObject receiver, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferByte");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferByte);
         if (target != null) {
             return (byte) callNode.call(target, receiver, byteOffset);
         }
@@ -889,7 +882,7 @@ public class SharedInterop {
     public static void writeBufferByte(StaticObject receiver, long byteOffset, byte value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferByte");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferByte);
         if (target != null) {
             callNode.call(target, receiver, byteOffset, value);
             return;
@@ -901,7 +894,7 @@ public class SharedInterop {
     public static short readBufferShort(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferShort");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferShort);
         if (target != null) {
             return (short) callNode.call(target, receiver, order, byteOffset);
         }
@@ -912,7 +905,7 @@ public class SharedInterop {
     public static void writeBufferShort(StaticObject receiver, ByteOrder order, long byteOffset, short value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferShort");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferShort);
         if (target != null) {
             callNode.call(target, receiver, order, byteOffset);
             return;
@@ -924,7 +917,7 @@ public class SharedInterop {
     public static int readBufferInt(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferInt");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferInt);
         if (target != null) {
             return (int) callNode.call(target, receiver, order, byteOffset);
         }
@@ -935,7 +928,7 @@ public class SharedInterop {
     public static void writeBufferInt(StaticObject receiver, ByteOrder order, long byteOffset, int value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferInt");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferInt);
         if (target != null) {
             callNode.call(target, receiver, order, byteOffset, value);
             return;
@@ -947,7 +940,7 @@ public class SharedInterop {
     public static long readBufferLong(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferLong");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferLong);
         if (target != null) {
             return (long) callNode.call(target, receiver, order, byteOffset);
         }
@@ -958,7 +951,7 @@ public class SharedInterop {
     public static void writeBufferLong(StaticObject receiver, ByteOrder order, long byteOffset, long value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferLong");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferLong);
         if (target != null) {
             callNode.call(target, receiver, order, byteOffset, value);
             return;
@@ -970,7 +963,7 @@ public class SharedInterop {
     public static float readBufferFloat(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferFloat");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferFloat);
         if (target != null) {
             return (float) callNode.call(target, receiver, order, byteOffset);
         }
@@ -981,7 +974,7 @@ public class SharedInterop {
     public static void writeBufferFloat(StaticObject receiver, ByteOrder order, long byteOffset, float value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferFloat");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferFloat);
         if (target != null) {
             callNode.call(target, receiver, order, byteOffset, value);
             return;
@@ -993,7 +986,7 @@ public class SharedInterop {
     public static double readBufferDouble(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "readBufferDouble");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ReadBufferDouble);
         if (target != null) {
             return (double) callNode.call(target, receiver, order, byteOffset);
         }
@@ -1004,7 +997,7 @@ public class SharedInterop {
     public static void writeBufferDouble(StaticObject receiver, ByteOrder order, long byteOffset, double value,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "writeBufferDouble");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.WriteBufferDouble);
         if (target != null) {
             callNode.call(target, receiver, order, byteOffset, value);
             return;
@@ -1016,7 +1009,7 @@ public class SharedInterop {
     public static boolean isPointer(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isPointer");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsPointer);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1027,7 +1020,7 @@ public class SharedInterop {
     public static long asPointer(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asPointer");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsPointer);
         if (target != null) {
             return (long) callNode.call(target, receiver);
         }
@@ -1038,7 +1031,7 @@ public class SharedInterop {
     public static void toNative(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "toNative");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ToNative);
         if (target != null) {
             callNode.call(target, receiver);
         }
@@ -1049,7 +1042,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asInstant");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsInstant);
         if (target != null) {
             return (Instant) callNode.call(target, receiver);
         }
@@ -1071,7 +1064,7 @@ public class SharedInterop {
     public static boolean isTimeZone(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isTimeZone");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsTimeZone);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1082,7 +1075,7 @@ public class SharedInterop {
     public static ZoneId asTimeZone(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asTimeZone");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsTimeZone);
         if (target != null) {
             return (ZoneId) callNode.call(target, receiver);
         }
@@ -1093,7 +1086,7 @@ public class SharedInterop {
     public static boolean isDate(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isDate");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsDate);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1104,7 +1097,7 @@ public class SharedInterop {
     public static LocalDate asDate(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asDate");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsDate);
         if (target != null) {
             return (LocalDate) callNode.call(target, receiver);
         }
@@ -1115,7 +1108,7 @@ public class SharedInterop {
     public static boolean isTime(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isTime");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsTime);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1126,7 +1119,7 @@ public class SharedInterop {
     public static LocalTime asTime(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asTime");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsTime);
         if (target != null) {
             return (LocalTime) callNode.call(target, receiver);
         }
@@ -1137,7 +1130,7 @@ public class SharedInterop {
     public static boolean isDuration(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isDuration");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsDuration);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1148,7 +1141,7 @@ public class SharedInterop {
     public static Duration asDuration(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "asDuration");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.AsDuration);
         if (target != null) {
             return (Duration) callNode.call(target, receiver);
         }
@@ -1159,7 +1152,7 @@ public class SharedInterop {
     public static boolean isException(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isException");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsException);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1170,7 +1163,7 @@ public class SharedInterop {
     public static RuntimeException throwException(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "throwException");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ThrowException);
         if (target != null) {
             throw (RuntimeException) callNode.call(target, receiver);
         }
@@ -1181,7 +1174,7 @@ public class SharedInterop {
     public static ExceptionType getExceptionType(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExceptionType");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExceptionType);
         if (target != null) {
             return (ExceptionType) callNode.call(target, receiver);
         }
@@ -1192,7 +1185,7 @@ public class SharedInterop {
     public static boolean isExceptionIncompleteSource(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isExceptionIncompleteSource");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsExceptionIncompleteSource);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1203,7 +1196,7 @@ public class SharedInterop {
     public static int getExceptionExitStatus(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExceptionExitStatus");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExceptionExitStatus);
         if (target != null) {
             return (int) callNode.call(target, receiver);
         }
@@ -1214,7 +1207,7 @@ public class SharedInterop {
     public static boolean hasExceptionCause(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasExceptionCause");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasExceptionCause);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1225,7 +1218,7 @@ public class SharedInterop {
     public static Object getExceptionCause(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExceptionCause");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExceptionCause);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1236,7 +1229,7 @@ public class SharedInterop {
     public static boolean hasExceptionMessage(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasExceptionMessage");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasExceptionMessage);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1247,7 +1240,7 @@ public class SharedInterop {
     public static Object getExceptionMessage(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExceptionMessage");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExceptionMessage);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1258,7 +1251,7 @@ public class SharedInterop {
     public static boolean hasExceptionStackTrace(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasExceptionStackTrace");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasExceptionStackTrace);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1269,7 +1262,7 @@ public class SharedInterop {
     public static Object getExceptionStackTrace(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getExceptionStackTrace");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetExceptionStackTrace);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1288,7 +1281,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) {
-        CallTarget target = getTarget(receiver, ctx, "hasIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasIterator);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1300,7 +1293,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetIterator);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1314,7 +1307,7 @@ public class SharedInterop {
     public static boolean isIterator(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isIterator");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsIterator);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1325,7 +1318,7 @@ public class SharedInterop {
     public static boolean hasIteratorNextElement(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasIteratorNextElement");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasIteratorNextElement);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1336,7 +1329,7 @@ public class SharedInterop {
     public static Object getIteratorNextElement(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getIteratorNextElement");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetIteratorNextElement);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1347,7 +1340,7 @@ public class SharedInterop {
     public static boolean hasSourceLocation(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasSourceLocation");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasSourceLocation);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1358,7 +1351,7 @@ public class SharedInterop {
     public static SourceSection getSourceLocation(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getSourceLocation");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetSourceLocation);
         if (target != null) {
             return (SourceSection) callNode.call(target, receiver);
         }
@@ -1369,7 +1362,7 @@ public class SharedInterop {
     public static boolean hasLanguage(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasLanguage");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasLanguage);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1381,7 +1374,7 @@ public class SharedInterop {
     public static Class<? extends TruffleLanguage<?>> getLanguage(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getLanguage");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetLanguage);
         if (target != null) {
             return (Class<? extends TruffleLanguage<?>>) callNode.call(target, receiver);
         }
@@ -1392,7 +1385,7 @@ public class SharedInterop {
     public static boolean hasMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasMetaObject");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasMetaObject);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1403,7 +1396,7 @@ public class SharedInterop {
     public static Object getMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getMetaObject");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetMetaObject);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1414,7 +1407,7 @@ public class SharedInterop {
     public static Object toDisplayString(StaticObject receiver, boolean allowSideEffects,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "toDisplayString");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.ToDisplayString);
         if (target != null) {
             return callNode.call(target, receiver, allowSideEffects);
         }
@@ -1425,7 +1418,7 @@ public class SharedInterop {
     public static boolean isMetaObject(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMetaObject");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMetaObject);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1436,7 +1429,7 @@ public class SharedInterop {
     public static Object getMetaQualifiedName(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getMetaQualifiedName");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetMetaQualifiedName);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1447,7 +1440,7 @@ public class SharedInterop {
     public static Object getMetaSimpleName(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getMetaSimpleName");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetMetaSimpleName);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1458,7 +1451,7 @@ public class SharedInterop {
     public static boolean isMetaInstance(StaticObject receiver, Object instance,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isMetaInstance");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsMetaInstance);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, instance);
         }
@@ -1469,7 +1462,7 @@ public class SharedInterop {
     public static boolean hasMetaParents(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasMetaParents");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasMetaParents);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1480,7 +1473,7 @@ public class SharedInterop {
     public static Object getMetaParents(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getMetaParents");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetMetaParents);
         if (target != null) {
             return callNode.call(target, receiver);
         }
@@ -1491,7 +1484,7 @@ public class SharedInterop {
     public static TriState isIdenticalOrUndefined(StaticObject receiver, Object other,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isIdenticalOrUndefined");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsIdenticalOrUndefined);
         if (target != null) {
             return (TriState) callNode.call(target, receiver, other);
         }
@@ -1503,7 +1496,7 @@ public class SharedInterop {
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx,
                     @CachedLibrary("receiver") InteropLibrary lib) {
-        CallTarget target = getTarget(receiver, ctx, "isIdentical");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsIdentical);
         if (target != null) {
             return (boolean) callNode.call(target, receiver, other, otherLib);
         }
@@ -1521,7 +1514,7 @@ public class SharedInterop {
     public static int identityHashCode(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "identityHashCode");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IdentityHashCode);
         if (target != null) {
             return (int) callNode.call(target, receiver);
         }
@@ -1532,7 +1525,7 @@ public class SharedInterop {
     public static boolean isScope(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "isScope");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.IsScope);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1543,7 +1536,7 @@ public class SharedInterop {
     public static boolean hasScopeParent(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) {
-        CallTarget target = getTarget(receiver, ctx, "hasScopeParent");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.HasScopeParent);
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
@@ -1554,7 +1547,7 @@ public class SharedInterop {
     public static Object getScopeParent(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Bind("getContext(receiver)") EspressoContext ctx) throws UnsupportedMessageException {
-        CallTarget target = getTarget(receiver, ctx, "getScopeParent");
+        CallTarget target = getTarget(receiver, ctx, InteropMessage.Message.GetScopeParent);
         if (target != null) {
             return callNode.call(target, receiver);
         }
