@@ -96,8 +96,10 @@ public final class EspressoLanguageCache {
         addCapability(capability.kind);
     }
 
-    public void freezeCapabilities() {
-        addCapability(FROZEN);
+    public void ensureFrozen() {
+        if (!isFrozen()) {
+            addCapability(FROZEN);
+        }
     }
 
     public void importFrom(EspressoLanguageCache other) {
@@ -142,14 +144,14 @@ public final class EspressoLanguageCache {
     }
 
     public ParserKlass getOrCreateParserKlass(ClassLoadingEnv env, StaticObject classLoader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        assert isFrozen();
+        ensureFrozen();
         return parserKlassProvider.getParserKlass(env, classLoader, typeOrNull, bytes, info);
     }
 
     public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
                     LinkedKlass[] linkedInterfaces,
                     ClassRegistry.ClassDefinitionInfo info) {
-        assert isFrozen();
+        ensureFrozen();
         return linkedKlassProvider.getLinkedKlass(env, description, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
     }
 }

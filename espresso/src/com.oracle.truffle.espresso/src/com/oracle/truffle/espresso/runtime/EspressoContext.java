@@ -317,8 +317,6 @@ public final class EspressoContext {
         // Setup finalization support in the host VM.
         FinalizationSupport.ensureInitialized();
 
-        getLanguageCache().freezeCapabilities();
-
         spawnVM();
 
         getEspressoEnv().getPolyglotTypeMappings().resolve(this);

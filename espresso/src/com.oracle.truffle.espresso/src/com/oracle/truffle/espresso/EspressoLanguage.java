@@ -37,6 +37,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -127,8 +128,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private int livenessAnalysisMinimumLocals;
     @CompilationFinal private boolean previewEnabled;
     @CompilationFinal private boolean whiteBoxEnabled;
-
-    private boolean optionsInitialized;
     // endregion Options
 
     // region Allocation
@@ -141,6 +140,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final EspressoLanguageCache languageCache = new EspressoLanguageCache();
     @CompilationFinal private boolean isShared = false;
     // endregion Preinit and sharing
+
+    @CompilationFinal private volatile boolean fullyInitialized;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -176,32 +177,46 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
-        initializeOptions(env);
-
         // We cannot use env.isPreinitialization() here because the language instance that holds the
-        // inner context
-        // is not under pre-initialization
+        // inner context is not under pre-initialization
         boolean isPreinitLanguageInstance = (boolean) env.getConfig().getOrDefault("preinit", false);
         if (isPreinitLanguageInstance) {
             languageCache.addCapability(EspressoLanguageCache.CacheCapability.PRE_INITIALIZED);
         }
-
+        ensureInitialized(env);
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
         return context;
     }
 
-    private void initializeOptions(final TruffleLanguage.Env env) {
-        if (!optionsInitialized) {
-            verifyMode = env.getOptions().get(EspressoOptions.Verify);
-            specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
-            livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
-            livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
-            previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
-            whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
-            optionsInitialized = true;
+    public void ensureInitialized(final TruffleLanguage.Env env) {
+        if (!fullyInitialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                if (!fullyInitialized) {
+                    // Initialize required options.
+                    initializeOptions(env);
+                    // Create known shapes.
+                    arrayShape = createArrayShape();
+                    foreignShape = createForeignShape();
+                    // Prevent further changes in cache capabilities,
+                    // languageCache.freezeCapabilities();
+                    // Publish initialization.
+                    fullyInitialized = true;
+                }
+            }
         }
+    }
+
+    private void initializeOptions(final TruffleLanguage.Env env) {
+        assert Thread.holdsLock(this);
+        verifyMode = env.getOptions().get(EspressoOptions.Verify);
+        specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
+        livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
+        previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
+        whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
     }
 
     @Override
@@ -231,6 +246,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 extractDataFrom(inner.getLanguage());
                 languageCache.logCacheStatus();
 
+                if (!inner.multiThreadingEnabled()) {
+                    // Force collection of guest references.
+                    inner.getLazyCaches().getReferenceProcessCache().execute();
+                }
                 // This is needed to ensure that there are no references to the inner context
                 inner = null;
             } finally {
@@ -422,13 +441,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     public StaticShape<StaticObjectFactory> getArrayShape() {
-        if (arrayShape == null) {
-            arrayShape = createArrayShape();
-        }
+        assert fullyInitialized : "Array shape accessed before language is fully initialized";
         return arrayShape;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
         return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
@@ -439,13 +456,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     public StaticShape<StaticObjectFactory> getForeignShape() {
-        if (foreignShape == null) {
-            foreignShape = createForeignShape();
-        }
+        assert fullyInitialized : "Array shape accessed before language is fully initialized";
         return foreignShape;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private StaticShape<StaticObjectFactory> createForeignShape() {
         assert foreignShape == null;
         return StaticShape.newBuilder(this).property(foreignProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
