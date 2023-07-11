@@ -1026,6 +1026,13 @@ suite = {
             # we want to make this code unreachable in native image builds
             "addDataFilesFromPath\\(dataPath, icuDataFiles\\);" : "// \\g<0>",
           },
+          "com/ibm/icu/impl/ICUData.java" : {
+            # [GR-47166] we load an absolute path from ICUData.class, to
+            # workaround an issue we don't understand when this is on the
+            # module path
+            "ICU_DATA_PATH = \"(?!/)" : "\\g<0>/",
+            "loader.getResourceAsStream\\(resourceName\\)": "(loader == ICUData.class.getClassLoader() ? ICUData.class.getResourceAsStream(resourceName) : \\g<0>)",
+          },
           "com/ibm/icu/impl/URLHandler.java" : {
             # we want to make this code unreachable in native image builds
             "protected static URLHandler getDefault.*" : "\\g<0>\nif (Boolean.TRUE) {\nreturn null;\n}",
