@@ -27,21 +27,15 @@ package com.oracle.svm.core.nodes;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -50,42 +44,19 @@ import org.graalvm.word.LocationIdentity;
 /**
  * See comments in {@link CFunctionPrologueNode} for details.
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Capturing the call state requires calls whose cost is unknown.", size = SIZE_UNKNOWN, sizeRationale = "Capturing the call state requires calls whose cost is unknown.", allowedUsageTypes = {
-                Memory})
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
 public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
-    /*
-     * This method is called with an integer (the capture mask) and a pointer to int (the capture
-     * buffer).
-     *
-     * This method is called from inside the CFunction prologue before transitioning back into Java.
-     * This means that no transition to/from should happen and the method must be uninterruptible.
-     *
-     * You need to register this method for foreign call and may need to declare it as root method.
-     */
-    final ForeignCallDescriptor captureFunction;
-    @OptionalInput ValueNode statesToCapture;
-    @OptionalInput ValueNode captureBuffer;
     /**
      * See comment in {@link CFunctionPrologueNode}.
      */
     private CFunctionEpilogueMarker marker;
 
-    public CFunctionEpilogueNode(int oldThreadStatus, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
+    public CFunctionEpilogueNode(int oldThreadStatus) {
         super(TYPE, StampFactory.forVoid());
         this.oldThreadStatus = oldThreadStatus;
-        if (!captureArgumentsAreCoherent(captureFunction, statesToCapture, captureBuffer)) {
-            throw new IllegalArgumentException("Capture arguments are not coherent: " + captureFunction + " " + statesToCapture + " " + captureBuffer);
-        }
-        this.captureFunction = captureFunction;
-        this.statesToCapture = statesToCapture;
-        this.captureBuffer = captureBuffer;
-    }
-
-    public CFunctionEpilogueNode(int oldThreadStatus) {
-        this(oldThreadStatus, null, null, null);
     }
 
     @Override
@@ -108,14 +79,6 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
 
     public int getOldThreadStatus() {
         return oldThreadStatus;
-    }
-
-    public ValueNode getStatesToCapture() {
-        return statesToCapture;
-    }
-
-    public ValueNode getCaptureBuffer() {
-        return captureBuffer;
     }
 
     @NodeIntrinsic
@@ -142,24 +105,5 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     @Override
     public boolean canUseAsStateDuring() {
         return true;
-    }
-
-    @Override
-    public NodeCycles estimatedNodeCycles() {
-        return captureBuffer == null ? CYCLES_8 : super.estimatedNodeCycles();
-    }
-
-    @Override
-    protected NodeSize dynamicNodeSizeEstimate() {
-        return captureBuffer == null ? SIZE_8 : super.dynamicNodeSizeEstimate();
-    }
-
-    public ForeignCallDescriptor getCaptureFunction() {
-        return captureFunction;
-    }
-
-    public static boolean captureArgumentsAreCoherent(ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
-        return ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
-                        ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
     }
 }

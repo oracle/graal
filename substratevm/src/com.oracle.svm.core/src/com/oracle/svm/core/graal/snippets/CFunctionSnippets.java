@@ -32,7 +32,6 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
@@ -63,6 +62,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -98,6 +98,7 @@ import com.oracle.svm.core.util.VMError;
 public final class CFunctionSnippets extends SubstrateTemplates implements Snippets {
 
     private final SnippetInfo prologue;
+    private final SnippetInfo capture;
     private final SnippetInfo epilogue;
 
     /**
@@ -108,11 +109,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
-        if (newThreadStatus == StatusSupport.STATUS_ILLEGAL) {
-            /* No transition wanted, so no anchor needed */
-            return null;
-        }
-
         /* Push a JavaFrameAnchor to the thread-local linked list. */
         JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
         JavaFrameAnchors.pushFrameAnchor(anchor);
@@ -131,17 +127,12 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     public static native void callCaptureFunction(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
 
     @Snippet
-    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter boolean enableCapture, @ConstantParameter ForeignCallDescriptor captureFunction, int statesToCapture,
-                    CIntPointer captureBuffer) {
-        if (enableCapture) {
-            callCaptureFunction(captureFunction, statesToCapture, captureBuffer);
-        }
+    private static void captureSnippet(@ConstantParameter ForeignCallDescriptor captureFunction, int statesToCapture, CIntPointer captureBuffer) {
+        callCaptureFunction(captureFunction, statesToCapture, captureBuffer);
+    }
 
-        if (oldThreadStatus == StatusSupport.STATUS_ILLEGAL) {
-            /* No transition was done before the call, so no transition must be done now */
-            return;
-        }
-
+    @Snippet
+    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
                 Safepoint.transitionNativeToJava(true);
@@ -166,9 +157,11 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         super(options, providers);
 
         this.prologue = snippet(providers, CFunctionSnippets.class, "prologueSnippet");
+        this.capture = snippet(providers, CFunctionSnippets.class, "captureSnippet");
         this.epilogue = snippet(providers, CFunctionSnippets.class, "epilogueSnippet");
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
+        lowerings.put(CFunctionCaptureNode.class, new CFunctionCaptureLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
     }
 
@@ -190,6 +183,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addBeforeFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int newThreadStatus = node.getNewThreadStatus();
+            assert StatusSupport.isValidStatus(newThreadStatus);
 
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("newThreadStatus", newThreadStatus);
@@ -199,9 +193,28 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
-        private static final ForeignCallDescriptor PLACEHOLDER_DESCRIPTOR = new ForeignCallDescriptor("unreachable", void.class, new Class<?>[0], true, new LocationIdentity[0], false, false);
+    class CFunctionCaptureLowering implements NodeLoweringProvider<CFunctionCaptureNode> {
+        @Override
+        public void lower(CFunctionCaptureNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
 
+            ValueNode statesToCapture = node.getStatesToCapture();
+            ForeignCallDescriptor captureFunction = node.getCaptureFunction();
+            ValueNode buffer = node.getCaptureBuffer();
+            Arguments args = new Arguments(capture, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("captureFunction", captureFunction);
+            args.add("statesToCapture", statesToCapture);
+            args.add("captureBuffer", buffer);
+
+            SnippetTemplate template = template(tool, node, args);
+            template.setMayRemoveLocation(true);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
             if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
@@ -210,24 +223,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             int oldThreadStatus = node.getOldThreadStatus();
-            ValueNode statesToCapture = node.getStatesToCapture();
-            if (statesToCapture == null) {
-                statesToCapture = ConstantNode.forLong(0, node.graph());
-            }
-            ForeignCallDescriptor captureFunction = node.getCaptureFunction();
-            ValueNode buffer = node.getCaptureBuffer();
-            if (buffer == null) {
-                // Set it to the null pointer
-                buffer = ConstantNode.forLong(0, node.graph());
-            }
+            assert StatusSupport.isValidStatus(oldThreadStatus);
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
-            args.addConst("enableCapture", captureFunction != null);
-            /* We cannot pass null as const argument, so we pass a dummy instead */
-            args.addConst("captureFunction", captureFunction == null ? PLACEHOLDER_DESCRIPTOR : captureFunction);
-            args.add("statesToCapture", statesToCapture);
-            args.add("captureBuffer", buffer);
-
             SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
             template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -255,21 +253,18 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 }
                 InvokeNode invoke = (InvokeNode) cur;
 
-                if (prologueNode.getNewThreadStatus() != StatusSupport.STATUS_ILLEGAL) {
-                    /*
-                     * We are re-using the classInit field of the InvokeNode to store the
-                     * CFunctionPrologueNode. During lowering, we create a PrologueDataNode that
-                     * holds all the prologue-related data that the invoke needs in the backend.
-                     *
-                     * The classInit field is in every InvokeNode, and it is otherwise unused by
-                     * Substrate VM (it is used only by the Java HotSpot VM). If we ever need the
-                     * classInit field for other purposes, we need to create a new subclass of
-                     * InvokeNode, and replace the invoke here with an instance of that new
-                     * subclass.
-                     */
-                    VMError.guarantee(invoke.classInit() == null, "Re-using the classInit field to store the JavaFrameAnchor");
-                    invoke.setClassInit(prologueNode);
-                }
+                /*
+                 * We are re-using the classInit field of the InvokeNode to store the
+                 * CFunctionPrologueNode. During lowering, we create a PrologueDataNode that holds
+                 * all the prologue-related data that the invoke needs in the backend.
+                 *
+                 * The classInit field is in every InvokeNode, and it is otherwise unused by
+                 * Substrate VM (it is used only by the Java HotSpot VM). If we ever need the
+                 * classInit field for other purposes, we need to create a new subclass of
+                 * InvokeNode, and replace the invoke here with an instance of that new subclass.
+                 */
+                VMError.guarantee(invoke.classInit() == null, "Re-using the classInit field to store the JavaFrameAnchor");
+                invoke.setClassInit(prologueNode);
 
                 singleInvoke = cur;
             }
@@ -291,6 +286,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {
+
     @Override
     @SuppressWarnings("unused")
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

@@ -78,6 +78,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -202,17 +203,15 @@ public class SubstrateGraphKit extends GraphKit {
 
     public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
                     CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
-        assert CFunctionEpilogueNode.captureArgumentsAreCoherent(captureFunction, statesToCapture, captureBuffer);
+        assert ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
+                        ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
 
         var fixedStatesToCapture = statesToCapture;
         if (fixedStatesToCapture != null) {
             fixedStatesToCapture = append(new FixedValueAnchorNode(fixedStatesToCapture));
         }
 
-        /*
-         * State capture require the epilogue (and thus prologue) to be emitted
-         */
-        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus) || captureBuffer != null;
+        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
         }
@@ -230,9 +229,13 @@ public class SubstrateGraphKit extends GraphKit {
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
         InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
 
+        if (fixedStatesToCapture != null) {
+            append(new CFunctionCaptureNode(captureFunction, fixedStatesToCapture, captureBuffer));
+        }
+
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, captureFunction, fixedStatesToCapture, captureBuffer);
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus);
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {

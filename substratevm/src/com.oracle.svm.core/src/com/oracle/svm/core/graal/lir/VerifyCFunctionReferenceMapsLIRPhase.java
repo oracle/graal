@@ -192,8 +192,6 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
                     return 2;
                 case StatusSupport.STATUS_IN_VM:
                     return 1;
-                case StatusSupport.STATUS_ILLEGAL:
-                    return 1;
                 default:
                     throw VMError.shouldNotReachHere("Unexpected thread status: " + newThreadStatus);
             }
