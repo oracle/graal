@@ -158,6 +158,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         return canonical;
     }
 
+    @Override
+    protected boolean shouldOmitIntermediateMethodInStates(ResolvedJavaMethod method) {
+        return policy.shouldOmitIntermediateMethodInState(method);
+    }
+
     @SuppressWarnings("unused")
     protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
         return node;

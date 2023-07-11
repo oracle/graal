@@ -112,6 +112,11 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
+    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
+        return inliningUtils.shouldOmitIntermediateMethodInState(method);
+    }
+
+    @Override
     protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments) {
         // No action is needed
         return insertionPoint;

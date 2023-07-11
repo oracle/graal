@@ -267,6 +267,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 if (invokePosition == null) {
                     return null;
                 }
+                if (invokePosition.getCaller() != null && shouldOmitIntermediateMethodInStates(invokePosition.getMethod())) {
+                    invokePosition = invokePosition.getCaller();
+                }
                 callerBytecodePosition = invokePosition;
             }
             return callerBytecodePosition;
@@ -1665,8 +1668,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 ensureOuterStateDecoded(methodScope.caller);
                 outerState.setOuterFrameState(methodScope.caller.outerState);
             }
+            if (outerState.outerFrameState() != null && shouldOmitIntermediateMethodInStates(outerState.getMethod())) {
+                outerState = outerState.outerFrameState();
+            }
             methodScope.outerState = outerState;
         }
+    }
+
+    /**
+     * Determines whether to omit an intermediate method (a method other than the root method or a
+     * leaf callee) from {@link FrameState} or {@link NodeSourcePosition} information. When used to
+     * discard intermediate methods of generated code with non-deterministic names, for example,
+     * this can improve matching of profile-guided optimization information between executions.
+     */
+    protected boolean shouldOmitIntermediateMethodInStates(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
     }
 
     protected void ensureStateAfterDecoded(PEMethodScope methodScope) {

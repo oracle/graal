@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.Map;
@@ -92,6 +93,7 @@ public class InlineBeforeAnalysisPolicyUtils {
 
     private AnalysisType methodHandleType;
     private AnalysisType varHandleGuardsType;
+    private Class<? extends Annotation> compiledLambdaFormAnnotation;
 
     public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
@@ -452,5 +454,19 @@ public class InlineBeforeAnalysisPolicyUtils {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Discard information on inlined calls to generated classes of LambdaForms, which are not
+     * assigned names that are stable between executions and would cause mismatches in collected
+     * profile-guided optimization data which prevent optimizations.
+     */
+    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
+        if (compiledLambdaFormAnnotation == null) {
+            @SuppressWarnings("unchecked")
+            Class<? extends Annotation> annotation = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Compiled");
+            compiledLambdaFormAnnotation = annotation;
+        }
+        return method.isAnnotationPresent(compiledLambdaFormAnnotation);
     }
 }
