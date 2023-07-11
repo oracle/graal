@@ -1059,9 +1059,6 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
-        rSha1.registerConditional(useSha1, new DigestInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));
-
         Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
         rSha256.registerConditional(useSha256, new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
 

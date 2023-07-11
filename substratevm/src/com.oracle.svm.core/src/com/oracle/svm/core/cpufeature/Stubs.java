@@ -49,6 +49,7 @@ import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -93,6 +94,9 @@ public final class Stubs {
             if (BigIntegerSquareToLenNode.class.equals(klass)) {
                 return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
             }
+            if (SHA1Node.class.equals(klass)) {
+                return SHA1Node.minFeaturesAMD64();
+            }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
     }
@@ -109,6 +113,9 @@ public final class Stubs {
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
                 return GHASH_CPU_FEATURES_AARCH64;
+            }
+            if (SHA1Node.class.equals(klass)) {
+                return SHA1Node.minFeaturesAARCH64();
             }
             return EMPTY_CPU_FEATURES_AARCH64;
         }

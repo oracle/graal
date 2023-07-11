@@ -44,6 +44,7 @@ import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -69,6 +70,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 BigIntegerMultiplyToLenNode.class,
                 BigIntegerMulAddNode.class,
                 BigIntegerSquareToLenNode.class,
+                SHA1Node.class,
 })
 public final class SVMIntrinsicStubs {
 }
