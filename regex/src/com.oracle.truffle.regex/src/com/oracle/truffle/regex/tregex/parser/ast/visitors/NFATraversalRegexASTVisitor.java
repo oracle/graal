@@ -299,6 +299,9 @@ public abstract class NFATraversalRegexASTVisitor {
             while (!done && !foundNextTarget) {
                 // advance until we reach the next node to visit
                 foundNextTarget = doAdvance();
+                if (foundNextTarget) {
+                    foundNextTarget = deduplicatePath(false);
+                }
             }
             if (done) {
                 break;
@@ -461,7 +464,7 @@ public abstract class NFATraversalRegexASTVisitor {
             // createGroupEnterPathElement initializes the group alternation index with 1, so we
             // don't have to increment it here, either.
             cur = group.getFirstAlternative();
-            return deduplicatePath();
+            return deduplicatePath(true);
         } else {
             curPath.add(createPathElement(cur));
             if (cur.isPositionAssertion()) {
@@ -591,7 +594,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         switchNextGroupAlternative(group);
                         cur = pathGroupGetNext(lastVisited);
-                        return deduplicatePath();
+                        return deduplicatePath(true);
                     } else {
                         if (pathIsGroupEnter(lastVisited)) {
                             popGroupEnter(group);
@@ -654,7 +657,13 @@ public abstract class NFATraversalRegexASTVisitor {
      * 
      * @return {@code true} if a successor was found in this step
      */
-    private boolean deduplicatePath() {
+    private boolean deduplicatePath(boolean internal) {
+        // interal == true means that this is being called during traversal, before reaching a
+        // successor node (these calls are made in regular intervals, whenever a new Sequence is
+        // entered).
+        // This method is also called for every successor we have found (internal == false). In
+        // these cases, we can use a broader notion of state equivalence to prune more aggressively.
+        assert internal == cur.isSequence();
         // In regex flavors where backreferences to unmatched capture groups always pass (i.e. they
         // behave as if the capture group matched the empty string), we don't have to distinguish
         // two states of the traversal that differ only in capture groups, since the state that was
@@ -663,17 +672,20 @@ public abstract class NFATraversalRegexASTVisitor {
         boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
         DeduplicationKey key;
         if (captureGroupsMatter) {
-            key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears, lastGroup);
+            key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, internal ? insideEmptyGuardGroup : null, captureGroupUpdates, captureGroupClears,
+                            lastGroup);
         } else {
-            key = DeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
+            key = DeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, internal ? insideEmptyGuardGroup : null);
         }
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
             return retreat();
         } else {
-            // We can return false, since this is only called when the current target node is a
-            // Sequence and these can never be successors.
-            return false;
+            // When called in the middle of traversal (internal == true), we can return false, since
+            // the current target node is a Sequence and these can never be successors.
+            // When called at the end of traversal (internal == false), we can return true, since
+            // the current target node is a valid successor.
+            return !internal;
         }
     }
 
@@ -1177,7 +1189,7 @@ public abstract class NFATraversalRegexASTVisitor {
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
             this.quantifierGuards = quantifierGuards;
-            this.insideEmptyGuardGroup = insideEmptyGuardGroup.copy();
+            this.insideEmptyGuardGroup = insideEmptyGuardGroup == null ? null : insideEmptyGuardGroup.copy();
         }
 
         public static DeduplicationKey create(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
@@ -1193,7 +1205,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.insideEmptyGuardGroup.equals(other.insideEmptyGuardGroup);
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
+                            Objects.equals(this.insideEmptyGuardGroup, other.insideEmptyGuardGroup);
         }
 
         protected int calculateHashCode() {
@@ -1233,7 +1246,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             CGSensitiveDeduplicationKey other = (CGSensitiveDeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.insideEmptyGuardGroup.equals(other.insideEmptyGuardGroup) &&
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
+                            Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) &&
                             Objects.equals(captureGroupUpdates, other.captureGroupUpdates) && Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
         }
 
