@@ -2957,7 +2957,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         # launcher classpath for launching via jvm
         _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
-        # path from langauge launcher to jars
+        # path from language launcher to jars
         _cp = [relpath(x, start=_exe_dir) for x in _cp]
         if mx.is_windows():
             _cp = [x.replace('\\', '\\\\') for x in _cp]

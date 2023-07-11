@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -308,6 +309,9 @@ public abstract class Accessor {
 
         public abstract Node inlineToHostNode(Object target);
 
+        public abstract boolean bigIntegerFitsInFloat(BigInteger b);
+
+        public abstract boolean bigIntegerFitsInDouble(BigInteger b);
     }
 
     public abstract static class EngineSupport extends Support {
