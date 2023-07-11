@@ -211,7 +211,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public Object doTypeConverter(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
