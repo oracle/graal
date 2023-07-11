@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.host;
 
+import java.math.BigInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -164,6 +165,16 @@ final class HostAccessor extends Accessor {
         @Override
         public Node inlineToHostNode(Object target) {
             return HostToTypeNodeGen.inline((InlineTarget) target);
+        }
+
+        @Override
+        public boolean bigIntegerFitsInFloat(BigInteger b) {
+            return HostObject.bigIntegerFitsInFloat(b);
+        }
+
+        @Override
+        public boolean bigIntegerFitsInDouble(BigInteger b) {
+            return HostObject.bigIntegerFitsInDouble(b);
         }
     }
 

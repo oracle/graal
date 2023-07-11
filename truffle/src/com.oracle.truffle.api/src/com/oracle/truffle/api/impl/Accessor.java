@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -68,7 +69,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -124,6 +124,7 @@ import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
@@ -311,6 +312,9 @@ public abstract class Accessor {
 
         public abstract Node inlineToHostNode(Object target);
 
+        public abstract boolean bigIntegerFitsInFloat(BigInteger b);
+
+        public abstract boolean bigIntegerFitsInDouble(BigInteger b);
     }
 
     public abstract static class EngineSupport extends Support {
