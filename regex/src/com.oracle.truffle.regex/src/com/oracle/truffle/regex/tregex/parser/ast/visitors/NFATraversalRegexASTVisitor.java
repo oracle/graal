@@ -670,13 +670,14 @@ public abstract class NFATraversalRegexASTVisitor {
         // encountered first will dominate the one found later and any empty capture groups that
         // would have been matched along the way cannot affect future matching.
         boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
-        DeduplicationKey key;
-        if (captureGroupsMatter) {
-            key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, internal ? insideEmptyGuardGroup : null, captureGroupUpdates, captureGroupClears,
-                            lastGroup);
-        } else {
-            key = DeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, internal ? insideEmptyGuardGroup : null);
-        }
+        DeduplicationKey key = new DeduplicationKey(cur,
+                        lookAroundsOnPath,
+                        dollarsOnPath,
+                        quantifierGuards,
+                        internal ? insideEmptyGuardGroup : null,
+                        captureGroupsMatter ? captureGroupUpdates : null,
+                        captureGroupsMatter ? captureGroupClears : null,
+                        captureGroupsMatter ? lastGroup : -1);
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
             return retreat();
@@ -1177,83 +1178,37 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    private static class DeduplicationKey {
-        protected final StateSet<RegexAST, RegexASTNode> nodesInvolved;
-        protected final QuantifierGuardsLinkedList quantifierGuards;
-        protected final StateSet<RegexAST, Group> insideEmptyGuardGroup;
-        protected int hashCode;
+    private static final class DeduplicationKey {
+        private final StateSet<RegexAST, RegexASTNode> nodesInvolved;
+        private final QuantifierGuardsLinkedList quantifierGuards;
+        private final StateSet<RegexAST, Group> insideEmptyGuardGroup;
+        private final TBitSet captureGroupUpdates;
+        private final TBitSet captureGroupClears;
+        private final int lastGroup;
+        private final int hashCode;
 
-        protected DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup) {
+        DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
             this.nodesInvolved = lookAroundsOnPath.copy();
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
             this.quantifierGuards = quantifierGuards;
             this.insideEmptyGuardGroup = insideEmptyGuardGroup == null ? null : insideEmptyGuardGroup.copy();
-        }
-
-        public static DeduplicationKey create(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup) {
-            DeduplicationKey key = new DeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
-            key.hashCode = key.calculateHashCode();
-            return key;
+            this.captureGroupUpdates = captureGroupUpdates == null ? null : captureGroupUpdates.copy();
+            this.captureGroupClears = captureGroupClears == null ? null : captureGroupClears.copy();
+            this.lastGroup = lastGroup;
+            this.hashCode = Objects.hash(nodesInvolved, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears, lastGroup);
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == null || (getClass() != obj.getClass())) {
+            if (obj == null || !(obj instanceof DeduplicationKey)) {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
             return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
-                            Objects.equals(this.insideEmptyGuardGroup, other.insideEmptyGuardGroup);
-        }
-
-        protected int calculateHashCode() {
-            return Objects.hash(nodesInvolved, quantifierGuards, insideEmptyGuardGroup);
-        }
-
-        @Override
-        public int hashCode() {
-            return hashCode;
-        }
-    }
-
-    private static final class CGSensitiveDeduplicationKey extends DeduplicationKey {
-        private final TBitSet captureGroupUpdates;
-        private final TBitSet captureGroupClears;
-        private final int lastGroup;
-
-        protected CGSensitiveDeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-            super(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup);
-            this.captureGroupUpdates = captureGroupUpdates.copy();
-            this.captureGroupClears = captureGroupClears.copy();
-            this.lastGroup = lastGroup;
-        }
-
-        public static CGSensitiveDeduplicationKey create(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-            CGSensitiveDeduplicationKey key = new CGSensitiveDeduplicationKey(targetNode, lookAroundsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates,
-                            captureGroupClears, lastGroup);
-            key.hashCode = key.calculateHashCode();
-            return key;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null || (getClass() != obj.getClass())) {
-                return false;
-            }
-            CGSensitiveDeduplicationKey other = (CGSensitiveDeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
-                            Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) &&
-                            Objects.equals(captureGroupUpdates, other.captureGroupUpdates) && Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
-        }
-
-        @Override
-        protected int calculateHashCode() {
-            return Objects.hash(super.calculateHashCode(), captureGroupUpdates, captureGroupClears, lastGroup);
+                            Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) && Objects.equals(captureGroupUpdates, other.captureGroupUpdates) &&
+                            Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
         }
 
         @Override
