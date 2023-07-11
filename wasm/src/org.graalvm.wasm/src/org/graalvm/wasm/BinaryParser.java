@@ -1356,7 +1356,19 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY64_COPY, destMemoryIndex, srcMemoryIndex);
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S64, destMemoryIndex, srcMemoryIndex);
+                        } else if (module.memoryHasIndexType64(destMemoryIndex) && !module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S32, destMemoryIndex, srcMemoryIndex);
+                        } else if (!module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D32_S64, destMemoryIndex, srcMemoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);

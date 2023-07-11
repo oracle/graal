@@ -197,7 +197,7 @@ public class Linker {
         }
     }
 
-    private void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
+    private static void runStartFunctions(Map<String, WasmInstance> instances, ArrayList<Throwable> failures) {
         List<WasmInstance> instanceList = new ArrayList<>(instances.values());
         instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
         for (WasmInstance instance : instanceList) {

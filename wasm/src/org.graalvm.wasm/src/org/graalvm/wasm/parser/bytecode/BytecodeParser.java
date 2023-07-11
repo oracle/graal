@@ -68,7 +68,6 @@ import java.util.Objects;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 
@@ -807,7 +806,9 @@ public class BytecodeParser {
                         case Bytecode.MEMORY64_INIT:
                         case Bytecode.MEMORY64_INIT_UNSAFE:
                         case Bytecode.MEMORY_COPY:
-                        case Bytecode.MEMORY64_COPY:
+                        case Bytecode.MEMORY64_COPY_D32_S64:
+                        case Bytecode.MEMORY64_COPY_D64_S32:
+                        case Bytecode.MEMORY64_COPY_D64_S64:
                         case Bytecode.TABLE_INIT:
                         case Bytecode.TABLE_COPY: {
                             offset += 8;

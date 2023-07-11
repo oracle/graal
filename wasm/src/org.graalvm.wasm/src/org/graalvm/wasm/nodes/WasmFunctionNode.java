@@ -1785,12 +1785,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 8;
                             break;
                         }
-                        case Bytecode.MEMORY64_COPY: {
+                        case Bytecode.MEMORY64_COPY_D64_S64: {
                             final int destMemoryIndex = rawPeekI32(bytecode, offset);
                             final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
                             final long n = popLong(frame, stackPointer - 1);
                             final long src = popLong(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
+                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
+                            stackPointer -= 3;
+                            offset += 8;
+                            break;
+                        }
+                        case Bytecode.MEMORY64_COPY_D64_S32: {
+                            final int destMemoryIndex = rawPeekI32(bytecode, offset);
+                            final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
+                            final long n = popInt(frame, stackPointer - 1);
+                            final long src = popInt(frame, stackPointer - 2);
+                            final long dst = popLong(frame, stackPointer - 3);
+                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
+                            stackPointer -= 3;
+                            offset += 8;
+                            break;
+                        }
+                        case Bytecode.MEMORY64_COPY_D32_S64: {
+                            final int destMemoryIndex = rawPeekI32(bytecode, offset);
+                            final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
+                            final long n = popInt(frame, stackPointer - 1);
+                            final long src = popLong(frame, stackPointer - 2);
+                            final long dst = popInt(frame, stackPointer - 3);
                             memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
