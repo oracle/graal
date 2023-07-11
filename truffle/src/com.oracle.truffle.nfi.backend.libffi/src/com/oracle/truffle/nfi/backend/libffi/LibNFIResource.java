@@ -61,14 +61,16 @@ final class LibNFIResource implements InternalResource {
             // into resources folder.
             return;
         }
+        String sourceDirectory = String.format("%s/%s/%s", RESOURCES_ROOT, env.getOS(), env.getCPUArchitecture());
         String relativeResourcePath = "bin/" + System.mapLibraryName("trufflenfi");
-        unpackResource(targetDirectory, relativeResourcePath);
+        unpackResource(targetDirectory, sourceDirectory, relativeResourcePath);
+        sourceDirectory = RESOURCES_ROOT + "/common";
         relativeResourcePath = "include/trufflenfi.h";
-        unpackResource(targetDirectory, relativeResourcePath);
+        unpackResource(targetDirectory, sourceDirectory, relativeResourcePath);
     }
 
-    private static void unpackResource(Path targetDirectory, String relativeResourcePath) throws IOException {
-        String resource = RESOURCES_ROOT + "/" + relativeResourcePath;
+    private static void unpackResource(Path targetDirectory, String sourceDirectory, String relativeResourcePath) throws IOException {
+        String resource = sourceDirectory + "/" + relativeResourcePath;
         Path target = targetDirectory.resolve(relativeResourcePath);
         InputStream stream = LibNFIResource.class.getModule().getResourceAsStream(resource);
         if (stream == null) {

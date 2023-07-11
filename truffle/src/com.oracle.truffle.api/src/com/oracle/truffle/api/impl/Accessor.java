@@ -759,10 +759,6 @@ public abstract class Accessor {
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
 
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
-
-        public abstract String getOSName();
-
-        public abstract String getCPUArchitecture();
     }
 
     public abstract static class LanguageSupport extends Support {

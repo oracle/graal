@@ -1491,8 +1491,8 @@ suite = {
           "windows-aarch64",
       ],
       "layout" : {
-        "META-INF/resources/bin/" : "dependency:com.oracle.truffle.nfi.native",
-        "META-INF/resources/include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
+        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "META-INF/resources/common/include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",

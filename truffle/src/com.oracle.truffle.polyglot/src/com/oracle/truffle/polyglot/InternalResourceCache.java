@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.OS;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -180,11 +181,10 @@ final class InternalResourceCache {
                 throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
             }
             Path userHome = Paths.get(userHomeValue);
-            Path container = switch (getOSName()) {
-                case "darwin" -> userHome.resolve(Path.of("Library", "Caches"));
-                case "linux" -> userHome.resolve(".cache");
-                case "windows" -> userHome.resolve(Path.of("AppData", "Local"));
-                default -> throw CompilerDirectives.shouldNotReachHere();
+            Path container = switch (OS.getCurrent()) {
+                case DARWIN -> userHome.resolve(Path.of("Library", "Caches"));
+                case LINUX -> userHome.resolve(".cache");
+                case WINDOWS -> userHome.resolve(Path.of("AppData", "Local"));
             };
             Path cache = container.resolve("org.graalvm.polyglot");
             cache = Files.createDirectories(cache).toRealPath();
@@ -204,29 +204,6 @@ final class InternalResourceCache {
             cacheRoot = res;
         }
         return res.getLeft();
-    }
-
-    static String getOSName() {
-        String os = System.getProperty("os.name");
-        if (os == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'os.name' system property is not set.");
-        } else if (os.equalsIgnoreCase("linux")) {
-            return "linux";
-        } else if (os.equalsIgnoreCase("mac os x") || os.equalsIgnoreCase("darwin")) {
-            return "darwin";
-        } else if (os.toLowerCase().startsWith("windows")) {
-            return "windows";
-        } else {
-            throw CompilerDirectives.shouldNotReachHere("Unsupported OS name " + os);
-        }
-    }
-
-    static String getCPUArchitecture() {
-        String arch = System.getProperty("os.arch");
-        if (arch == null) {
-            throw CompilerDirectives.shouldNotReachHere("The 'os.arch' system property is not set.");
-        }
-        return arch;
     }
 
     /**

@@ -27,6 +27,16 @@ meth public static com.oracle.truffle.api.Assumption create()
 meth public static com.oracle.truffle.api.Assumption create(java.lang.String)
 meth public void invalidate(java.lang.String)
 
+CLSS public final !enum com.oracle.truffle.api.CPUArchitecture
+fld public final static com.oracle.truffle.api.CPUArchitecture AARCH64
+fld public final static com.oracle.truffle.api.CPUArchitecture AMD64
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.CPUArchitecture getCurrent()
+meth public static com.oracle.truffle.api.CPUArchitecture valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.CPUArchitecture[] values()
+supr java.lang.Enum<com.oracle.truffle.api.CPUArchitecture>
+hfds id
+
 CLSS public abstract interface com.oracle.truffle.api.CallTarget
 meth public abstract !varargs java.lang.Object call(java.lang.Object[])
 
@@ -171,10 +181,21 @@ CLSS public final static com.oracle.truffle.api.InternalResource$Env
  outer com.oracle.truffle.api.InternalResource
 meth public boolean inContextPreinitialization()
 meth public boolean inNativeImageBuild()
-meth public java.lang.String getCPUArchitecture()
-meth public java.lang.String getOSName()
+meth public com.oracle.truffle.api.CPUArchitecture getCPUArchitecture()
+meth public com.oracle.truffle.api.OS getOS()
 supr java.lang.Object
 hfds contextPreinitializationCheck
+
+CLSS public final !enum com.oracle.truffle.api.OS
+fld public final static com.oracle.truffle.api.OS DARWIN
+fld public final static com.oracle.truffle.api.OS LINUX
+fld public final static com.oracle.truffle.api.OS WINDOWS
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.OS getCurrent()
+meth public static com.oracle.truffle.api.OS valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.OS[] values()
+supr java.lang.Enum<com.oracle.truffle.api.OS>
+hfds id
 
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)

@@ -2088,16 +2088,6 @@ final class EngineAccessor extends Accessor {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
         }
-
-        @Override
-        public String getOSName() {
-            return InternalResourceCache.getOSName();
-        }
-
-        @Override
-        public String getCPUArchitecture() {
-            return InternalResourceCache.getCPUArchitecture();
-        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

@@ -125,23 +125,23 @@ public interface InternalResource {
         }
 
         /**
-         * Returns the processor architecture. The value can be used to resolve an architecture
-         * specific files during resource unpacking.
+         * Returns the current processor architecture. The value can be used to resolve an
+         * architecture specific files during resource unpacking.
          *
          * @since 23.1
          */
-        public String getCPUArchitecture() {
-            return LanguageAccessor.ENGINE.getCPUArchitecture();
+        public CPUArchitecture getCPUArchitecture() {
+            return CPUArchitecture.getCurrent();
         }
 
         /**
-         * Returns the operating system. The value can be used to resolve an OS specific files
-         * during resource unpacking.
+         * Returns the current operating system. The value can be used to resolve an OS specific
+         * files during resource unpacking.
          *
          * @since 23.1
          */
-        public String getOSName() {
-            return LanguageAccessor.ENGINE.getOSName();
+        public OS getOS() {
+            return OS.getCurrent();
         }
     }
 }
