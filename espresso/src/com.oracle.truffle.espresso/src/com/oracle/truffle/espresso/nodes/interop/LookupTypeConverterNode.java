@@ -46,6 +46,6 @@ public abstract class LookupTypeConverterNode extends EspressoNode {
     @TruffleBoundary
     @Specialization(replaces = "doCached")
     PolyglotTypeMappings.TypeConverter doUncached(String metaName) throws ClassCastException {
-        return getContext().getPolyglotInterfaceMappings().mapTypeConversion(metaName);
+        return getContext().getPolyglotTypeMappings().mapTypeConversion(metaName);
     }
 }

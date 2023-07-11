@@ -51,7 +51,7 @@ public class PolyglotTypeMappings {
     private static final String GUEST_TYPE_CONVERSION_INTERFACE = "com.oracle.truffle.espresso.polyglot.GuestTypeConversion";
     private final boolean hasInterfaceMappings;
     private final List<String> interfaceMappings;
-    private UnmodifiableEconomicMap<String, ObjectKlass> resolvedKlasses;
+    private UnmodifiableEconomicMap<String, ObjectKlass> mappedInterfaces;
     private final OptionMap<String> typeConverters;
     private UnmodifiableEconomicMap<String, TypeConverter> typeConverterFunctions;
     private UnmodifiableEconomicMap<String, ObjectKlass> espressoForeignCollections;
@@ -78,12 +78,12 @@ public class PolyglotTypeMappings {
                 Klass parent = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
                 if (parent != null && parent.isInterface()) {
                     temp.put(mapping, (ObjectKlass) parent);
-                    parent.typeConversionState = 3;
+                    parent.typeConversionState = Klass.INTERFACE_MAPPED;
                 } else {
                     throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
                 }
             }
-            resolvedKlasses = EconomicMap.create(temp);
+            mappedInterfaces = EconomicMap.create(temp);
         }
         // resolve type converters
         Set<Map.Entry<String, String>> converters = typeConverters.entrySet();
@@ -118,7 +118,7 @@ public class PolyglotTypeMappings {
             }
             typeConverterFunctions = EconomicMap.create(temp);
         }
-        addInternalConverters();
+        addInternalConverters(context.getMeta());
         if (builtinCollections) {
             EconomicMap<String, ObjectKlass> temp = EconomicMap.create(6);
             addInternalEspressoCollections(temp, context.getMeta());
@@ -126,30 +126,91 @@ public class PolyglotTypeMappings {
         }
     }
 
-    private static void addInternalEspressoCollections(EconomicMap<String, ObjectKlass> map, Meta meta) {
-        map.put("java.lang.Iterable", meta.polyglot.EspressoForeignIterable);
-        map.put("java.util.List", meta.polyglot.EspressoForeignList);
-        map.put("java.util.Collection", meta.polyglot.EspressoForeignCollection);
-        map.put("java.util.Iterator", meta.polyglot.EspressoForeignIterator);
-        map.put("java.util.Map", meta.polyglot.EspressoForeignMap);
-        map.put("java.util.Set", meta.polyglot.EspressoForeignSet);
+    private void addInternalConverters(Meta meta) {
+        EconomicMap<String, InternalTypeConverter> converters = EconomicMap.create(2);
+
+        String current = "java.util.Optional";
+        if (!isCustomMapped(current)) {
+            converters.put(current, new OptionalTypeConverter());
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.math.BigDecimal";
+        if (!isCustomMapped(current)) {
+            converters.put(current, new BigDecimalTypeConverter());
+        } else {
+            warn(current, meta.getContext());
+        }
+        internalTypeConverterFunctions = EconomicMap.create(converters);
+    }
+
+    private void addInternalEspressoCollections(EconomicMap<String, ObjectKlass> map, Meta meta) {
+        String current = "java.lang.Iterable";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignIterable);
+            meta.polyglot.EspressoForeignIterable.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.util.List";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignList);
+            meta.polyglot.EspressoForeignList.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.util.Collection";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignCollection);
+            meta.polyglot.EspressoForeignCollection.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.util.Iterator";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignIterator);
+            meta.polyglot.EspressoForeignIterator.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.util.Map";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignMap);
+            meta.polyglot.EspressoForeignMap.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+        current = "java.util.Set";
+        if (!isCustomMapped(current)) {
+            map.put(current, meta.polyglot.EspressoForeignSet);
+            meta.polyglot.EspressoForeignSet.typeConversionState = Klass.INTERNAL_MAPPED;
+        } else {
+            warn(current, meta.getContext());
+        }
+    }
+
+    private void warn(String mapping, EspressoContext context) {
+        context.getVM().getLogger().warning("Custom type mapping is used where there's a builtin type conversion available. Remove the [" + mapping + "] to enable the builtin converter.");
+    }
+
+    private boolean isCustomMapped(String mapping) {
+        if (interfaceMappings != null && interfaceMappings.contains(mapping)) {
+            return true;
+        }
+        if (typeConverterFunctions != null && typeConverterFunctions.containsKey(mapping)) {
+            return true;
+        }
+        return false;
     }
 
     public ObjectKlass mapEspressoForeignCollection(String metaName) {
         return espressoForeignCollections.get(metaName);
     }
 
-    private void addInternalConverters() {
-        EconomicMap<String, InternalTypeConverter> converters = EconomicMap.create(2);
-        converters.put("java.util.Optional", new OptionalTypeConverter());
-        converters.put("java.math.BigDecimal", new BigDecimalTypeConverter());
-        internalTypeConverterFunctions = EconomicMap.create(converters);
-    }
-
     @TruffleBoundary
     public ObjectKlass mapInterfaceName(String name) {
-        assert resolvedKlasses != null;
-        return resolvedKlasses.get(name);
+        assert mappedInterfaces != null;
+        return mappedInterfaces.get(name);
     }
 
     public boolean hasMappings() {
@@ -185,7 +246,6 @@ public class PolyglotTypeMappings {
         return internalTypeConverterFunctions.get(metaName);
     }
 
-    @TruffleBoundary
     public InternalTypeConverter mapInternalTypeConversion(Klass klass) {
         CompilerAsserts.neverPartOfCompilation();
         if (internalTypeConverterFunctions == null) {

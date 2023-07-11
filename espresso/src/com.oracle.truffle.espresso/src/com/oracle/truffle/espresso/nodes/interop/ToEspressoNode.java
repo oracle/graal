@@ -285,7 +285,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     public static boolean isTypeMappingEnabled(Klass klass) {
-        return klass.typeConversionState == 3;
+        return klass.typeConversionState == Klass.INTERFACE_MAPPED;
     }
 
     public static boolean isTypeConverterEnabled(Klass klass) {

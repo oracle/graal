@@ -24,7 +24,9 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.Iterator;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -32,11 +34,23 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator {
 
-    @Substitution()
-    public static @JavaType(Iterator.class) StaticObject create(@JavaType(Object.class) StaticObject foreignIterator, @Inject Meta meta) {
-        assert foreignIterator != null;
-        EspressoLanguage language = meta.getLanguage();
-        Object rawForeign = foreignIterator.rawForeignObject(language);
-        return StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator, rawForeign, InteropLibrary.getUncached(rawForeign));
+    @Substitution
+    abstract static class Create extends SubstitutionNode {
+        static final int LIMIT = 4;
+
+        abstract @JavaType(Iterator.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver, @Inject Meta meta);
+
+        @Specialization
+        @JavaType(Iterator.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject foreignIterator,
+                        @Inject Meta meta,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            assert foreignIterator != null;
+            assert foreignIterator.isForeignObject();
+            EspressoLanguage language = meta.getLanguage();
+            Object rawForeign = foreignIterator.rawForeignObject(language);
+            return StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator, rawForeign, interop);
+        }
     }
 }

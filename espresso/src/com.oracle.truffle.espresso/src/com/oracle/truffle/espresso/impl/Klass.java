@@ -109,7 +109,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
-    @CompilationFinal public byte typeConversionState = -1;
+    public static final byte UN_INITIALIZED = -1;
+    public static final byte NOT_MAPPED = 0;
+    public static final byte TYPE_MAPPED = 1;
+    public static final byte INTERNAL_MAPPED = 2;
+    public static final byte INTERFACE_MAPPED = 3;
+
+    @CompilationFinal public byte typeConversionState = UN_INITIALIZED;
 
     @ExportMessage
     boolean isMemberReadable(String member,
@@ -1596,35 +1602,35 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     public final boolean isTypeMapped() {
-        if (typeConversionState == -1) {
+        if (typeConversionState == UN_INITIALIZED) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             computeTypeConversionState();
         }
-        return typeConversionState == 1;
+        return typeConversionState == TYPE_MAPPED;
     }
 
-    @TruffleBoundary
     private void computeTypeConversionState() {
-        PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotInterfaceMappings().mapTypeConversion(this);
+        CompilerAsserts.neverPartOfCompilation();
+        PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotTypeMappings().mapTypeConversion(this);
         if (converter != null) {
-            typeConversionState = 1;
+            typeConversionState = TYPE_MAPPED;
         } else {
-            PolyglotTypeMappings.InternalTypeConverter internalConverter = getContext().getPolyglotInterfaceMappings().mapInternalTypeConversion(this);
+            PolyglotTypeMappings.InternalTypeConverter internalConverter = getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this);
             if (internalConverter != null) {
-                typeConversionState = 2;
+                typeConversionState = INTERNAL_MAPPED;
             }
         }
-        if (typeConversionState == -1) {
-            typeConversionState = (byte) 0;
+        if (typeConversionState == UN_INITIALIZED) {
+            typeConversionState = NOT_MAPPED;
         }
     }
 
     public final boolean isInternalTypeMapped() {
-        if (typeConversionState == -1) {
+        if (typeConversionState == UN_INITIALIZED) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             computeTypeConversionState();
         }
-        return typeConversionState == 2;
+        return typeConversionState == INTERNAL_MAPPED;
     }
 
     // region jdwp-specific

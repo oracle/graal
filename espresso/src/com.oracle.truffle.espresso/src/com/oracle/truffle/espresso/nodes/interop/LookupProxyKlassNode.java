@@ -75,7 +75,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
         if (proxyBytes == null) {
             // cache miss
             Set<ObjectKlass> parentInterfaces = new HashSet<>();
-            ObjectKlass superKlass = fillParents(metaObject, interop, getContext().getPolyglotInterfaceMappings(), parentInterfaces, getContext());
+            ObjectKlass superKlass = fillParents(metaObject, interop, getContext().getPolyglotTypeMappings(), parentInterfaces, getContext());
             if (parentInterfaces.isEmpty()) {
                 if (superKlass != getMeta().java_lang_Object) {
                     if (!targetType.isAssignableFrom(superKlass)) {

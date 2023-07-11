@@ -113,7 +113,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
         return uncached;
     }
 
-    protected final TruffleLogger getLogger() {
+    public final TruffleLogger getLogger() {
         return logger;
     }
 

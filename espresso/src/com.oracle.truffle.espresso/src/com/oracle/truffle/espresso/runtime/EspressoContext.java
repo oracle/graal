@@ -1106,7 +1106,7 @@ public final class EspressoContext {
         return getEspressoEnv().getPolyglotTypeMappings().hasInterfaceMappings();
     }
 
-    public PolyglotTypeMappings getPolyglotInterfaceMappings() {
+    public PolyglotTypeMappings getPolyglotTypeMappings() {
         return getEspressoEnv().getPolyglotTypeMappings();
     }
 

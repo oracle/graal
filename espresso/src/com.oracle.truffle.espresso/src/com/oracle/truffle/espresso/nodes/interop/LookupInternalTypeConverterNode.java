@@ -46,6 +46,6 @@ public abstract class LookupInternalTypeConverterNode extends EspressoNode {
     @TruffleBoundary
     @Specialization(replaces = "doCached")
     PolyglotTypeMappings.InternalTypeConverter doUncached(String metaName) throws ClassCastException {
-        return getContext().getPolyglotInterfaceMappings().mapInternalTypeConversion(metaName);
+        return getContext().getPolyglotTypeMappings().mapInternalTypeConversion(metaName);
     }
 }
