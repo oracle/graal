@@ -27,6 +27,10 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
@@ -179,6 +183,13 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testXorEquality() {
         // (x ^ y) == (x ^ z) is equivalent to y == z
+        StructuredGraph g = parseEager("testXorEqualsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 1 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 4 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
         test("testXorEqualsSnippet", "testXorEqualsReference");
     }
 
@@ -199,6 +210,13 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testXorNeutral() {
         // (x ^ y) == x is equivalent to y == 0
+        StructuredGraph g = parseEager("testXorNeutralSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 2 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 4 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
         test("testXorNeutralSnippet", "testXorNeutralReference");
     }
 
@@ -219,12 +237,18 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testXorEqualsZero() {
         // (x ^ y) == 0 is equivalent to x == y
+        StructuredGraph g = parseEager("testXorEqualsZeroSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 1 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 1 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
         test("testXorEqualsZeroSnippet", "testXorEqualsZeroReference");
     }
 
     public static void testXorEqualsZeroSnippet(int x, int y) {
         field = (x ^ y) == 0 ? 1 : 0;
-
     }
 
     public static void testXorEqualsZeroReference(int x, int y) {
