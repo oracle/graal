@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"],
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
       "mavenId" : "lafo",
     },
   },
@@ -209,7 +209,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -232,7 +232,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,SDK",
     },
@@ -245,7 +245,7 @@ suite = {
         "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "com.oracle.svm.core.annotate" : {
@@ -255,7 +255,7 @@ suite = {
          "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.nativeimage.test" : {
@@ -332,7 +332,7 @@ suite = {
         "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.home.test" : {
@@ -368,6 +368,10 @@ suite = {
     "Apache-2.0-wrk-a211dd5" : {
       "name" : "Modified Apache 2.0 License",
       "url" : "https://raw.githubusercontent.com/wg/wrk/a211dd5a7050b1f9e8a9870b95513060e72ac4a0/LICENSE"
+    },
+    "ICU" : {
+      "name" : "Unicode/ICU License",
+      "url" : "https://raw.githubusercontent.com/unicode-org/icu/main/LICENSE",
     },
 },
 

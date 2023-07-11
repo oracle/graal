@@ -1988,7 +1988,7 @@ class NativeImageResourcesFileList(GraalVmProject, metaclass=ABCMeta):
 
     @staticmethod
     def project_name(language_dir):
-        return "org.graalvm.langugage." + language_dir + ".ni_resources_filelist"
+        return "org.graalvm.language." + language_dir + ".ni_resources_filelist"
 
 
 class NativeImageResourcesFileListBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):

@@ -130,7 +130,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     graalvm_jdk = mx.JDKConfig(graalvm_home)
-    jres = [(graalvm_home, [])]
+    jres = [('GraalVM', graalvm_home, [])]
 
     if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
@@ -138,7 +138,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         if exists(libgraal_jre):
             mx.rmtree(libgraal_jre)
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
-        jres.append((libgraal_jre, []))
+        jres.append(('LibGraal JRE', libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
 
     # Tests that dropping libgraal into OracleJDK works
@@ -150,8 +150,8 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         if exists(oraclejdk_libgraal):
             mx.rmtree(oraclejdk_libgraal)
         shutil.copytree(oraclejdk, oraclejdk_libgraal)
-        shutil.copy(libjvmci, join(oraclejdk_libgraal, 'lib'))
-        jres.append((oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
+        shutil.copy(libjvmci, join(oraclejdk_libgraal, 'bin' if mx.get_os() == 'windows' else 'lib'))
+        jres.append(('OracleJDK+libgraal', oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
         atexit.register(mx.rmtree, oraclejdk_libgraal)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
@@ -194,15 +194,18 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
             '-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre, jre_args in jres:
+    for jre_name, jre, jre_args in jres:
         try:
-            mx.run([join(jre, 'bin', 'java')] + jre_args + args)
+            cmd = [join(jre, 'bin', 'java')] + jre_args + args
+            mx.log(f'{jre_name}: {" ".join(cmd)}')
+            mx.run(cmd)
         finally:
             _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
     # Verify execution via `mx vm`.
     import mx_compiler
     try:
+        mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
         mx_compiler.run_vm(extra_vm_arguments + args)
     finally:
         _check_compiler_log(compiler_log_file, expect)

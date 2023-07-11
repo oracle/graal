@@ -68,6 +68,9 @@ public class LockFreePool<T> {
      */
     private final AtomicReference<Node<T>> head;
 
+    /**
+     * @since 23.0
+     */
     public LockFreePool() {
         this.head = new AtomicReference<>();
     }

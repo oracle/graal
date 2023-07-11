@@ -795,6 +795,9 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
         self.benchmark_name = benchmarks[0]
         return args
 
+    def checkSamplesInPgo(self):
+        return False
+
 
 mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
 

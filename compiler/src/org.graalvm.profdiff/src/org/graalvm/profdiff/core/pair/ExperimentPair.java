@@ -64,20 +64,6 @@ public class ExperimentPair {
     }
 
     /**
-     * Gets the experiment with {@link ExperimentId#ONE}.
-     */
-    public Experiment getExperiment1() {
-        return experiment1;
-    }
-
-    /**
-     * Gets the experiment with {@link ExperimentId#TWO}.
-     */
-    public Experiment getExperiment2() {
-        return experiment2;
-    }
-
-    /**
      * Gets an iterable over pairs of methods, where at least one of the methods is hot in its
      * respective experiment. The pairs are sorted by the sum of their execution periods, starting
      * with the highest period.

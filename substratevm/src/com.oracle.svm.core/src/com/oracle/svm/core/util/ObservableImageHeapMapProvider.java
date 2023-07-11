@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.diff;
+package com.oracle.svm.core.util;
 
-import org.graalvm.profdiff.core.Writer;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
-/**
- * Describes a matching of two optimization trees.
- */
-public interface TreeMatching {
-    /**
-     * Writes a detailed summary of this tree matching.
-     *
-     * @param writer the destination writer
-     */
-    void write(Writer writer);
+import org.graalvm.nativeimage.ImageSingletons;
+
+/** Provides map instances whose values are automatically seen by the image heap scanner. */
+public interface ObservableImageHeapMapProvider {
+    <K, V> ConcurrentMap<K, V> createMap();
+
+    static <K, V> Map<K, V> create() {
+        return ImageSingletons.lookup(ObservableImageHeapMapProvider.class).createMap();
+    }
 }
