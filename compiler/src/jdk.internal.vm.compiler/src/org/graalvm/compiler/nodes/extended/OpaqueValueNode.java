@@ -40,8 +40,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode {
     public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
-    @Input(InputType.Value)
-    private ValueNode value;
+    @Input(InputType.Value) private ValueNode value;
 
     public OpaqueValueNode(ValueNode value) {
         super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted());

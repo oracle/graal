@@ -38,8 +38,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 public final class OpaqueGuardNode extends OpaqueNode implements NodeWithIdentity, GuardingNode {
     public static final NodeClass<OpaqueGuardNode> TYPE = NodeClass.create(OpaqueGuardNode.class);
 
-    @Input(InputType.Guard)
-    private ValueNode value;
+    @Input(InputType.Guard) private ValueNode value;
 
     public OpaqueGuardNode(ValueNode value) {
         super(TYPE, StampFactory.forVoid());
