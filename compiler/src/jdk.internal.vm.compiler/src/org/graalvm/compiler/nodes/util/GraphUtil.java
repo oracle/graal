@@ -41,8 +41,8 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
@@ -370,7 +370,7 @@ public class GraphUtil {
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
         LinkedStack<Node> stack = null;
         Node cur = node;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
         do {
             finiteLoop.checkAndFailIfExceeded();
             assert checkKill(cur, mayKillGuard);
@@ -407,7 +407,8 @@ public class GraphUtil {
             } else {
                 cur = stack.pop();
             }
-        } while (true); // VALID ENDLESS LOOP
+        } while (true); // TERMINATION ARGUMENT: processing floating nodes without inputs until
+                        // input is found
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -747,7 +748,7 @@ public class GraphUtil {
 
         EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        FiniteLoopCheck finiteLoop = value.graph() == null ? FiniteLoopCheck.largeLoop() : FiniteLoopCheck.graphIterationOutOfBounds(value.graph());
         do {
             finiteLoop.checkAndFailIfExceeded();
             /*
@@ -774,11 +775,11 @@ public class GraphUtil {
             } else if (current instanceof ValueProxy) {
                 /* Written as a loop instead of a recursive call to reduce recursion depth. */
                 current = ((ValueProxy) current).getOriginalNode();
-
             } else {
                 return null;
             }
-        } while (true); // VALID ENDLESS LOOP
+        } while (true);  // TERMINATION ARGUMENT: processing specific inputs until a exit criteria
+                         // is met
     }
 
     private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection,
@@ -1189,8 +1190,8 @@ public class GraphUtil {
             return false;
         }
         FixedNode node = start;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
+        while (true) { // TERMINATION ARGUMENT: following next nodes or returning
             finiteLoop.checkAndFailIfExceeded();
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
@@ -1323,8 +1324,8 @@ public class GraphUtil {
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
+        while (true) { // TERMINATION ARGUMENT: following prev nodes
             finiteLoop.checkAndFailIfExceeded();
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {

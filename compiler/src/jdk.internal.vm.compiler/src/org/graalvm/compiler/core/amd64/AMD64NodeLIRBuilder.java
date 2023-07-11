@@ -65,8 +65,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             AMD64ArithmeticLIRGenerator arithmeticGen = (AMD64ArithmeticLIRGenerator) gen.getArithmetic();
             IntegerDivRemNode divRem = (IntegerDivRemNode) valueNode;
             FixedNode node = divRem.next();
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(valueNode.graph());
+            while (true) { // TERMINATION ARGUMENT: iterating next nodes
                 finiteLoop.checkAndFailIfExceeded();
                 if (node instanceof IfNode) {
                     IfNode ifNode = (IfNode) node;

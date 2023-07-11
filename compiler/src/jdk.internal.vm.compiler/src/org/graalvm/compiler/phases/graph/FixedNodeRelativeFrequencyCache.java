@@ -151,8 +151,8 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
 
     private static FixedNode findBegin(FixedNode node) {
         FixedNode current = node;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.normalLoop();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
+        while (true) { // TERMINATION ARGUMENT: processing predecessor nodes in a graph
             finiteLoop.checkAndFailIfExceeded();
             assert current != null;
             Node predecessor = current.predecessor();

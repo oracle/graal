@@ -41,8 +41,8 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 public final class ReentrantBlockIterator {
 
@@ -140,8 +140,9 @@ public final class ReentrantBlockIterator {
         StructuredGraph graph = start.getBeginNode().graph();
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
 
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationOutOfBounds(start.getCfg());
+        while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
+                       // of cfg or
             finiteLoop.checkAndFailIfExceeded();
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());

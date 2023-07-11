@@ -78,8 +78,14 @@ public final class CompilationAlarm implements AutoCloseable {
         return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
     }
 
+    /**
+     * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
+     * compilation alarm.
+     */
+    public static final int GRAPH_CHECK_BAILOUT_COUNTER = 1024 * 4;
+
     public static void bailoutIfExpired(Graph graph) {
-        if (CompilationAlarm.current().hasExpired()) {
+        if (graph != null && graph.eventCounterOverflows(GRAPH_CHECK_BAILOUT_COUNTER) && CompilationAlarm.current().hasExpired()) {
             double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
             throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
         }

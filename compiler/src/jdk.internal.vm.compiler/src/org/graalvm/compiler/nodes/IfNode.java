@@ -1145,7 +1145,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void pushNodesThroughIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         // push similar nodes upwards through the if, thereby deduplicating them
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(this.graph());
         do {
             finiteLoop.checkAndFailIfExceeded();
             AbstractBeginNode trueSucc = trueSuccessor();
@@ -1188,7 +1188,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             }
             break;
-        } while (true); // VALID ENDLESS LOOP
+        } while (true); // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
     }
 
     /**

@@ -27,6 +27,8 @@ package org.graalvm.compiler.graph;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
+
 class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> {
 
     private final Graph graph;
@@ -65,7 +67,9 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
     private void forward() {
         needsForward = false;
         int startIdx = currentIdIndex;
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoopCheck = FiniteLoopCheck.graphEdgeIterationOutOfBounds(ids.length);
+        while (true) { // TERMINATION ARGUMENT: processing nodes of a defined type in a graph
+            finiteLoopCheck.checkAndFailIfExceeded();
             Node next;
             if (current() == null) {
                 next = graph.getIterableNodeStart(ids[currentIdIndex]);

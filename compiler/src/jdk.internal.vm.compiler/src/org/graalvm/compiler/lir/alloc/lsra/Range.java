@@ -75,7 +75,7 @@ public final class Range {
         assert r2 != null : "null ranges not allowed";
         assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
 
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.largeLoop();
         do {
             finiteLoop.checkAndFailIfExceeded();
             if (r1.from < r2.from) {
@@ -115,7 +115,7 @@ public final class Range {
                     }
                 }
             }
-        } while (true); // VALID ENDLESS LOOP
+        } while (true);  // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
     }
 
     @Override

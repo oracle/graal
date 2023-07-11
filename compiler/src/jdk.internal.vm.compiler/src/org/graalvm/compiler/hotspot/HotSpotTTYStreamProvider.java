@@ -89,8 +89,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         final long executing = 1L;
         final long executed = 2L;
 
-        // endless on purpose
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: busy wait loop
             long value = BARRIER.get();
             if (value == initial) {
                 if (BARRIER.compareAndSet(value, executing)) {

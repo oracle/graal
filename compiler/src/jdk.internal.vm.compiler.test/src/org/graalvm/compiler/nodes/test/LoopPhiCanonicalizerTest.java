@@ -79,7 +79,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         int i = 0;
         int emptyPhi1 = 100;
         int emptyPhi2 = 32750;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= 10000) {
                 break;
             }
@@ -118,7 +118,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         int tmp2 = tmp1 & 127;
         int i = 0;
         int emptyPhi1 = 100;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= 10000) {
                 break;
             }
@@ -149,7 +149,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         int tmp2 = tmp1 & 127;
         int i = 0;
         int emptyPhi1 = 100;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= 10000) {
                 break;
             }
@@ -182,7 +182,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         int tmp2 = tmp1 & 127;
         int i = 0;
         int emptyPhi1 = 100;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= 10000) {
                 break;
             }
@@ -220,7 +220,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         int i = 0;
         int emptyPhi1 = 100;
         int phi4 = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= 10000) {
                 break;
             }

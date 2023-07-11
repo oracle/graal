@@ -44,7 +44,7 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
     public static int multiExitGuardTest(int low, int high, A a) {
         int i = low;
         int res = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (GraalDirectives.injectBranchProbability(0.000001, i >= high)) {
                 break;
             }
@@ -106,7 +106,7 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
     public static int multiExitGuardTest2(int low, A a) {
         int i = low;
         int res = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (GraalDirectives.sideEffect(i) > 42) {
                 if (GraalDirectives.sideEffect(i) >= 43) {
                     A aNonNull = GraalDirectives.guardingNonNull(a);

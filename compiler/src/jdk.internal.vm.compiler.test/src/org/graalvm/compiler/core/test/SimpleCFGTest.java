@@ -127,7 +127,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
     static int singleLoop(int end) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             switch (i) {
                 default:
             }
@@ -150,7 +150,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
     static int foo(int a, int b) {
         int res = 0;
         int i = 0;
-        while (true) {  // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i >= a) {
                 break;
             }

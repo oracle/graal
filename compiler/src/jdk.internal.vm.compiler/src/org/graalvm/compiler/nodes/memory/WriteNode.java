@@ -151,8 +151,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
     private static boolean followedByVolatileWrite(FixedWithNextNode start) {
         FixedWithNextNode cur = start;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
+        while (true) { // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
             finiteLoop.checkAndFailIfExceeded();
             // Check the memory usages of the current access
             for (Node usage : cur.usages()) {

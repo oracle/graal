@@ -175,6 +175,20 @@ public class Graph {
      */
     private DebugContext debug;
 
+    /**
+     * Counter to associate "events" with this graph, i.e., have a counter per graph that can be
+     * used to trigger certain operations.
+     */
+    private byte eventCounter;
+
+    public boolean eventCounterOverflows(int max) {
+        if (eventCounter++ > max) {
+            eventCounter = 0;
+            return true;
+        }
+        return false;
+    }
+
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
 

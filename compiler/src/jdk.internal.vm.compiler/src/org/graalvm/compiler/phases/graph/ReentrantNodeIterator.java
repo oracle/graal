@@ -111,7 +111,7 @@ public final class ReentrantNodeIterator {
         StateT state = initialState;
         FixedNode current = start;
         // very high number of nodes, abort if we ever hit that in a single apply
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
         do {
             finiteLoop.checkAndFailIfExceeded();
             while (current instanceof FixedWithNextNode) {
@@ -200,6 +200,6 @@ public final class ReentrantNodeIterator {
                 state = blockEndStates.removeKey(current);
                 assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode;
             }
-        } while (true); // VALID ENDLESS LOOP
+        } while (true); // TERMINATION ARGUMENT: visits all fixed nodes of a graph
     }
 }

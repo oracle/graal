@@ -129,8 +129,9 @@ public class ReversePostOrder {
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
          * nodes.
          */
-        FiniteLoopCheck finiteLoopCheck = FiniteLoopCheck.cfgIterationsOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoopCheck = FiniteLoopCheck.graphIterationOutOfBounds(cfg.graph);
+        while (true) { // TERMINATION ARGUMENT: traversing fixed nodes in the graph start to all
+                       // sinks
             finiteLoopCheck.checkAndFailIfExceeded();
             /*
              * Select the next node to process, either a regular node from the toProcess nodes
@@ -217,8 +218,8 @@ public class ReversePostOrder {
                 enqueueBlockInRPO(curBlock, rpoBlocks, currentIndex++);
             }
 
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(cfg.graph);
+            while (true) { // TERMINATION ARGUMENT: iterating over a graph
                 finiteLoop.checkAndFailIfExceeded();
                 visitedNodes.mark(cur);
                 /*

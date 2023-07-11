@@ -189,8 +189,9 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
         int wordsInUse = bits.length;
         if (wordIndex < wordsInUse) {
             long word = getPartOfWord(bits[wordIndex], fromNodeId);
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.nGraphIterationOutOfBounds(graph.nodeIdCount());
+            while (true) { // TERMINATION ARGUMENT: process all nodes until highest node id created
+                           // so far
                 finiteLoop.checkAndFailIfExceeded();
                 while (word != 0) {
                     int bitIndex = Long.numberOfTrailingZeros(word);

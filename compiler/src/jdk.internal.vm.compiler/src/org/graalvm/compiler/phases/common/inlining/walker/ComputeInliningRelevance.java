@@ -123,8 +123,9 @@ public class ComputeInliningRelevance {
             final Scope parent;
             // look for the parent scope
             FixedNode current = loopBegin.forwardEnd();
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.normalLoop();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(graph);
+            while (true) { // TERMINATION ARGUMENT: process predecessor nodes until another is found
+                           // or start is found
                 finiteLoop.checkAndFailIfExceeded();
                 if (current.predecessor() == null) {
                     if (current instanceof LoopBeginNode) {

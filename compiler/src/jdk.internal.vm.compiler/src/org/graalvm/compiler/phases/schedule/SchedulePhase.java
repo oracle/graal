@@ -46,6 +46,7 @@ import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -667,7 +668,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
+            while (true) { // TERMINATION ARGUMENT: unproxifying inputs
+                finiteLoop.checkAndFailIfExceeded();
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -998,7 +1001,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.n2GraphIterationOutOfBounds(first.graph());
+            while (true) { // TERMINATION ARGUMENT: processing stack until empty
+                finiteLoop.checkAndFailIfExceeded();
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {

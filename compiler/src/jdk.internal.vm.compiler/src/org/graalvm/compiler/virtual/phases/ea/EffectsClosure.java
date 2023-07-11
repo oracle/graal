@@ -423,9 +423,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCacheCopy.putAll(loopLocationKillCache);
             }
         }
-        // very high number of basic blocks - very unlikely to ever hit in a real program
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationOutOfBounds(cfg);
+        while (true) { // // TERMINATION ARGUMENT: bound by number of basic blocks and iterative
+                       // loop traversal
             finiteLoop.checkAndFailIfExceeded();
             try {
                 BlockT loopEntryState = initialStateRemovedKilledLocations;

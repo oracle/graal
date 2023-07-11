@@ -122,7 +122,7 @@ public class GraphCopyBenchmark extends GraalBenchmark {
             }
             current = alternative;
 
-        } while (true); // VALID ENDLESS LOOP
+        } while (true); // TERMINATION ARGUMENT: benchmark
     }
 
     @Benchmark

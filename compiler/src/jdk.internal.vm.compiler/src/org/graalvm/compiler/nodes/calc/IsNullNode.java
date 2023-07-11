@@ -108,13 +108,22 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
     private static LogicNode canonicalized(IsNullNode node, ValueNode forValue, JavaConstant forNullConstant) {
         JavaConstant nullConstant = forNullConstant;
         ValueNode value = forValue;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = null;
+        if (node != null && node.graph() != null) {
+            finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
+        } else if (value != null && value.graph() != null) {
+            finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(value.graph());
+        } else {
+            finiteLoop = FiniteLoopCheck.largeLoop();
+        }
+        while (true) { // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
             finiteLoop.checkAndFailIfExceeded();
-            if (StampTool.isPointerAlwaysNull(value)) {
-                return LogicConstantNode.tautology();
-            } else if (StampTool.isPointerNonNull(value)) {
-                return LogicConstantNode.contradiction();
+            if (value != null) {
+                if (StampTool.isPointerAlwaysNull(value)) {
+                    return LogicConstantNode.tautology();
+                } else if (StampTool.isPointerNonNull(value)) {
+                    return LogicConstantNode.contradiction();
+                }
             }
 
             if (value instanceof ConvertNode) {

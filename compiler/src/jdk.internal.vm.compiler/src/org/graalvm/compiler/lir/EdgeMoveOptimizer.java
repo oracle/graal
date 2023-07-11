@@ -161,8 +161,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process lir-instructions while all predecessors end with the same instruction
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.largeLoop();
+            while (true) { // TERMINATION ARGUMENT: processing edge instructions of a fixed set of
+                           // predecessor blocks
                 finiteLoop.checkAndFailIfExceeded();
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
@@ -242,8 +243,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process LIR instructions while all successors begin with the same instruction
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.largeLoop();
+            while (true) { // TERMINATION ARGUMENT: processing edge instructions for a fixed set of
+                           // predecessor blocks
                 finiteLoop.checkAndFailIfExceeded();
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {

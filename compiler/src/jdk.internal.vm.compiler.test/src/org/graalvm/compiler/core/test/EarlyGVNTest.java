@@ -178,7 +178,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet01(int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = arr.length;
             if (i < 10) {
@@ -202,7 +202,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold(noLoopLeft = false)
     public static void snippet02(@SuppressWarnings("unused") int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = field;
             if (i < 10) {
@@ -224,7 +224,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet03(int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = arr.length;
             @SuppressWarnings("unused")
@@ -256,7 +256,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet04(X x) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             int[] arr = x.arr;
             @SuppressWarnings("unused")
             int len = arr.length;
@@ -285,7 +285,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public static int snippet05(Y y) {
         int res = 0;
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             res = y.y;
             if (i < 10) {
                 y.y = i;
@@ -315,7 +315,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet06(int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (arr == null) {
                 GraalDirectives.deoptimizeAndInvalidate();
             }
@@ -344,7 +344,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
         if (arr.length == 123) {
             GraalDirectives.deoptimizeAndInvalidate();
         }
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (arr.length == 123) {
                 GraalDirectives.deoptimizeAndInvalidate();
             }
@@ -390,7 +390,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static int snippet09(int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = arr.length;
             if (i < 10) {
@@ -414,7 +414,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public static int snippet10(Y y) {
         int res = 0;
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (i < 1000) {
                 res = y.y;
                 if (field == 123) {
@@ -453,7 +453,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet11(int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = arr.length;
             if (i < 10) {
@@ -462,7 +462,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
             }
             break;
         }
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = arr.length;
             if (i < 10) {
@@ -483,7 +483,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     @MustFold
     public static void snippet12(@SuppressWarnings("unused") int[] arr) {
         int i = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = field;
             if (i < 10) {
@@ -497,7 +497,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
             break;
         }
         GraalDirectives.sideEffect();
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             @SuppressWarnings("unused")
             int len = field;
             if (i < 10) {
@@ -540,7 +540,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
                 GraalDirectives.controlFlowAnchor();
             }
             int i = 0;
-            while (true) { // VALID ENDLESS LOOP
+            while (true) { // TERMINATION ARGUMENT: test
                 if (i >= arr.length) {
                     break b;
                 }

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
-import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -34,15 +32,16 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -507,8 +506,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             boolean wasExit = predecessorBlockSequentialLoopExit(b);
 
             FixedNode f = b.getBeginNode();
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(graph);
+            while (true) { // TERMINATION ARGUMENT: processing loop exit node predecessors
                 finiteLoop.checkAndFailIfExceeded();
                 if (f instanceof LoopExitNode) {
                     LoopBeginNode closedLoop = ((LoopExitNode) f).loopBegin();
@@ -593,8 +592,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         while (cur.getPredecessorCount() == 1 && cur.getPredecessorAt(0).getSuccessorCount() == 1) {
             HIRBlock pred = cur.getPredecessorAt(0);
             FixedNode f = pred.getBeginNode();
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationsOutOfBounds();
-            while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(b.getCfg().graph);
+            while (true) { // TERMINATION ARGUMENT: process loop exit predecessor nodes
                 finiteLoop.checkAndFailIfExceeded();
                 if (f instanceof LoopExitNode) {
                     return true;
@@ -742,7 +741,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     private void identifyBlock(HIRBlock block) {
         FixedWithNextNode cur = block.getBeginNode();
-        while (true) { // VALID ENDLESS LOOP
+        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(graph);
+        while (true) { // TERMINATION ARGUMENT: processing fixed nodes of a basic block, bound if
+                       // the graph is valid
+            finiteLoop.checkAndFailIfExceeded();
             assert cur.isAlive() : cur;
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
@@ -1148,7 +1150,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             }
                         }
                     }
-                    loop.getNaturalExits().sort(BLOCK_ID_COMPARATOR);
+                    loop.getNaturalExits().sort(BasicBlock.BLOCK_ID_COMPARATOR);
 
                     if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
@@ -1157,7 +1159,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
                             loop.getLoopExits().add(exitBlock);
                         }
-                        loop.getLoopExits().sort(BLOCK_ID_COMPARATOR);
+                        loop.getLoopExits().sort(BasicBlock.BLOCK_ID_COMPARATOR);
 
                         // The following loop can add new blocks to the end of the loop's block
                         // list.

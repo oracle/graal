@@ -360,7 +360,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
      */
     public static long minLongCacheValue2() {
         long longCacheMinValue = 0;
-        while (true) { // VALID ENDLESS LOOP
+        while (true) { // TERMINATION ARGUMENT: test
             if (Long.valueOf(longCacheMinValue - 1) != Long.valueOf(longCacheMinValue - 1)) {
                 return longCacheMinValue;
             }

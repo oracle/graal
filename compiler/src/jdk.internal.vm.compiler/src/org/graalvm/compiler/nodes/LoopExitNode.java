@@ -84,8 +84,8 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
 
     public void removeProxies() {
         if (this.hasUsages()) {
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds();
-            outer: while (true) { // VALID ENDLESS LOOP
+            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(this.graph());
+            outer: while (true) { // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
                 finiteLoop.checkAndFailIfExceeded();
                 for (ProxyNode vpn : proxies().snapshot()) {
                     ValueNode value = vpn.value();
