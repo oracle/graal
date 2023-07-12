@@ -167,6 +167,11 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         GraalError.guarantee(inputs.size() == 7, "inputs do not match");
         gen.setResult(this, gen.getLIRGeneratorTool().emitCTRAESCrypt(gen.operand(inputs.get(0)),

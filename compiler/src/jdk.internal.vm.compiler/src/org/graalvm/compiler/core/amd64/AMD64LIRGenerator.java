@@ -109,6 +109,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
 import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.amd64.AMD64HaltOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -997,6 +998,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public void emitHalt() {
+        append(new AMD64HaltOp());
     }
 
     @Override

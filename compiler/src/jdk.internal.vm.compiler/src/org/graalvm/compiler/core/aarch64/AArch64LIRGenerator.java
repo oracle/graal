@@ -81,6 +81,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HaltOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
@@ -794,6 +795,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
+    }
+
+    @Override
+    public void emitHalt() {
+        append(new AArch64HaltOp());
     }
 
     @Override
