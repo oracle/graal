@@ -55,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,7 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.test.options.WasmTestOptions;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.junit.Assert;
@@ -336,7 +338,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
 
             Context context;
-            ArrayList<Source> sources = testCase.getSources();
+            EnumSet<WasmBinaryTools.WabtOption> options = EnumSet.noneOf(WasmBinaryTools.WabtOption.class);
+            String threadsOption = testCase.options().getProperty("wasm.Threads");
+            if (threadsOption != null && threadsOption.equals("true")) {
+                options.add(WasmBinaryTools.WabtOption.THREADS);
+            }
+            ArrayList<Source> sources = testCase.getSources(options);
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));

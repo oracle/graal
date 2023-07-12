@@ -409,6 +409,13 @@ public class ParserState {
     }
 
     /**
+     * Adds the atomic flag to the bytecode.
+     */
+    public void addAtomicFlag() {
+        bytecode.add(Bytecode.ATOMIC);
+    }
+
+    /**
      * Adds the given instruction and an i32 immediate value to the bytecode.
      * 
      * @param instruction The instruction
@@ -484,6 +491,10 @@ public class ParserState {
      */
     public void addMemoryInstruction(int baseInstruction, long value, boolean indexType64) {
         bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, value, indexType64);
+    }
+
+    public void addAtomicMemoryInstruction(int instruction, long value, boolean indexType64) {
+        bytecode.addAtomicMemoryInstruction(instruction, value, indexType64);
     }
 
     /**

@@ -1745,6 +1745,61 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                     break;
                 }
+                case Bytecode.ATOMIC: {
+                    final int atomicOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    CompilerAsserts.partialEvaluationConstant(atomicOpcode);
+                    switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_I32_LOAD: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+
+                            final long memOffset;
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                                baseAddress = popInt(frame, stackPointer - 1);
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                                baseAddress = popLong(frame, stackPointer - 1);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+
+                            final int value = memory.atomic_load_i32(this, address);
+                            pushInt(frame, stackPointer - 1, value);
+                            break;
+                        }
+                        case Bytecode.ATOMIC_I32_STORE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+
+                            final long memOffset;
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                                baseAddress = popInt(frame, stackPointer - 2);
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                                baseAddress = popLong(frame, stackPointer - 2);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+
+                            final int value = popInt(frame, stackPointer - 1);
+                            memory.atomic_store_i32(this, address, value);
+                            stackPointer -= 2;
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
+                }
                 case Bytecode.NOTIFY: {
                     final int nextLine = rawPeekI32(bytecode, offset);
                     final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);

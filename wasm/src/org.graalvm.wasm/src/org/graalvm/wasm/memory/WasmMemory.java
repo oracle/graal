@@ -328,6 +328,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }
 
+    @TruffleBoundary
+    protected final WasmException trapUnalignedAtomic(Node node, long address, int length) {
+        final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
+                length, address, address);
+        return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
+    }
+
     /**
      * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
      *

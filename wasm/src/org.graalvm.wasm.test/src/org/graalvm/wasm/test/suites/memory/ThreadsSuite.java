@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils.cases;
+package org.graalvm.wasm.test.suites.memory;
+
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
 import java.io.IOException;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Properties;
 
-import org.graalvm.wasm.utils.WasmBinaryTools;
-
-public class WasmMultiCase extends WasmCase {
-    private final Map<String, Object> fileContents;
-
-    public WasmMultiCase(String name, WasmCaseData data, Map<String, Object> fileContents, Properties options) {
-        super(name, data, options);
-        this.fileContents = fileContents;
+public class ThreadsSuite extends WasmFileSuite {
+    @Override
+    protected String testResource() {
+        return "threads";
     }
 
     @Override
-    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
-        HashMap<String, byte[]> binaries = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
-            String filename = entry.getKey();
-            Object content = entry.getValue();
-            if (content instanceof String) {
-                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content, wabtOptions));
-            } else if (content instanceof byte[]) {
-                binaries.put(filename, (byte[]) content);
-            } else {
-                throw new RuntimeException("Unknown content type: " + content.getClass());
-            }
-        }
-        return binaries;
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

@@ -785,6 +785,26 @@ public class BytecodeParser {
                             throw CompilerDirectives.shouldNotReachHere();
                     }
                     break;
+                case Bytecode.ATOMIC:
+                    final int atomicOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_I32_LOAD:
+                        case Bytecode.ATOMIC_I32_STORE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }

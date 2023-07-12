@@ -335,6 +335,8 @@ public class Bytecode {
 
     public static final int MISC = 0xFB;
 
+    public static final int ATOMIC = 0xFC;
+
     public static final int NOTIFY = 0xFE;
 
     // Misc opcodes
@@ -366,6 +368,10 @@ public class Bytecode {
     public static final int TABLE_GROW = 0x17;
     public static final int TABLE_SIZE = 0x18;
     public static final int TABLE_FILL = 0x19;
+
+    // Atomic opcodes
+    public static final int ATOMIC_I32_LOAD = 0x00;
+    public static final int ATOMIC_I32_STORE = 0x01;
 
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;

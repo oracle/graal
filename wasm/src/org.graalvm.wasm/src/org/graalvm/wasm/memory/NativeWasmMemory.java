@@ -150,6 +150,13 @@ class NativeWasmMemory extends WasmMemory {
         }
     }
 
+    private void validateAtomicAddress(Node node, long address, int length) {
+        if ((address & (length - 1)) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapUnalignedAtomic(node, address, length);
+        }
+    }
+
     @Override
     public int load_i32(Node node, long address) {
         validateAddress(node, address, 4);
@@ -291,84 +298,98 @@ class NativeWasmMemory extends WasmMemory {
     @Override
     public int atomic_load_i32(Node node, long address) {
         validateAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
         return unsafe.getIntVolatile(null, startAddress + address);
     }
 
     @Override
     public long atomic_load_i64(Node node, long address) {
         validateAddress(node, address, 8);
+        validateAtomicAddress(node, address, 8);
         return unsafe.getLongVolatile(null, startAddress + address);
     }
 
     @Override
     public int atomic_load_i32_8u(Node node, long address) {
         validateAddress(node, address, 1);
+        validateAtomicAddress(node, address, 1);
         return 0x0000_00ff & unsafe.getByteVolatile(null, startAddress + address);
     }
 
     @Override
     public int atomic_load_i32_16u(Node node, long address) {
         validateAddress(node, address, 2);
+        validateAtomicAddress(node, address, 2);
         return 0x0000_ffff & unsafe.getShortVolatile(null, startAddress + address);
     }
 
     @Override
     public long atomic_load_i64_8u(Node node, long address) {
         validateAddress(node, address, 1);
+        validateAtomicAddress(node, address, 1);
         return 0x0000_0000_0000_00ffL & unsafe.getByteVolatile(null, startAddress + address);
     }
 
     @Override
     public long atomic_load_i64_16u(Node node, long address) {
         validateAddress(node, address, 2);
+        validateAtomicAddress(node, address, 2);
         return 0x0000_0000_0000_ffffL & unsafe.getShortVolatile(null, startAddress + address);
     }
 
     @Override
     public long atomic_load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
         return 0x0000_0000_ffff_ffffL & unsafe.getIntVolatile(null, startAddress + address);
     }
 
     @Override
     public void atomic_store_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
         unsafe.putIntVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
+        validateAtomicAddress(node, address, 8);
         unsafe.putLongVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i32_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
+        validateAtomicAddress(node, address, 1);
         unsafe.putByteVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i32_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
+        validateAtomicAddress(node, address, 2);
         unsafe.putShortVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i64_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
+        validateAtomicAddress(node, address, 1);
         unsafe.putByteVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i64_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
+        validateAtomicAddress(node, address, 2);
         unsafe.putShortVolatile(null, startAddress + address, value);
     }
 
     @Override
     public void atomic_store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
         unsafe.putIntVolatile(null, startAddress + address, value);
     }
 

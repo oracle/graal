@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -271,6 +271,28 @@ public final class Instructions {
     public static final int TABLE_SIZE = 16;
     public static final int TABLE_FILL = 17;
 
+    public static final int ATOMIC = 0xFE;
+
+    public static final int ATOMIC_NOTIFY = 0x00;
+    public static final int ATOMIC_WAIT32 = 0x01;
+    public static final int ATOMIC_WAIT64 = 0x02;
+
+    public static final int ATOMIC_FENCE = 0x03;
+
+    public static final int ATOMIC_I32_LOAD = 0x10;
+    public static final int ATOMIC_I64_LOAD = 0x11;
+    public static final int ATOMIC_I32_LOAD8_U = 0x12;
+    public static final int ATOMIC_I32_LOAD16_U = 0x13;
+    public static final int ATOMIC_I64_LOAD8_U = 0x14;
+    public static final int ATOMIC_I64_LOAD16_U = 0x15;
+    public static final int ATOMIC_I64_LOAD32_U = 0x16;
+    public static final int ATOMIC_I32_STORE = 0x17;
+    public static final int ATOMIC_I64_STORE = 0x18;
+    public static final int ATOMIC_I32_STORE8 = 0x19;
+    public static final int ATOMIC_I32_STORE16 = 0x1A;
+    public static final int ATOMIC_I64_STORE8 = 0x1B;
+    public static final int ATOMIC_I64_STORE16 = 0x1C;
+    public static final int ATOMIC_I64_STORE32 = 0x1D;
     // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
     // used in other ways in the future)
 
