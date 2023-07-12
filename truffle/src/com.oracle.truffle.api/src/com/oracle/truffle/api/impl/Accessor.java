@@ -759,6 +759,8 @@ public abstract class Accessor {
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
 
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
+
+        public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1257,7 +1259,9 @@ public abstract class Accessor {
 
         public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
-        public abstract List<InternalResource> createInternalResources(TruffleLanguageProvider provider);
+        public abstract List<String> getInternalResourceIds(TruffleLanguageProvider provider);
+
+        public abstract InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId);
 
     }
 
@@ -1275,7 +1279,9 @@ public abstract class Accessor {
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
 
-        public abstract List<InternalResource> createInternalResources(Object provider);
+        public abstract List<String> getInternalResourceIds(Object truffleInstrumentProvider);
+
+        public abstract InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId);
     }
 
     public abstract static class DynamicObjectSupport extends Support {

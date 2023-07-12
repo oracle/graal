@@ -2061,26 +2061,32 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException {
+            InternalResource.Id id = resourceType.getAnnotation(InternalResource.Id.class);
+            return getInternalResource(owner, id.value());
+        }
+
+        @Override
+        public TruffleFile getInternalResource(Object owner, String resourceId) throws IOException {
             if (owner instanceof PolyglotLanguageContext languageContext) {
                 PolyglotLanguage polyglotLanguage = languageContext.language;
-                TruffleFile root = polyglotLanguage.internalResources.get(resourceType);
+                TruffleFile root = polyglotLanguage.internalResources.get(resourceId);
                 if (root == null) {
-                    InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceType);
+                    InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceId);
                     PolyglotEngineImpl polyglotEngine = languageContext.getEngine();
                     Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
                     root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                    var prevValue = polyglotLanguage.internalResources.putIfAbsent(resourceType, root);
+                    var prevValue = polyglotLanguage.internalResources.putIfAbsent(resourceId, root);
                     root = prevValue != null ? prevValue : root;
                 }
                 return root;
             } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
-                TruffleFile root = polyglotInstrument.internalResources.get(resourceType);
+                TruffleFile root = polyglotInstrument.internalResources.get(resourceId);
                 if (root == null) {
-                    InternalResourceCache resourceCache = polyglotInstrument.cache.getResourceCache(resourceType);
+                    InternalResourceCache resourceCache = polyglotInstrument.cache.getResourceCache(resourceId);
                     PolyglotEngineImpl polyglotEngine = polyglotInstrument.getEngine();
                     Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
                     root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                    var prevValue = polyglotInstrument.internalResources.putIfAbsent(resourceType, root);
+                    var prevValue = polyglotInstrument.internalResources.putIfAbsent(resourceId, root);
                     root = prevValue != null ? prevValue : root;
                 }
                 return root;

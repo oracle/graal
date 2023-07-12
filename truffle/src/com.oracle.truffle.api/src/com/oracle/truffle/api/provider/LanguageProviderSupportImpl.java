@@ -71,8 +71,12 @@ final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public List<InternalResource> createInternalResources(TruffleLanguageProvider provider) {
-        return (List<InternalResource>) provider.createInternalResources();
+    public List<String> getInternalResourceIds(TruffleLanguageProvider provider) {
+        return provider.getInternalResourceIds();
+    }
+
+    @Override
+    public InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId) {
+        return (InternalResource) provider.createInternalResource(resourceId);
     }
 }

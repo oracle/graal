@@ -50,6 +50,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
+@InternalResource.Id("libtrufflenfi")
 final class LibNFIResource implements InternalResource {
 
     private static final String RESOURCES_ROOT = "META-INF/resources";

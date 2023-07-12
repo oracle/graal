@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -80,7 +79,7 @@ final class InstrumentCache {
     private final Set<String> services;
     private final ProviderAdapter providerAdapter;
     private final SandboxPolicy sandboxPolicy;
-    private final Map<Class<? extends InternalResource>, InternalResourceCache> internalResources;
+    private final Map<String, InternalResourceCache> internalResources;
 
     /**
      * Initializes state for native image generation.
@@ -131,9 +130,9 @@ final class InstrumentCache {
         this.services = services;
         this.providerAdapter = providerAdapter;
         this.sandboxPolicy = sandboxPolicy;
-        Map<Class<? extends InternalResource>, InternalResourceCache> map = new HashMap<>();
-        for (InternalResource internalResource : providerAdapter.createInternalResources()) {
-            map.put(internalResource.getClass(), new InternalResourceCache(id, internalResource));
+        Map<String, InternalResourceCache> map = new HashMap<>();
+        for (String resourceId : providerAdapter.getInternalResourceIds()) {
+            map.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
         }
         internalResources = Collections.unmodifiableMap(map);
     }
@@ -268,17 +267,17 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
-    InternalResourceCache getResourceCache(Class<? extends InternalResource> resourceType) {
-        InternalResourceCache cache = internalResources.get(resourceType);
+    InternalResourceCache getResourceCache(String resourceId) {
+        InternalResourceCache cache = internalResources.get(resourceId);
         if (cache == null) {
-            throw CompilerDirectives.shouldNotReachHere(String.format("Resource of type %s is not provided by language %s, provided resource types are %s",
-                            resourceType, id, internalResources.keySet().stream().map(Class::getName).collect(Collectors.joining(", "))));
+            throw CompilerDirectives.shouldNotReachHere(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
+                            resourceId, id, String.join(", ", internalResources.keySet())));
         } else {
             return cache;
         }
     }
 
-    Collection<Class<? extends InternalResource>> getResourceTypes() {
+    Collection<String> getResourceIds() {
         return internalResources.keySet();
     }
 
@@ -304,7 +303,9 @@ final class InstrumentCache {
 
         Collection<String> getServicesClassNames();
 
-        List<InternalResource> createInternalResources();
+        List<String> getInternalResourceIds();
+
+        InternalResource createInternalResource(String resourceId);
     }
 
     /**
@@ -343,8 +344,13 @@ final class InstrumentCache {
         }
 
         @Override
-        public List<InternalResource> createInternalResources() {
+        public List<String> getInternalResourceIds() {
             return List.of();
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -382,8 +388,13 @@ final class InstrumentCache {
         }
 
         @Override
-        public List<InternalResource> createInternalResources() {
-            return EngineAccessor.INSTRUMENT_PROVIDER.createInternalResources(provider);
+        public List<String> getInternalResourceIds() {
+            return EngineAccessor.INSTRUMENT_PROVIDER.getInternalResourceIds(provider);
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            return EngineAccessor.INSTRUMENT_PROVIDER.createInternalResource(provider, resourceId);
         }
     }
 }

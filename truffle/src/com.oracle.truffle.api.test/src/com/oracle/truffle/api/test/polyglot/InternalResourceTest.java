@@ -96,7 +96,10 @@ public class InternalResourceTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
+    @InternalResource.Id(LibraryResource.ID)
     static class LibraryResource implements InternalResource {
+
+        static final String ID = "library";
 
         static final String[] RESOURCES = {"library"};
 
@@ -114,14 +117,12 @@ public class InternalResourceTest {
         public String versionHash(Env env) {
             return "1";
         }
-
-        @Override
-        public String name() {
-            return "native-library";
-        }
     }
 
+    @InternalResource.Id(SourcesResource.ID)
     static class SourcesResource implements InternalResource {
+
+        static final String ID = "sources";
 
         static final String[] RESOURCES = {"source_1", "source_2", "source_3"};
 
@@ -139,13 +140,9 @@ public class InternalResourceTest {
         public String versionHash(Env env) {
             return "1";
         }
-
-        @Override
-        public String name() {
-            return "sources";
-        }
     }
 
+    @InternalResource.Id("resources")
     static class FileAccessCheckResource implements InternalResource {
 
         static String fileName;
@@ -172,11 +169,6 @@ public class InternalResourceTest {
         @Override
         public String versionHash(Env env) {
             return "1";
-        }
-
-        @Override
-        public String name() {
-            return "sources";
         }
     }
 
@@ -545,6 +537,76 @@ public class InternalResourceTest {
             // Reset cached resource root
             TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
             TemporaryResourceCacheRoot.delete(cacheRoot);
+        }
+    }
+
+    @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestLanguageResourcesLookedUpById extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                TruffleFile libRoot = env.getInternalResource(LibraryResource.ID);
+                verifyResources(libRoot, LibraryResource.RESOURCES);
+                TruffleFile srcRoot = env.getInternalResource(SourcesResource.ID);
+                verifyResources(srcRoot, SourcesResource.RESOURCES);
+                return "";
+            }
+        }
+    }
+
+    @Test
+    public void testLanguageResourcesLookedUpById() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestLanguageResourcesLookedUpById.class);
+        }
+    }
+
+    @TruffleInstrument.Registration(id = InstrumentUsingResourcesByName.ID, name = InstrumentUsingResourcesByName.ID, //
+                    services = InstrumentUsingResourcesByName.Create.class, internalResources = {LibraryResource.class, SourcesResource.class})
+    public static final class InstrumentUsingResourcesByName extends TruffleInstrument {
+        static final String ID = "InstrumentUsingResourcesByName";
+
+        public interface Create {
+        }
+
+        @Override
+        @SuppressWarnings("try")
+        protected void onCreate(Env env) {
+            env.registerService(new Create() {
+            });
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                TruffleFile libRoot = env.getInternalResource(LibraryResource.ID);
+                verifyResources(libRoot, LibraryResource.RESOURCES);
+                TruffleFile srcRoot = env.getInternalResource(SourcesResource.ID);
+                verifyResources(srcRoot, SourcesResource.RESOURCES);
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
+        }
+    }
+
+    @Registration(/* ... */)
+    public static class TestInstrumentResourcesLookedUpById extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            InstrumentInfo info = env.getInstruments().get(InstrumentUsingResourcesByName.ID);
+            assertNotNull(info);
+            env.lookup(info, InstrumentUsingResourcesByName.Create.class);
+            return null;
+        }
+    }
+
+    @Test
+    public void testInstrumentResourcesLookedUpById() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesLookedUpById.class);
         }
     }
 

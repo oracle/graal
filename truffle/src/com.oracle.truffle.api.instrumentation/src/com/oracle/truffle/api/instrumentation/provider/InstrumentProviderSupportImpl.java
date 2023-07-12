@@ -64,8 +64,12 @@ final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSup
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public List<InternalResource> createInternalResources(Object provider) {
-        return (List<InternalResource>) ((TruffleInstrumentProvider) provider).createInternalResources();
+    public List<String> getInternalResourceIds(Object truffleInstrumentProvider) {
+        return ((TruffleInstrumentProvider) truffleInstrumentProvider).getInternalResourceIds();
+    }
+
+    @Override
+    public InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId) {
+        return (InternalResource) ((TruffleInstrumentProvider) truffleInstrumentProvider).createInternalResource(resourceId);
     }
 }

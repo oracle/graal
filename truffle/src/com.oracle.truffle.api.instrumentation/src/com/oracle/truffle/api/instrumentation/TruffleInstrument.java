@@ -1080,7 +1080,24 @@ public abstract class TruffleInstrument {
          * @since 23.1
          */
         public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
-            return InstrumentAccessor.engineAccess().getInternalResource(polyglotInstrument, resource);
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resource);
+        }
+
+        /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
+         * optional resources whose classes may not exist at runtime. In this case the optional
+         * resource must be unpacked at build time, see
+         * {@link Engine#copyResources(Path, String...)}.
+         *
+         * @param resourceId unique id of the resource to be loaded
+         * @throws IOException in case of IO error
+         * @see #getInternalResource(Class)
+         * @see Engine#copyResources(Path, String...)
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(String resourceId) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resourceId);
         }
 
         /**

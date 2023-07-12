@@ -47,7 +47,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -66,7 +65,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     final PolyglotEngineImpl engine;
 
     private final Object instrumentLock = new Object();
-    final Map<Class<? extends InternalResource>, TruffleFile> internalResources = new ConcurrentHashMap<>();
+    final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
     private volatile OptionDescriptors engineOptions;
     private volatile OptionDescriptors contextOptions;
     private volatile OptionDescriptors allOptions;

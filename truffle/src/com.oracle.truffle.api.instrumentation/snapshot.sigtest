@@ -420,6 +420,7 @@ meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.no
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.TruffleContext getEnteredContext()
 meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.Class<? extends com.oracle.truffle.api.InternalResource>) throws java.io.IOException
+meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.String) throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
@@ -479,7 +480,8 @@ cons protected init()
 meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getInstrumentClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth protected java.util.List<?> createInternalResources()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node

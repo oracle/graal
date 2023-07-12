@@ -201,7 +201,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
-        if (!validateInternalResources(annotatedElement, registrationMirror)) {
+        if (!validateInternalResources(annotatedElement, registrationMirror, context)) {
             return false;
         }
 
@@ -261,10 +261,16 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 generateGetServicesClassNames(registration, builder, context);
                 break;
             }
-            case "createInternalResources": {
+            case "getInternalResourceIds": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
-                generateCreateInternalResources(registration, builder, context);
+                generateGetInternalResourceIds(registration, builder, context);
+                break;
+            }
+            case "createInternalResource": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleLanguage_Registration);
+                generateCreateInternalResource(registration, methodToImplement.getParameters().get(0), builder, context);
                 break;
             }
             case "createFileTypeDetectors": {

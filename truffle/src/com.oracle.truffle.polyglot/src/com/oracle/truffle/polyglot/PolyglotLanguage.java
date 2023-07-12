@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Language;
@@ -70,7 +69,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     Language api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
-    final Map<Class<? extends InternalResource>, TruffleFile> internalResources = new ConcurrentHashMap<>();
+    final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
 
     private volatile OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;

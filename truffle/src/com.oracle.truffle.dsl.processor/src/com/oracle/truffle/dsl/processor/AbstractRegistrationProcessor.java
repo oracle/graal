@@ -45,7 +45,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -69,6 +68,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
@@ -166,8 +166,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
-    boolean validateInternalResources(Element annotatedElement, AnnotationMirror mirror) {
+    boolean validateInternalResources(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
         AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "internalResources", true);
+        TruffleTypes types = context.getTypes();
+        Map<String, TypeElement> usedResourceIds = new HashMap<>();
         for (TypeMirror internalResource : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "internalResources")) {
             TypeElement internalResourceElement = ElementUtils.fromTypeMirror(internalResource);
             Set<Modifier> modifiers = internalResourceElement.getModifiers();
@@ -181,6 +183,23 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
                                 getScopedName(internalResourceElement), targetPackage.getQualifiedName(), getScopedName(internalResourceElement), targetPackage.getQualifiedName()),
                                 annotatedElement, mirror, value);
+                return false;
+            }
+            AnnotationMirror id = ElementUtils.findAnnotationMirror(internalResourceElement.getAnnotationMirrors(), types.InternalResource_Id);
+            if (id == null) {
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("The class %s must be annotated by the @%s annotation. To resolve this, add '@%s(\"resource-id\")' annotation.",
+                                getScopedName(internalResourceElement), idSimpleName, idSimpleName), annotatedElement, mirror, value);
+                return false;
+            }
+            String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");
+            TypeElement prev = usedResourceIds.put(idValue, internalResourceElement);
+            if (prev != null) {
+                String prevResourceClzName = getScopedName(prev);
+                String newResourceClzName = getScopedName(internalResourceElement);
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("Internal resources must have unique ids within the component. But %s and %s use the same id %s. To resolve this, change the @%s value on %s or %s.",
+                                prevResourceClzName, newResourceClzName, idValue, idSimpleName, prevResourceClzName, newResourceClzName), annotatedElement, mirror, value);
                 return false;
             }
             boolean foundConstructor = false;
@@ -269,11 +288,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     static void generateGetServicesClassNames(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
         List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
         if (services.isEmpty()) {
-            builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
+            builder.startReturn().startStaticCall(context.getType(List.class), "of").end().end();
         } else {
             Types types = context.getEnvironment().getTypeUtils();
             builder.startReturn();
-            builder.startStaticCall(context.getType(Arrays.class), "asList");
+            builder.startStaticCall(context.getType(List.class), "of");
             for (TypeMirror service : services) {
                 builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
             }
@@ -281,18 +300,58 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
-    static void generateCreateInternalResources(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
-        List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
-        if (detectors.isEmpty()) {
+    static void generateGetInternalResourceIds(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
+        if (resources.isEmpty()) {
             builder.startReturn().startStaticCall(context.getType(List.class), "of").end().end();
         } else {
             builder.startReturn();
             builder.startStaticCall(context.getType(List.class), "of");
-            for (TypeMirror detector : detectors) {
-                builder.startGroup().startNew(detector).end(2);
+            Set<String> resourceIds = getResourcesById(resources, context).keySet();
+            for (String resourceId : resourceIds) {
+                builder.doubleQuote(resourceId);
             }
             builder.end(2);
         }
+    }
+
+    static void generateCreateInternalResource(AnnotationMirror registration, VariableElement resourceIdParameter, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
+        String resourceIdParameterName = resourceIdParameter.getSimpleName().toString();
+        if (resources.isEmpty()) {
+            generateThrowIllegalErgumentException(builder, context, resourceIdParameterName, Set.of());
+        } else {
+            builder.startSwitch().string(resourceIdParameterName).end().startBlock();
+            Map<String, TypeMirror> resourcesByName = getResourcesById(resources, context);
+            for (Map.Entry<String, TypeMirror> e : resourcesByName.entrySet()) {
+                builder.startCase().doubleQuote(e.getKey()).end();
+                builder.startCaseBlock();
+                builder.startReturn().startNew(e.getValue()).end(2);
+                builder.end();
+            }
+            builder.caseDefault();
+            builder.startCaseBlock();
+            generateThrowIllegalErgumentException(builder, context, resourceIdParameterName, resourcesByName.keySet());
+            builder.end(2);
+        }
+    }
+
+    private static void generateThrowIllegalErgumentException(CodeTreeBuilder builder, ProcessorContext context, String resourceIdParameterName, Set<String> supportedIds) {
+        builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).startStaticCall(context.getType(String.class), "format");
+        builder.doubleQuote("Unsupported internal resource id %s, supported ids are " + String.join(", ", supportedIds));
+        builder.string(resourceIdParameterName);
+        builder.end(3);
+    }
+
+    private static Map<String, TypeMirror> getResourcesById(List<TypeMirror> resources, ProcessorContext context) {
+        Map<String, TypeMirror> res = new HashMap<>();
+        TruffleTypes types = context.getTypes();
+        for (TypeMirror resource : resources) {
+            AnnotationMirror id = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(resource).getAnnotationMirrors(), types.InternalResource_Id);
+            String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");
+            res.put(idValue, resource);
+        }
+        return res;
     }
 
     /**

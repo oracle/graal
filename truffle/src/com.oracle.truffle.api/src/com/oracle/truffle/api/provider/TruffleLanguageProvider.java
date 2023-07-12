@@ -95,11 +95,21 @@ public abstract class TruffleLanguageProvider {
     protected abstract List<?> createFileTypeDetectors();
 
     /**
-     * Creates {@link InternalResource}s used by this {@link TruffleLanguage}.
+     * Returns ids of provided internal resources.
      *
      * @since 23.1
      */
-    protected List<?> createInternalResources() {
+    protected List<String> getInternalResourceIds() {
         return List.of();
+    }
+
+    /**
+     * Creates a language {@link InternalResource} identified by the {@code resourceId}.
+     *
+     * @throws IllegalArgumentException if {@code resourceId} is not supported by this language
+     * @since 23.1
+     */
+    protected Object createInternalResource(String resourceId) {
+        throw new IllegalArgumentException(resourceId);
     }
 }

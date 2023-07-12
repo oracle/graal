@@ -88,11 +88,21 @@ public abstract class TruffleInstrumentProvider {
     protected abstract Collection<String> getServicesClassNames();
 
     /**
-     * Creates {@link InternalResource}s used by this {@link TruffleInstrument}.
+     * Returns ids of provided internal resources.
      *
      * @since 23.1
      */
-    protected List<?> createInternalResources() {
+    protected List<String> getInternalResourceIds() {
         return List.of();
+    }
+
+    /**
+     * Creates an instrument {@link InternalResource} identified by the {@code resourceId}.
+     *
+     * @throws IllegalArgumentException if {@code resourceId} is not supported by this instrument
+     * @since 23.1
+     */
+    protected Object createInternalResource(String resourceId) {
+        throw new IllegalArgumentException(resourceId);
     }
 }

@@ -3575,6 +3575,7 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @InternalResource.Id("context-pre-init-test-resource")
     static final class ContextPreInitializationResource implements InternalResource {
 
         static final String FILE_NAME = "library_source";
@@ -3589,11 +3590,6 @@ public class ContextPreInitializationTest {
             unpackCount++;
             Files.writeString(targetDirectory.resolve(FILE_NAME), FILE_CONTENT);
             assertEquals(preInitialization, env.inContextPreinitialization());
-        }
-
-        @Override
-        public String name() {
-            return getClass().getSimpleName();
         }
 
         @Override

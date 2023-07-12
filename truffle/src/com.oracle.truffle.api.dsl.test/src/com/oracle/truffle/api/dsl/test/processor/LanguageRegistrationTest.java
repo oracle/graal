@@ -207,9 +207,11 @@ public class LanguageRegistrationTest {
                     InternalResourceRegistration1.Resource2.class
     })
     public static class InternalResourceRegistration1 extends ProxyLanguage {
+        @InternalResource.Id("test-resource-1")
         public static class Resource1 extends ProxyInternalResource {
         }
 
+        @InternalResource.Id("test-resource-2")
         public static class Resource2 extends ProxyInternalResource {
         }
     }
@@ -218,6 +220,7 @@ public class LanguageRegistrationTest {
                     "To resolve this, make the Resource static or top-level class.")
     @Registration(id = "languageresource2", name = "languageresource2", internalResources = {InternalResourceRegistration2.Resource.class})
     public static class InternalResourceRegistration2 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
         public abstract class Resource extends ProxyInternalResource {
         }
     }
@@ -226,6 +229,7 @@ public class LanguageRegistrationTest {
                     "To resolve this, add public Resource() constructor.")
     @Registration(id = "languageresource3", name = "languageresource3", internalResources = {InternalResourceRegistration3.Resource.class})
     public static class InternalResourceRegistration3 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
         public static class Resource extends ProxyInternalResource {
 
             @SuppressWarnings("unused")
@@ -248,6 +252,7 @@ public class LanguageRegistrationTest {
                     "com.oracle.truffle.api.dsl.test.processor package.")
     @Registration(id = "languageresource4", name = "languageresource4", internalResources = {InternalResourceRegistration4.Resource.class})
     public static class InternalResourceRegistration4 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
         private static class Resource extends ProxyInternalResource {
             @SuppressWarnings("unused")
             Resource() {
@@ -257,6 +262,7 @@ public class LanguageRegistrationTest {
 
     @Registration(id = "languageresource5", name = "languageresource5", internalResources = {InternalResourceRegistration5.Resource.class})
     public static class InternalResourceRegistration5 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
         public static class Resource extends ProxyInternalResource {
 
             @SuppressWarnings("unused")
@@ -268,6 +274,42 @@ public class LanguageRegistrationTest {
             }
 
             Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration6.Resource must be annotated by the @Id annotation. " +
+                    "To resolve this, add '@Id(\"resource-id\")' annotation.")
+    @Registration(id = "languageresource6", name = "languageresource6", internalResources = {InternalResourceRegistration6.Resource.class})
+    public static class InternalResourceRegistration6 extends ProxyLanguage {
+
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @ExpectError("Internal resources must have unique ids within the component. " +
+                    "But LanguageRegistrationTest.InternalResourceRegistration7.Resource1 and LanguageRegistrationTest.InternalResourceRegistration7.Resource2 use the same id duplicated-id. " +
+                    "To resolve this, change the @Id value on LanguageRegistrationTest.InternalResourceRegistration7.Resource1 or LanguageRegistrationTest.InternalResourceRegistration7.Resource2.")
+    @Registration(id = "languageresource7", name = "languageresource7", internalResources = {InternalResourceRegistration7.Resource1.class, InternalResourceRegistration7.Resource2.class})
+    public static class InternalResourceRegistration7 extends ProxyLanguage {
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource2 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource2() {
             }
         }
     }
@@ -291,11 +333,6 @@ public class LanguageRegistrationTest {
 
         @Override
         public void unpackFiles(Path targetDirectory, Env env) {
-        }
-
-        @Override
-        public String name() {
-            return "test-resource";
         }
 
         @Override

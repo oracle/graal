@@ -72,12 +72,14 @@ final class InternalResourceCache {
     private static volatile Pair<Path, Boolean> cacheRoot;
 
     private final String id;
-    private final InternalResource resource;
+    private final String resourceId;
+    private final Supplier<InternalResource> resourceFactory;
     private volatile FileSystem resourceFileSystem;
 
-    InternalResourceCache(String languageId, InternalResource forResource) {
+    InternalResourceCache(String languageId, String resourceId, Supplier<InternalResource> resourceFactory) {
         this.id = Objects.requireNonNull(languageId);
-        this.resource = Objects.requireNonNull(forResource);
+        this.resourceId = Objects.requireNonNull(resourceId);
+        this.resourceFactory = Objects.requireNonNull(resourceFactory);
     }
 
     FileSystem getResourceFileSystem(PolyglotEngineImpl polyglotEngine) throws IOException {
@@ -92,9 +94,10 @@ final class InternalResourceCache {
                     } else if (ImageInfo.inImageRuntimeCode()) {
                         root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
                     } else {
+                        InternalResource resource = resourceFactory.get();
                         InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> polyglotEngine.inEnginePreInitialization);
-                        root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resource.name()), sanitize(resource.versionHash(env))));
-                        unpackFiles(root, env);
+                        root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
+                        unpackResourceFiles(root, resource, env);
                     }
                     ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
                     result = FileSystems.newInternalResourceFileSystem(rootSupplier);
@@ -105,7 +108,7 @@ final class InternalResourceCache {
         return result;
     }
 
-    private void unpackFiles(Path target, InternalResource.Env env) throws IOException {
+    private static void unpackResourceFiles(Path target, InternalResource resource, InternalResource.Env env) throws IOException {
         unpackLock.lock();
         try {
             if (!Files.exists(target)) {
@@ -141,7 +144,7 @@ final class InternalResourceCache {
     }
 
     private Path findStandaloneResourceRoot(Path root) {
-        return root.resolve(Path.of(sanitize(id), sanitize(resource.name())));
+        return root.resolve(Path.of(sanitize(id), sanitize(resourceId)));
     }
 
     private static String sanitize(String pathElement) {
@@ -213,14 +216,14 @@ final class InternalResourceCache {
     static void resetNativeImageState() {
         cacheRoot = null;
         for (LanguageCache language : LanguageCache.languages().values()) {
-            for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
-                InternalResourceCache cache = language.getResourceCache(resourceType);
+            for (String resourceId : language.getResourceIds()) {
+                InternalResourceCache cache = language.getResourceCache(resourceId);
                 cache.resetFileSystemNativeImageState();
             }
         }
         for (InstrumentCache instrument : InstrumentCache.load()) {
-            for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceType);
+            for (String resourceId : instrument.getResourceIds()) {
+                InternalResourceCache cache = instrument.getResourceCache(resourceId);
                 cache.resetFileSystemNativeImageState();
             }
         }
@@ -242,8 +245,8 @@ final class InternalResourceCache {
         Set<String> filter = components.length == 0 ? null : Set.of(components);
         for (LanguageCache language : LanguageCache.languages().values()) {
             if (filter == null || filter.contains(language.getId())) {
-                for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
-                    InternalResourceCache cache = language.getResourceCache(resourceType);
+                for (String resourceId : language.getResourceIds()) {
+                    InternalResourceCache cache = language.getResourceCache(resourceId);
                     Path resourceRoot = cache.copyResourcesForNativeImage(target);
                     if (resourceRoot != null) {
                         result.add(resourceRoot);
@@ -253,8 +256,8 @@ final class InternalResourceCache {
         }
         for (InstrumentCache instrument : InstrumentCache.load()) {
             if (filter == null || filter.contains(instrument.getId())) {
-                for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
-                    InternalResourceCache cache = instrument.getResourceCache(resourceType);
+                for (String resourceId : instrument.getResourceIds()) {
+                    InternalResourceCache cache = instrument.getResourceCache(resourceId);
                     Path resourceRoot = cache.copyResourcesForNativeImage(target);
                     if (resourceRoot != null) {
                         result.add(resourceRoot);
@@ -270,7 +273,7 @@ final class InternalResourceCache {
         unlink(resourceRoot);
         Files.createDirectories(resourceRoot);
         InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> false);
-        resource.unpackFiles(resourceRoot, env);
+        resourceFactory.get().unpackFiles(resourceRoot, env);
         if (isEmpty(resourceRoot)) {
             Files.deleteIfExists(resourceRoot);
             return null;
@@ -304,8 +307,8 @@ final class InternalResourceCache {
     private static void setTestCacheRoot(Path root, boolean disposeResourceFileSystem) {
         cacheRoot = root == null ? null : Pair.create(root, false);
         for (LanguageCache language : LanguageCache.languages().values()) {
-            for (Class<? extends InternalResource> resourceType : language.getResourceTypes()) {
-                InternalResourceCache cache = language.getResourceCache(resourceType);
+            for (String resourceId : language.getResourceIds()) {
+                InternalResourceCache cache = language.getResourceCache(resourceId);
                 if (disposeResourceFileSystem) {
                     cache.resourceFileSystem = null;
                 } else {
@@ -314,8 +317,8 @@ final class InternalResourceCache {
             }
         }
         for (InstrumentCache instrument : InstrumentCache.load()) {
-            for (Class<? extends InternalResource> resourceType : instrument.getResourceTypes()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceType);
+            for (String resourceId : instrument.getResourceIds()) {
+                InternalResourceCache cache = instrument.getResourceCache(resourceId);
                 if (disposeResourceFileSystem) {
                     cache.resourceFileSystem = null;
                 } else {

@@ -41,6 +41,10 @@
 package com.oracle.truffle.api;
 
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
@@ -72,16 +76,6 @@ public interface InternalResource {
      * @since 23.1
      */
     void unpackFiles(Path targetDirectory, Env env) throws IOException;
-
-    /**
-     * Returns a resource identifier that is a valid path component and unique per language. By
-     * default, the canoncial class name is used for the internal resource.
-     *
-     * @since 23.1
-     */
-    default String name() {
-        return this.getClass().getCanonicalName();
-    }
 
     /**
      * Returns the version hash to be used for this resource. It is the responsibility of the
@@ -143,5 +137,25 @@ public interface InternalResource {
         public OS getOS() {
             return OS.getCurrent();
         }
+    }
+
+    /**
+     * The annotation used to lookup {@link InternalResource} by an id. In addition to being
+     * annotated with this annotation, the implementation of an internal resource must also be
+     * registered using the {@link TruffleLanguage.Registration#internalResources()} to be assigned
+     * to language or instrument.
+     *
+     * @since 23.1
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @interface Id {
+
+        /**
+         * An internal resource identifier that is a valid path component and unique per language.
+         *
+         * @since 23.1
+         */
+        String value();
     }
 }
