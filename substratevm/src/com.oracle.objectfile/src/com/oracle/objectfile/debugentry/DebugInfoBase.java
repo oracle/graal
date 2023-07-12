@@ -734,29 +734,29 @@ public abstract class DebugInfoBase {
         EconomicSet<FileEntry> visitedFiles = EconomicSet.create();
         EconomicSet<DirEntry> visitedDirs = EconomicSet.create();
         // add the class's file and dir
-        checkInclude(classEntry, classEntry.getFileEntry(), visitedFiles, visitedDirs);
+        includeOnce(classEntry, classEntry.getFileEntry(), visitedFiles, visitedDirs);
         // add files for fields (may differ from class file if we have a substitution)
         for (FieldEntry fieldEntry : classEntry.fields) {
-            checkInclude(classEntry, fieldEntry.getFileEntry(), visitedFiles, visitedDirs);
+            includeOnce(classEntry, fieldEntry.getFileEntry(), visitedFiles, visitedDirs);
         }
         // add files for declared methods (may differ from class file if we have a substitution)
         for (MethodEntry methodEntry : classEntry.getMethods()) {
-            checkInclude(classEntry, methodEntry.getFileEntry(), visitedFiles, visitedDirs);
+            includeOnce(classEntry, methodEntry.getFileEntry(), visitedFiles, visitedDirs);
         }
         // add files for top level compiled and inline methods
         classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
-            checkInclude(classEntry, compiledMethodEntry.getPrimary().getFileEntry(), visitedFiles, visitedDirs);
+            includeOnce(classEntry, compiledMethodEntry.getPrimary().getFileEntry(), visitedFiles, visitedDirs);
             // we need files for leaf ranges and for inline caller ranges
             //
             // add leaf range files first because they get searched for linearly
             // during line info processing
             compiledMethodEntry.leafRangeIterator().forEachRemaining(subRange -> {
-                checkInclude(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
+                includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
             });
             // now the non-leaf range files
             compiledMethodEntry.topDownRangeIterator().forEachRemaining(subRange -> {
                 if (!subRange.isLeaf()) {
-                    checkInclude(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
+                    includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
                 }
             });
         });
@@ -764,7 +764,17 @@ public abstract class DebugInfoBase {
         classEntry.buildFileAndDirIndexes();
     }
 
-    private static void checkInclude(ClassEntry classEntry, FileEntry fileEntry, EconomicSet<FileEntry> visitedFiles, EconomicSet<DirEntry> visitedDirs) {
+    /**
+     * Ensure the supplied file entry and associated directory entry are included, but only once, in
+     * a class entry's file and dir list.
+     * 
+     * @param classEntry the class entry whose file and dir list may need to be updated
+     * @param fileEntry a file entry which may need to be added to the class entry's file list or
+     *            whose dir may need adding to the class entry's dir list
+     * @param visitedFiles a set tracking current file list entries, updated if a file is added
+     * @param visitedDirs a set tracking current dir list entries, updated if a dir is added
+     */
+    private static void includeOnce(ClassEntry classEntry, FileEntry fileEntry, EconomicSet<FileEntry> visitedFiles, EconomicSet<DirEntry> visitedDirs) {
         if (fileEntry != null && !visitedFiles.contains(fileEntry)) {
             visitedFiles.add(fileEntry);
             classEntry.includeFile(fileEntry);
