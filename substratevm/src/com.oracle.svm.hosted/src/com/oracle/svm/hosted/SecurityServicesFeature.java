@@ -224,6 +224,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+                        "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
     @Override
