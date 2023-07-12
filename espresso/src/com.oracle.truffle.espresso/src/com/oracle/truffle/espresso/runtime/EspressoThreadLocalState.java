@@ -33,7 +33,8 @@ public class EspressoThreadLocalState {
     // Not compilation final. A single host thread can be associated with multiple different guest
     // threads during its lifetime (for example: on natural exits, the host main thread will be both
     // the guest main thread, and the DestroyVM thread).
-    private StaticObject currentThread;
+    private StaticObject currentPlatformThread;
+    private StaticObject currentVirtualThread;
 
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
@@ -62,32 +63,50 @@ public class EspressoThreadLocalState {
         setPendingException(null);
     }
 
-    public void setCurrentThread(StaticObject t) {
-        assert currentThread == null || currentThread == t;
+    public void setCurrentPlatformThread(StaticObject t) {
+        assert currentPlatformThread == null || currentPlatformThread == t;
         assert t != null && StaticObject.notNull(t);
         assert t.getKlass().getContext().getThreadAccess().getHost(t) == Thread.currentThread() : "Current thread fast access set by non-current thread";
-        currentThread = t;
+        currentPlatformThread = t;
+    }
+
+    public void setCurrentVirtualThread(StaticObject t) {
+        assert t != null && StaticObject.notNull(t);
+        currentVirtualThread = t;
+    }
+
+    public void initializeCurrentThread(StaticObject t) {
+        setCurrentPlatformThread(t);
+        setCurrentVirtualThread(t);
     }
 
     public void clearCurrentThread(StaticObject expectedGuest) {
-        if (currentThread == expectedGuest) {
-            currentThread = null;
+        if (currentPlatformThread == expectedGuest) {
+            currentPlatformThread = null;
+            currentVirtualThread = null;
+        } else {
+            expectedGuest.getKlass().getContext().getLogger().warning("clearCurrentThread: unexpected currentPlatformThread");
         }
     }
 
-    public StaticObject getCurrentThread(EspressoContext context) {
-        StaticObject result = currentThread;
+    public StaticObject getCurrentPlatformThread(EspressoContext context) {
+        StaticObject result = currentPlatformThread;
         if (result == null) {
             // Failsafe, should not happen.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             context.getLogger().warning("Uninitialized fast current thread lookup for " + Thread.currentThread());
             result = context.getGuestThreadFromHost(Thread.currentThread());
             if (result != null) {
-                setCurrentThread(result);
+                setCurrentPlatformThread(result);
             }
             return result;
         }
         return result;
+    }
+
+    public StaticObject getCurrentVirtualThread() {
+        assert currentVirtualThread != null;
+        return currentVirtualThread;
     }
 
     public ClassRegistry.TypeStack getTypeStack() {
