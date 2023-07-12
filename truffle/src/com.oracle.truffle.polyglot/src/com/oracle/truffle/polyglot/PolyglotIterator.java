@@ -185,7 +185,7 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
-            assert cache.valueType == valueType;
+            assert Objects.equals(cache.valueType, valueType);
             return cache;
         }
 
