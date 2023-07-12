@@ -38,6 +38,14 @@ public abstract class ConditionalConfigurationRegistry {
     private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
+        if (condition == null) {
+            throw new NullPointerException("Cannot use null value as condition for conditional configuration. " +
+                            "Please ensure that you register a non-null condition.");
+        }
+        if (runnable == null) {
+            throw new NullPointerException("Cannot use null value as runnable for conditional configuration. " +
+                            "Please ensure that you register a non-null runnable.");
+        }
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
             runnable.run();
