@@ -30,7 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -114,6 +113,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     public static final byte TYPE_MAPPED = 1;
     public static final byte INTERNAL_MAPPED = 2;
     public static final byte INTERFACE_MAPPED = 3;
+    public static final byte INTERNAL_COLLECTION_MAPPED = 4;
 
     @CompilationFinal public byte typeConversionState = UN_INITIALIZED;
 
@@ -1611,14 +1611,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     private void computeTypeConversionState() {
         CompilerAsserts.neverPartOfCompilation();
-        PolyglotTypeMappings.TypeConverter converter = getContext().getPolyglotTypeMappings().mapTypeConversion(this);
-        if (converter != null) {
+        if (getContext().getPolyglotTypeMappings().mapTypeConversion(this) != null) {
             typeConversionState = TYPE_MAPPED;
-        } else {
-            PolyglotTypeMappings.InternalTypeConverter internalConverter = getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this);
-            if (internalConverter != null) {
-                typeConversionState = INTERNAL_MAPPED;
-            }
+        } else if (getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this) != null) {
+            typeConversionState = INTERNAL_MAPPED;
+        } else if (getContext().getPolyglotTypeMappings().mapEspressoForeignCollection(this) != null) {
+            typeConversionState = INTERNAL_COLLECTION_MAPPED;
         }
         if (typeConversionState == UN_INITIALIZED) {
             typeConversionState = NOT_MAPPED;
@@ -1631,6 +1629,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             computeTypeConversionState();
         }
         return typeConversionState == INTERNAL_MAPPED;
+    }
+
+    public final boolean isInternalCollectionTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == INTERNAL_COLLECTION_MAPPED;
     }
 
     // region jdwp-specific

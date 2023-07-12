@@ -148,42 +148,36 @@ public class PolyglotTypeMappings {
         String current = "java.lang.Iterable";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignIterable);
-            meta.polyglot.EspressoForeignIterable.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
         current = "java.util.List";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignList);
-            meta.polyglot.EspressoForeignList.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
         current = "java.util.Collection";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignCollection);
-            meta.polyglot.EspressoForeignCollection.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
         current = "java.util.Iterator";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignIterator);
-            meta.polyglot.EspressoForeignIterator.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
         current = "java.util.Map";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignMap);
-            meta.polyglot.EspressoForeignMap.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
         current = "java.util.Set";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignSet);
-            meta.polyglot.EspressoForeignSet.typeConversionState = Klass.INTERNAL_MAPPED;
         } else {
             warn(current, meta.getContext());
         }
@@ -205,6 +199,15 @@ public class PolyglotTypeMappings {
 
     public ObjectKlass mapEspressoForeignCollection(String metaName) {
         return espressoForeignCollections.get(metaName);
+    }
+
+    public ObjectKlass mapEspressoForeignCollection(Klass klass) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (espressoForeignCollections == null) {
+            return null;
+        }
+        String name = klass.getNameAsString().replace('/', '.');
+        return mapEspressoForeignCollection(name);
     }
 
     @TruffleBoundary

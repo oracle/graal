@@ -110,22 +110,22 @@ public abstract class ToReference extends ToEspressoNode {
         }
         if (targetType.isInterface()) {
             if (targetType.getContext().getEspressoEnv().BuiltInPolyglotCollections) {
-                if (targetType == meta.java_util_List && meta.polyglot.EspressoForeignList.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_util_List && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToListNodeGen.create();
                 }
-                if (targetType == meta.java_util_Set && meta.polyglot.EspressoForeignSet.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_util_Set && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToSetNodeGen.create();
                 }
-                if (targetType == meta.java_util_Collection && meta.polyglot.EspressoForeignCollection.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_util_Collection && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToCollectionNodeGen.create();
                 }
-                if (targetType == meta.java_lang_Iterable && meta.polyglot.EspressoForeignIterable.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_lang_Iterable && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToIterableNodeGen.create();
                 }
-                if (targetType == meta.java_util_Iterator && meta.polyglot.EspressoForeignIterator.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_util_Iterator && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToIteratorNodeGen.create();
                 }
-                if (targetType == meta.java_util_Map && meta.polyglot.EspressoForeignMap.typeConversionState == Klass.INTERNAL_MAPPED) {
+                if (targetType == meta.java_util_Map && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToMapNodeGen.create();
                 }
             }
@@ -233,22 +233,22 @@ public abstract class ToReference extends ToEspressoNode {
                 return ToReferenceFactory.ToCharSequenceNodeGen.getUncached();
             }
             if (targetType.getContext().getEspressoEnv().BuiltInPolyglotCollections) {
-                if (targetType == meta.java_util_List) {
+                if (targetType == meta.java_util_List && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToListNodeGen.getUncached();
                 }
-                if (targetType == meta.java_util_Set) {
+                if (targetType == meta.java_util_Set && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToSetNodeGen.getUncached();
                 }
-                if (targetType == meta.java_util_Collection) {
+                if (targetType == meta.java_util_Collection && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToCollectionNodeGen.getUncached();
                 }
-                if (targetType == meta.java_lang_Iterable) {
+                if (targetType == meta.java_lang_Iterable && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToIterableNodeGen.getUncached();
                 }
-                if (targetType == meta.java_util_Iterator) {
+                if (targetType == meta.java_util_Iterator && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToIteratorNodeGen.getUncached();
                 }
-                if (targetType == meta.java_util_Map) {
+                if (targetType == meta.java_util_Map && targetType.isInternalCollectionTypeMapped()) {
                     return ToReferenceFactory.ToMapNodeGen.getUncached();
                 }
             }
@@ -1284,12 +1284,14 @@ public abstract class ToReference extends ToEspressoNode {
     public abstract static class ToMappedType extends ToReference {
         protected static final int LIMIT = 4;
 
-        private final ObjectKlass targetType;
-        @Child InstanceOf instanceOf;
+        final ObjectKlass targetType;
 
         ToMappedType(ObjectKlass targetType) {
             this.targetType = targetType;
-            this.instanceOf = InstanceOf.create(targetType, false);
+        }
+
+        static InstanceOf createInstanceOf(Klass targetType) {
+            return InstanceOf.create(targetType, false);
         }
 
         @Specialization(guards = {
@@ -1302,7 +1304,8 @@ public abstract class ToReference extends ToEspressoNode {
         }
 
         @Specialization
-        public StaticObject doEspresso(StaticObject value) throws UnsupportedTypeException {
+        public StaticObject doEspresso(StaticObject value,
+                        @Cached("createInstanceOf(targetType)") InstanceOf instanceOf) throws UnsupportedTypeException {
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass())) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1339,12 +1342,14 @@ public abstract class ToReference extends ToEspressoNode {
     public abstract static class ToMappedInternalType extends ToReference {
         protected static final int LIMIT = 4;
 
-        private final ObjectKlass targetType;
-        @Child InstanceOf instanceOf;
+        final ObjectKlass targetType;
 
         ToMappedInternalType(ObjectKlass targetType) {
             this.targetType = targetType;
-            this.instanceOf = InstanceOf.create(targetType, false);
+        }
+
+        static InstanceOf createInstanceOf(Klass targetType) {
+            return InstanceOf.create(targetType, false);
         }
 
         @Specialization(guards = {
@@ -1357,7 +1362,8 @@ public abstract class ToReference extends ToEspressoNode {
         }
 
         @Specialization
-        public StaticObject doEspresso(StaticObject value) throws UnsupportedTypeException {
+        public StaticObject doEspresso(StaticObject value,
+                        @Cached("createInstanceOf(targetType)") InstanceOf instanceOf) throws UnsupportedTypeException {
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass())) {
                 return value; // pass through, NULL coercion not needed.
             }
