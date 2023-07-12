@@ -67,7 +67,7 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
                 sb.append('[').append(IsolateUtil.getIsolateID()).append(':').append(Thread.currentThread().getName()).append(']');
                 JNIMethodScope scope = JNIMethodScope.scopeOrNull();
                 if (scope != null) {
-                    sb.append(new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' '));
+                    sb.append(" ".repeat(2 + (scope.depth() * 2)));
                 }
                 sb.append(message);
                 TTY.println(sb.toString());
