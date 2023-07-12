@@ -123,7 +123,7 @@ public abstract class AllocationSnippets implements Snippets {
      * We do an unsigned multiplication so that a negative array length will result in an array size
      * greater than Integer.MAX_VALUE.
      */
-    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+    public static long arrayAllocationSize(long length, int arrayBaseOffset, int log2ElementSize, int alignment) {
         long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
         long mask = ~(alignment - 1);
         return size & mask;
