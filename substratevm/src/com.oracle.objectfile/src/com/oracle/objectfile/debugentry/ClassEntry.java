@@ -90,12 +90,12 @@ public class ClassEntry extends StructureTypeEntry {
      * A list of all files referenced from info associated with this class, including info detailing
      * inline method ranges.
      */
-    private ArrayList<FileEntry> files;
+    private final ArrayList<FileEntry> files;
     /**
      * A list of all directories referenced from info associated with this class, including info
      * detailing inline method ranges.
      */
-    private ArrayList<DirEntry> dirs;
+    private final ArrayList<DirEntry> dirs;
     /**
      * An index identifying the file table position of every file referenced from info associated
      * with this class, including info detailing inline method ranges.
@@ -113,8 +113,9 @@ public class ClassEntry extends StructureTypeEntry {
         this.loader = null;
         // file and dir lists/indexes are populated after all DebugInfo API input has
         // been received and are only created on demand
-        files = null;
-        dirs = null;
+        files = new ArrayList<>();
+        dirs = new ArrayList<>();
+        // create these on demand using the size of the file and dir lists
         this.fileIndex = null;
         this.dirIndex = null;
     }
@@ -375,9 +376,6 @@ public class ClassEntry extends StructureTypeEntry {
      * @param file The file to be added.
      */
     public void includeFile(FileEntry file) {
-        if (files == null) {
-            files = new ArrayList<>();
-        }
         assert !files.contains(file) : "caller should ensure file is only included once";
         assert fileIndex == null : "cannot include files after index has been created";
         files.add(file);
@@ -389,9 +387,6 @@ public class ClassEntry extends StructureTypeEntry {
      * @param dirEntry The directory to be added.
      */
     public void includeDir(DirEntry dirEntry) {
-        if (dirs == null) {
-            dirs = new ArrayList<>();
-        }
         assert !dirs.contains(dirEntry) : "caller should ensure dir is only included once";
         assert dirIndex == null : "cannot include dirs after index has been created";
         dirs.add(dirEntry);
@@ -404,17 +399,13 @@ public class ClassEntry extends StructureTypeEntry {
     public void buildFileAndDirIndexes() {
         // this is a one-off operation
         assert fileIndex == null && dirIndex == null : "file and indexes can only be generated once";
-        if (files == null) {
-            assert dirs == null : "should not have included any dirs if we have no files";
-            return;
+        if (files.isEmpty()) {
+            assert dirs.isEmpty() : "should not have included any dirs if we have no files";
         }
         int idx = 1;
         fileIndex = EconomicMap.create(files.size());
         for (FileEntry file : files) {
             fileIndex.put(file, idx++);
-        }
-        if (dirs == null) {
-            return;
         }
         dirIndex = EconomicMap.create(dirs.size());
         idx = 1;
@@ -434,7 +425,7 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a stream of all referenced files
      */
     public Stream<FileEntry> fileStream() {
-        if (files != null) {
+        if (!files.isEmpty()) {
             return files.stream();
         } else {
             return Stream.empty();
@@ -448,7 +439,7 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a stream of all referenced directories
      */
     public Stream<DirEntry> dirStream() {
-        if (dirs != null) {
+        if (!dirs.isEmpty()) {
             return dirs.stream();
         } else {
             return Stream.empty();
