@@ -174,7 +174,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             locals.setNextIndex(inputIncRaw(index));
             int c = inputReadRaw(locals, index);
             if (codeRange == TruffleString.CodeRange.VALID || codeRange == TruffleString.CodeRange.BROKEN) {
-                if (injectBranchProbability(ASTRAL_PROBABILITY, inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex()))) {
+                if (injectBranchProbability(ASTRAL_PROBABILITY, inputUTF16IsHighSurrogate(c)) && injectBranchProbability(LIKELY_PROBABILITY, inputHasNext(locals, locals.getNextIndex()))) {
                     int c2 = inputReadRaw(locals, locals.getNextIndex());
                     if (codeRange == TruffleString.CodeRange.VALID || inputUTF16IsLowSurrogate(c2)) {
                         locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
@@ -198,7 +198,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
                 assert c >> 6 == 2;
                 for (int i = 1; i < 4; i++) {
                     c = inputReadRaw(locals, index - i);
-                    if (injectBranchProbability(LIKELY_PROBABILITY, i < 3 && c >> 6 == 2)) {
+                    if (injectBranchProbability(LIKELY_PROBABILITY, i < 3) && injectBranchProbability(LIKELY_PROBABILITY, c >> 6 == 2)) {
                         codepoint |= (c & 0x3f) << (6 * i);
                     } else {
                         break;
@@ -362,10 +362,6 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
 
     public int inputIncRaw(int index, int offset) {
         return inputIncRaw(index, offset, isForward());
-    }
-
-    public static int inputIncRaw(int index, boolean forward) {
-        return inputIncRaw(index, 1, forward);
     }
 
     public static int inputIncRaw(int index, int offset, boolean forward) {

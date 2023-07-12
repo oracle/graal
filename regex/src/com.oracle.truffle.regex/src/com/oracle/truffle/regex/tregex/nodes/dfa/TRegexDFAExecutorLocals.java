@@ -51,6 +51,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
     private int curMinIndex;
     private int result;
+    private int matchStart;
     private short lastTransition;
     private int lastIndex;
     private final DFACaptureGroupTrackingData cgData;
@@ -101,6 +102,14 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
     public void setResultInt(int result) {
         this.result = result;
+    }
+
+    public int getMatchStart() {
+        return matchStart;
+    }
+
+    public void setMatchStart(int matchStart) {
+        this.matchStart = matchStart;
     }
 
     public DFACaptureGroupTrackingData getCGData() {

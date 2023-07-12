@@ -86,6 +86,8 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class is responsible for compiling a single regex pattern. The compilation process is
@@ -211,6 +213,7 @@ public final class TRegexCompilationRequest {
         debugPureNFA();
         ArrayDeque<StackEntry> stack = new ArrayDeque<>();
         stack.push(new StackEntry(pureNFA));
+        int totalNumberOfStates = 0;
         int totalNumberOfTransitions = 0;
         while (true) {
             assert !stack.isEmpty();
@@ -222,8 +225,10 @@ public final class TRegexCompilationRequest {
                     if (astSubtree.isLookAroundAssertion() && astSubtree.asLookAroundAssertion().isLiteral()) {
                         cur.subExecutors[cur.i] = TRegexLiteralLookAroundExecutorNode.create(ast, astSubtree.asLookAroundAssertion(), compilationBuffer);
                     } else {
-                        cur.subExecutors[cur.i] = new TRegexBacktrackingNFAExecutorNode(ast, subNFA, subNFA.getNumberOfTransitions(), NO_SUB_EXECUTORS, false, compilationBuffer);
+                        cur.subExecutors[cur.i] = new TRegexBacktrackingNFAExecutorNode(ast, subNFA, subNFA.getNumberOfStates(), subNFA.getNumberOfTransitions(), NO_SUB_EXECUTORS, false,
+                                        compilationBuffer);
                     }
+                    totalNumberOfStates += cur.subExecutors[cur.i].getNumberOfStates();
                     totalNumberOfTransitions += cur.subExecutors[cur.i].getNumberOfTransitions();
                 } else {
                     stack.push(new StackEntry(subNFA));
@@ -233,14 +238,16 @@ public final class TRegexCompilationRequest {
             if (cur.i == cur.subExecutors.length) {
                 assert cur == stack.peek();
                 stack.pop();
+                totalNumberOfStates += cur.nfa.getNumberOfStates();
                 totalNumberOfTransitions += cur.nfa.getNumberOfTransitions();
                 if (cur.nfa.isRoot()) {
                     assert stack.isEmpty();
-                    return new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, totalNumberOfTransitions, cur.subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
+                    return new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, totalNumberOfStates, totalNumberOfTransitions, cur.subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
                 } else {
                     assert !stack.isEmpty();
                     StackEntry parent = stack.peek();
-                    parent.subExecutors[parent.i++] = new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, cur.nfa.getNumberOfTransitions(), cur.subExecutors, false, compilationBuffer);
+                    parent.subExecutors[parent.i++] = new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, cur.nfa.getNumberOfStates(), cur.nfa.getNumberOfTransitions(), cur.subExecutors, false,
+                                    compilationBuffer);
                 }
             }
         }
@@ -303,7 +310,12 @@ public final class TRegexCompilationRequest {
         assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions() || ast.getOptions().isMustAdvance();
         assert !ast.getRoot().isDead();
         createNFA();
-        return createDFAExecutor(nfa, true, true, true, false, ast.getOptions().getFlavor().usesLastGroupResultField());
+        TRegexDFAExecutorNode eagerCG = createDFAExecutor(nfa, true, true, true, false, ast.getOptions().getFlavor().usesLastGroupResultField());
+        Loggers.LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
+                        patternToJson(),
+                        Json.prop("flags", source.getFlags()),
+                        Json.prop("dfaEagerCG", automatonSize(eagerCG))).toString());
+        return eagerCG;
     }
 
     private void createAST() {
@@ -431,21 +443,32 @@ public final class TRegexCompilationRequest {
 
     private void logAutomatonSizes(RegexExecNode result) {
         Loggers.LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
-                        Json.prop("pattern", source.getPattern().length() > 200 ? source.getPattern().substring(0, 200) + "..." : source.getPattern()),
+                        patternToJson(),
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
                         Json.prop("astNodes", ast == null ? 0 : ast.getNumberOfNodes()),
                         Json.prop("pureNfaStates", pureNFA == null ? 0 : pureNFA.getNumberOfStates()),
+                        Json.prop("pureNfaTransitions", pureNFA == null ? 0 : pureNFA.getNumberOfTransitions()),
                         Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
                         Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
-                        Json.prop("dfaFwdStates", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
-                        Json.prop("dfaFwdTransitions", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfTransitions()),
-                        Json.prop("dfaBckStates", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
-                        Json.prop("dfaBckTransitions", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfTransitions()),
-                        Json.prop("dfaCGStates", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
-                        Json.prop("dfaCGTransitions", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfTransitions()),
+                        Json.prop("dfaFwd", automatonSize(executorNodeForward)),
+                        Json.prop("dfaBck", automatonSize(executorNodeBackward)),
+                        Json.prop("dfaLazyCG", automatonSize(executorNodeCaptureGroups)),
                         Json.prop("traceFinder", traceFinderNFA != null),
                         Json.prop("compilerResult", compilerResultToString(result))) + ",");
+    }
+
+    private static JsonValue automatonSize(TRegexDFAExecutorNode node) {
+        if (node == null) {
+            return Json.nullValue();
+        }
+        return Json.obj(
+                        Json.prop("states", node.getNumberOfStates()),
+                        Json.prop("transitions", node.getNumberOfTransitions()));
+    }
+
+    private JsonObject.JsonObjectProperty patternToJson() {
+        return Json.prop("pattern", source.getPattern().length() > 200 ? source.getPattern().substring(0, 200) + "..." : source.getPattern());
     }
 
     private static String compilerResultToString(RegexExecNode result) {

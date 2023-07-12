@@ -61,6 +61,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
@@ -162,6 +163,23 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
     public TruffleObject getNamedCaptureGroups() {
         return namedCaptureGroups;
+    }
+
+    public String getLabel() {
+        return execRootNode == null ? getLabel(execBooleanRootNode) : getLabel(execRootNode);
+    }
+
+    private static String getLabel(RegexRootNode rootNode) {
+        RegexExecNode execNode = (RegexExecNode) rootNode.getBodyUnwrapped();
+        if (execNode instanceof LiteralRegexExecNode) {
+            return "literal";
+        } else if (execNode.isBacktracking()) {
+            return "backtracker";
+        } else if (execNode.isNFA()) {
+            return "nfa";
+        } else {
+            return "dfa";
+        }
     }
 
     public CallTarget getExecCallTarget() {

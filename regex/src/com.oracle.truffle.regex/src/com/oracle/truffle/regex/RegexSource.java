@@ -122,25 +122,7 @@ public final class RegexSource implements JsonConvertible {
 
     @TruffleBoundary
     public String toStringEscaped() {
-        StringBuilder sb = new StringBuilder(pattern.length() + 2);
-        sb.append('/');
-        int i = 0;
-        while (i < pattern.length()) {
-            int c = pattern.codePointAt(i);
-            if (0x20 <= c && c <= 0x7e) {
-                sb.appendCodePoint(c);
-            } else {
-                sb.append("\\u");
-                if (c > 0xffff) {
-                    i++;
-                    sb.append(String.format("{%06x}", c));
-                } else {
-                    sb.append(String.format("%04x", c));
-                }
-            }
-            i++;
-        }
-        return sb.append('/').append(flags).toString();
+        return DebugUtil.regexSourceEscape(pattern, flags);
     }
 
     @TruffleBoundary
