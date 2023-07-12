@@ -76,8 +76,8 @@ import com.oracle.truffle.tools.utils.java_websocket.handshake.ClientHandshake;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.WebSocketServer;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * Server of the

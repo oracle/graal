@@ -24,12 +24,11 @@
  */
 package com.oracle.truffle.tools.chromeinspector.domains;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
+import org.graalvm.shadowed.org.json.JSONArray;
 
 public abstract class RuntimeDomain extends Domain {
 

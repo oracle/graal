@@ -55,7 +55,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     dependencies=['sdk'],
     jar_distributions=[
         'vm:INSTALLER',
-        'truffle:TruffleJSON'
+        'truffle:TRUFFLE_JSON'
     ],
     support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
     launcher_configs=[
@@ -63,7 +63,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             destination="bin/<exe:gu>",
             jar_distributions=[
                 'vm:INSTALLER',
-                'truffle:TruffleJSON'
+                'truffle:TRUFFLE_JSON'
             ],
             dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
