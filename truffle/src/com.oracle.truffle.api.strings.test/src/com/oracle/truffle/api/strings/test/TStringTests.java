@@ -63,7 +63,7 @@ public class TStringTests {
     }
 
     private static TruffleString fjs(String s) {
-        return TruffleString.FromJavaStringNode.getUncached().execute(s, TruffleString.Encoding.UTF_16, true);
+        return TruffleString.FromJavaStringNode.getUncached().execute(s, TruffleString.Encoding.UTF_16);
     }
 
     private static TruffleString fjsLong(String s) {

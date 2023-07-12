@@ -70,7 +70,7 @@ public abstract class SLUnboxNode extends SLExpressionNode {
     @Specialization
     protected static TruffleString fromString(String value,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING, false);
+        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization

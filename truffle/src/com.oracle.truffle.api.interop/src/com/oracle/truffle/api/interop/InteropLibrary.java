@@ -398,7 +398,7 @@ public abstract class InteropLibrary extends Library {
      * @since 21.3
      */
     public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
-        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16, true);
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
     }
 
     // Number Messages

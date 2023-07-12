@@ -61,8 +61,8 @@ public class IterationBenchmark extends TStringBenchmarkBase {
         // Checkstyle: stop
         String input = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        TruffleString inputTStringUTF8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, false);
-        TruffleString inputTStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, false);
+        TruffleString inputTStringUTF8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8);
+        TruffleString inputTStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
         byte[] inputBytes = input.getBytes(StandardCharsets.ISO_8859_1);
         Context context;
         final Value rawIterateBytes;

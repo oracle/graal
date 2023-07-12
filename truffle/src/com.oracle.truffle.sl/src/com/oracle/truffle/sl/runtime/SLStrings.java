@@ -61,7 +61,7 @@ public final class SLStrings {
     }
 
     public static TruffleString fromJavaString(String s) {
-        return TruffleString.fromJavaStringUncached(s, SLLanguage.STRING_ENCODING, true);
+        return TruffleString.fromJavaStringUncached(s, SLLanguage.STRING_ENCODING);
     }
 
     public static TruffleString fromObject(Object o) {

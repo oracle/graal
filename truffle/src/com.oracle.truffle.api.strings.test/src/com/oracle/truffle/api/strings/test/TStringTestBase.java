@@ -99,9 +99,9 @@ public class TStringTestBase {
     }
 
     protected static final boolean COMPACT_STRINGS_ENABLED;
-    protected static final TruffleString S_UTF8 = TruffleString.fromCodePointUncached('a', UTF_8, false);
-    protected static final TruffleString S_UTF16 = TruffleString.fromCodePointUncached('a', UTF_16, false);
-    protected static final TruffleString S_UTF32 = TruffleString.fromCodePointUncached('a', UTF_32, false);
+    protected static final TruffleString S_UTF8 = TruffleString.fromCodePointUncached('a', UTF_8);
+    protected static final TruffleString S_UTF16 = TruffleString.fromCodePointUncached('a', UTF_16);
+    protected static final TruffleString S_UTF32 = TruffleString.fromCodePointUncached('a', UTF_32);
 
     private static final sun.misc.Unsafe UNSAFE = getUnsafe();
 
@@ -442,7 +442,7 @@ public class TStringTestBase {
         }
         if (encoding == UTF_16LE) {
             // check fromJavaString with lazy codeRange / codePointLength
-            TruffleString fromJavaString = TruffleString.fromJavaStringUncached(new String(TStringTestUtil.toCharArrayPunned(array)), encoding, true);
+            TruffleString fromJavaString = TruffleString.fromJavaStringUncached(new String(TStringTestUtil.toCharArrayPunned(array)), encoding);
             if (array.length != 2) {
                 TruffleString.CodeRange codeRangeImprecise = fromJavaString.getCodeRangeImpreciseUncached(encoding);
                 if (COMPACT_STRINGS_ENABLED) {
@@ -460,7 +460,7 @@ public class TStringTestBase {
             }
             TStringTestUtil.writeValue(bytesUTF16, 1, codepoints.length, 0xffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF16, 0, bytesUTF16.length, UTF_16, false).substringByteIndexUncached(0, bytesUTF16.length - 2, UTF_16,
-                            true).switchEncodingUncached(encoding, false);
+                            true).switchEncodingUncached(encoding);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
@@ -470,7 +470,7 @@ public class TStringTestBase {
             }
             TStringTestUtil.writeValue(bytesUTF32, 2, codepoints.length, 0x10ffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF32, 0, bytesUTF32.length, UTF_32, false).substringByteIndexUncached(0, bytesUTF32.length - 4, UTF_32,
-                            true).switchEncodingUncached(encoding, false);
+                            true).switchEncodingUncached(encoding);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
     }

@@ -98,7 +98,7 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
         for (TruffleString.Encoding encoding : Encodings.PRIMARY_ENCODINGS) {
             TruffleString[] strings = new TruffleString[src.length];
             for (TruffleString.CodeRange codeRange : TruffleString.CodeRange.values()) {
-                strings[codeRange.ordinal()] = src[codeRange.ordinal()].switchEncodingUncached(encoding, true);
+                strings[codeRange.ordinal()] = src[codeRange.ordinal()].switchEncodingUncached(encoding);
             }
             int[][] byteIndices = new int[src.length][];
             if (encoding == UTF_8) {

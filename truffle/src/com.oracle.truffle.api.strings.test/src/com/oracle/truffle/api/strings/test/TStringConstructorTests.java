@@ -76,7 +76,7 @@ public class TStringConstructorTests extends TStringTestBase {
     @Test
     public void testFromCodePoint() throws Exception {
         forAllEncodingsAndCodePoints((TruffleString.Encoding encoding, int codepoint) -> {
-            TruffleString s = fromCodePointUncached(codepoint, encoding, false);
+            TruffleString s = fromCodePointUncached(codepoint, encoding);
             Assert.assertEquals(codepoint, s.codePointAtIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
             Assert.assertEquals(codepoint, s.codePointAtByteIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
             Assert.assertTrue(s.isValidUncached(encoding));
@@ -136,7 +136,7 @@ public class TStringConstructorTests extends TStringTestBase {
                         Assert.assertTrue(it.hasNext());
                         Assert.assertEquals(i, it.nextUncached());
                         Assert.assertEquals(i, s.indexOfCodePointUncached(i, 0, 128, encoding));
-                        Assert.assertEquals(i, s.indexOfStringUncached(fromCodePointUncached(i, encoding, false), 0, 128, encoding));
+                        Assert.assertEquals(i, s.indexOfStringUncached(fromCodePointUncached(i, encoding), 0, 128, encoding));
                     }
                 }
 
@@ -169,7 +169,7 @@ public class TStringConstructorTests extends TStringTestBase {
                 for (int i = 0; i < codepoints.length; i++) {
                     jCoding.codeToMbc(codepoints[i], array, byteIndices[i]);
                     sbCP.appendCodePointUncached(codepoints[i]);
-                    sbCPStrings.appendStringUncached(fromCodePointUncached(codepoints[i], encoding, false));
+                    sbCPStrings.appendStringUncached(fromCodePointUncached(codepoints[i], encoding));
                 }
                 if (isUTF32(encoding)) {
                     for (int cp : codepoints) {

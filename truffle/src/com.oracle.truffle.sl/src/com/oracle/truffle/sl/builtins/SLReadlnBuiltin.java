@@ -61,7 +61,7 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
 
     @Specialization
     public TruffleString readln(@Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        TruffleString result = fromJavaStringNode.execute(doRead(SLContext.get(this).getInput()), SLLanguage.STRING_ENCODING, false);
+        TruffleString result = fromJavaStringNode.execute(doRead(SLContext.get(this).getInput()), SLLanguage.STRING_ENCODING);
         if (result == null) {
             /*
              * We do not have a sophisticated end of file handling, so returning an empty string is

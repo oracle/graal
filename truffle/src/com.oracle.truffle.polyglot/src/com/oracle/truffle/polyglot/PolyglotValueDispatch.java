@@ -1684,7 +1684,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
         addDefaultValue(polyglot, languageInstance, valueCache, false);
         addDefaultValue(polyglot, languageInstance, valueCache, "");
-        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16, false));
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
         addDefaultValue(polyglot, languageInstance, valueCache, 'a');
         addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
         addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);

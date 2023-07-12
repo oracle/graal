@@ -85,7 +85,7 @@ public final class StringUTF16 implements AbstractString {
 
     @Override
     public TruffleString asTString() {
-        return TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16, true);
+        return TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16);
     }
 
     @Override

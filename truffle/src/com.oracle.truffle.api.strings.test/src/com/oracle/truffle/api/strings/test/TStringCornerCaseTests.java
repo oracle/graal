@@ -62,20 +62,20 @@ public class TStringCornerCaseTests extends TStringTestBase {
 
     @Test
     public void testForceEncodingStringCompaction() {
-        TruffleString a = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_8, false);
+        TruffleString a = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_8);
         TruffleString forced = a.forceEncodingUncached(TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_8);
         Assert.assertEquals(3, forced.byteLength(TruffleString.Encoding.UTF_8));
     }
 
     @Test
     public void testForceEncodingStringCompaction2() {
-        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII, false);
+        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII);
         Assert.assertEquals('\'', a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_16).codePointAtByteIndexUncached(0, TruffleString.Encoding.UTF_16));
     }
 
     @Test
     public void testForceEncoding3() {
-        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", 9, 9, TruffleString.Encoding.UTF_16, false, true);
+        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", 9, 9, TruffleString.Encoding.UTF_16, false);
         Assert.assertEquals(18, a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.BYTES).byteLength(TruffleString.Encoding.BYTES));
     }
 
@@ -88,7 +88,7 @@ public class TStringCornerCaseTests extends TStringTestBase {
 
     @Test
     public void testConcatMutable2() {
-        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", TruffleString.Encoding.BYTES, true);
+        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", TruffleString.Encoding.BYTES);
         MutableTruffleString b = MutableTruffleString.fromByteArrayUncached("abc".getBytes(StandardCharsets.UTF_8), 0, "abc".length(), TruffleString.Encoding.UTF_8, false);
         Assert.assertEquals(43, a.concatUncached(b, TruffleString.Encoding.BYTES, true).byteLength(TruffleString.Encoding.BYTES));
     }

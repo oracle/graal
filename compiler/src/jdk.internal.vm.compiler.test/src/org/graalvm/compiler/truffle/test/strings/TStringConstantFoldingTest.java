@@ -44,8 +44,8 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     static final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
     static final TruffleString b = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
-    static final TruffleString aJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16, true);
-    static final TruffleString bJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16, true);
+    static final TruffleString aJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16);
+    static final TruffleString bJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16);
 
     @Test
     public void testCodePointAtIndex() {

@@ -60,7 +60,7 @@ public abstract class ExpectStringNode extends Node {
     static TruffleString doString(String input, TruffleString.Encoding encoding,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         CompilerAsserts.partialEvaluationConstant(encoding);
-        return fromJavaStringNode.execute(input, encoding, encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32);
+        return fromJavaStringNode.execute(input, encoding);
     }
 
     @Specialization

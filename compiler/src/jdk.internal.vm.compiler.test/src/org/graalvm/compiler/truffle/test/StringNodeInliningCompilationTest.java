@@ -49,8 +49,8 @@ public class StringNodeInliningCompilationTest {
 
         @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
 
-        TruffleString v0 = TruffleString.fromJavaStringUncached("testtest", Encoding.UTF_16, true);
-        TruffleString v1 = TruffleString.fromJavaStringUncached("test", Encoding.UTF_16, true);
+        TruffleString v0 = TruffleString.fromJavaStringUncached("testtest", Encoding.UTF_16);
+        TruffleString v1 = TruffleString.fromJavaStringUncached("test", Encoding.UTF_16);
         int offset = 1;
 
         @Override

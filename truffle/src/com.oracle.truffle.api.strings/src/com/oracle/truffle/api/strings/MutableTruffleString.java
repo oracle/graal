@@ -639,7 +639,8 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
     /**
      * Node to get a given string in a specific encoding. See
-     * {@link #execute(AbstractTruffleString, TruffleString.Encoding, boolean)} for details.
+     * {@link #execute(AbstractTruffleString, TruffleString.Encoding, TranscodingErrorHandler)} for
+     * details.
      *
      * @since 22.1
      */
@@ -651,40 +652,38 @@ public final class MutableTruffleString extends AbstractTruffleString {
         /**
          * Returns a version of string {@code a} that is encoded in the given encoding, which may be
          * the string itself or a converted version.
-         *
-         * @since 22.1
-         * @deprecated use {@link #execute(AbstractTruffleString, TruffleString.Encoding, boolean)}
-         *             instead.
-         */
-        @Deprecated(since = "23.0")
-        public final MutableTruffleString execute(AbstractTruffleString a, Encoding encoding) {
-            return execute(a, encoding, encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32);
-        }
-
-        /**
-         * Returns a version of string {@code a} that is encoded in the given encoding, which may be
-         * the string itself or a converted version.
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
          * exception is thrown and characters which cannot be mapped in the target encoding are
          * replaced by {@code '\ufffd'} (for UTF-*) or {@code '?'}.
          *
-         * @since 23.0
+         * @since 22.1
          */
-        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding, boolean allowUTF16Surrogates);
+        public final MutableTruffleString execute(AbstractTruffleString a, Encoding encoding) {
+            return execute(a, encoding, TranscodingErrorHandler.DEFAULT);
+        }
+
+        /**
+         * Returns a version of string {@code a} that is encoded in the given encoding, which may be
+         * the string itself or a converted version. Transcoding errors are handled with
+         * {@code errorHandler}.
+         *
+         * @since 23.1
+         */
+        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding, TranscodingErrorHandler errorHandler);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "a.isCompatibleToIntl(encoding)")
-        static MutableTruffleString compatibleMutable(MutableTruffleString a, Encoding encoding, boolean allowUTF16Surrogates) {
+        static MutableTruffleString compatibleMutable(MutableTruffleString a, Encoding encoding, TranscodingErrorHandler errorHandler) {
             return a;
         }
 
         @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
-        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, boolean allowUTF16Surrogates,
+        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, TranscodingErrorHandler errorHandler,
                         @Bind("this") Node node,
                         @Cached TruffleString.InternalSwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
-            TruffleString switched = switchEncodingNode.execute(node, a, encoding, allowUTF16Surrogates);
+            TruffleString switched = switchEncodingNode.execute(node, a, encoding, errorHandler);
             return asMutableTruffleStringNode.execute(switched, encoding);
         }
 

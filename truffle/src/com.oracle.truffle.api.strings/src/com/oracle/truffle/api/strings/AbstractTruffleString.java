@@ -638,6 +638,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public void materializeUncached(AbstractTruffleString a, Encoding expectedEncoding) {
+        TruffleString.MaterializeNode.getUncached().execute(a, expectedEncoding);
+    }
+
+    /**
      * Shorthand for calling the uncached version of {@link TruffleString.GetCodeRangeNode}.
      *
      * @since 22.1
@@ -1211,22 +1221,20 @@ public abstract class AbstractTruffleString {
      * Shorthand for calling the uncached version of {@link TruffleString.SwitchEncodingNode}.
      *
      * @since 22.1
-     * @deprecated use {@link #switchEncodingUncached(TruffleString.Encoding, boolean)} instead.
      */
-    @Deprecated(since = "23.0")
     @TruffleBoundary
     public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding) {
-        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, targetEncoding == Encoding.UTF_16 || targetEncoding == Encoding.UTF_32);
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding);
     }
 
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.SwitchEncodingNode}.
      *
-     * @since 23.0
+     * @since 23.1
      */
     @TruffleBoundary
-    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, boolean allowUTF16Surrogates) {
-        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, allowUTF16Surrogates);
+    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler) {
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, errorHandler);
     }
 
     /**

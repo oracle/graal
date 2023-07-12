@@ -51,7 +51,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public final class TStringTestUtil {
 
-    static byte[] byteArray(int... values) {
+    public static byte[] byteArray(int... values) {
         byte[] ret = new byte[values.length];
         for (int i = 0; i < ret.length; i++) {
             assert 0 <= values[i] && values[i] <= 0xff;

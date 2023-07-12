@@ -64,7 +64,7 @@ final class DefaultStringExports {
     @ExportMessage
     static TruffleString asTruffleString(String receiver,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(receiver, TruffleString.Encoding.UTF_16, true);
+        return fromJavaStringNode.execute(receiver, TruffleString.Encoding.UTF_16);
     }
 
     /*
