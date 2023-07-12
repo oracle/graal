@@ -60,7 +60,7 @@ public final class LIRKindWithCast extends LIRKind {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj.getClass() == LIRKindWithCast.class) {
+        if (obj != null && obj.getClass() == LIRKindWithCast.class) {
             return ((LIRKindWithCast) obj).actualKind.equals(actualKind) && super.equals(obj);
         }
         return false;

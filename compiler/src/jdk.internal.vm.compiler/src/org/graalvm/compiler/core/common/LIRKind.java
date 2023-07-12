@@ -497,7 +497,7 @@ public class LIRKind extends ValueKind<LIRKind> {
         if (this == obj) {
             return true;
         }
-        if (obj.getClass() != LIRKind.class) {
+        if (obj == null || obj.getClass() != LIRKind.class) {
             return false;
         }
 
