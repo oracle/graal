@@ -611,7 +611,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             synchronized (ENGINES) {
                 if (!shutdownHookInitialized) {
                     shutdownHookInitialized = true;
-                    Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
+                    try {
+                        Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
+                    } catch (IllegalStateException e) {
+                        // shutdown already in progress
+                        // catching the exception is the only way to detect this.
+                    }
                 }
             }
         }
