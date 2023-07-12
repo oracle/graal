@@ -331,6 +331,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         // set up proxy class access to proxy interfaces and types
         // referenced in the method signature
         Set<Klass> types = new HashSet<>(Arrays.asList(interfaces));
+        types.add(superKlass);
         types.addAll(refTypes);
         for (Klass c : types) {
             ensureAccess(targetModule, c);
