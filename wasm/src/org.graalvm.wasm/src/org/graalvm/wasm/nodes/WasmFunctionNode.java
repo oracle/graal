@@ -1643,13 +1643,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 4;
                             break;
                         }
-                        case Bytecode.MEMORY_COPY: {
+                        case Bytecode.MEMORY_COPY:
+                        case Bytecode.MEMORY64_COPY_D64_S64:
+                        case Bytecode.MEMORY64_COPY_D64_S32:
+                        case Bytecode.MEMORY64_COPY_D32_S64: {
                             final int destMemoryIndex = rawPeekI32(bytecode, offset);
                             final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
+                            executeMemoryCopy(frame, stackPointer, miscOpcode, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1781,39 +1781,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int src = popInt(frame, stackPointer - 2);
                             final long dst = popLong(frame, stackPointer - 3);
                             memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.MEMORY64_COPY_D64_S64: {
-                            final int destMemoryIndex = rawPeekI32(bytecode, offset);
-                            final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                            final long n = popLong(frame, stackPointer - 1);
-                            final long src = popLong(frame, stackPointer - 2);
-                            final long dst = popLong(frame, stackPointer - 3);
-                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.MEMORY64_COPY_D64_S32: {
-                            final int destMemoryIndex = rawPeekI32(bytecode, offset);
-                            final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                            final long n = popInt(frame, stackPointer - 1);
-                            final long src = popInt(frame, stackPointer - 2);
-                            final long dst = popLong(frame, stackPointer - 3);
-                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.MEMORY64_COPY_D32_S64: {
-                            final int destMemoryIndex = rawPeekI32(bytecode, offset);
-                            final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                            final long n = popInt(frame, stackPointer - 1);
-                            final long src = popLong(frame, stackPointer - 2);
-                            final long dst = popInt(frame, stackPointer - 3);
-                            memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -2095,6 +2062,39 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
+    }
+
+    private void executeMemoryCopy(VirtualFrame frame, int stackPointer, int opcode, int destMemoryIndex, int srcMemoryIndex) {
+        final long n, src, dst;
+        switch (opcode) {
+            case Bytecode.MEMORY_COPY: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popInt(frame, stackPointer - 3);
+                break;
+            }
+            case Bytecode.MEMORY64_COPY_D64_S64: {
+                n = popLong(frame, stackPointer - 1);
+                src = popLong(frame, stackPointer - 2);
+                dst = popLong(frame, stackPointer - 3);
+                break;
+            }
+            case Bytecode.MEMORY64_COPY_D64_S32: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popLong(frame, stackPointer - 3);
+                break;
+            }
+            case Bytecode.MEMORY64_COPY_D32_S64: {
+                n = popInt(frame, stackPointer - 1);
+                src = popLong(frame, stackPointer - 2);
+                dst = popInt(frame, stackPointer - 3);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
     }
 
     // Checkstyle: stop method name check
