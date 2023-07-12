@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,6 +40,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class MultiTierCompilationTest extends PartialEvaluationTest {
 

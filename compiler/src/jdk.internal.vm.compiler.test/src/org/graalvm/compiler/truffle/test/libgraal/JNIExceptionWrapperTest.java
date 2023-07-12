@@ -36,17 +36,17 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
@@ -85,7 +85,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     private void testMergedStackTraceImpl() throws Exception {
         setupContext("engine.CompilationFailureAction", "Throw", "engine.BackgroundCompilation", Boolean.FALSE.toString());
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         TestTruffleCompilationTask task = new TestTruffleCompilationTask();

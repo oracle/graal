@@ -25,9 +25,10 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.frame.Frame;
-import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.junit.Assert;
 
 public class DeoptInvalidateListener extends AbstractGraalTruffleRuntimeListener implements AutoCloseable {
@@ -37,7 +38,7 @@ public class DeoptInvalidateListener extends AbstractGraalTruffleRuntimeListener
     boolean invalidated = false;
 
     @SuppressWarnings("this-escape")
-    protected DeoptInvalidateListener(GraalTruffleRuntime runtime, OptimizedCallTarget focus) {
+    protected DeoptInvalidateListener(OptimizedTruffleRuntime runtime, OptimizedCallTarget focus) {
         super(runtime);
         this.focus = focus;
         runtime.addListener(this);

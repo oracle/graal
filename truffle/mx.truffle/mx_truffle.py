@@ -1144,7 +1144,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
+        'truffle:TRUFFLE_COMPILER',
+        'truffle:TRUFFLE_RUNTIME',
     ],
+    support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
 

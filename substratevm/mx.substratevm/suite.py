@@ -1002,6 +1002,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_RUNTIME",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1123,7 +1124,9 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.graal",
-                "compiler:GRAAL"
+                "compiler:GRAAL",
+                "sdk:JNIUTILS",
+                "sdk:NATIVEBRIDGE",
             ],
             "requires" : [
             	"jdk.management"
@@ -1141,6 +1144,7 @@ suite = {
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "17+",
             "annotationProcessors": [
+                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
@@ -1248,6 +1252,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "truffle:TRUFFLE_RUNTIME",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
@@ -1304,6 +1309,7 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_RUNTIME",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1494,6 +1500,8 @@ suite = {
             ],
             "distDependencies": [
                 "SVM",
+                "sdk:JNIUTILS",
+                "sdk:NATIVEBRIDGE",
             ],
             "defaultBuild": False,
             "maven": False,
@@ -1899,7 +1907,7 @@ suite = {
             "subDir" : "src",
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
-            "distDependencies" : ["SVM"],
+            "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
             "maven" : True,
         },
     },

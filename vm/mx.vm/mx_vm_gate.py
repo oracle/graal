@@ -354,7 +354,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'-Dpolyglot.log.file={truffle_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
-                   '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_LIBGRAAL_TRUFFLEATTACH>/bin/<lib:truffleattach>'),
+                   '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_RUNTIME_ATTACH>/bin/<lib:truffleattach>'),
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
                    '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
 
@@ -437,7 +437,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dgraalvm.locatorDisabled=true",
-        '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_LIBGRAAL_TRUFFLEATTACH>/bin/<lib:truffleattach>'),
+        '-Dtruffle.attach.library=' + mx_subst.path_substitutions.substitute('<path:TRUFFLE_RUNTIME_ATTACH>/bin/<lib:truffleattach>'),
         "truffle", "LibGraalCompilerTest"])
 
 def gate_body(args, tasks):

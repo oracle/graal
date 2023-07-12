@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+import com.oracle.truffle.compiler.TruffleCompilationSupport;
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 
 public abstract class AbstractTruffleCompilationSupport implements TruffleCompilationSupport {
 
