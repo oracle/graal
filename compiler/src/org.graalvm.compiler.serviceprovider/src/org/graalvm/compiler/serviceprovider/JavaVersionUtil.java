@@ -25,6 +25,8 @@
 package org.graalvm.compiler.serviceprovider;
 
 import java.lang.Runtime.Version;
+import jdk.vm.ci.services.Services;
+
 
 /**
  * Interface to query which JDK version Graal is running on.
@@ -39,7 +41,7 @@ public final class JavaVersionUtil {
     /**
      * Return the value of JVM specification vendor
      */
-    public static final String JVM_SPEC_VENDOR = System.getProperty("java.vm.specification.vendor");
+    public static final String JVM_VENDOR = Services.getSavedProperties().get("java.vendor.version");
 
     private JavaVersionUtil() {
     }
