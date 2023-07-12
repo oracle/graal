@@ -566,8 +566,9 @@ public class NativeImageClassLoaderSupport {
         }
 
         /*
-         * No need to check for duplicates in the targetModuleNamesList as it is not performed by
-         * j.i.m.ModuleBootstrap.decode()
+         * No need to check for duplicates in the targetModuleNamesList as that check is not
+         * performed by j.i.m.ModuleBootstrap.decode() in case of --add-opens, --add-exports or
+         * --add-reads
          */
 
         String[] moduleAndPackage = modulePackage.split("/");
@@ -576,9 +577,9 @@ public class NativeImageClassLoaderSupport {
         }
 
         String moduleName = moduleAndPackage[0];
-        String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : "";
-
-        if (moduleName.isEmpty() || packageName.isEmpty()) {
+        String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : null;
+        boolean isPackageNameMissing = packageName == null || packageName.isEmpty();
+        if (moduleName.isEmpty() || (!reads && isPackageNameMissing)) {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
 
