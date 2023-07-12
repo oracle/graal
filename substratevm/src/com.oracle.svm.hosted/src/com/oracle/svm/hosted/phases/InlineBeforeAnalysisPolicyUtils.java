@@ -82,7 +82,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         @Option(help = "Maximum number of invokes for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedInvokes = new HostedOptionKey<>(1);
 
-        @Option(help = "Maximum number of invokes for method inlined before static analysis")//
+        @Option(help = "Maximum call depth for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
 
@@ -178,15 +178,16 @@ public class InlineBeforeAnalysisPolicyUtils {
     }
 
     static final class AccumulativeCounters {
-        static AccumulativeCounters createRoot() {
+        static AccumulativeCounters create(AccumulativeCounters outer) {
+            int maxDepth = (outer != null) ? outer.maxInliningDepth : Options.InlineBeforeAnalysisAllowedDepth.getValue();
             return new AccumulativeCounters(Options.InlineBeforeAnalysisAllowedNodes.getValue(),
                             Options.InlineBeforeAnalysisAllowedInvokes.getValue(),
-                            Options.InlineBeforeAnalysisAllowedDepth.getValue(),
+                            maxDepth,
                             false);
         }
 
-        static AccumulativeCounters createForMethodHandleIntrinsification(int startDepth) {
-            return new AccumulativeCounters(100, 20, startDepth + 20, true);
+        static AccumulativeCounters createForMethodHandleIntrinsification(AccumulativeCounters outer) {
+            return new AccumulativeCounters(100, 20, outer.maxInliningDepth, true);
         }
 
         int maxNodes;
@@ -219,7 +220,7 @@ public class InlineBeforeAnalysisPolicyUtils {
              * point of view.
              */
             depth = 1;
-            accumulativeCounters = AccumulativeCounters.createRoot();
+            accumulativeCounters = AccumulativeCounters.create(null);
 
         } else if (!outer.accumulativeCounters.inMethodHandleIntrinsification && (intrinsifiedMethodHandle || isMethodHandleIntrinsificationRoot(metaAccess, method))) {
             /*
@@ -228,7 +229,21 @@ public class InlineBeforeAnalysisPolicyUtils {
              * handle intrinsification context.
              */
             depth = outer.inliningDepth + 1;
-            accumulativeCounters = AccumulativeCounters.createForMethodHandleIntrinsification(depth);
+            accumulativeCounters = AccumulativeCounters.createForMethodHandleIntrinsification(outer.accumulativeCounters);
+
+        } else if (outer.accumulativeCounters.inMethodHandleIntrinsification && !inlineForMethodHandleIntrinsification(method)) {
+            /*
+             * Method which is invoked in method handle intrinsification but which is not part of
+             * the method handle apparatus, for example, the target method of a direct method
+             * handle: create a scope with the restrictive regular limits (although it is an
+             * additional scope, therefore still permitting more nodes in total)
+             *
+             * This assumes that the regular limits are strict enough to prevent excessive inlining
+             * triggered by method handles. We could also use alternative fixed values or the option
+             * defaults instead of any set option values.
+             */
+            depth = outer.inliningDepth + 1;
+            accumulativeCounters = AccumulativeCounters.create(outer.accumulativeCounters);
 
         } else {
             /* Nested inlining (potentially during method handle intrinsification). */
@@ -281,8 +296,6 @@ public class InlineBeforeAnalysisPolicyUtils {
         int numNodes = 0;
         int numInvokes = 0;
 
-        Boolean lenientForMethodHandleIntrinsic = null; // lazily initialized
-
         AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth) {
             super(inliningDepth);
             this.accumulativeCounters = accumulativeCounters;
@@ -298,7 +311,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
             AccumulativeInlineScope calleeScope = (AccumulativeInlineScope) callee;
             if (accumulativeCounters != calleeScope.accumulativeCounters) {
-                assert !accumulativeCounters.inMethodHandleIntrinsification && calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
+                assert accumulativeCounters.inMethodHandleIntrinsification != calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
 
                 // Expand limits to hold the method handle intrinsification, but not more.
                 accumulativeCounters.maxNodes += calleeScope.numNodes;
@@ -318,7 +331,7 @@ public class InlineBeforeAnalysisPolicyUtils {
                 accumulativeCounters.numNodes -= calleeScope.numNodes;
                 accumulativeCounters.numInvokes -= calleeScope.numInvokes;
             } else {
-                assert !accumulativeCounters.inMethodHandleIntrinsification && calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
+                assert accumulativeCounters.inMethodHandleIntrinsification != calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
             }
         }
 
@@ -421,13 +434,8 @@ public class InlineBeforeAnalysisPolicyUtils {
             numNodes++;
             accumulativeCounters.numNodes++;
 
-            if (!allow && accumulativeCounters.inMethodHandleIntrinsification) {
-                if (lenientForMethodHandleIntrinsic == null) {
-                    lenientForMethodHandleIntrinsic = inlineForMethodHandleIntrinsification(method);
-                }
-                allow = lenientForMethodHandleIntrinsic;
-            }
-            return allow;
+            // With method handle intrinsification we permit all node types to become more effective
+            return allow || accumulativeCounters.inMethodHandleIntrinsification;
         }
 
         @Override
