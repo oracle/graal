@@ -173,6 +173,20 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
+    private static String makeDirContent(Set<String> allEntries, String dir) {
+        List<String> dirContent = new ArrayList<>();
+        for (String entry : allEntries) {
+            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
+            String parentDirectory = last == -1 ? "" : entry.substring(0, last);
+            if (parentDirectory.equals(dir)) {
+                dirContent.add(entry.substring(last + 1));
+            }
+        }
+
+        dirContent.sort(Comparator.naturalOrder());
+        return String.join(System.lineSeparator(), dirContent);
+    }
+
     private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) throws IOException {
         Map<Pair<ConfigurationCondition, String>, List<String>> matchedDirectoryResources = new HashMap<>();
         Map<String, List<ConfigurationCondition>> conditionsForDirectory = new HashMap<>();
@@ -198,10 +212,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             if (Files.isDirectory(entry)) {
                 if (condition != null) {
                     matchedDirectoryResources.put(Pair.create(condition, relativeFilePath), new ArrayList<>());
-                    // add new condition for the directory (if that is the first condition, create
-                    // list)
-                    conditionsForDirectory.computeIfAbsent(relativeFilePath, k -> new ArrayList<>());
-                    conditionsForDirectory.get(relativeFilePath).add(condition);
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
@@ -227,29 +237,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             }
         }
 
-        for (String entry : allEntries) {
-            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
-            String parentDirectory = last == -1 ? "" : entry.substring(0, last);
-            // one parent can be added under various condition, so we have to add its content for
-            // all conditions
-            List<ConfigurationCondition> conditions = conditionsForDirectory.get(parentDirectory);
-            if (conditions != null) {
-                for (ConfigurationCondition condition : conditions) {
-                    List<String> dirContent = matchedDirectoryResources.get(Pair.create(condition, parentDirectory));
-                    if (dirContent != null && !dirContent.contains(entry)) {
-                        dirContent.add(entry.substring(last + 1));
-                    } else if (dirContent == null) {
-                        collector.registerNegativeQuery(null, key);
-                    }
-                }
-            }
-        }
-
-        matchedDirectoryResources.forEach((entry, content) -> {
+        matchedDirectoryResources.forEach(entry -> {
             ConfigurationCondition condition = entry.getLeft();
             String dir = entry.getRight();
-            content.sort(Comparator.naturalOrder());
-            String contentName = String.join(System.lineSeparator(), content);
+            String contentName = makeDirContent(allEntries, dir);
             if (ConfigurationCondition.isAlwaysTrue(condition)) {
                 collector.addDirectoryResource(null, dir, contentName, false);
             } else {

@@ -147,13 +147,7 @@ public class NativeImageResourceTest {
         }
 
         for (String resource : expected) {
-            // check if resource contains expected content
             Assert.assertTrue(actual.contains(resource));
-
-            // check if we can get resource which directory contains
-            String resourceName = directoryName + "/" + resource;
-            URL resourceUrl = NativeImageResourceUtils.class.getResource(resourceName);
-            Assert.assertNotNull("Cannot find resource: " + resourceName, resourceUrl);
         }
     }
 

@@ -6,7 +6,7 @@
         "condition": {
           "typeReachable": "java.lang.String"
         },
-        "pattern": "resourcesFromDir/.*"
+        "pattern": "resourcesFromDir"
       }
     ]
   }
