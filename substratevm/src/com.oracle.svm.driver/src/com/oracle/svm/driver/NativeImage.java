@@ -2074,7 +2074,9 @@ public class NativeImage {
     }
 
     List<String> getNativeImageArgs() {
-        return Stream.concat(getDefaultNativeImageArgs().stream(), config.getBuildArgs().stream()).toList();
+        var argFilesOptionPreprocessor = new ArgFilesOptionPreprocessor();
+        return Stream.concat(getDefaultNativeImageArgs().stream(), config.getBuildArgs().stream())
+                        .flatMap(arg -> argFilesOptionPreprocessor.process(arg).stream()).toList();
     }
 
     private static boolean isDumbTerm() {
