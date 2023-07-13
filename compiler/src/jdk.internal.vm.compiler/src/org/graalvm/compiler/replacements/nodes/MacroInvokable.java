@@ -65,10 +65,22 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
 
     StampPair getReturnStamp();
 
+    /**
+     * Access to the original arguments for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     NodeInputList<ValueNode> getOriginalArguments();
 
+    /**
+     * Access to the original target methods for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     ResolvedJavaMethod getOriginalTargetMethod();
 
+    /**
+     * Access to the original return stamp for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     StampPair getOriginalReturnStamp();
 
     /**
@@ -162,6 +174,10 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         invoke.lower(tool);
     }
 
+    /**
+     * Create the call target when converting this node back into a normal {@link Invoke}. For a
+     * method handle invoke site this will be a {@link ResolvedMethodHandleCallTargetNode}.
+     */
     default MethodCallTargetNode createCallTarget() {
         ValueNode[] arguments = getArguments().toArray(new ValueNode[getArguments().size()]);
         if (getOriginalTargetMethod() != null) {
@@ -177,7 +193,8 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
     }
 
     /**
-     * Incorporate method handle information into state so that it can be properly lowered later.
+     * Captures the method handle information so that it can be properly lowered back to an
+     * {@link Invoke} later.
      */
     void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle);
 }

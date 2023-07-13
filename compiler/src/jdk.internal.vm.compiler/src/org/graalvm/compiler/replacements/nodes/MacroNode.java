@@ -72,8 +72,22 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
+    /**
+     * The original target method for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     protected ResolvedJavaMethod originalTargetMethod;
+
+    /**
+     * The original return stamp for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     protected StampPair originalReturnStamp;
+
+    /**
+     * The original arguments for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
     @Input NodeInputList<ValueNode> originalArguments;
 
     /**
