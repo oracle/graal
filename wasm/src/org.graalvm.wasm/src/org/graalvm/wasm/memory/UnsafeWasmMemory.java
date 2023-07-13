@@ -71,16 +71,16 @@ public final class UnsafeWasmMemory extends WasmMemory {
     private static final Unsafe unsafe;
     private static final long addressOffset;
 
-    private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64);
+    private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
         this.size = declaredMinSize;
         final long byteSize = byteSize();
         this.buffer = allocateBuffer(byteSize);
         this.startAddress = getBufferAddress(buffer);
     }
 
-    UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64);
+    UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
     }
 
     @TruffleBoundary
@@ -424,7 +424,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @Override
     public WasmMemory duplicate() {
-        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64);
+        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64, shared);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }

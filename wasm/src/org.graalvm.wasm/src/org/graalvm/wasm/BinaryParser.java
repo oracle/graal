@@ -404,8 +404,10 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
-                    final boolean is64Bit = readMemoryLimits(longMultiResult, booleanMultiResult);
-                    module.symbolTable().importMemory(moduleName, memberName, longMultiResult[0], longMultiResult[1], is64Bit);
+                    readMemoryLimits(longMultiResult, booleanMultiResult);
+                    final boolean is64Bit = booleanMultiResult[0];
+                    final boolean isShared = booleanMultiResult[1];
+                    module.symbolTable().importMemory(moduleName, memberName, longMultiResult[0], longMultiResult[1], is64Bit, isShared);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -451,8 +453,10 @@ public class BinaryParser extends BinaryStreamParser {
         // it is not the case.
         for (int memoryIndex = 0; memoryIndex != memoryCount; memoryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final boolean is64Bit = readMemoryLimits(longMultiResult, booleanMultiResult);
-            module.symbolTable().allocateMemory(longMultiResult[0], longMultiResult[1], is64Bit);
+            readMemoryLimits(longMultiResult, booleanMultiResult);
+            final boolean is64Bit = booleanMultiResult[0];
+            final boolean isShared = booleanMultiResult[1];
+            module.symbolTable().allocateMemory(longMultiResult[0], longMultiResult[1], is64Bit, isShared);
         }
     }
 
@@ -2084,7 +2088,7 @@ public class BinaryParser extends BinaryStreamParser {
         assertUnsignedIntLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
     }
 
-    private boolean readMemoryLimits(long[] longOut, boolean[] boolOut) {
+    private void readMemoryLimits(long[] longOut, boolean[] boolOut) {
         readLongLimits(longOut, boolOut, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
         final boolean is64Bit = boolOut[0];
         if (is64Bit) {
@@ -2096,7 +2100,6 @@ public class BinaryParser extends BinaryStreamParser {
             assertUnsignedIntLessOrEqual((int) longOut[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
             assertUnsignedIntLessOrEqual((int) longOut[0], (int) longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         }
-        return is64Bit;
     }
 
     private void readLimits(int[] out, int max) {
@@ -2114,9 +2117,9 @@ public class BinaryParser extends BinaryStreamParser {
             }
             default:
                 if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
                 } else {
-                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
                 }
         }
     }
@@ -2138,20 +2141,6 @@ public class BinaryParser extends BinaryStreamParser {
                 boolOut[1] = false;
                 break;
             }
-            case 0x02: {
-                longOut[0] = readUnsignedInt32();
-                longOut[1] = max32Bit;
-                boolOut[0] = false;
-                boolOut[1] = true;
-                break;
-            }
-            case 0x03: {
-                longOut[0] = readUnsignedInt32();
-                longOut[1] = readUnsignedInt32();
-                boolOut[0] = false;
-                boolOut[1] = true;
-                break;
-            }
             case 0x04: {
                 longOut[0] = readUnsignedInt64();
                 longOut[1] = max64Bit;
@@ -2166,26 +2155,52 @@ public class BinaryParser extends BinaryStreamParser {
                 boolOut[1] = false;
                 break;
             }
-            case 0x06: {
-                longOut[0] = readUnsignedInt64();
-                longOut[1] = max64Bit;
-                boolOut[0] = true;
-                boolOut[1] = true;
-                break;
-            }
-            case 0x07: {
-                longOut[0] = readUnsignedInt64();
-                longOut[1] = readUnsignedInt64();
-                boolOut[0] = true;
-                boolOut[1] = true;
-                break;
-            }
-            default:
-                if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X", limitsPrefix));
+            default: {
+                if (!threads) {
+                    if (limitsPrefix < 0) {
+                        fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                    } else {
+                        fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                    }
                 } else {
-                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X", limitsPrefix));
+                    switch (limitsPrefix) {
+                        case 0x02: {
+                            longOut[0] = readUnsignedInt32();
+                            longOut[1] = max32Bit;
+                            boolOut[0] = false;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        case 0x03: {
+                            longOut[0] = readUnsignedInt32();
+                            longOut[1] = readUnsignedInt32();
+                            boolOut[0] = false;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        case 0x06: {
+                            longOut[0] = readUnsignedInt64();
+                            longOut[1] = max64Bit;
+                            boolOut[0] = true;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        case 0x07: {
+                            longOut[0] = readUnsignedInt64();
+                            longOut[1] = readUnsignedInt64();
+                            boolOut[0] = true;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        default:
+                            if (limitsPrefix < 0) {
+                                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                            } else {
+                                fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                            }
+                    }
                 }
+            }
         }
     }
 

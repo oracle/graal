@@ -118,7 +118,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      */
     protected final boolean indexType64;
 
-    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+    /**
+     * @see #isShared()
+     */
+    protected final boolean shared;
+
+    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -132,6 +137,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
         this.indexType64 = indexType64;
+        this.shared = shared;
     }
 
     /**
@@ -184,6 +190,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      */
     public final boolean hasIndexType64() {
         return indexType64;
+    }
+
+    /**
+     * @return Whether the memory is shared (modifications are visible to other threads).
+     */
+    public final boolean isShared() {
+        return shared;
     }
 
     public abstract boolean grow(long extraPageSize);
