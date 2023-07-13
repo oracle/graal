@@ -147,10 +147,11 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
                     @ConstantParameter long size,
+                    @ConstantParameter boolean forceSlowPath,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(hub.asWord(), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -195,7 +196,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
                     UnsignedWord size = WordFactory.unsigned(layoutHelper);
-                    return allocateInstanceImpl(nonNullHub.asWord(), size, fillContents, emitMemoryBarrier, false, profilingData);
+                    return allocateInstanceImpl(nonNullHub.asWord(), size, false, fillContents, emitMemoryBarrier, false, profilingData);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -659,12 +660,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.instanceClass();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
-            long size = instanceSize(type);
+            long size = type.instanceSize();
 
             OptionValues localOptions = graph.getOptions();
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-            args.addConst("size", size);
+            // instanceSize returns a negative number for types which should be slow path allocated
+            args.addConst("size", Math.abs(size));
+            args.addConst("forceSlowPath", size < 0);
             args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "instance", type));
@@ -796,11 +799,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             return HotSpotAllocationSnippets.lookupArrayClass(tool.getMetaAccess(), kind);
         }
 
-        private static long instanceSize(HotSpotResolvedObjectType type) {
-            long size = type.instanceSize();
-            assert size >= 0;
-            return size;
-        }
     }
 
     private static class HotSpotAllocationProfilingData extends AllocationProfilingData {
