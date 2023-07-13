@@ -182,13 +182,11 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         ValueNode[] arguments = getArguments().toArray(new ValueNode[getArguments().size()]);
         if (getOriginalTargetMethod() != null) {
             ValueNode[] originalArguments = getOriginalArguments().toArray(new ValueNode[getOriginalArguments().size()]);
-            return asNode().graph()
-                            .add(ResolvedMethodHandleCallTargetNode.create(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), getOriginalTargetMethod(), originalArguments,
-                                            getOriginalReturnStamp()));
+            return asNode().graph().add(ResolvedMethodHandleCallTargetNode.create(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), getOriginalTargetMethod(), originalArguments,
+                            getOriginalReturnStamp()));
 
         } else {
-            return asNode().graph()
-                            .add(new MethodCallTargetNode(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), null));
+            return asNode().graph().add(new MethodCallTargetNode(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), null));
         }
     }
 
