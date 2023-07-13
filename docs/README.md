@@ -21,7 +21,6 @@ To update the documentation:
 2. Navigate to the source file you are intended to update
 3. Click the "edit" button at the top of the section.
    > Note: GitHub introduced a new feature: online web editor, which allows to edit multiple files from a browser. To enable it, press `.` on any GitHub repo. For example, go to [https://github.com/oracle/graal](https://github.com/oracle/graal) and hit `.`. You will be immediately redirected to [https://github.dev/oracle/graal](https://github.dev/oracle/graal).
-   ![](/img/github-web-editor.png)
  
 4. Create a Pull Request (PR)
 5. Sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/)
