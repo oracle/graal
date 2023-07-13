@@ -120,8 +120,12 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
+<<<<<<< HEAD
         DynamicHub checkedHub = checkHub(hub);
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+=======
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), false, fillContents, emitMemoryBarrier, true, profilingData);
+>>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated)
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -156,8 +160,19 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
+<<<<<<< HEAD
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
+=======
+        return allocateInstanceDynamicImpl(hub, fillContents, emitMemoryBarrier, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
+    }
+
+    protected Object allocateInstanceDynamicImpl(DynamicHub hub, FillContent fillContents, boolean emitMemoryBarrier, @SuppressWarnings("unused") boolean supportsBulkZeroing,
+                    @SuppressWarnings("unused") boolean supportsOptimizedFilling, AllocationProfilingData profilingData) {
+        // The hub was already verified by a ValidateNewInstanceClassNode.
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, false, fillContents, emitMemoryBarrier, false, profilingData);
+>>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated)
         return piCastToSnippetReplaceeStamp(result);
     }
 
