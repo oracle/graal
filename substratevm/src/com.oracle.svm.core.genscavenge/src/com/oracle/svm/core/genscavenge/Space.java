@@ -537,41 +537,9 @@ public final class Space {
     /** Promote an AlignedHeapChunk by moving it to this space. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        if (ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase()) {
-            promoteAlignedHeapChunkParallel(chunk);
-        } else {
-            promoteAlignedHeapChunkSerial(chunk);
-        }
-    }
+        assert !(ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase());
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void promoteAlignedHeapChunkSerial(AlignedHeapChunk.AlignedHeader chunk) {
         Space originalSpace = HeapChunk.getSpace(chunk);
-        promoteAlignedHeapChunk0(chunk, originalSpace);
-
-        if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
-            ParallelGC.singleton().push(chunk);
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void promoteAlignedHeapChunkParallel(AlignedHeapChunk.AlignedHeader chunk) {
-        ParallelGC.singleton().getMutex().lockNoTransitionUnspecifiedOwner();
-        try {
-            Space originalSpace = HeapChunk.getSpace(chunk);
-            if (!originalSpace.isFromSpace()) {
-                /* The chunk was already promoted in the meanwhile. */
-                return;
-            }
-            promoteAlignedHeapChunk0(chunk, originalSpace);
-            ParallelGC.singleton().push(chunk);
-        } finally {
-            ParallelGC.singleton().getMutex().unlockNoTransitionUnspecifiedOwner();
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void promoteAlignedHeapChunk0(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert !this.isFromSpace();
 
@@ -583,6 +551,10 @@ public final class Space {
                 assert originalSpace.isOldSpace();
                 RememberedSet.get().clearRememberedSet(chunk);
             }
+        }
+
+        if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
+            ParallelGC.singleton().push(chunk);
         }
     }
 
@@ -625,8 +597,6 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promoteUnalignedHeapChunk0(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
-
-        appendUnalignedHeapChunk(chunk, originalSpace);
         if (this.isOldSpace()) {
             if (originalSpace.isYoungSpace()) {
                 RememberedSet.get().enableRememberedSetForChunk(chunk);
@@ -635,6 +605,7 @@ public final class Space {
                 RememberedSet.get().clearRememberedSet(chunk);
             }
         }
+        appendUnalignedHeapChunk(chunk, originalSpace);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
