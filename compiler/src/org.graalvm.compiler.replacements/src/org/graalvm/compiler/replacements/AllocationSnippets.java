@@ -49,6 +49,7 @@ import org.graalvm.word.WordFactory;
 public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
                     UnsignedWord size,
+                    boolean forceSlowPath,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
@@ -58,7 +59,7 @@ public abstract class AllocationSnippets implements Snippets {
         Word top = readTlabTop(tlabInfo);
         Word end = readTlabEnd(tlabInfo);
         Word newTop = top.add(size);
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(tlabInfo, newTop);
             emitPrefetchAllocate(newTop, false);
             result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
