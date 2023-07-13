@@ -1029,6 +1029,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             ] + [
                                 sub for orig, shad in dist.shaded_package_paths().items() for sub in [
                                     (re.compile(r'(?<=")' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
+                                    (re.compile(r'(?<="/)' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
                                 ]
                             ]
 
