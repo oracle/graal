@@ -249,6 +249,16 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
      */
 
     @Override
+    public T getFirst() {
+        return super.getFirst();
+    }
+
+    @Override
+    public T getLast() {
+        return super.getLast();
+    }
+
+    @Override
     public boolean addAll(Collection<? extends T> c) {
         return super.addAll(c);
     }
@@ -256,6 +266,16 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public boolean addAll(int index, Collection<? extends T> c) {
         return super.addAll(index, c);
+    }
+
+    @Override
+    public void addFirst(T t) {
+        super.addFirst(t);
+    }
+
+    @Override
+    public void addLast(T t) {
+        super.addLast(t);
     }
 
     @Override
@@ -276,6 +296,21 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     protected void removeRange(int fromIndex, int toIndex) {
         super.removeRange(fromIndex, toIndex);
+    }
+
+    @Override
+    public T removeFirst() {
+        return super.removeFirst();
+    }
+
+    @Override
+    public T removeLast() {
+        return super.removeLast();
+    }
+
+    @Override
+    public List<T> reversed() {
+        return super.reversed();
     }
 
     @Override
