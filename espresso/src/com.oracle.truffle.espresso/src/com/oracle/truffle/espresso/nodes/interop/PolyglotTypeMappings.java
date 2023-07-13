@@ -183,7 +183,7 @@ public class PolyglotTypeMappings {
         }
     }
 
-    private void warn(String mapping, EspressoContext context) {
+    private static void warn(String mapping, EspressoContext context) {
         context.getVM().getLogger().warning("Custom type mapping is used where there's a builtin type conversion available. Remove the [" + mapping + "] to enable the builtin converter.");
     }
 
