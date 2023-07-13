@@ -60,7 +60,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -75,6 +74,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 
 @GenerateUncached
 abstract class HostToTypeNode extends Node {
@@ -351,6 +351,13 @@ abstract class HostToTypeNode extends Node {
             if (interop.isNull(value)) {
                 return null;
             } else if (interop.isString(value)) {
+                if (value instanceof HostMethodScope.ScopedObject) {
+                    HostMethodScope.ScopedObject s = (HostMethodScope.ScopedObject) value;
+                    Object delegate = s.delegate;
+                    if (delegate instanceof Character) {
+                        return delegate;
+                    }
+                }
                 return interop.asString(value);
             } else if (interop.isBoolean(value)) {
                 return interop.asBoolean(value);
