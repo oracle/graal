@@ -3830,7 +3830,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("sp -= 2");
                         break;
                     case THROW:
-                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject(readBc("bci + 1")) + ")");
+                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject(localFrame(), readBc("bci + 1")) + ")");
                         break;
                     case YIELD:
                         b.statement("int numLocals = $this.numLocals");
