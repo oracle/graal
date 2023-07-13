@@ -277,7 +277,7 @@ public final class UnimplementedGraalIntrinsics {
         if (!SHANode.SHA1Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
         }
-        if (!config.useSHA256Intrinsics()) {
+        if (!SHANode.SHA256Node.isSupported(arch) && !config.useSHA256Intrinsics()) {
             add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
         }
         if (!config.useSHA512Intrinsics()) {

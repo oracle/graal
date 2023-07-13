@@ -133,4 +133,62 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
         @NodeIntrinsic
         public static native void sha1ImplCompress(Pointer buf, Pointer state, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
     }
+
+    /**
+     * Intrinsification for {@code sun.security.provider.SHA2.implCompress0}.
+     */
+    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
+    public static final class SHA256Node extends SHANode {
+
+        public static final NodeClass<SHA256Node> TYPE = NodeClass.create(SHA256Node.class);
+        public static final ForeignCallDescriptor STUB = foreignCallDescriptor("sha256ImplCompress");
+
+        public SHA256Node(ValueNode buf, ValueNode state) {
+            super(TYPE, buf, state, null);
+        }
+
+        public SHA256Node(ValueNode buf, ValueNode state, EnumSet<?> runtimeCheckedCPUFeatures) {
+            super(TYPE, buf, state, runtimeCheckedCPUFeatures);
+        }
+
+        public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
+            return EnumSet.of(AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.SHA);
+        }
+
+        public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
+            return EnumSet.of(AArch64.CPUFeature.SHA2);
+        }
+
+        @SuppressWarnings("unlikely-arg-type")
+        public static boolean isSupported(Architecture arch) {
+            if (arch instanceof AMD64) {
+                return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
+            } else if (arch instanceof AArch64) {
+                return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
+            }
+            return false;
+        }
+
+        @Override
+        public boolean canBeEmitted(Architecture arch) {
+            return isSupported(arch);
+        }
+
+        @Override
+        public ForeignCallDescriptor getForeignCallDescriptor() {
+            return STUB;
+        }
+
+        @Override
+        public void emitIntrinsic(NodeLIRBuilderTool gen) {
+            gen.getLIRGeneratorTool().emitSha256ImplCompress(gen.operand(buf), gen.operand(state));
+        }
+
+        @NodeIntrinsic
+        @GenerateStub(name = "sha256ImplCompress", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+        public static native void sha256ImplCompress(Pointer buf, Pointer state);
+
+        @NodeIntrinsic
+        public static native void sha256ImplCompress(Pointer buf, Pointer state, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    }
 }

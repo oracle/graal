@@ -676,6 +676,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CipherBlockChainingAESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GHASHProcessBlocksNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, SHANode.SHA1Node.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, SHANode.SHA256Node.STUB);
     }
 
     @FunctionalInterface

@@ -517,6 +517,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
+    default void emitSha256ImplCompress(Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);

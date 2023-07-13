@@ -57,6 +57,9 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.IMUL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1MSG1;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1MSG2;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1NEXTE;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256MSG1;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256MSG2;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256RNDS2;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
@@ -470,9 +473,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final AMD64RMOp ADOX   = new AMD64RMOp("ADOX", 0xF3, P_0F38, 0xF6, OpAssertion.DwordOrLargerAssertion, CPUFeature.ADX);
 
         // SHA instructions
-        public static final AMD64RMOp SHA1MSG1  = new AMD64RMOp("SHA1MSG1",  P_0F38, 0xC9, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
-        public static final AMD64RMOp SHA1MSG2  = new AMD64RMOp("SHA1MSG2",  P_0F38, 0xCA, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
-        public static final AMD64RMOp SHA1NEXTE = new AMD64RMOp("SHA1NEXTE", P_0F38, 0xC8, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMOp SHA1MSG1    = new AMD64RMOp("SHA1MSG1",    P_0F38, 0xC9, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMOp SHA1MSG2    = new AMD64RMOp("SHA1MSG2",    P_0F38, 0xCA, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMOp SHA1NEXTE   = new AMD64RMOp("SHA1NEXTE",   P_0F38, 0xC8, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+
+        public static final AMD64RMOp SHA256MSG1  = new AMD64RMOp("SHA256MSG1",  P_0F38, 0xCC, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMOp SHA256MSG2  = new AMD64RMOp("SHA256MSG2",  P_0F38, 0xCD, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMOp SHA256RNDS2 = new AMD64RMOp("SHA256RNDS2", P_0F38, 0xCB, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+
         // @formatter:on
 
         protected AMD64RMOp(String opcode, int op, OpAssertion assertion) {
@@ -3746,6 +3754,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
+    public final void paddd(Register dst, AMD64Address src) {
+        assert inRC(XMM, dst);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0xFE);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void paddq(Register dst, Register src) {
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, dst, src, PD, P_0F, false);
@@ -3796,6 +3811,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, dst, src, PD, P_0F3A, false);
         emitByte(0x0F);
+        emitModRM(dst, src);
+        emitByte(imm8);
+    }
+
+    public final void pblendw(Register dst, Register src, int imm8) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        simdPrefix(dst, dst, src, PD, P_0F3A, false);
+        emitByte(0x0E);
         emitModRM(dst, src);
         emitByte(imm8);
     }
@@ -4700,6 +4723,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void sha1rnds4(Register dst, Register src, int imm8) {
         SHA1RNDS4.emit(this, PS, dst, src, imm8);
+    }
+
+    public final void sha256msg1(Register dst, Register src) {
+        SHA256MSG1.emit(this, PS, dst, src);
+    }
+
+    public final void sha256msg2(Register dst, Register src) {
+        SHA256MSG2.emit(this, PS, dst, src);
+    }
+
+    public final void sha256rnds2(Register dst, Register src) {
+        SHA256RNDS2.emit(this, PS, dst, src);
     }
 
     public final void membar(int barriers) {

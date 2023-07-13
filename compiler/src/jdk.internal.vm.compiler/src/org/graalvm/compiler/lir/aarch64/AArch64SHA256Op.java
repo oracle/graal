@@ -26,6 +26,8 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v10;
+import static jdk.vm.ci.aarch64.AArch64.v11;
 import static jdk.vm.ci.aarch64.AArch64.v16;
 import static jdk.vm.ci.aarch64.AArch64.v17;
 import static jdk.vm.ci.aarch64.AArch64.v18;
@@ -34,23 +36,32 @@ import static jdk.vm.ci.aarch64.AArch64.v2;
 import static jdk.vm.ci.aarch64.AArch64.v20;
 import static jdk.vm.ci.aarch64.AArch64.v21;
 import static jdk.vm.ci.aarch64.AArch64.v22;
+import static jdk.vm.ci.aarch64.AArch64.v23;
+import static jdk.vm.ci.aarch64.AArch64.v24;
+import static jdk.vm.ci.aarch64.AArch64.v25;
+import static jdk.vm.ci.aarch64.AArch64.v26;
+import static jdk.vm.ci.aarch64.AArch64.v27;
+import static jdk.vm.ci.aarch64.AArch64.v28;
+import static jdk.vm.ci.aarch64.AArch64.v29;
 import static jdk.vm.ci.aarch64.AArch64.v3;
+import static jdk.vm.ci.aarch64.AArch64.v30;
+import static jdk.vm.ci.aarch64.AArch64.v31;
 import static jdk.vm.ci.aarch64.AArch64.v4;
-import static jdk.vm.ci.aarch64.AArch64.v5;
 import static jdk.vm.ci.aarch64.AArch64.v6;
 import static jdk.vm.ci.aarch64.AArch64.v7;
+import static jdk.vm.ci.aarch64.AArch64.v8;
+import static jdk.vm.ci.aarch64.AArch64.v9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
-import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.HalfReg;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag.LE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp.asFloatRegister;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.debug.GraalError;
@@ -67,14 +78,14 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 3571,
-          lineEnd   = 3660,
-          commit    = "b3f34039fedd3c49404783ec880e1885dceb296b",
-          sha1      = "64b4f4aa44a5201f87d28ee048721dcd3c3231ed")
+          lineStart = 3663,
+          lineEnd   = 3775,
+          commit    = "8c9d091f19760deece8daf3e57add85482b9f2a7",
+          sha1      = "f226b109da456148c11f83d1bcd78d14aac862cf")
 // @formatter:on
-public final class AArch64SHA1Op extends AArch64LIRInstruction {
+public final class AArch64SHA256Op extends AArch64LIRInstruction {
 
-    public static final LIRInstructionClass<AArch64SHA1Op> TYPE = LIRInstructionClass.create(AArch64SHA1Op.class);
+    public static final LIRInstructionClass<AArch64SHA256Op> TYPE = LIRInstructionClass.create(AArch64SHA256Op.class);
 
     @Alive({REG}) private Value bufValue;
     @Alive({REG}) private Value stateValue;
@@ -90,11 +101,11 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
 
     private final boolean multiBlock;
 
-    public AArch64SHA1Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue) {
+    public AArch64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue) {
         this(tool, bufValue, stateValue, Value.ILLEGAL, Value.ILLEGAL, Value.ILLEGAL, false);
     }
 
-    public AArch64SHA1Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
+    public AArch64SHA256Op(LIRGeneratorTool tool, AllocatableValue bufValue, AllocatableValue stateValue, AllocatableValue ofsValue,
                     AllocatableValue limitValue, AllocatableValue resultValue, boolean multiBlock) {
         super(TYPE);
 
@@ -120,10 +131,14 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
                         v2.asValue(),
                         v3.asValue(),
                         v4.asValue(),
-                        v5.asValue(),
+                        // v5 not used by the intrinsic
                         v6.asValue(),
                         v7.asValue(),
-                        // v8-v15 not used by the intrinsic
+                        v8.asValue(),
+                        v9.asValue(),
+                        v10.asValue(),
+                        v11.asValue(),
+                        // v12-v15 not used by the intrinsic
                         v16.asValue(),
                         v17.asValue(),
                         v18.asValue(),
@@ -131,12 +146,36 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
                         v20.asValue(),
                         v21.asValue(),
                         v22.asValue(),
+                        v23.asValue(),
+                        v24.asValue(),
+                        v25.asValue(),
+                        v26.asValue(),
+                        v27.asValue(),
+                        v28.asValue(),
+                        v29.asValue(),
+                        v30.asValue(),
+                        v31.asValue(),
         };
     }
 
-    static ArrayDataPointerConstant keys = new ArrayDataPointerConstant(new int[]{
+    static ArrayDataPointerConstant roundConsts = new ArrayDataPointerConstant(new int[]{
             // @formatter:off
-            0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+            0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+            0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+            0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+            0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+            0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+            0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+            0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+            0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
             // @formatter:on
     }, 16);
 
@@ -151,8 +190,8 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
         Register limit;
 
         if (multiBlock) {
-            GraalError.guarantee(ofsValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid ofsValue kind: %s", ofsValue);
-            GraalError.guarantee(limitValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid limitValue kind: %s", limitValue);
+            GraalError.guarantee(ofsValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid ofsValue kind: %s", ofsValue);
+            GraalError.guarantee(limitValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid limitValue kind: %s", limitValue);
 
             buf = asRegister(bufTempValue);
             ofs = asRegister(ofsTempValue);
@@ -166,62 +205,64 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
             limit = Register.None;
         }
 
+        // We have marked v8-v11 as @Temp. The register allocator will take care of the spilling.
+        // masm.fstp(64, v8, v9, [sp, #-32]!)
+        // masm.fstp(64, v10, v11, [sp, #16])
+
         try (ScratchRegister scratchReg = masm.getScratchRegister()) {
             Register rscratch1 = scratchReg.getRegister();
 
-            // load the keys into v0..v3
-            crb.recordDataReferenceInCode(keys);
+            // load 16 keys to v16..v31
+            crb.recordDataReferenceInCode(roundConsts);
             masm.adrpAdd(rscratch1);
-            masm.neon.ld4rVVVV(FullReg, ElementSize.Word, v0, v1, v2, v3, AArch64Address.createStructureNoOffsetAddress(rscratch1));
+            masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v16, v17, v18, v19,
+                            AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Word, rscratch1, 64));
+            masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v20, v21, v22, v23,
+                            AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Word, rscratch1, 64));
+            masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v24, v25, v26, v27,
+                            AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Word, rscratch1, 64));
+            masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v28, v29, v30, v31,
+                            AArch64Address.createStructureNoOffsetAddress(rscratch1));
         }
 
-        // load 5 words state into v6, v7
-        masm.fldr(128, v6, AArch64Address.createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, state, 0));
-        masm.fldr(32, v7, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, state, 16));
+        masm.fldp(128, v0, v1, AArch64Address.createPairBaseRegisterOnlyAddress(128, state));
 
-        Label labelSHA1Loop = new Label();
-        masm.bind(labelSHA1Loop);
-        // load 64 bytes of data into v16..v19
-        masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v16, v17, v18, v19,
+        Label labelSHA256Loop = new Label();
+        masm.bind(labelSHA256Loop);
+
+        masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v8, v9, v10, v11,
                         multiBlock ? AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Word, buf, 64)
                                         : AArch64Address.createStructureNoOffsetAddress(buf));
-        masm.neon.rev32VV(FullReg, ElementSize.Byte, v16, v16);
-        masm.neon.rev32VV(FullReg, ElementSize.Byte, v17, v17);
-        masm.neon.rev32VV(FullReg, ElementSize.Byte, v18, v18);
-        masm.neon.rev32VV(FullReg, ElementSize.Byte, v19, v19);
+        masm.neon.rev32VV(FullReg, ElementSize.Byte, v8, v8);
+        masm.neon.rev32VV(FullReg, ElementSize.Byte, v9, v9);
+        masm.neon.rev32VV(FullReg, ElementSize.Byte, v10, v10);
+        masm.neon.rev32VV(FullReg, ElementSize.Byte, v11, v11);
 
-        // do the sha1
-        masm.neon.addVVV(FullReg, ElementSize.Word, v4, v16, v0);
-        masm.neon.orrVVV(FullReg, v20, v6, v6);
+        masm.neon.addVVV(FullReg, ElementSize.Word, v6, v8, v16);
+        masm.neon.orrVVV(FullReg, v2, v0, v0);
+        masm.neon.orrVVV(FullReg, v3, v1, v1);
 
-        Register d0 = v16;
-        Register d1 = v17;
-        Register d2 = v18;
-        Register d3 = v19;
+        Register d0 = v8;
+        Register d1 = v9;
+        Register d2 = v10;
+        Register d3 = v11;
 
-        for (int round = 0; round < 20; round++) {
-            Register tmp1 = ((round & 1) == 1) ? v4 : v5;
-            Register tmp2 = ((round & 1) == 1) ? v21 : v22;
-            Register tmp3 = (round != 0) ? (((round & 1) == 1) ? v22 : v21) : v7;
-            Register tmp4 = ((round & 1) == 1) ? v5 : v4;
-            Register key = (round < 4) ? v0 : ((round < 9) ? v1 : ((round < 14) ? v2 : v3));
+        for (int round = 0; round < 16; round++) {
+            Register tmp1 = ((round & 1) == 1) ? v6 : v7;
+            Register tmp2 = ((round & 1) == 1) ? v7 : v6;
+            // tmp3 and tmp4 from the original stub are not used
 
-            if (round < 16) {
-                masm.neon.sha1su0(d0, d1, d2);
+            if (round < 12) {
+                masm.neon.sha256su0(d0, d1);
             }
-            if (round < 19) {
-                masm.neon.addVVV(FullReg, ElementSize.Word, tmp1, d1, key);
+            masm.neon.orrVVV(FullReg, v4, v2, v2);
+            if (round < 15) {
+                masm.neon.addVVV(FullReg, ElementSize.Word, tmp1, d1, asFloatRegister(v0, round + 17));
             }
-            masm.neon.sha1h(tmp2, v20);
-            if (round < 5) {
-                masm.neon.sha1c(v20, tmp3, tmp4);
-            } else if (round < 10 || round >= 15) {
-                masm.neon.sha1p(v20, tmp3, tmp4);
-            } else {
-                masm.neon.sha1m(v20, tmp3, tmp4);
-            }
-            if (round < 16) {
-                masm.neon.sha1su1(d0, d3);
+            masm.neon.sha256h(v2, v3, tmp2);
+            masm.neon.sha256h2(v3, v4, tmp2);
+            if (round < 12) {
+                masm.neon.sha256su1(d0, d2, d3);
             }
 
             tmp1 = d0;
@@ -231,20 +272,23 @@ public final class AArch64SHA1Op extends AArch64LIRInstruction {
             d3 = tmp1;
         }
 
-        masm.neon.addVVV(HalfReg, ElementSize.Word, v7, v7, v21);
-        masm.neon.addVVV(FullReg, ElementSize.Word, v6, v6, v20);
+        masm.neon.addVVV(FullReg, ElementSize.Word, v0, v0, v2);
+        masm.neon.addVVV(FullReg, ElementSize.Word, v1, v1, v3);
 
         if (multiBlock) {
             masm.add(32, ofs, ofs, 64);
             masm.cmp(32, ofs, limit);
-            masm.branchConditionally(ConditionFlag.LE, labelSHA1Loop);
+            masm.branchConditionally(LE, labelSHA256Loop);
 
             GraalError.guarantee(resultValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
             masm.mov(32, asRegister(resultValue), ofs); // return ofs
         }
 
-        masm.fstr(128, v6, AArch64Address.createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, state, 0));
-        masm.fstr(32, v7, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, state, 16));
+        // We have marked v8-v11 as @Temp. The register allocator will take care of the spilling.
+        // masm.fldp(64, v10, v11, [sp,#16])
+        // masm.fldp(64, v8, v9, [sp],#32)
+
+        masm.fstp(128, v0, v1, AArch64Address.createPairBaseRegisterOnlyAddress(128, state));
     }
 
 }

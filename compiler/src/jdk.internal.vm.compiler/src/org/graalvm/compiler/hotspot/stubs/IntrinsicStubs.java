@@ -45,6 +45,7 @@ import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
 import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -71,6 +72,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 BigIntegerMulAddNode.class,
                 BigIntegerSquareToLenNode.class,
                 SHA1Node.class,
+                SHA256Node.class,
 })
 public final class IntrinsicStubs {
 }

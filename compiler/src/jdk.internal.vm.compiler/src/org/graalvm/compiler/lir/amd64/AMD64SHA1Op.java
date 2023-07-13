@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
@@ -33,6 +32,8 @@ import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
+import static jdk.vm.ci.amd64.AMD64.xmm8;
+import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -41,9 +42,9 @@ import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddres
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -108,6 +109,8 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
                         xmm5.asValue(),
                         xmm6.asValue(),
                         xmm7.asValue(),
+                        xmm8.asValue(),
+                        xmm9.asValue(),
         };
 
         if (multiBlock) {
@@ -133,18 +136,25 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        GraalError.guarantee(bufValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid bufValue kind: %s", bufValue);
+        GraalError.guarantee(stateValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid stateValue kind: %s", stateValue);
+
         Register buf;
         Register state = asRegister(stateValue);
         Register ofs;
         Register limit;
 
         if (multiBlock) {
+            GraalError.guarantee(ofsValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid ofsValue kind: %s", ofsValue);
+            GraalError.guarantee(limitValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid limitValue kind: %s", limitValue);
+            GraalError.guarantee(resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
+
             buf = asRegister(bufTempValue);
             ofs = asRegister(ofsTempValue);
             limit = asRegister(limitValue);
 
             masm.movq(buf, asRegister(bufValue));
-            masm.movq(ofs, asRegister(ofsValue));
+            masm.movl(ofs, asRegister(ofsValue));
         } else {
             buf = asRegister(bufValue);
             ofs = Register.None;
@@ -160,7 +170,8 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
         Register msg3 = xmm6;
         Register shufMask = xmm7;
 
-        masm.subq(rsp, crb.target.wordSize * 4);
+        Register e0Backup = xmm8;
+        Register abcdBackup = xmm9;
 
         Label labelDoneHash = new Label();
         Label labelLoop0 = new Label();
@@ -174,8 +185,9 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
 
         masm.bind(labelLoop0);
         // Save hash values for addition after rounds
-        masm.movdqu(new AMD64Address(rsp, 0), e0);
-        masm.movdqu(new AMD64Address(rsp, 16), abcd);
+        // Save e0, abcd in registers instead of stack
+        masm.movdqu(e0Backup, e0);
+        masm.movdqu(abcdBackup, abcd);
 
         // Rounds 0 - 3
         masm.movdqu(msg0, new AMD64Address(buf, 0));
@@ -334,17 +346,19 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
         masm.sha1rnds4(abcd, e1, 3);
 
         // add current hash values with previously saved
-        masm.movdqu(msg0, new AMD64Address(rsp, 0));
+        masm.movdqu(msg0, e0Backup);
         masm.sha1nexte(e0, msg0);
-        masm.movdqu(msg0, new AMD64Address(rsp, 16));
+        masm.movdqu(msg0, abcdBackup);
         masm.paddd(abcd, msg0);
 
         if (multiBlock) {
             // increment data pointer and loop if more to process
             masm.addq(buf, 64);
-            masm.addq(ofs, 64);
-            masm.cmpqAndJcc(ofs, limit, AMD64Assembler.ConditionFlag.BelowEqual, labelLoop0, false);
-            masm.movq(asRegister(resultValue), ofs); // return ofs
+            masm.addl(ofs, 64);
+            masm.cmplAndJcc(ofs, limit, ConditionFlag.BelowEqual, labelLoop0, false);
+
+            GraalError.guarantee(resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
+            masm.movl(asRegister(resultValue), ofs); // return ofs
         }
         // write hash values back in the correct order
         masm.pshufd(abcd, abcd, 0x1b);
@@ -352,6 +366,5 @@ public final class AMD64SHA1Op extends AMD64LIRInstruction {
         masm.pextrd(new AMD64Address(state, 16), e0, 3);
 
         masm.bind(labelDoneHash);
-        masm.addq(rsp, crb.target.wordSize * 4);
     }
 }
