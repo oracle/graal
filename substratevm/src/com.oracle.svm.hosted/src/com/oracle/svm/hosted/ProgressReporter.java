@@ -384,7 +384,7 @@ public class ProgressReporter {
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALL_STUBS, (numForeignFunctionsDowncallStubs >= 0 ? numForeignFunctionsDowncallStubs : UNAVAILABLE_METRIC));
         if (numForeignFunctionsDowncallStubs >= 0) {
             l().a(stubsFormat, numForeignFunctionsDowncallStubs)
-                            .a(" registered for foreign downcalls").println();
+                            .doclink(" registered for foreign downcalls", "#glossary-foreign-stubs-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
