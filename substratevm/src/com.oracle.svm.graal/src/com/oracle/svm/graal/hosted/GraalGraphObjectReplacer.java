@@ -112,6 +112,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private final Field substrateTypeRawAllInstanceFieldsField;
     private final Field substrateMethodImplementationsField;
 
+    private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
+
+    /**
+     * Tracks whether it is legal to create new types.
+     */
+    private boolean forbidNewTypes = false;
+
     public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, SubstrateProviders sProviders, SubstrateUniverseFactory universeFactory) {
         this.aUniverse = aUniverse;
         this.sProviders = sProviders;
@@ -155,7 +162,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             HotSpotBackendFactory factory = (HotSpotBackendFactory) source;
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
             if (!factory.getArchitecture().equals(hostArch.getClass())) {
-                throw new UnsupportedFeatureException("Non-host archtecture HotSpotBackendFactory should not appear in the image: " + source);
+                throw new UnsupportedFeatureException("Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
             }
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
@@ -196,7 +203,11 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         assert dest != null;
-        String className = dest.getClass().getName();
+        Class<?> destClass = dest.getClass();
+        if (jvmciCleanerClass.isAssignableFrom(destClass)) {
+            throw new UnsupportedFeatureException(jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
+        }
+        String className = destClass.getName();
         assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
         assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
         assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
@@ -284,6 +295,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         return types.containsKey(toAnalysisType(original));
     }
 
+    /**
+     * After this is called no new types can be created.
+     */
+    public void forbidNewTypes() {
+        forbidNewTypes = true;
+    }
+
     public synchronized SubstrateType createType(JavaType original) {
         assert !(original instanceof SubstrateType) : original;
         if (original == null) {
@@ -295,7 +313,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateType sType = types.get(aType);
 
         if (sType == null) {
-            assert !(original instanceof HostedType) : "too late to create new type";
+            VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
             aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
             sType = new SubstrateType(aType.getJavaKind(), hub);
@@ -428,7 +446,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || hField.isUnknownValue(), constantValue);
+            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
     }
 

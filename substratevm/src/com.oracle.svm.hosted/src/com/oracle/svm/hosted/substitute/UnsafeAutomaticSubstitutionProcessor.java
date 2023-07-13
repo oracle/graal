@@ -319,8 +319,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      */
     void processComputedValueFields(DuringAnalysisAccessImpl access) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
-            if (field instanceof ComputedValue) {
-                ComputedValue cvField = (ComputedValue) field;
+            if (field instanceof ComputedValueField) {
+                ComputedValueField cvField = (ComputedValueField) field;
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
@@ -353,7 +353,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (hostType.isArray()) {
             return;
         }
-        if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(hostType)) {
+        if (!hostVM.getClassInitializationSupport().maybeInitializeAtBuildTime(hostType)) {
             /*
              * The class initializer of this type is executed at run time. The methods in Unsafe are
              * substituted to return the correct value at image runtime, or fail if the field was

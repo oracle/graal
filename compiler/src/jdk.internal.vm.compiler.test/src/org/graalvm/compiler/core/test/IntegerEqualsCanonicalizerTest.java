@@ -27,6 +27,10 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
@@ -174,6 +178,81 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     public void testEqualsNot() {
         test("testEqualsNotLeftSnippet", "testEqualsNotReferenceSnippet");
         test("testEqualsNotRightSnippet", "testEqualsNotReferenceSnippet");
+    }
+
+    @Test
+    public void testXorEquality() {
+        // (x ^ y) == (x ^ z) is equivalent to y == z
+        StructuredGraph g = parseEager("testXorEqualsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 1 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 4 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
+        test("testXorEqualsSnippet", "testXorEqualsReference");
+    }
+
+    public static void testXorEqualsSnippet(int x, int y, int z) {
+        field = (x ^ y) == (x ^ z) ? 1 : 0;
+        field = (x ^ y) == (z ^ x) ? 1 : 0;
+        field = (y ^ x) == (x ^ z) ? 1 : 0;
+        field = (y ^ x) == (z ^ x) ? 1 : 0;
+    }
+
+    public static void testXorEqualsReference(@SuppressWarnings("unused") int x, int y, int z) {
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+        field = y == z ? 1 : 0;
+    }
+
+    @Test
+    public void testXorNeutral() {
+        // (x ^ y) == x is equivalent to y == 0
+        StructuredGraph g = parseEager("testXorNeutralSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 2 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 4 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
+        test("testXorNeutralSnippet", "testXorNeutralReference");
+    }
+
+    public static void testXorNeutralSnippet(int x, int y) {
+        field = (x ^ y) == x ? 1 : 0;
+        field = x == (x ^ y) ? 1 : 0;
+        field = (x ^ y) == y ? 1 : 0;
+        field = y == (x ^ y) ? 1 : 0;
+    }
+
+    public static void testXorNeutralReference(int x, int y) {
+        field = y == 0 ? 1 : 0;
+        field = y == 0 ? 1 : 0;
+        field = x == 0 ? 1 : 0;
+        field = x == 0 ? 1 : 0;
+    }
+
+    @Test
+    public void testXorEqualsZero() {
+        // (x ^ y) == 0 is equivalent to x == y
+        StructuredGraph g = parseEager("testXorEqualsZeroSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        assert g.getNodes().filter(n -> n instanceof XorNode).count() == 0 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof ConditionalNode).count() == 1 : "Unexpected node count!";
+        assert g.getNodes().filter(n -> n instanceof StoreFieldNode).count() == 1 : "Unexpected node count!";
+
+        // test graph equivalence to reference snippet
+        test("testXorEqualsZeroSnippet", "testXorEqualsZeroReference");
+    }
+
+    public static void testXorEqualsZeroSnippet(int x, int y) {
+        field = (x ^ y) == 0 ? 1 : 0;
+    }
+
+    public static void testXorEqualsZeroReference(int x, int y) {
+        field = x == y ? 1 : 0;
     }
 
     private void test(String snippet, String referenceSnippet) {

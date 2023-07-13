@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
@@ -40,7 +41,7 @@ public class AllocationCounter {
     /** Name of the method that increments this counter. */
     private final String name;
     /** Next allocation counter - this value is only written during compilation. */
-    @UnknownObjectField private AllocationCounter next;
+    @UnknownObjectField(availability = AfterCompilation.class) private AllocationCounter next;
     /** Number of allocations. */
     private long count;
     /** Size of allocations in bytes. */

@@ -321,6 +321,17 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         }
     }
 
+    /* Handle launcher default vm arguments. We apply these first, so they can
+       be overridden by explicit arguments on the commandline. */
+    #ifdef LAUNCHER_DEFAULT_VM_ARGS
+    const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
+    for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
+        if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
+            parse_vm_option(&vmArgs, &cp, launcherDefaultVmArgs[i]);
+        }
+    }
+    #endif LAUNCHER_DEFAULT_VM_ARGS
+
     /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {

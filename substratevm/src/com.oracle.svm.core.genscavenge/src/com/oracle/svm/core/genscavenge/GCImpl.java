@@ -546,6 +546,19 @@ public final class GCImpl implements GC {
                 rootScanTimer.close();
             }
 
+            Timer referenceObjectsTimer = timers.referenceObjects.open();
+            try {
+                startTicks = JfrGCEvents.startGCPhasePause();
+                try {
+                    Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
+                    HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
+                } finally {
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
+                }
+            } finally {
+                referenceObjectsTimer.close();
+            }
+
             if (RuntimeCompilation.isEnabled()) {
                 Timer cleanCodeCacheTimer = timers.cleanCodeCache.open();
                 try {
@@ -563,19 +576,6 @@ public final class GCImpl implements GC {
                 } finally {
                     cleanCodeCacheTimer.close();
                 }
-            }
-
-            Timer referenceObjectsTimer = timers.referenceObjects.open();
-            try {
-                startTicks = JfrGCEvents.startGCPhasePause();
-                try {
-                    Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
-                    HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
-                } finally {
-                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
-                }
-            } finally {
-                referenceObjectsTimer.close();
             }
 
             Timer releaseSpacesTimer = timers.releaseSpaces.open();

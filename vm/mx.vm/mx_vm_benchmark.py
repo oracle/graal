@@ -25,6 +25,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import datetime
 import os
 import re
 import shutil
@@ -134,7 +135,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -203,6 +204,8 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
                 self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
+            if vm.optimization_level:
+                self.base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
                 self.base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
@@ -256,6 +259,7 @@ class NativeImageVM(GraalVm):
         self.profile_inference_feature_extraction = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
+        self.optimization_level = None
         self._configure_from_name(config_name)
 
     def _configure_from_name(self, config_name):
@@ -275,7 +279,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -397,6 +401,14 @@ class NativeImageVM(GraalVm):
             mx.logv(f"GraalVM edition is set to: {edition}")
             self.graalvm_edition = edition
 
+        if matching.group("optimization_level") is not None:
+            olevel = matching.group("optimization_level")[:-1]
+            mx.logv(f"GraalVM optimization level is set to: {olevel}")
+            if olevel in ["O0", "O1", "O2", "O3"]:
+                self.optimization_level = olevel
+            else:
+                mx.abort(f"Unknown configuration for optimization level: {olevel}")
+
         if matching.group("no_inlining_before_analysis") is not None:
             option = matching.group("no_inlining_before_analysis")[:-1]
             if option == "no-inline":
@@ -452,7 +464,11 @@ class NativeImageVM(GraalVm):
     def extract_benchmark_arguments(args):
         i = 0
         clean_args = args[:]
+        split_run = None
         while i < len(args):
+            if args[i].startswith('--split-run'):
+                split_run = clean_args.pop(i + 1)
+                clean_args.pop(i)
             if args[i].startswith('--jvmArgsPrepend'):
                 clean_args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
                 i += 2
@@ -485,7 +501,7 @@ class NativeImageVM(GraalVm):
                     image_vm_args.append(vm_arg)
                     i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args
+        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -520,7 +536,7 @@ class NativeImageVM(GraalVm):
             self.stderr_file = open(self.stderr_path, 'w')
 
             self.separator_line()
-            mx.log('Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
+            mx.log(self.get_timestamp() + 'Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
             self.separator_line()
 
             mx.log('Running: ')
@@ -538,17 +554,23 @@ class NativeImageVM(GraalVm):
             self.stderr_file.flush()
 
             if self.exit_code == 0 and (tb is None):
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': PASS\n')
                 self.successfully_finished_stages.append(self.current_stage)
                 if self.current_stage.startswith(self.config.last_stage):
-                    self.bench_out('Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
+                    self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
                 else:
-                    mx.log('Successfully finished stage:' + ' ' + self.current_stage)
+                    mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.current_stage)
 
                 self.separator_line()
             else:
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': FAILURE\n')
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
 
                 if self.stdout_path:
                     mx.log(mx.colorize('--------- Standard output:', 'blue'))
@@ -561,7 +583,7 @@ class NativeImageVM(GraalVm):
                         mx.log(stderr.read())
 
                 if tb:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' with ', 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' with ', 'red'))
                     print_tb(tb)
 
                 self.separator_line()
@@ -583,7 +605,7 @@ class NativeImageVM(GraalVm):
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
-                    mx.abort('Exiting the benchmark due to the failure.')
+                    mx.abort(self.get_timestamp() + 'Exiting the benchmark due to the failure.')
 
             self.stdout_file.close()
             self.stderr_file.close()
@@ -595,7 +617,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_out:
                     self.bench_out(s)
                 else:
-                    mx.logv(s, end='')
+                    mx.log(s, end='')
                 return v
             return writeFun
 
@@ -605,7 +627,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_err:
                     self.bench_err(s)
                 else:
-                    mx.logv(s, end='')
+                    mx.log(s, end='')
                 return v
             return writeFun
 
@@ -622,6 +644,10 @@ class NativeImageVM(GraalVm):
         @staticmethod
         def separator_line():
             mx.log(mx.colorize('-' * 120, 'green'))
+
+        @staticmethod
+        def get_timestamp():
+            return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] '
 
         def set_command(self, command):
             self.command = command
@@ -870,6 +896,13 @@ class NativeImageVM(GraalVm):
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 
+        path = os.path.join(config.config_dir, "config.zip")
+        with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(config.config_dir):
+                for file in files:
+                    if file.endswith(".json"):
+                        zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
+
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
@@ -889,6 +922,10 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
+        # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
+        # Override checkSamplesInPgo in your suite and have it return False.
+        if not self.bmSuite.checkSamplesInPgo():
+            return
         # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
         if not self.is_llvm and not self.jdk_profiles_collect:
             with open(profile_path) as profile_file:
@@ -912,7 +949,13 @@ class NativeImageVM(GraalVm):
             else:
                 print(f"Profile file {config.latest_profile_path} not dumped. Instrument run failed with exit code {s.exit_code}")
 
-    def run_stage_image(self, config, stages):
+    def _print_binary_size(self, config, out):
+        # The image size for benchmarks is tracked by printing on stdout and matching the rule.
+        image_path = os.path.join(config.output_dir, config.final_image_name)
+        image_size = os.stat(image_path).st_size
+        out(f'The executed image size for benchmark {config.benchmark_suite_name}:{config.benchmark_name} is {image_size} B')
+
+    def run_stage_image(self, config, stages, out):
         executable_name_args = ['-H:Name=' + config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
@@ -921,8 +964,9 @@ class NativeImageVM(GraalVm):
             # choose appropriate profiles
             jdk_version = mx.get_jdk().javaCompliance
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
-            adopted_profiles_zip = mx.library(jdk_profiles).get_path(False)
-            if adopted_profiles_zip:
+            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
+            if adopted_profiles_lib:
+                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
                 adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
                 with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
                     zip_ref.extractall(adopted_profiles_dir)
@@ -945,6 +989,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(config)
+            self._print_binary_size(config, out)
             if self.use_upx:
                 image_path = os.path.join(config.output_dir, config.final_image_name)
                 upx_directory = mx.library("UPX", True).get_path(True)
@@ -960,9 +1005,7 @@ class NativeImageVM(GraalVm):
         with stages.set_command([image_path] + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
-                # The image size for benchmarks is tracked by printing on stdout and matching the rule.
-                image_size = os.stat(image_path).st_size
-                out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
+                self._print_binary_size(config, out)
                 image_sections_command = "objdump -h " + image_path
                 out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
                 for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
@@ -1016,7 +1059,7 @@ class NativeImageVM(GraalVm):
 
         # Build the final image
         if stages.change_stage('image'):
-            self.run_stage_image(config, stages)
+            self.run_stage_image(config, stages, out)
 
         # Execute the benchmark
         if stages.change_stage('run'):
@@ -1516,6 +1559,8 @@ def register_graalvm_vms():
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
             mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
+    optimization_levels = ['O0', 'O1', 'O2', 'O3']
+
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = [f"{analysis_component}-no-inline" for analysis_component in analysis_context_sensitivity]
@@ -1525,7 +1570,15 @@ def register_graalvm_vms():
             for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
-            break
+                # ' '  force the empty O<> configs as well
+            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+                for optimization_level in optimization_levels:
+                    if len(main_config) > 0:
+                        final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
+                    else:
+                        final_config_name = f'{optimization_level}-{config_suffix}'
+                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
     for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:

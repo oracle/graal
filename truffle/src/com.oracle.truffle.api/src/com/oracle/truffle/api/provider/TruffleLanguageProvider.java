@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.ServiceLoader;
 
 /**
@@ -86,9 +87,9 @@ public abstract class TruffleLanguageProvider {
     protected abstract Collection<String> getServicesClassNames();
 
     /**
-     * Loads implementations of {@code type} service.
+     * Creates file type detectors used by the {@link TruffleLanguage}.
      *
      * @since 23.1
      */
-    protected abstract <S> Iterable<S> loadTruffleService(Class<S> type);
+    protected abstract List<?> createFileTypeDetectors();
 }

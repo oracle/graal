@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,6 +43,9 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
@@ -564,7 +564,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
             @Override
             protected int computeSize() {
-                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() - 1;
+                return OptimizedRuntimeOptions.SplittingMaxCalleeSize.getDefaultValue() - 1;
             }
         }.getCallTarget();
         Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
@@ -577,7 +577,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
             @Override
             protected int computeSize() {
-                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() + 1;
+                return OptimizedRuntimeOptions.SplittingMaxCalleeSize.getDefaultValue() + 1;
             }
         }.getCallTarget();
         Object[] first = new Object[]{new DummyRootNode().getCallTarget()};

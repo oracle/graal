@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: build-overview
 link_title: Build Options
 permalink: /reference-manual/native-image/overview/BuildOptions/
@@ -71,7 +71,7 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `--tool:chromeinspector`: add debugging support to a GraalVM-supported language
 * `--tool:insightheap`: snapshot a region of image heap during the execution
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like Visual Studio Code
-* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../embedding/sandbox-options.md)
+* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](../../security/polyglot-sandbox.md)
 * `--tool:profiler`: add profiling support to a GraalVM-supported language
 
 The `--language:js` `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`, `--language:wasm`, `--language:llvm`, `--language:regex` (enables the Truffle Regular Expression engine) polyglot macro options become available once the corresponding languages are added to the base GraalVM JDK.
@@ -80,6 +80,7 @@ The `--language:js` `--language:nodejs`, `--language:python`, `--language:ruby`,
 
 Run `native-image --help-extra` for non-standard options help.
 
+* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: '--exclude-config foo.jar,META-INF\/native-image\/.*.properties' ignores all .properties files in 'META-INF/native-image' in all JARs named 'foo.jar'.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all `: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.

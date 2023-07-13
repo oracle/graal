@@ -198,7 +198,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, headers=False, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, **kwargs):
         """
         :param str language
         :param str main_class
@@ -214,6 +214,8 @@ class LanguageLibraryConfig(LibraryConfig):
         self.relative_home_paths = {}
         self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
         self.option_vars = [] if option_vars is None else option_vars
+        self.default_vm_args = [] if default_vm_args is None else default_vm_args
+        assert all(arg.startswith("--vm.") for arg in self.default_vm_args)
 
         # Ensure the language launcher can always find the language home
         self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
@@ -371,12 +373,13 @@ class GraalVmComponent(object):
 
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
-                 include_in_polyglot=None, standalone_dir_name=None, standalone_dependencies=None,
-                 standalone_dependencies_enterprise=None, **kwargs):
+                 include_in_polyglot=None, standalone_dir_name=None, standalone_dir_name_enterprise=None,
+                 standalone_dependencies=None, standalone_dependencies_enterprise=None, **kwargs):
         """
         :param list[str] truffle_jars: JAR distributions that should be on the classpath for the language implementation.
         :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images (deprecated).
         :param str standalone_dir_name: name for the standalone archive and directory inside
+        :param str standalone_dir_name_enterprise: like `standalone_dir_name`, but for the EE standalone. Defaults to `standalone_dir_name` if not set.
         :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the CE standalone in the form {component name: (relative path, excluded_paths)}.
         :param dict[str, (str, list[str])] standalone_dependencies_enterprise: like `standalone_dependencies`, but for the EE standalone. Defaults to `standalone_dependencies` if not set.
         """
@@ -385,6 +388,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
         if include_in_polyglot is not None:
             mx.warn('"include_in_polyglot" is deprecated. Please drop all uses.')
         self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
+        self.standalone_dir_name_enterprise = standalone_dir_name_enterprise or self.standalone_dir_name
         self.standalone_dependencies = standalone_dependencies or {}
         self.standalone_dependencies_enterprise = standalone_dependencies_enterprise or self.standalone_dependencies
         assert isinstance(self.standalone_dependencies, dict)
@@ -664,11 +668,21 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
         grant codeBase "jrt:/org.graalvm.truffle" {
             permission java.security.AllPermission;
         };
-
         grant codeBase "jrt:/org.graalvm.sdk" {
             permission java.security.AllPermission;
         };
-
+        grant codeBase "jrt:/org.graalvm.truffle.runtime" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.truffle.compiler" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.nativebridge" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.jniutils" {
+            permission java.security.AllPermission;
+        };
         grant codeBase "jrt:/org.graalvm.locator" {
           permission java.io.FilePermission "<<ALL FILES>>", "read";
           permission java.util.PropertyPermission "*", "read,write";

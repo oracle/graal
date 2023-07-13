@@ -211,9 +211,9 @@ public final class SubprocessTestUtils {
     private static String[] getForbiddenVmOptions() {
         return new String[]{
                         graalOption("CompilationFailureAction"),
-                        graalOption("CompilationFailureAction"),
-                        graalOption("CompilationFailureAction"),
-                        graalOption("CompilationFailureAction"),
+                        graalOption("CompilationBailoutAsFailure"),
+                        graalOption("CrashAt"),
+                        graalOption("DumpOnError"),
                         // Filter out the LogFile option to prevent overriding of the unit tests log
                         // file by a sub-process.
                         graalOption("LogFile"), // HotSpotTTYStreamProvider.Options#LogFile

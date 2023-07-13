@@ -160,27 +160,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests that --engine.CompilationExceptionsAreFatal works as expected.
-     */
-    @Test
-    public void testTruffleCompilation2() throws IOException, InterruptedException {
-        Probe[] probes = {
-                        new Probe("Exiting VM due to engine.CompilationExceptionsAreFatal=true", 1),
-        };
-        testHelper(Arrays.asList(probes),
-                        Arrays.asList(
-                                        SubprocessUtil.PACKAGE_OPENING_OPTIONS,
-                                        "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dpolyglot.engine.CompilationExceptionsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1"),
-                        "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
-    }
-
-    /**
      * Tests that --engine.CompilationFailureAction=ExitVM generates diagnostic output.
      */
     @Test
-    public void testTruffleCompilation3() throws IOException, InterruptedException {
+    public void testTruffleCompilation2() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         Probe[] probes = {
                         new Probe("Exiting VM due to engine.CompilationFailureAction=ExitVM", 1),

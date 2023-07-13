@@ -28,18 +28,16 @@ import org.graalvm.profdiff.args.BooleanArgument;
 import org.graalvm.profdiff.args.CommandGroup;
 import org.graalvm.profdiff.args.DoubleArgument;
 import org.graalvm.profdiff.args.IntegerArgument;
-import org.graalvm.profdiff.args.InvalidArgumentException;
-import org.graalvm.profdiff.args.MissingArgumentException;
 import org.graalvm.profdiff.args.ProgramArgumentParser;
-import org.graalvm.profdiff.args.UnknownArgumentException;
 import org.graalvm.profdiff.command.AOTAOTCommand;
+import org.graalvm.profdiff.command.AOTAOTWithJITProfileCommand;
 import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
 import org.graalvm.profdiff.command.ReportCommand;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.OptionValues;
-import org.graalvm.profdiff.core.StdoutWriter;
+import org.graalvm.profdiff.core.Writer;
 
 public class Profdiff {
     private static class ProgramArguments {
@@ -106,23 +104,13 @@ public class Profdiff {
                             "command", "the action to invoke");
         }
 
-        public void parseOrExit(String[] args) {
-            try {
-                argumentParser.parse(args);
-            } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
-                System.err.println(e.getMessage());
-                System.err.println(argumentParser.formatHelp());
-                System.exit(1);
-            }
-
+        public void parseAndVerifyArguments(String[] args) throws Exception {
+            argumentParser.parse(args);
             if (percentileArgument.getValue() > 1 || percentileArgument.getValue() < 0) {
-                System.err.println("The hot method percentile must be in the range [0;1].");
-                System.exit(1);
+                throw new IllegalArgumentException("The hot method percentile must be in the range [0;1].");
             }
-
             if (hotMinArgument.getValue() < 0 || hotMinArgument.getValue() > hotMaxArgument.getValue()) {
-                System.err.printf("The condition 0 <= %s <= %s must be satisfied.", hotMinArgument.getName(), hotMaxArgument.getName());
-                System.exit(1);
+                throw new IllegalArgumentException(String.format("The condition 0 <= %s <= %s must be satisfied.", hotMinArgument.getName(), hotMaxArgument.getName()));
             }
         }
 
@@ -151,22 +139,36 @@ public class Profdiff {
         }
     }
 
-    public static void main(String[] args) {
+    public static boolean mainImpl(String[] args) {
         ProgramArguments programArguments = new ProgramArguments();
         CommandGroup commandGroup = programArguments.getCommandGroup();
         commandGroup.addCommand(new ReportCommand());
         commandGroup.addCommand(new JITJITCommand());
         commandGroup.addCommand(new JITAOTCommand());
         commandGroup.addCommand(new AOTAOTCommand());
+        commandGroup.addCommand(new AOTAOTWithJITProfileCommand());
         commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
 
-        programArguments.parseOrExit(args);
+        try {
+            programArguments.parseAndVerifyArguments(args);
+        } catch (Exception exception) {
+            System.err.println(exception.getMessage());
+            System.err.println(programArguments.argumentParser.formatHelp());
+            return false;
+        }
 
-        StdoutWriter writer = new StdoutWriter(programArguments.getOptionValues());
+        Writer writer = Writer.standardOutput(programArguments.getOptionValues());
         try {
             commandGroup.getSelectedCommand().invoke(writer);
         } catch (Exception exception) {
             System.err.println(exception.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        if (!mainImpl(args)) {
             System.exit(1);
         }
     }

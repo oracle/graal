@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 final class TrivialOnlyInliningPolicy implements InliningPolicy {
     private final OptionValues options;
@@ -36,7 +36,7 @@ final class TrivialOnlyInliningPolicy implements InliningPolicy {
 
     @Override
     public void run(CallTree tree) {
-        String inlineOnly = options.get(PolyglotCompilerOptions.InlineOnly);
+        String inlineOnly = TruffleCompilerOptions.InlineOnly.getValue(options);
         for (CallNode child : tree.getRoot().getChildren()) {
             if (!InliningPolicy.acceptForInline(child, inlineOnly)) {
                 continue;

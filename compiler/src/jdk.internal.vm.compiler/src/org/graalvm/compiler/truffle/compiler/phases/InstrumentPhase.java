@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundariesPerInlineSite;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranchesPerInlineSite;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentationTableSize;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentBoundaries;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentBoundariesPerInlineSite;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentBranches;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentBranchesPerInlineSite;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentationTableSize;
 
 import java.lang.reflect.Method;
 import java.util.AbstractMap;
@@ -53,10 +53,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -85,10 +85,10 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
     }
 
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "callDirect"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;
     protected final SnippetReflectionProvider snippetReflection;
@@ -103,7 +103,7 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
     }
 
     protected String instrumentationFilter(OptionValues options) {
-        return options.get(PolyglotCompilerOptions.InstrumentFilter);
+        return TruffleCompilerOptions.InstrumentFilter.getValue(options);
     }
 
     protected static void insertCounter(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant,
@@ -137,7 +137,7 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
     }
 
     protected MethodFilter methodFilter(TruffleTierContext context) {
-        String filterValue = instrumentationFilter(context.options);
+        String filterValue = instrumentationFilter(context.compilerOptions);
         if (filterValue != null) {
             return MethodFilter.parse(filterValue);
         } else {
@@ -384,11 +384,11 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
         public final int instrumentationTableSize;
 
         public InstrumentationConfiguration(OptionValues options) {
-            this.instrumentBranches = options.get(InstrumentBranches);
-            this.instrumentBranchesPerInlineSite = options.get(InstrumentBranchesPerInlineSite);
-            this.instrumentBoundaries = options.get(InstrumentBoundaries);
-            this.instrumentBoundariesPerInlineSite = options.get(InstrumentBoundariesPerInlineSite);
-            this.instrumentationTableSize = options.get(InstrumentationTableSize);
+            this.instrumentBranches = InstrumentBranches.getValue(options);
+            this.instrumentBranchesPerInlineSite = InstrumentBranchesPerInlineSite.getValue(options);
+            this.instrumentBoundaries = InstrumentBoundaries.getValue(options);
+            this.instrumentBoundariesPerInlineSite = InstrumentBoundariesPerInlineSite.getValue(options);
+            this.instrumentationTableSize = InstrumentationTableSize.getValue(options);
         }
     }
 

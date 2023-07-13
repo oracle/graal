@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,7 +35,9 @@ public final class BuildPhaseProvider {
 
     private boolean analysisFinished;
     private boolean hostedUniverseBuilt;
+    private boolean readyForCompilation;
     private boolean compilationFinished;
+    private boolean heapLayoutFinished;
 
     public static void init() {
         ImageSingletons.add(BuildPhaseProvider.class, new BuildPhaseProvider());
@@ -62,6 +66,14 @@ public final class BuildPhaseProvider {
         return singleton().hostedUniverseBuilt;
     }
 
+    public static void markReadyForCompilation() {
+        singleton().readyForCompilation = true;
+    }
+
+    public static boolean isReadyForCompilation() {
+        return singleton().readyForCompilation;
+    }
+
     public static void markCompilationFinished() {
         singleton().compilationFinished = true;
     }
@@ -69,4 +81,48 @@ public final class BuildPhaseProvider {
     public static boolean isCompilationFinished() {
         return singleton().compilationFinished;
     }
+
+    public static void markHeapLayoutFinished() {
+        singleton().heapLayoutFinished = true;
+    }
+
+    public static boolean isHeapLayoutFinished() {
+        return singleton().heapLayoutFinished;
+    }
+
+    public static class AfterAnalysis implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isAnalysisFinished();
+        }
+    }
+
+    public static class AfterHostedUniverse implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
+        }
+    }
+
+    public static class ReadyForCompilation implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isReadyForCompilation();
+        }
+    }
+
+    public static class AfterCompilation implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isCompilationFinished();
+        }
+    }
+
+    public static class AfterHeapLayout implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isHeapLayoutFinished();
+        }
+    }
+
 }

@@ -70,8 +70,8 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     /**
      * Description for a call to
-     * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()}
-     * via a stub.
+     * {@code com.oracle.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()} via a
+     * stub.
      */
     static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(
                     SAFEPOINT,
@@ -84,7 +84,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     /**
      * Snippet that does the same as
-     * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.poll()}.
+     * {@code com.oracle.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.poll()}.
      *
      * This condition cannot be hoisted out of loops as it is introduced in a phase late enough. See
      * {@link TruffleSafepointInsertionPhase}.

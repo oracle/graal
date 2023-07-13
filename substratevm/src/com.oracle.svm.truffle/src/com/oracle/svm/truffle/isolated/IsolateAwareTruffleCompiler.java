@@ -26,16 +26,11 @@ package com.oracle.svm.truffle.isolated;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Collections;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
@@ -49,12 +44,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.graal.isolated.ClientHandle;
@@ -69,6 +62,9 @@ import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     private static final Word ISOLATE_INITIALIZING = WordFactory.signed(-1);
@@ -85,21 +81,20 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     }
 
     @Override
-    public void initialize(Map<String, Object> options, CompilableTruffleAST compilable, boolean firstInitialization) {
+    public void initialize(TruffleCompilable compilable, boolean firstInitialization) {
         if (SubstrateOptions.shouldCompileInIsolates()) {
             // Nothing; we initialize the compiler in our isolate
         } else {
-            delegate.initialize(options, compilable, firstInitialization);
+            delegate.initialize(compilable, firstInitialization);
         }
     }
 
     @Override
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "False positive.")
-    public void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, Map<String, Object> options,
-                    TruffleCompilerListener listener) {
+    public void doCompile(TruffleCompilationTask task, TruffleCompilable compilable, TruffleCompilerListener listener) {
 
         if (!SubstrateOptions.shouldCompileInIsolates()) {
-            delegate.doCompile(task, compilable, options, listener);
+            delegate.doCompile(task, compilable, listener);
             return;
         }
 
@@ -108,7 +103,6 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             IsolatedCompileClient client = new IsolatedCompileClient(context);
             IsolatedCompileClient.set(client);
             try {
-                byte[] encodedOptions = options.isEmpty() ? null : OptionsEncoder.encode(options);
                 IsolatedEventContext eventContext = null;
                 if (listener != null) {
                     eventContext = new IsolatedEventContext(listener, compilable, task);
@@ -120,8 +114,6 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                                 client.hand(task),
                                 client.hand((SubstrateCompilableTruffleAST) compilable),
                                 compilationIdentifier,
-                                client.hand(encodedOptions),
-                                IsolatedGraalUtils.getNullableArrayLength(encodedOptions),
                                 client.hand(eventContext),
                                 firstCompilation.getAndSet(false));
 
@@ -185,16 +177,13 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ClientHandle<TruffleCompilationTask> taskHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     ClientHandle<CompilationIdentifier> compilationIdentifier,
-                    ClientHandle<byte[]> encodedOptionsHandle,
-                    int encodedOptionsLength,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     boolean firstCompilation) {
         IsolatedCompileContext.set(new IsolatedCompileContext(client));
         try {
             SubstrateTruffleCompilerImpl delegate = ImageHeapObjects.deref(delegateRef);
-            Map<String, Object> options = decodeOptions(client, encodedOptionsHandle, encodedOptionsLength);
             IsolatedCompilableTruffleAST compilable = new IsolatedCompilableTruffleAST(compilableHandle);
-            delegate.initialize(options, compilable, firstCompilation);
+            delegate.initialize(compilable, firstCompilation);
             IsolatedTruffleCompilationTask task = null;
             if (taskHandle.notEqual(IsolatedHandles.nullHandle())) {
                 task = new IsolatedTruffleCompilationTask(taskHandle);
@@ -209,7 +198,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                  * survives the compiler isolate.
                  */
                 compilation.setCompilationId(new IsolatedTruffleCompilationIdentifier(compilationIdentifier, task, compilable));
-                delegate.doCompile(compilation, options, listener);
+                delegate.doCompile(compilation, listener);
             }
             return IsolatedHandles.nullHandle(); // no exception
         } catch (Throwable t) {
@@ -226,26 +215,10 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         }
     }
 
-    private static Map<String, Object> decodeOptions(ClientIsolateThread client, ClientHandle<byte[]> encodedOptionsHandle, int encodedOptionsLength) {
-        if (encodedOptionsLength <= 0) {
-            return Collections.emptyMap();
-        }
-        byte[] encodedOptions = new byte[encodedOptionsLength];
-        try (PrimitiveArrayView refEncodedOptions = PrimitiveArrayView.createForReadingAndWriting(encodedOptions)) {
-            copyEncodedOptions(client, encodedOptionsHandle, refEncodedOptions.addressOfArrayElement(0));
-        }
-        return OptionsEncoder.decode(encodedOptions);
-    }
-
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void copyEncodedOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread client, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
         byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
         CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);
-    }
-
-    @Override
-    public String getCompilerConfigurationName() {
-        return delegate.getCompilerConfigurationName(); // constant
     }
 
     @Override

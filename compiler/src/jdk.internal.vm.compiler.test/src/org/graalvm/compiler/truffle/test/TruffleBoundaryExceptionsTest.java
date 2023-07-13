@@ -24,15 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -40,10 +35,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     @Override
     @Before
@@ -87,14 +87,14 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         }
         final int[] compilationCount = {0};
-        GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
+        OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
             @Override
             public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
                 compilationCount[0]++;
             }
         };
 
-        setupContext("engine.InvalidationReprofileCount", "0", "engine.MultiTier", "false");
+        setupContext("engine.MultiTier", "false");
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
 
@@ -161,7 +161,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = outerTarget.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             outerTarget.call();
         }
@@ -210,8 +210,8 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
-        final int invalidationReprofileCount = outerTarget.getOptionValue(PolyglotCompilerOptions.InvalidationReprofileCount);
+        final int compilationThreshold = outerTarget.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
+        final int invalidationReprofileCount = 3;
 
         for (int i = 0; i < compilationThreshold; i++) {
             try {
@@ -280,7 +280,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = outerTarget.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             try {
                 outerTarget.call();

@@ -164,6 +164,11 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         if (cryptMode.isEncrypt()) {
             gen.getLIRGeneratorTool().emitAESEncrypt(gen.operand(from), gen.operand(to), gen.operand(key));

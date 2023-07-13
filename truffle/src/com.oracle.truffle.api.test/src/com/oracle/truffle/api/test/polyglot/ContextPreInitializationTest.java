@@ -1004,7 +1004,7 @@ public class ContextPreInitializationTest {
         // In context pre-initialization there is no sdk Context to set log handler,
         // logging is done to System.err
         final PrintStream origErr = System.err;
-        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        final ByteArrayOutputStream preInitErr = new CheckCloseByteArrayOutputStream();
         String origLogFile = System.getProperty("polyglot.log.file");
         try (PrintStream printStream = new PrintStream(preInitErr)) {
             System.setErr(printStream);
@@ -1129,7 +1129,7 @@ public class ContextPreInitializationTest {
             log.log(Level.FINEST, "patch:finest");
         });
         final PrintStream origErr = System.err;
-        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        final ByteArrayOutputStream preInitErr = new CheckCloseByteArrayOutputStream();
         String origLogFile = System.getProperty("polyglot.log.file");
         try (PrintStream printStream = new PrintStream(preInitErr)) {
             System.setErr(printStream);
@@ -1198,7 +1198,7 @@ public class ContextPreInitializationTest {
             log.log(Level.FINEST, "bound2:patch:finest");
         });
         final PrintStream origErr = System.err;
-        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        final ByteArrayOutputStream preInitErr = new CheckCloseByteArrayOutputStream();
         String origLogFile = System.getProperty("polyglot.log.file");
         try (PrintStream printStream = new PrintStream(preInitErr)) {
             System.setErr(printStream);
@@ -1233,6 +1233,49 @@ public class ContextPreInitializationTest {
             assertEquals("bound:patch:finest", testHandler.logs.get(1).getMessage());
             assertEquals("bound2:patch:info", testHandler.logs.get(2).getMessage());
             assertEquals("bound2:patch:finest", testHandler.logs.get(3).getMessage());
+        }
+    }
+
+    @Test
+    public void testJavaLoggerFailedPatch() throws Exception {
+        TestHandler testHandler = new TestHandler(FIRST);
+        failedPatch(Context.newBuilder().logHandler(testHandler));
+        assertEquals(2, testHandler.logs.size());
+        assertEquals("patchContext", testHandler.logs.get(0).getMessage());
+        assertEquals("initializeContext", testHandler.logs.get(1).getMessage());
+    }
+
+    @Test
+    public void testStreamLoggerFailedPatch() throws Exception {
+        ByteArrayOutputStream logStream = new CheckCloseByteArrayOutputStream();
+        failedPatch(Context.newBuilder().logHandler(logStream));
+        String logContent = logStream.toString();
+        assertTrue(logContent.contains("patchContext"));
+        assertTrue(logContent.contains("initializeContext"));
+    }
+
+    private static void failedPatch(Context.Builder builder) throws Exception {
+        doContextPreinitialize(FIRST);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            env.getLogger("").log(Level.INFO, "initializeContext");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            env.getLogger("").log(Level.INFO, "patchContext");
+        });
+        assertEquals(1, emittedContexts.size());
+        CountingContext firstLangContext = findContext(FIRST, emittedContexts);
+        assertNotNull(firstLangContext);
+        assertEquals(1, firstLangContext.createContextCount);
+        assertEquals(1, firstLangContext.initializeContextCount);
+        assertEquals(0, firstLangContext.patchContextCount);
+        assertEquals(0, firstLangContext.disposeContextCount);
+        assertEquals(1, firstLangContext.initializeThreadCount);
+        assertEquals(1, firstLangContext.disposeThreadCount);
+        try (Context ctx = builder.option(String.format("log.%s.level", FIRST), "INFO").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            Collection<? extends CountingContext> firstLangContexts = findContexts(FIRST, emittedContexts);
+            assertEquals(2, firstLangContexts.size());
         }
     }
 
@@ -3073,14 +3116,17 @@ public class ContextPreInitializationTest {
 
         private final Set<String> importantLoggers;
         final List<LogRecord> logs = new ArrayList<>();
+        private volatile boolean closed;
 
         TestHandler(String... importantLoggers) {
-            this.importantLoggers = new HashSet<>();
-            Collections.addAll(this.importantLoggers, importantLoggers);
+            this.importantLoggers = Set.of(importantLoggers);
         }
 
         @Override
         public void publish(LogRecord record) {
+            if (closed) {
+                throw new IllegalStateException("Closed");
+            }
             if (importantLoggers.isEmpty() || importantLoggers.contains(record.getLoggerName())) {
                 logs.add(record);
             }
@@ -3088,10 +3134,14 @@ public class ContextPreInitializationTest {
 
         @Override
         public void flush() {
+            if (closed) {
+                throw new IllegalStateException("Closed");
+            }
         }
 
         @Override
         public void close() throws SecurityException {
+            closed = true;
         }
     }
 
@@ -3351,6 +3401,35 @@ public class ContextPreInitializationTest {
         @Override
         protected Map<String, Consumer<Event>> getActions() {
             return Collections.emptyMap();
+        }
+    }
+
+    private static final class CheckCloseByteArrayOutputStream extends ByteArrayOutputStream {
+
+        private boolean closed;
+
+        @Override
+        public synchronized void close() throws IOException {
+            closed = true;
+            super.close();
+        }
+
+        @Override
+        public synchronized void write(int b) {
+            checkClosed();
+            super.write(b);
+        }
+
+        @Override
+        public synchronized void write(byte[] b, int off, int len) {
+            checkClosed();
+            super.write(b, off, len);
+        }
+
+        private void checkClosed() {
+            if (closed) {
+                throw new IllegalStateException("Closed");
+            }
         }
     }
 }

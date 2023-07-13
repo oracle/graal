@@ -43,7 +43,9 @@ package com.oracle.truffle.polyglot;
 import java.lang.module.ModuleDescriptor;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -68,51 +70,72 @@ final class ModuleUtils {
             return;
         }
         ModuleLayer layer = clientModule.getLayer();
-        ClassLoader platformClassLoader = ClassLoader.getPlatformClassLoader();
+        Module truffleModule = Truffle.class.getModule();
         Set<Module> targetModules = new HashSet<>();
         Deque<Module> todo = new ArrayDeque<>();
         /*
-         * The module graph with filtered automatic and unnamed modules forms a DAG. Even there are
-         * no cycles, keeping track of visited modules speeds up the graph traversal.
+         * The module graph with reads and provides edges is not a DAG. We need to keeping track of
+         * visited modules to detect cycles.
          */
         Set<Module> visited = new HashSet<>();
         todo.add(clientModule);
+        Map<String, Set<Module>> serviceDictionary = null;
         while (!todo.isEmpty()) {
             Module module = todo.removeFirst();
-            if (visited.add(module) && Objects.equals(module.getLayer(), layer)) {
-                ClassLoader classLoader = module.getClassLoader();
-                if (classLoader != null && !classLoader.equals(platformClassLoader)) {
-                    targetModules.add(module);
-                    ModuleDescriptor descriptor = module.getDescriptor();
-                    if (descriptor == null) {
-                        /*
-                         * Unnamed module: Deprecated. The unnamed module does not have a module
-                         * descriptor, but reads the entire module graph. For unnamed modules we do
-                         * not do transitive export because we would have to open the Truffle module
-                         * to all modules in the module layer.
-                         */
-                    } else if (descriptor.isAutomatic()) {
-                        /*
-                         * Automatic module: An unnamed module has an artificial module descriptor,
-                         * with only the mandated `requires java.base` directive. But an automatic
-                         * module reads the entire module graph. For automatic modules we do not do
-                         * transitive export because we would have to open the Truffle module to all
-                         * modules in the module layer.
-                         */
-                    } else {
-                        /*
-                         * Named module with a module descriptor: Export transitively to all modules
-                         * required by the named module.
-                         */
-                        descriptor.requires().stream().//
-                                        map((d) -> findModule(layer, d)).//
-                                        filter(Objects::nonNull).//
-                                        forEach(todo::add);
+            if (visited.add(module) && Objects.equals(module.getLayer(), layer) && readsTruffleModule(truffleModule, module)) {
+                targetModules.add(module);
+                ModuleDescriptor descriptor = module.getDescriptor();
+                if (descriptor == null) {
+                    /*
+                     * Unnamed module: Deprecated. The unnamed module does not have a module
+                     * descriptor, but reads the entire module graph. For unnamed modules we do not
+                     * do transitive export because we would have to open the Truffle module to all
+                     * modules in the module layer.
+                     */
+                } else if (descriptor.isAutomatic()) {
+                    /*
+                     * Automatic module: An unnamed module has an artificial module descriptor, with
+                     * only the mandated `requires java.base` directive. But an automatic module
+                     * reads the entire module graph. For automatic modules we do not do transitive
+                     * export because we would have to open the Truffle module to all modules in the
+                     * module layer.
+                     */
+                } else {
+                    /*
+                     * Named module with a module descriptor: Export transitively to all modules
+                     * required by the named module.
+                     */
+                    for (ModuleDescriptor.Requires requires : descriptor.requires()) {
+                        Module requiredModule = findModule(layer, requires);
+                        if (requiredModule != null) {
+                            todo.add(requiredModule);
+                        }
+                    }
+                    // Open also to modules providing a service consumed by the module.
+                    Set<String> usedServices = descriptor.uses();
+                    if (!usedServices.isEmpty()) {
+                        if (serviceDictionary == null) {
+                            serviceDictionary = new HashMap<>();
+                            for (Module m : layer.modules()) {
+                                if (readsTruffleModule(truffleModule, m)) {
+                                    for (ModuleDescriptor.Provides provides : m.getDescriptor().provides()) {
+                                        serviceDictionary.computeIfAbsent(provides.service(), (k) -> new HashSet<>()).add(m);
+                                    }
+                                }
+                            }
+                        }
+                        for (String service : usedServices) {
+                            todo.addAll(serviceDictionary.getOrDefault(service, Set.of()));
+                        }
                     }
                 }
             }
         }
         targetModules.forEach(ModuleUtils::exportFromTo);
+    }
+
+    private static boolean readsTruffleModule(Module truffleModule, Module otherModule) {
+        return otherModule != truffleModule && otherModule.canRead(truffleModule);
     }
 
     private static Module findModule(ModuleLayer layer, ModuleDescriptor.Requires requires) {

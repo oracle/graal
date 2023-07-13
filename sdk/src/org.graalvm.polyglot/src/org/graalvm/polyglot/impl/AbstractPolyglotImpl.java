@@ -585,8 +585,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                        boolean allowValueSharing, boolean useSystemExit);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, String tmpDir,
+                        ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -1150,8 +1150,8 @@ public abstract class AbstractPolyglotImpl {
         return getNext().buildLimits(statementLimit, statementLimitSourceFilter, onLimit);
     }
 
-    public FileSystem newDefaultFileSystem() {
-        return getNext().newDefaultFileSystem();
+    public FileSystem newDefaultFileSystem(String hostTmpDir) {
+        return getNext().newDefaultFileSystem(hostTmpDir);
     }
 
     public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {

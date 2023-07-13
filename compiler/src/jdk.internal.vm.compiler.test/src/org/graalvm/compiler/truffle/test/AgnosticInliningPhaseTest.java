@@ -26,14 +26,11 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
 
@@ -42,6 +39,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
@@ -49,19 +49,23 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.LanguageAgnosticInlining", Boolean.TRUE.toString()).option("engine.InliningInliningBudget",
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.LanguageAgnosticInlining", Boolean.TRUE.toString()).option(
+                        "compiler.InliningInliningBudget",
                         "1").build());
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) {
-        final PartialEvaluator partialEvaluator = getTruffleCompiler(callTarget).getPartialEvaluator();
+        TruffleCompilerImpl compiler = getTruffleCompiler(callTarget);
+        final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
         final CompilationIdentifier compilationIdentifier = new CompilationIdentifier() {
             @Override
             public String toString(Verbosity verbosity) {
                 return "";
             }
         };
-        final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+        final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                        compiler.getOrCreateCompilerOptions(callTarget),
+                        getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilationTask() {
 
@@ -81,7 +85,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             }
                         }, null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator,
-                        new PostPartialEvaluationSuite(context.config().runtime().getGraalOptions(OptionValues.class), false));
+                        new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);
         return context.graph;
     }

@@ -30,7 +30,6 @@ import static org.junit.Assert.assertNull;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.polyglot.Context;
 import org.junit.Assume;
 import org.junit.Before;
@@ -40,6 +39,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 public class CompilerInitializationTest {
 
@@ -102,7 +102,7 @@ public class CompilerInitializationTest {
     }
 
     private static Field compilerField() throws NoSuchFieldException {
-        Field f = GraalTruffleRuntime.class.getDeclaredField("truffleCompiler");
+        Field f = OptimizedTruffleRuntime.class.getDeclaredField("truffleCompiler");
         ReflectionUtils.setAccessible(f, true);
         return f;
     }

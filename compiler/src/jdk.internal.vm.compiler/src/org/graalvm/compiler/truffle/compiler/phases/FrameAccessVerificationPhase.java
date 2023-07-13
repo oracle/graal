@@ -54,15 +54,16 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessVerificationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -154,16 +155,16 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
 
     private final class DeoptEffect extends Effect {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
 
-        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, CompilableTruffleAST compilable) {
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, TruffleCompilable compilable) {
             super(frame, insertBefore, index);
             this.compilable = compilable;
         }
 
         @SuppressWarnings("try")
         private void logPerformanceWarningClearIntroducedPhi(Node location) {
-            if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
+            if (PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
                 Graph graph = location.graph();
                 DebugContext debug = location.getDebug();
                 try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
@@ -171,7 +172,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
                     properties.put("location", location);
                     properties.put("method", compilable.getName());
                     properties.put("index", index);
-                    PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
                                     Collections.emptyList(),
                                     "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
                                                     "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
@@ -282,10 +283,10 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
 
     private final class ReentrantIterator extends NodeIteratorClosure<State> {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
         private final ArrayList<Effect> effects;
 
-        ReentrantIterator(CompilableTruffleAST compilable, ArrayList<Effect> effects) {
+        ReentrantIterator(TruffleCompilable compilable, ArrayList<Effect> effects) {
             this.compilable = compilable;
             this.effects = effects;
         }

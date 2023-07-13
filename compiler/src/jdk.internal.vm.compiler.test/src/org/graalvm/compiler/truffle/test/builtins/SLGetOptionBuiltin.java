@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -33,9 +31,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 /**
- * Looks up the value of an option in {@link PolyglotCompilerOptions}. In the future this builtin
+ * Looks up the value of an option in {@link OptimizedRuntimeOptions}. In the future this builtin
  * might be extended to lookup other options as well.
  */
 @NodeInfo(shortName = "getOption")
@@ -45,9 +45,9 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
     @TruffleBoundary
     public Object getOption(TruffleString name,
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
-        final OptionDescriptor option = PolyglotCompilerOptions.getDescriptors().get(toJavaStringNode.execute(name));
+        final OptionDescriptor option = OptimizedRuntimeOptions.getDescriptors().get(toJavaStringNode.execute(name));
         if (option == null) {
-            throw new SLAssertionError("No such option named \"" + name + "\" found in " + PolyglotCompilerOptions.class.getName(), this);
+            throw new SLAssertionError("No such option named \"" + name + "\" found in " + OptimizedRuntimeOptions.class.getName(), this);
         }
         return convertValue(((OptimizedCallTarget) getRootNode().getCallTarget()).getOptionValue(option.getKey()));
     }

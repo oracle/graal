@@ -60,7 +60,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -83,12 +82,12 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -171,6 +170,8 @@ public class PermissionsFeature implements Feature {
 
     private InlinedUnsafeMethodNode inlinedUnsafeCall;
 
+    private Class<?> sunMiscUnsafe;
+
     @Override
     public String getDescription() {
         return "Detects privileged calls in Truffle languages";
@@ -186,6 +187,10 @@ public class PermissionsFeature implements Feature {
             UserError.abort("Path to report file must be given by -H:TruffleTCKPermissionsReportFile option.");
         }
         reportFilePath = Paths.get(reportFile);
+
+        if (ModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+            sunMiscUnsafe = access.findClassByName("sun.misc.Unsafe");
+        }
 
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         accessImpl.getHostVM().keepAnalysisGraphs();
@@ -203,7 +208,9 @@ public class PermissionsFeature implements Feature {
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
-            inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb);
+            if (sunMiscUnsafe != null) {
+                inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
+            }
             WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
@@ -216,7 +223,9 @@ public class PermissionsFeature implements Feature {
             whiteList = parser.getLoadedWhiteList();
             Set<BaseMethodNode> deniedMethods = new HashSet<>();
             deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            deniedMethods.addAll(findMethods(bb, sun.misc.Unsafe.class, ModifiersProvider::isPublic));
+            if (sunMiscUnsafe != null) {
+                deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
+            }
             // The type of the host Java NIO FileSystem.
             // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
             // package but
@@ -225,7 +234,9 @@ public class PermissionsFeature implements Feature {
             // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
             // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
             deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
-            deniedMethods.add(inlinedUnsafeCall);
+            if (inlinedUnsafeCall != null) {
+                deniedMethods.add(inlinedUnsafeCall);
+            }
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
             List<List<BaseMethodNode>> report = new ArrayList<>();
             Set<CallGraphFilter> contextFilters = new HashSet<>();
@@ -307,7 +318,9 @@ public class PermissionsFeature implements Feature {
         StructuredGraph mGraph = hostVM.getAnalysisGraph(m);
         if (mGraph.hasUnsafeAccess() && !(isSystemClass(mNode) || isCompilerClass(mNode))) {
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Method: %s has unsafe access.", mName);
-            visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
+            if (inlinedUnsafeCall != null) {
+                visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
+            }
         }
         try {
             boolean callPathContainsTarget = false;
@@ -829,8 +842,8 @@ public class PermissionsFeature implements Feature {
 
         private final AnalysisType unsafe;
 
-        InlinedUnsafeMethodNode(BigBang bigBang) {
-            this.unsafe = bigBang.getMetaAccess().lookupJavaType(Unsafe.class);
+        InlinedUnsafeMethodNode(AnalysisType unsafe) {
+            this.unsafe = unsafe;
         }
 
         @Override

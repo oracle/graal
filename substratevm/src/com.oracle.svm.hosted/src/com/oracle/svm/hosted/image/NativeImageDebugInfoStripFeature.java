@@ -52,7 +52,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.useDebugInfoGeneration() || SubstrateOptions.UseOldDebugInfo.getValue();
+        return SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.StripDebugInfo.getValue();
     }
 
     @SuppressWarnings("try")

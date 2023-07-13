@@ -44,7 +44,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -52,8 +51,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.CallTarget;
@@ -61,6 +58,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Constant;
@@ -113,7 +113,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
 
         // Ensure the invoke stub is installed
-        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
         runtime.bypassedInstalledCode(compilable);
 
         return compilable;
@@ -297,8 +297,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 }
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compiler.getConfig().runtime(), compilable.getOptionValues())) {
-                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
+                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(
+                                compiler.getConfig().runtime(), compiler.getOrCreateCompilerOptions(compilable))) {
+                    final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                                    compiler.getOrCreateCompilerOptions(compilable),
+                                    debug, compilable,
+                                    partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
@@ -316,7 +320,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptionValues getGraalOptions() {
-        OptionValues options = getTruffleCompiler().getConfig().runtime().getGraalOptions(OptionValues.class);
+        OptionValues options = getTruffleCompiler().getOrCreateCompilerOptions(getInitCallTarget());
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }

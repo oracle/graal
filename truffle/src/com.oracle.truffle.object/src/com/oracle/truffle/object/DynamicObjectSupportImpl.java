@@ -41,7 +41,7 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.library.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.object.DynamicObjectLibraryImplGen.DynamicObjectLibraryProvider;
 
 import java.util.List;

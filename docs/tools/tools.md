@@ -1,14 +1,14 @@
 ---
 layout: docs
 toc_group: tools
-link_title: Debugging and Monitoring Tools
+link_title: Tools for GraalVM Languages
 permalink: /tools/
 redirect_from: /docs/tools/
 ---
 
-# GraalVM Debugging and Monitoring Tools
+# Tools for GraalVM Languages
 
-GraalVM provides a set of tools for developers to debug and monitor deployed applications, as well as the GraalVM platform itself.
+Here you can find a set of tools for GraalVM languages, to debug and monitor deployed applications, as well as the GraalVM platform itself. 
 Traditional tools may not be ready to diagnose polyglot applications.
 GraalVM tools, however, are implemented to inspect single or multi-language applications by debugging via numerous clients, profiling, statement counting, dynamic analysis, and much more.
 

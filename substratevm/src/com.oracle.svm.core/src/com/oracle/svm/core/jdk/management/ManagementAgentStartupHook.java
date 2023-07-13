@@ -33,7 +33,7 @@ public class ManagementAgentStartupHook implements com.oracle.svm.core.jdk.Runti
     @Override
     public void execute(boolean isFirstIsolate) {
         try {
-            jdk.internal.agent.Agent.startAgent();
+            ManagementAgentModule.agentStartAgent();
         } catch (Exception e) {
             throw VMError.shouldNotReachHere("ManagementFeature start-up hook failed: " + e);
         }

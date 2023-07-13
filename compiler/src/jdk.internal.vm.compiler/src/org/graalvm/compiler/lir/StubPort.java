@@ -32,7 +32,7 @@ import java.lang.annotation.Target;
  * Denotes port of a HotSpot stub. This information will be parsed by
  * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
  */
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.METHOD})
 @Repeatable(StubPorts.class)
 public @interface StubPort {
     /**
@@ -60,4 +60,8 @@ public @interface StubPort {
      */
     String sha1();
 
+    /**
+     * Reason for ignoring this StubPort.
+     */
+    String ignore() default "";
 }

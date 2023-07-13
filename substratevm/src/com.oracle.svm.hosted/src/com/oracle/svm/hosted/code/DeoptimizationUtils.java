@@ -117,6 +117,8 @@ public class DeoptimizationUtils {
     /**
      * Returns true if a method should be considered as deoptimization source. This is only a
      * feature for testing. Note that usually all image compiled methods cannot deoptimize.
+     *
+     * Note this should only be called within CompileQueue#parseAheadOfTimeCompiledMethods
      */
     static boolean canDeoptForTesting(HostedUniverse universe, HostedMethod method, boolean deoptimizeAll) {
         if (method.getName().equals("<clinit>")) {
@@ -295,15 +297,17 @@ public class DeoptimizationUtils {
         return true;
     }
 
-    static boolean canBeUsedForInlining(HostedUniverse universe, HostedMethod caller, HostedMethod callee, int bci, boolean deoptimizeAll) {
-        if (DeoptimizationUtils.canDeoptForTesting(universe, caller, deoptimizeAll) && Modifier.isNative(callee.getModifiers())) {
+    static boolean canBeUsedForInlining(HostedUniverse universe, HostedMethod caller, HostedMethod callee, int bci) {
+
+        boolean callerDeoptForTesting = caller.compilationInfo.canDeoptForTesting();
+        if (callerDeoptForTesting && Modifier.isNative(callee.getModifiers())) {
             /*
              * We must not deoptimize in the stubs for native functions, since they don't have a
              * valid bytecode state.
              */
             return false;
         }
-        if (DeoptimizationUtils.canDeoptForTesting(universe, caller, deoptimizeAll) && DeoptimizationUtils.containsStackValueNode(universe, callee)) {
+        if (callerDeoptForTesting && DeoptimizationUtils.containsStackValueNode(universe, callee)) {
             /*
              * We must not inline a method that has stack values and can be deoptimized.
              *
@@ -313,6 +317,15 @@ public class DeoptimizationUtils {
              * during deoptimization. Therefore, we cannot allow methods that allocate stack memory
              * for runtime compilation. To remove this limitation, we would need to change how we
              * handle stack allocated memory in Graal.
+             */
+            return false;
+        }
+
+        if (callerDeoptForTesting != callee.compilationInfo.canDeoptForTesting()) {
+            /*
+             * We cannot inline a method into another with non-matching canDeoptForTesting settings.
+             * This would allow deoptimizations to occur in places where a deoptimization target
+             * will not exist.
              */
             return false;
         }
@@ -399,9 +412,7 @@ public class DeoptimizationUtils {
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
              */
-            if (n instanceof Invoke) {
-                Invoke invoke = (Invoke) n;
-
+            if (n instanceof Invoke invoke) {
                 /*
                  * The FrameState for the invoke (which is visited by the above loop) is the state
                  * after the call (where deoptimization that happens after the call has returned

@@ -329,7 +329,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         OptionDescriptors engineOptionDescriptors = PolyglotImpl.getInstance().createAllEngineOptionDescriptors();
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
-        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true);
+        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true, true);
         values.putAll(null, engineOptions, allowExperimentalOptions);
         return values;
     }
@@ -465,8 +465,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public FileSystem newDefaultFileSystem() {
-        return FileSystems.newDefaultFileSystem();
+    public FileSystem newDefaultFileSystem(String hostTmpDir) {
+        return FileSystems.newDefaultFileSystem(hostTmpDir);
     }
 
     @Override
@@ -652,18 +652,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final class EmbedderFileSystemContext {
 
         private final PolyglotImpl impl;
+        final FileSystem fileSystem;
+
+        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
+        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
 
         EmbedderFileSystemContext(PolyglotImpl impl) {
             this.impl = Objects.requireNonNull(impl);
+            this.fileSystem = FileSystems.newDefaultFileSystem(null);
         }
 
         PolyglotImpl getImpl() {
             return impl;
         }
-
-        final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
-        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
-        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
 
     }
 

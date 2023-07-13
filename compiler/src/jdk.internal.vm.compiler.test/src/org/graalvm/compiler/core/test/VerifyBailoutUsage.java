@@ -52,11 +52,11 @@ public class VerifyBailoutUsage extends VerifyPhase<CoreProviders> {
                             getPackageName(PermanentBailoutException.class),
                             "jdk.vm.ci",
 
-                            // Allows GraalTruffleRuntime.handleAnnotationFailure to throw
-                            // a BailoutException since the org.graalvm.compiler.truffle.runtime
+                            // Allows OptimizedTruffleRuntime.handleAnnotationFailure to throw
+                            // a BailoutException since the com.oracle.truffle.runtime
                             // project can not see the PermanentBailoutException or
                             // RetryableBailoutException types.
-                            "org.graalvm.compiler.truffle.runtime"
+                            "com.oracle.truffle.runtime"
             };
         } catch (Throwable t) {
             throw new GraalError(t);

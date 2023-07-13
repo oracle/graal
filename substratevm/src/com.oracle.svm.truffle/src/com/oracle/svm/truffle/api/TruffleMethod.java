@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
 public interface TruffleMethod {
 

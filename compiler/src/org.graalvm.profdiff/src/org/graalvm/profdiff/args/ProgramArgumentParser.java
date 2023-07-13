@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,8 @@ import java.util.Formatter;
 import org.graalvm.profdiff.command.Command;
 
 /**
- * Assembles and parses program arguments. This is the root parser of the program.
+ * Assembles and parses program arguments. This is the root parser of the program. The root parser
+ * may contain a command group as the last positional argument.
  */
 public class ProgramArgumentParser extends ArgumentParser {
     /**
@@ -119,9 +120,27 @@ public class ProgramArgumentParser extends ArgumentParser {
         if (!commandParser.getPositionalArguments().isEmpty()) {
             fmt.format("%n%s", commandParser.formatPositionalHelp());
         }
-        if (commandParser.getCommandGroup().isPresent()) {
-            fmt.format("%n%s", commandParser.getCommandGroup().get().formatCommandsHelp());
-        }
         return fmt.toString();
+    }
+
+    /**
+     * Adds a positional argument that expects a command name. The caller should populate the
+     * returned {@link CommandGroup} with commands. This is a required argument. During parsing, the
+     * selected command parses the rest of the arguments (i.e., those values that come after the
+     * value of this argument). Only one command group per parser is possible, and it must be the
+     * last positional argument.
+     *
+     * @param name the name of the command group
+     * @param help the help message for the command group
+     * @return the added command group
+     */
+    public CommandGroup addCommandGroup(String name, String help) {
+        if (name.startsWith(Argument.OPTION_PREFIX)) {
+            throw new RuntimeException("Command group must be a positional argument, i.e., the name must not start with " +
+                            Argument.OPTION_PREFIX + ".");
+        }
+        CommandGroup subparserGroup = new CommandGroup(name, help);
+        addArgument(subparserGroup);
+        return subparserGroup;
     }
 }

@@ -29,10 +29,11 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.compiler.test.GraalTest;
-import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
 

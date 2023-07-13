@@ -30,7 +30,6 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
@@ -41,6 +40,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
@@ -89,7 +89,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Before
     public void setUp() {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("engine.InstrumentBranches", "true").build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("compiler.InstrumentBranches", "true").build());
     }
 
     @Test

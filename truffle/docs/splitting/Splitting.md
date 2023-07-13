@@ -28,7 +28,7 @@ re-profiled specifically for this call site, since it is the only call site call
 
 Following recursive algorithm (expressed as pseudo code) is a simplified version of the approach used to decide which call targets need to be marked "needs split".
 This algorithm is applied to every call target once one of its nodes reports a polymorphic specialization.
-The full implementation can be found in `org.graalvm.compiler.truffle.runtime.OptimizedCallTarget#maybeSetNeedsSplit`.
+The full implementation can be found in `com.oracle.truffle.runtime.OptimizedCallTarget#maybeSetNeedsSplit`.
 
 ```java
 setNeedsSplit(callTarget)

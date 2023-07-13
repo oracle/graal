@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2325,10 +2325,10 @@ public class FlatNodeGenFactory {
                 throw new AssertionError("Inlined bits not contained.");
             }
             nodeType = createSpecializationClassReferenceType(specialization);
-            updaterFieldName = ElementUtils.createConstantName(specialization.getId() + "_" + bitSet.getName()) + "_UPDATER";
+            updaterFieldName = ElementUtils.createConstantName(specialization.getId() + "_" + specialization.getNode().getNodeId() + "_" + bitSet.getName()) + "_UPDATER";
         } else {
             nodeType = null;
-            updaterFieldName = ElementUtils.createConstantName(bitSet.getName()) + "_UPDATER";
+            updaterFieldName = ElementUtils.createConstantName(bitSet.getName()) + (specialization != null ? "_" + specialization.getNode().getNodeId() : "") + "_UPDATER";
         }
 
         CodeVariableElement var = nodeConstants.updaterReferences.get(updaterFieldName);

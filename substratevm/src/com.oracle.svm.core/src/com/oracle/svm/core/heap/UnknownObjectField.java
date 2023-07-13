@@ -24,13 +24,16 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.BooleanSupplier;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 
 /**
  * For fields with this annotation no static analysis is done.
@@ -57,4 +60,6 @@ public @interface UnknownObjectField {
      * Specify if this field can be null. By default unknown value object fields cannot be null.
      */
     boolean canBeNull() default false;
+
+    Class<? extends BooleanSupplier> availability() default AfterAnalysis.class;
 }

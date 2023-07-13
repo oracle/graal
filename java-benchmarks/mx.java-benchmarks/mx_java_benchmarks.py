@@ -1984,7 +1984,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             # benchmark was introduced in 0.10.0
             del benchmarks["scala-doku"]
 
-        if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
+        if  (mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"])\
+            or (mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]):
             # JDK17 support for Spark benchmarks was added in 0.13.0
             # See: renaissance-benchmarks/renaissance #295
             del benchmarks["als"]
@@ -1996,9 +1997,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
+        if mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]:
+            del benchmarks["dotty"]
+
         if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
-            # GR-33879
-            # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
+            # JNA libraries were only available on amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
 
         if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:

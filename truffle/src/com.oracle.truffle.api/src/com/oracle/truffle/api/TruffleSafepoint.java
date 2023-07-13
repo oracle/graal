@@ -450,6 +450,8 @@ public abstract class TruffleSafepoint {
      * {@link CompiledInterruptible} if you need partial evaluation for this functional interface.
      *
      * @see #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+     *
+     * @since 21.1
      */
     @FunctionalInterface
     public interface Interruptible<T> {

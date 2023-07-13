@@ -811,6 +811,8 @@ public abstract class Accessor {
 
         public abstract void initializeMultiThreading(Env env);
 
+        public abstract void finalizeThread(Env env, Thread thread);
+
         public abstract void disposeThread(Env env, Thread thread);
 
         public abstract void finalizeContext(Env localEnv);
@@ -1163,7 +1165,7 @@ public abstract class Accessor {
         /**
          * Returns the compiler options specified available from the runtime.
          */
-        public abstract OptionDescriptors getEngineOptionDescriptors();
+        public abstract OptionDescriptors getRuntimeOptionDescriptors();
 
         /**
          * Returns <code>true</code> if the java stack frame is a representing a guest language
@@ -1178,8 +1180,6 @@ public abstract class Accessor {
 
         public abstract Assumption createAlwaysValidAssumption();
 
-        public abstract String getSavedProperty(String key);
-
         public abstract void reportPolymorphicSpecialize(Node source);
 
         public abstract Object callInlined(Node callNode, CallTarget target, Object... arguments);
@@ -1193,7 +1193,7 @@ public abstract class Accessor {
 
         public abstract void flushCompileQueue(Object runtimeData);
 
-        public abstract Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory);
+        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory);
 
         public abstract Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> logger);
 
@@ -1201,7 +1201,7 @@ public abstract class Accessor {
 
         public abstract boolean isStoreEnabled(OptionValues options);
 
-        public abstract void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> logSupplier);
+        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier);
 
         public abstract boolean onEngineClosing(Object runtimeData);
 
@@ -1222,6 +1222,11 @@ public abstract class Accessor {
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;
         }
+
+        public abstract boolean isLegacyCompilerOption(String key);
+
+        public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
+
     }
 
     public abstract static class LanguageProviderSupport extends Support {
@@ -1238,7 +1243,7 @@ public abstract class Accessor {
 
         public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
 
-        public abstract <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type);
+        public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
     }
 
@@ -1255,8 +1260,6 @@ public abstract class Accessor {
         public abstract Object create(Object truffleInstrumentProvider);
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
-
-        public abstract <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type);
     }
 
     public abstract static class DynamicObjectSupport extends Support {
@@ -1351,7 +1354,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
-                        "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.runtime.OptimizedRuntimeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||

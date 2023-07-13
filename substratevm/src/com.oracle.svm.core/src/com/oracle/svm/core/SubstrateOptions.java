@@ -188,18 +188,53 @@ public class SubstrateOptions {
      * for a description of the levels.
      */
     public enum OptimizationLevel {
-        O0,
-        O1,
-        O2,
-        BUILD_TIME
+        O0("No optimizations", "0"),
+        O1("Basic optimizations", "1"),
+        O2("Advanced optimizations", "2"),
+        O3("All optimizations for best performance", "3"),
+        BUILD_TIME("Optimize for fastest build time", "b");
+
+        private final String description;
+        private final String optionSwitch;
+
+        OptimizationLevel(String description, String optionSwitch) {
+            this.description = description;
+            this.optionSwitch = optionSwitch;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getOptionSwitch() {
+            return optionSwitch;
+        }
+
+        /**
+         * Determine if this level is one of the given ones.
+         */
+        public boolean isOneOf(OptimizationLevel... levels) {
+            if (levels != null) {
+                for (OptimizationLevel level : levels) {
+                    if (level.equals(this)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
+    @Option(help = "Control code optimizations: b - optimize for fastest build time, " +
+                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
+
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+
             // `-g -O0` is recommended for a better debugging experience
             GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
@@ -208,6 +243,7 @@ public class SubstrateOptions {
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
+
         }
     };
 
@@ -230,11 +266,11 @@ public class SubstrateOptions {
             return OptimizationLevel.O0;
         } else if (intLevel == 1) {
             return OptimizationLevel.O1;
-        } else if (intLevel >= 2) {
-            /*
-             * We allow all positive numbers, and treat that as our current highest supported level.
-             */
+        } else if (intLevel == 2) {
             return OptimizationLevel.O2;
+        } else if (intLevel > 2) {
+            // We allow all positive numbers, and treat that as our current highest supported level.
+            return OptimizationLevel.O3;
         } else {
             throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
         }
@@ -252,6 +288,11 @@ public class SubstrateOptions {
     @Fold
     public static boolean useEconomyCompilerConfig() {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
+
+    @Fold
+    public static boolean isMaximumOptimizationLevel() {
+        return optimizationLevel() == OptimizationLevel.O3;
     }
 
     public interface ValueUpdateHandler<T> {
@@ -432,7 +473,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     /*
@@ -482,8 +523,8 @@ public class SubstrateOptions {
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
     public static final HostedOptionKey<Integer> MaxUnrolledObjectZeroingStores = new HostedOptionKey<>(8);
 
-    @Option(help = "Provide method names for stack traces.")//
-    public static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated, has no effect.", deprecated = true)//
+    static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
     @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
@@ -517,9 +558,6 @@ public class SubstrateOptions {
 
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
-
-    @Option(help = "Use compressed frame encoding for frames without local values.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
@@ -634,7 +672,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
+    static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -645,39 +683,20 @@ public class SubstrateOptions {
     };
 
     private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue()) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
             LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
         }
     }
 
-    @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
-                    deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
-        @Override
-        public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-            GenerateDebugInfo.update(values, newValue);
-        }
-    };
-
-    @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
-
     public static boolean useDebugInfoGeneration() {
-        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
-
-    private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
-        if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
-            throw UserError.abort("The option '%s' can only be used together with '%s'.",
-                            SubstrateOptionsParser.commandArgument(optionKey, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.GenerateDebugInfo, "2"));
-        }
-    }
-
-    @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
-    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
+    static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
+
+    @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(ModuleSupport.modulePathBuild ? 1 : 0);
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {

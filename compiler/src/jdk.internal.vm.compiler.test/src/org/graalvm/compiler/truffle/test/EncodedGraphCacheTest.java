@@ -32,14 +32,9 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
@@ -50,6 +45,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -97,7 +96,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     }
 
     private static TruffleCompilerImpl getTruffleCompilerFromRuntime(OptimizedCallTarget callTarget) {
-        return (TruffleCompilerImpl) GraalTruffleRuntime.getRuntime().getTruffleCompiler(callTarget);
+        return (TruffleCompilerImpl) OptimizedTruffleRuntime.getRuntime().getTruffleCompiler(callTarget);
     }
 
     @SuppressWarnings("serial")
@@ -136,12 +135,12 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     @SuppressWarnings("try")
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        DebugContext debug = new DebugContext.Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
+        TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
+        DebugContext debug = new DebugContext.Builder(compiler.getOrCreateCompilerOptions(target)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
-            TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
             TruffleCompilationTask task = newTask();
             try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
-                getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilation.getCompilationId(), task, null);
+                getTruffleCompilerFromRuntime(target).compileAST(debug, target, compilation.getCompilationId(), task, null);
                 assertTrue(target.isValid());
             }
             return target;
@@ -151,7 +150,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     private void testHelper(boolean enableEncodedGraphCache, int purgeDelay, Consumer<TruffleCompilerImpl> verification) {
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
+                        .option("compiler.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
                         .option("engine.EncodedGraphCachePurgeDelay", String.valueOf(purgeDelay)) //
                         .option("engine.CompilerIdleDelay", "0") //
                         .option("engine.BackgroundCompilation", "false") //
@@ -183,7 +182,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean encodedGraphCache = false;
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCache", String.valueOf(encodedGraphCache)));
+                        .option("compiler.EncodedGraphCache", String.valueOf(encodedGraphCache)));
 
         TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(compileAST(rootTestNode()));
 
@@ -236,7 +235,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
          * the default value for EncodedGraphCachePurgeDelay is used, so this test will take at
          * least EncodedGraphCachePurgeDelay milliseconds to finish.
          */
-        int purgeDelay = PolyglotCompilerOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
+        int purgeDelay = OptimizedRuntimeOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
 
         boolean[] cacheWasPurged = {false};
         for (int attempts = 0; attempts < 10 && !cacheWasPurged[0]; attempts++) {

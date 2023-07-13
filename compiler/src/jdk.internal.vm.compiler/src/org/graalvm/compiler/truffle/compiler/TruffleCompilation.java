@@ -29,9 +29,10 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs
@@ -39,13 +40,13 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
  */
 public final class TruffleCompilation implements AutoCloseable {
 
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
     private final TruffleCompilationTask task;
     private final TTY.Filter ttyFilter;
 
     TruffleCompilationIdentifier compilationId;
 
-    TruffleCompilation(TruffleCompilerRuntime runtime, TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    TruffleCompilation(TruffleCompilerRuntime runtime, TruffleCompilationTask task, TruffleCompilable compilable) {
         this.compilable = compilable;
         this.task = task;
         this.ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(runtime, compilable)));
@@ -59,7 +60,7 @@ public final class TruffleCompilation implements AutoCloseable {
         return compilationId;
     }
 
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return compilable;
     }
 
@@ -83,7 +84,7 @@ public final class TruffleCompilation implements AutoCloseable {
         return null;
     }
 
-    public static CompilableTruffleAST lookupCompilable(StructuredGraph graph) {
+    public static TruffleCompilable lookupCompilable(StructuredGraph graph) {
         if (graph.compilationId() instanceof TruffleCompilationIdentifier id) {
             return id.getCompilable();
         }
@@ -92,10 +93,10 @@ public final class TruffleCompilation implements AutoCloseable {
 
     static final class TTYToPolyglotLoggerBridge implements Consumer<String> {
 
-        private final CompilableTruffleAST compilable;
+        private final TruffleCompilable compilable;
         private final TruffleCompilerRuntime runtime;
 
-        TTYToPolyglotLoggerBridge(TruffleCompilerRuntime runtime, CompilableTruffleAST compilable) {
+        TTYToPolyglotLoggerBridge(TruffleCompilerRuntime runtime, TruffleCompilable compilable) {
             this.compilable = compilable;
             this.runtime = runtime;
         }

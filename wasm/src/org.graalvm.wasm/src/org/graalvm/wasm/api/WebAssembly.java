@@ -87,6 +87,7 @@ public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
     private final boolean refTypes;
 
+    @SuppressWarnings("this-escape")
     public WebAssembly(WasmContext currentContext) {
         this.currentContext = currentContext;
         this.refTypes = currentContext.getContextOptions().supportBulkMemoryAndRefTypes();

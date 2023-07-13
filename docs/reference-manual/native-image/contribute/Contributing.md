@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: contributing
 link_title: Contributing
 permalink: /reference-manual/native-image/contributing/

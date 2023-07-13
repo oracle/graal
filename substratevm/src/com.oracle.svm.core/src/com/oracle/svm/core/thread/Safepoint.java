@@ -205,6 +205,8 @@ public final class Safepoint {
     private static void slowPathSafepointCheck(int newStatus, boolean callerHasJavaFrameAnchor, boolean popFrameAnchor) {
         final IsolateThread myself = CurrentIsolate.getCurrentThread();
 
+        SafepointListenerSupport.singleton().beforeSlowpathSafepointCheck();
+
         if (Master.singleton().getRequestingThread() == myself) {
             /* the safepoint master thread must not stop at a safepoint nor trigger a callback */
             assert !ThreadingSupportImpl.isRecurringCallbackRegistered(myself) || ThreadingSupportImpl.isRecurringCallbackPaused();
@@ -213,6 +215,7 @@ public final class Safepoint {
                 if (Master.singleton().getRequestingThread().isNonNull()) {
                     Statistics.incFrozen();
                     freezeAtSafepoint(newStatus, callerHasJavaFrameAnchor);
+                    SafepointListenerSupport.singleton().afterFreezeAtSafepoint();
                     Statistics.incThawed();
                     VMError.guarantee(StatusSupport.getStatusVolatile() == newStatus, "Transition to the new thread status must have been successful.");
                 }

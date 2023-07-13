@@ -144,6 +144,10 @@ public abstract class DebugInfoBase {
      */
     private HeaderTypeEntry headerType;
     /**
+     * Handle on type entry for void type.
+     */
+    private TypeEntry voidType;
+    /**
      * Handle on class entry for java.lang.Object.
      */
     private ClassEntry objectClass;
@@ -398,6 +402,11 @@ public abstract class DebugInfoBase {
                 assert filePath == null;
                 typeEntry = new HeaderTypeEntry(typeName, size);
                 break;
+            case FOREIGN: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new ForeignTypeEntry(typeName, fileEntry, size);
+                break;
+            }
         }
         return typeEntry;
     }
@@ -416,6 +425,9 @@ public abstract class DebugInfoBase {
             }
             if (typeName.equals("java.lang.Object")) {
                 objectClass = (ClassEntry) typeEntry;
+            }
+            if (typeName.equals("void")) {
+                voidType = typeEntry;
             }
             if (typeEntry instanceof ClassEntry) {
                 indexInstanceClass(idType, (ClassEntry) typeEntry);
@@ -453,6 +465,12 @@ public abstract class DebugInfoBase {
         // this should only be looked up after all types have been notified
         assert headerType != null;
         return headerType;
+    }
+
+    public TypeEntry lookupVoidType() {
+        // this should only be looked up after all types have been notified
+        assert voidType != null;
+        return voidType;
     }
 
     public ClassEntry lookupObjectClass() {

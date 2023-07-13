@@ -34,7 +34,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, dirname, relpath
+from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
 import fnmatch
@@ -54,6 +54,7 @@ from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
 
 import sys
+
 
 if sys.version_info[0] < 3:
     from StringIO import StringIO
@@ -169,7 +170,7 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         components = mx_sdk_vm_impl._components_include_list()
         if components:
             config_args += ['--components=' + ','.join(c.name for c in components)]
-        dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
+        dynamic_imports = [('/' if subdir else '') + di for di, subdir in mx.get_dynamic_imports()]
         if dynamic_imports:
             config_args += ['--dynamicimports=' + ','.join(dynamic_imports)]
         primary_suite_dir = None
@@ -424,7 +425,7 @@ def svm_gate_body(args, tasks):
 
             json_and_schema_file_pairs = [
                 ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
-                ('build-output.json', 'build-output-schema-v0.9.1.json'),
+                ('build-output.json', 'build-output-schema-v0.9.2.json'),
             ]
 
             build_output_file = join(svmbuild_dir(), 'build-output.json')
@@ -638,7 +639,8 @@ def jvm_unittest(args):
 def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
     jsruncmd = [get_js_launcher(jslib)] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
-                                      '--', '--warmup-iterations=' + str(warmup_iterations),
+                                      '--', '--warmup-time=' + str(15_000),
+                                      '--warmup-iterations=' + str(warmup_iterations),
                                       '--iterations=' + str(iterations)]
     mx.log(' '.join(jsruncmd))
 
@@ -730,13 +732,54 @@ def _cinterfacetutorial(native_image, args=None):
     mx.run([join(build_dir, 'cinterfacetutorial')])
 
 
-def _helloworld(native_image, javac_command, path, build_only, args):
+_helloworld_variants = {
+    'traditional': '''
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'noArgs': '''
+// requires JDK 21 and --enable-preview
+public class HelloWorld {
+    static void main() {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'instance': '''
+// requires JDK 21 and --enable-preview
+class HelloWorld {
+    void main(String[] args) {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'instanceNoArgs': '''
+// requires JDK 21 and --enable-preview
+class HelloWorld {
+    void main() {
+        System.out.println(System.getenv("%s"));
+    }
+}
+''',
+    'unnamedClass': '''
+// requires JDK 21 and javac --enable-preview --source 21 and native-image --enable-preview
+void main() {
+    System.out.println(System.getenv("%s"));
+}
+''',
+}
+
+
+def _helloworld(native_image, javac_command, path, build_only, args, variant=list(_helloworld_variants.keys())[0]):
     mkpath(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
     with open(hello_file, 'w') as fp:
-        fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println(System.getenv("' + envkey + '")); } }')
+        fp.write(_helloworld_variants[variant] % envkey)
         fp.flush()
     mx.run(javac_command + [hello_file])
 
@@ -796,7 +839,9 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     mx.log("sourcepath=%s"%sourcepath)
     sourcecache = join(path, 'sources')
     mx.log("sourcecache=%s"%sourcecache)
-
+    # the header file for foreign types resides at the root of the
+    # com.oracle.svm.test source tree
+    cincludepath = sourcepath
     javaProperties = {}
     for dist in suite.dists:
         if isinstance(dist, mx.ClasspathDependency):
@@ -807,23 +852,26 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
+    # set property controlling inclusion of foreign struct header
+    args.append("-DbuildDebugInfoTestExample=true")
 
-    native_image_args = ["--native-image-info",
-                         '-H:+VerifyNamingConventions',
-                         '-cp', classpath('com.oracle.svm.test'),
-                         '-Dgraal.LogFile=graal.log',
-                         '-g',
-                         '-H:+SourceLevelDebug',
-                         '-H:DebugInfoSourceSearchPath=' + sourcepath,
-                         # We do not want to step into class initializer, so initialize everything at build time.
-                         '--initialize-at-build-time=hello',
-                         'hello.Hello'] + args
+    native_image_args = [
+        '--native-compiler-options=-I' + cincludepath,
+        '-H:CLibraryPath=' + sourcepath,
+        '--native-image-info',
+        '-H:+VerifyNamingConventions',
+        '-cp', classpath('com.oracle.svm.test'),
+        '-Dgraal.LogFile=graal.log',
+        '-g',
+        '-H:+SourceLevelDebug',
+        '-H:DebugInfoSourceSearchPath=' + sourcepath,
+    ] + args
 
-    def build_debug_test(variant_name, extra_args):
+    def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
         mkpath(per_build_path)
         build_args = native_image_args + extra_args + [
-            '-o', join(per_build_path, 'hello_image')
+            '-o', join(per_build_path, image_name)
         ]
         mx.log('native_image {}'.format(build_args))
         return native_image(build_args)
@@ -832,20 +880,26 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     if '--libc=musl' in args:
         os.environ.update({'debuginfotest_musl' : 'yes'})
 
+    gdb_utils_py = join(suite.dir, 'mx.substratevm', 'gdb_utils.py')
     testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
-
-    hello_binary = build_debug_test('isolates_on', ['-H:+SpawnIsolates'])
+    testhello_args = [
+        # We do not want to step into class initializer, so initialize everything at build time.
+        '--initialize-at-build-time=hello',
+        'hello.Hello'
+    ]
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_arch' : mx.get_arch()})
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
     if not with_isolates_only:
-        hello_binary = build_debug_test('isolates_off', ['-H:-SpawnIsolates'])
+        hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + ['-H:-SpawnIsolates'])
         if mx.get_os() == 'linux' and not build_only:
             os.environ.update({'debuginfotest_isolates' : 'no'})
-            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
+
+    hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + ['-H:+SpawnIsolates'])
+    if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest_isolates' : 'yes'})
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -884,7 +938,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle Macro', 'SVM Truffle NFI Support', 'SubstrateVM Static Libraries'],
+    dependencies=['GraalVM compiler', 'Truffle API', 'Truffle Macro', 'SubstrateVM Static Libraries'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -1118,20 +1172,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 ))
 
 libgraal_jar_distributions = [
-    'substratevm:GRAAL_HOTSPOT_LIBRARY',
-    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
+    'sdk:NATIVEBRIDGE',
+    'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.jniutils=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni.annotation=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.annotate=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
@@ -1139,6 +1192,8 @@ libgraal_build_args = [
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
     '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+    # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
+    '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
@@ -1155,7 +1210,13 @@ libgraal_build_args = [
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
-]
+
+    # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
+    '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
+] + ([
+   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+   '-H:PageSize=64K'
+] if mx.get_arch() == 'aarch64' else [])
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1174,18 +1235,19 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleLibGraalFeature'],
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,com.oracle.svm.graal.hotspot.libgraal.truffle.TruffleLibGraalFeature'],
             add_to_module='java.base',
             headers=False,
         ),
     ],
+    support_libraries_distributions=[],
     stability="supported",
     jlink=False,
 )
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
@@ -1222,20 +1284,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 def run_helloworld_command(args, config, command_name):
     parser = ArgumentParser(prog='mx ' + command_name)
-    all_args = ['--output-path', '--javac-command', '--build-only']
+    all_args = ['--output-path', '--javac-command', '--build-only', '--variant', '--list']
     masked_args = [_mask(arg, all_args) for arg in args]
+    default_variant = list(_helloworld_variants.keys())[0]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
     parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[3], choices=_helloworld_variants.keys(), default=default_variant, help=f'The Hello World source code variant to use (default: {default_variant})')
+    parser.add_argument(all_args[4], action='store_true', help='Print the Hello World source and exit')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
     image_args = unmask(parsed.image_args)
+    if parsed.list:
+        mx.log(_helloworld_variants[parsed.variant])
+        return
     native_image_context_run(
         lambda native_image, a:
-        _helloworld(native_image, javac_command, output_path, build_only, a), unmask(image_args),
+        _helloworld(native_image, javac_command, output_path, build_only, a, variant=parsed.variant), unmask(image_args),
         config=config,
     )
 
@@ -1330,7 +1398,11 @@ def cinterfacetutorial(args):
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):
-    def build_and_test_clinittest_image(native_image, args=None):
+    def build_and_test_clinittest_images(native_image, args=None):
+        build_and_test_clinittest_image(native_image, args, True)
+        build_and_test_clinittest_image(native_image, args, False)
+
+    def build_and_test_clinittest_image(native_image, args, new_class_init_policy):
         args = [] if args is None else args
         test_cp = classpath('com.oracle.svm.test')
         build_dir = join(svmbuild_dir(), 'clinittest')
@@ -1340,11 +1412,17 @@ def clinittest(args):
             remove_tree(build_dir)
         mkpath(build_dir)
 
+        if new_class_init_policy:
+            policy_args = ['-H:+UseNewExperimentalClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+        else:
+            policy_args = ['-H:-UseNewExperimentalClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+
         # Build and run the example
         native_image(
-            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarly',
-             '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarlyFeature',
-             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+             '-J--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED',
+             '-J-ea', '-J-esa',
+             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + policy_args + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
@@ -1358,9 +1436,17 @@ def clinittest(args):
                                                    "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
                 for line in f:
-                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                    checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
-                    checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                    if new_class_init_policy:
+                        checkLine(line, "MustBeSafeEarly", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSafeLate", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    else:
+                        checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                        checkLine(line, "MustBeSimulated", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+
                 if len(wrongly_initialized_lines) > 0:
                     msg = ""
                     for (line, error) in wrongly_initialized_lines:
@@ -1372,7 +1458,7 @@ def clinittest(args):
 
         check_class_initialization(all_classes_file)
 
-    native_image_context_run(build_and_test_clinittest_image, args)
+    native_image_context_run(build_and_test_clinittest_images, args)
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
@@ -1397,7 +1483,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             pass
 
         self.jvm_funcs_path = join(libjvm.dir, 'src', 'JvmFuncs.c')
-        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'src_gen', 'JvmFuncsFallbacks.c')
+        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'gensrc', 'JvmFuncsFallbacks.c')
         self.register_in_libjvm(libjvm)
 
         staticlib_path = ['lib', 'static', mx.get_os() + '-' + mx.get_arch()]
@@ -1421,8 +1507,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         if not JvmFuncsFallbacksBuildTask.registered_in_libjvm:
             JvmFuncsFallbacksBuildTask.registered_in_libjvm = True
             # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
-            rel_jvm_fallbacks_dir = relpath(dirname(self.jvm_fallbacks_path), libjvm.dir)
-            libjvm.srcDirs.append(rel_jvm_fallbacks_dir)
+            libjvm.c_files.append(self.jvm_fallbacks_path)
 
     def newestOutput(self):
         return mx.TimeStampFile(self.jvm_fallbacks_path)
@@ -1451,6 +1536,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_symbols_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     try:
                         mx.logvv('Processing line: ' + line.rstrip())
                         line_tokens = line.split()
@@ -1474,7 +1561,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                                 mx.logv('Pick symbol: ' + symbol_candiate)
                                 symbols.add(symbol_candiate[len(platform_prefix):])
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             if mx.is_windows():
@@ -1509,6 +1596,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
             def collect_impls_fn(symbol_prefix):
                 def collector(line):
+                    if not line or line.isspace():
+                        return
                     mx.logvv('Processing line: ' + line.rstrip())
                     # JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version
                     tokens = line.split()
@@ -1520,7 +1609,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                             mx.logv('Found matching implementation: ' + impl_name)
                             impls.add(impl_name)
                     except:
-                        mx.logv('Skipping line: ' + line.rstrip())
+                        mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
             with open(self.jvm_funcs_path) as f:
@@ -1710,8 +1799,9 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # Currently JDK 20 and JDK 19 have the same flags
         graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
-        # Currently JDK 21 and JDK 20 have the same flags
+        # Currently JDK 22, JDK 21 and JDK 20 have the same flags
         graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
+        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo

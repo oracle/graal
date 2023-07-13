@@ -51,7 +51,7 @@ public class InlineOnlyTest {
                         option("engine.CompileImmediately", "true").//
                         option("engine.BackgroundCompilation", "false").//
                         option("engine.CompileOnly", COMPILATION_ROOT_NAME).//
-                        option("engine.InlineOnly", METHOD_EXCLUDED_FROM_INLINING).//
+                        option("compiler.InlineOnly", METHOD_EXCLUDED_FROM_INLINING).//
                         build()) {
             c.eval(InlineOnlyTest.ExcludePatternTestLanguage.ID, "");
             c.eval(InlineOnlyTest.ExcludePatternTestLanguage.ID, "");
@@ -65,7 +65,7 @@ public class InlineOnlyTest {
                         option("engine.CompileImmediately", "true").//
                         option("engine.BackgroundCompilation", "false").//
                         option("engine.CompileOnly", COMPILATION_ROOT_NAME).//
-                        option("engine.InlineOnly", METHOD_INLINED).//
+                        option("compiler.InlineOnly", METHOD_INLINED).//
                         build()) {
             c.eval(InlineOnlyTest.InlineSelectedMethodsTestLanguage.ID, "");
             c.eval(InlineOnlyTest.InlineSelectedMethodsTestLanguage.ID, "");

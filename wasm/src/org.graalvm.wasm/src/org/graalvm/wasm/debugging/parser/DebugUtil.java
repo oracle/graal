@@ -42,6 +42,7 @@
 package org.graalvm.wasm.debugging.parser;
 
 import org.graalvm.wasm.BinaryStreamParser;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
@@ -50,57 +51,65 @@ import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 @SuppressWarnings("unused")
 public class DebugUtil {
     public static final String ABBREV_NAME = ".debug_abbrev";
-    public static final String ARANGES_NAME = ".debug_aranges";
-    public static final String FRAME_NAME = ".debug_frame";
     public static final String INFO_NAME = ".debug_info";
     public static final String LINE_NAME = ".debug_line";
     public static final String LOC_NAME = ".debug_loc";
-    public static final String MAC_INFO_NAME = ".debug_macinfo";
-    public static final String PUBNAMES_NAME = ".debug_pubnames";
-    public static final String PUBTYPES_NAME = ".debug_pubtypes";
     public static final String RANGES_NAME = ".debug_ranges";
     public static final String STR_NAME = ".debug_str";
-    public static final String TYPES_NAME = ".debug_types";
 
-    public static final int CUSTOM_DATA_SIZE = 56;
+    public static final int CUSTOM_DATA_SIZE = 48;
 
     private static final int ABBREV_OFFSET = 0;
-    private static final int ARANGES_OFFSET = 4;
-    private static final int FRAME_OFFSET = 8;
-    private static final int INFO_OFFSET = 12;
-    private static final int INFO_LENGTH_OFFSET = 16;
-    private static final int LINE_OFFSET = 20;
+    private static final int ABBREV_LENGTH_OFFSET = 4;
+    private static final int INFO_OFFSET = 8;
+    private static final int INFO_LENGTH_OFFSET = 12;
+    private static final int LINE_OFFSET = 16;
+    private static final int LINE_LENGTH_OFFSET = 20;
     private static final int LOC_OFFSET = 24;
-    private static final int MAC_INFO_OFFSET = 28;
-    private static final int PUBNAMES_OFFSET = 32;
-    private static final int PUBTYPES_OFFSET = 36;
-    private static final int RANGES_OFFSET = 40;
-    private static final int STR_OFFSET = 44;
-    private static final int TYPES_OFFSET = 48;
-    private static final int FUNCTION_DATA_OFFSET = 52;
+    private static final int LOC_LENGTH_OFFSET = 28;
+    private static final int RANGES_OFFSET = 32;
+    private static final int RANGES_LENGTH_OFFSET = 36;
+    private static final int STR_OFFSET = 40;
+    private static final int STR_LENGTH_OFFSET = 44;
 
-    public static void setAbbrevOffset(BytecodeGen customData, int debugInfoOffset, int abbrevOffset) {
-        customData.set(debugInfoOffset + ABBREV_OFFSET, abbrevOffset);
+    public static final int DEFAULT_I32 = -1;
+    public static final long DEFAULT_I64 = -1L;
+    public static final int UNDEFINED = -1;
+
+    public static void initializeData(BytecodeGen customData, int debugInfoOffset) {
+        customData.set(debugInfoOffset + ABBREV_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + ABBREV_LENGTH_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + INFO_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + INFO_LENGTH_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + LINE_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + LINE_LENGTH_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + LOC_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + LOC_LENGTH_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + RANGES_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + RANGES_LENGTH_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + STR_OFFSET, UNDEFINED);
+        customData.set(debugInfoOffset + STR_LENGTH_OFFSET, UNDEFINED);
     }
 
-    public static int abbrevOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + ABBREV_OFFSET);
+    public static void setAbbrevOffset(BytecodeGen customData, int debugInfoOffset, int offset, int length) {
+        customData.set(debugInfoOffset + ABBREV_OFFSET, offset);
+        customData.set(debugInfoOffset + ABBREV_LENGTH_OFFSET, length);
     }
 
-    public static void setArangesOffset(BytecodeGen customData, int debugInfoOffset, int arangesOffset) {
-        customData.set(debugInfoOffset + ARANGES_OFFSET, arangesOffset);
+    public static int getAbbrevOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + ABBREV_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int arangesOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + ARANGES_OFFSET);
-    }
-
-    public static void setFrameOffset(BytecodeGen customData, int debugInfoOffset, int frameOffset) {
-        customData.set(debugInfoOffset + FRAME_OFFSET, frameOffset);
-    }
-
-    public static int frameOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + FRAME_OFFSET);
+    public static int getAbbrevLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + ABBREV_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
     public static void setInfo(BytecodeGen customData, int debugInfoOffset, int offset, int length) {
@@ -108,83 +117,103 @@ public class DebugUtil {
         customData.set(debugInfoOffset + INFO_LENGTH_OFFSET, length);
     }
 
-    public static int infoOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + INFO_OFFSET);
+    public static int getInfoOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + INFO_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int infoLength(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + INFO_LENGTH_OFFSET);
+    public static int getInfoLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + INFO_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static void setLineOffset(BytecodeGen customData, int debugInfoOffset, int lineOffset) {
-        customData.set(debugInfoOffset + LINE_OFFSET, lineOffset);
+    public static void setLineOffset(BytecodeGen customData, int debugInfoOffset, int offset, int length) {
+        customData.set(debugInfoOffset + LINE_OFFSET, offset);
+        customData.set(debugInfoOffset + LINE_LENGTH_OFFSET, length);
     }
 
-    public static int lineOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LINE_OFFSET);
+    public static int getLineOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LINE_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static void setLocOffset(BytecodeGen customData, int debugInfoOffset, int locOffset) {
-        customData.set(debugInfoOffset + LOC_OFFSET, locOffset);
+    public static int getLineLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LINE_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int locOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LOC_OFFSET);
+    public static void setLocOffset(BytecodeGen customData, int debugInfoOffset, int offset, int length) {
+        customData.set(debugInfoOffset + LOC_OFFSET, offset);
+        customData.set(debugInfoOffset + LOC_LENGTH_OFFSET, length);
     }
 
-    public static void setMacInfoOffset(BytecodeGen customData, int debugInfoOffset, int macInfoOffset) {
-        customData.set(debugInfoOffset + MAC_INFO_OFFSET, macInfoOffset);
+    public static int getLocOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LOC_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int macInfoOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + MAC_INFO_OFFSET);
+    public static int getLocLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + LOC_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static void setPubnamesOffset(BytecodeGen customData, int debugInfoOffset, int pubnamesOffset) {
-        customData.set(debugInfoOffset + PUBNAMES_OFFSET, pubnamesOffset);
+    public static void setRangesOffset(BytecodeGen customDataGen, int debugInfoOffset, int offset, int length) {
+        customDataGen.set(debugInfoOffset + RANGES_OFFSET, offset);
+        customDataGen.set(debugInfoOffset + RANGES_LENGTH_OFFSET, length);
     }
 
-    public static int pubnamesOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + PUBNAMES_OFFSET);
+    public static int getRangesOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + RANGES_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static void setPubtypesOffset(BytecodeGen customData, int debugInfoOffset, int pubtypesOffset) {
-        customData.set(debugInfoOffset + PUBTYPES_OFFSET, pubtypesOffset);
+    public static int getRangesLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + RANGES_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int pubtypesOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + PUBTYPES_OFFSET);
+    public static void setStrOffset(BytecodeGen customData, int debugInfoOffset, int offset, int length) {
+        customData.set(debugInfoOffset + STR_OFFSET, offset);
+        customData.set(debugInfoOffset + STR_LENGTH_OFFSET, length);
     }
 
-    public static void setRangesOffset(BytecodeGen customDataGen, int debugInfoOffset, int rangesOffset) {
-        customDataGen.set(debugInfoOffset + RANGES_OFFSET, rangesOffset);
+    public static int getStrOffsetOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + STR_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 
-    public static int rangesOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + RANGES_OFFSET);
-    }
-
-    public static void setStrOffset(BytecodeGen customData, int debugInfoOffset, int strOffset) {
-        customData.set(debugInfoOffset + STR_OFFSET, strOffset);
-    }
-
-    public static int strOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + STR_OFFSET);
-    }
-
-    public static void setTypesOffset(BytecodeGen customData, int debugInfoOffset, int typesOffset) {
-        customData.set(debugInfoOffset + TYPES_OFFSET, typesOffset);
-    }
-
-    public static int typesOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + TYPES_OFFSET);
-    }
-
-    public static void setFunctionDataOffset(BytecodeGen customData, int debugInfoOffset, int functionTableOffset) {
-        customData.set(debugInfoOffset + FUNCTION_DATA_OFFSET, functionTableOffset);
-    }
-
-    public static int functionDataOffset(byte[] customData, int debugInfoOffset) {
-        return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + FUNCTION_DATA_OFFSET);
+    public static int getStrLengthOrUndefined(byte[] customData, int debugInfoOffset) {
+        try {
+            return BinaryStreamParser.rawPeekI32(customData, debugInfoOffset + STR_LENGTH_OFFSET);
+        } catch (WasmException e) {
+            return UNDEFINED;
+        }
     }
 }
