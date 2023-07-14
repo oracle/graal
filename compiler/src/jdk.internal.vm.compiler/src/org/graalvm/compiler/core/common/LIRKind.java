@@ -77,7 +77,7 @@ public class LIRKind extends ValueKind<LIRKind> {
     /** Mask with 1-bits indicating which references in {@link #referenceMask} are compressed. */
     private final int referenceCompressionMask;
 
-    private AllocatableValue derivedReferenceBase;
+    private final AllocatableValue derivedReferenceBase;
 
     private static final int UNKNOWN_REFERENCE = -1;
 
@@ -385,14 +385,6 @@ public class LIRKind extends ValueKind<LIRKind> {
     }
 
     /**
-     * Change the base value of a derived reference. This must be called on derived references only.
-     */
-    public void setDerivedReferenceBase(AllocatableValue derivedReferenceBase) {
-        assert isDerivedReference();
-        this.derivedReferenceBase = derivedReferenceBase;
-    }
-
-    /**
      * Check whether this value is derived from a reference in a non-linear way. If this returns
      * {@code true}, this value must not be live at safepoints.
      */
@@ -471,7 +463,14 @@ public class LIRKind extends ValueKind<LIRKind> {
             ret.append('[');
             for (int i = 0; i < getPlatformKind().getVectorLength(); i++) {
                 if (isReference(i)) {
-                    ret.append('.');
+                    if (isCompressedReference(i)) {
+                        ret.append('_');
+                    } else {
+                        ret.append('.');
+                    }
+                    if (isDerivedReference()) {
+                        ret.append('+');
+                    }
                 } else {
                     ret.append(' ');
                 }

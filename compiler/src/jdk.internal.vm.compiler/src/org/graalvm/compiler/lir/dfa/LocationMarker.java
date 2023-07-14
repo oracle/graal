@@ -166,6 +166,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
             op.forEachState(stateConsumer);
             // gen
             op.visitEachInput(useConsumer);
+        } catch (GraalError e) {
+            throw e.addContext("lir instruction", "@" + op.id() + " " + op.getClass().getName() + " " + op);
         }
     }
 
@@ -189,6 +191,9 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
                 }
                 DebugContext debug = lir.getDebug();
                 if (debug.isLogEnabled()) {
+                    if (value != operand) {
+                        debug.log("changing operand from %s to %s", operand, value);
+                    }
                     debug.log("set operand: %s", value);
                 }
                 currentSet.put(value);
