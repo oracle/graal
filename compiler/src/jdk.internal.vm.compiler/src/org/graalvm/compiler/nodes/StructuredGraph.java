@@ -121,6 +121,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return blockToNodesMap.get(block);
         }
 
+        public HIRBlock blockFor(Node n) {
+            if (n instanceof PhiNode) {
+                return blockFor(((PhiNode) n).merge());
+            } else if (n instanceof ProxyNode) {
+                return blockFor(((ProxyNode)n).proxyPoint());
+            } else {
+                return nodeToBlockMap.get(n);
+            }
+        }
+
         public String print() {
             StringBuilder sb = new StringBuilder();
             sb.append("Schedule for graph ").append(cfg.graph).append(System.lineSeparator());
