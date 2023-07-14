@@ -107,10 +107,9 @@ public class MethodHandlePlugin implements NodePlugin {
                 Invokable newInvokable = b.handleReplacedInvoke(invoke.getInvokeKind(), targetMethod, argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
                 if (newInvokable != null) {
                     if (newInvokable instanceof Invoke newInvoke && !newInvoke.callTarget().equals(callTarget) && newInvoke.asFixedNode().isAlive()) {
-                        // In the case where the invoke is not inlined, replace its call target with the
-                        // special ResolvedMethodHandleCallTargetNode.
+                        // In the case where the invoke is not inlined, replace its call target with
+                        // the special ResolvedMethodHandleCallTargetNode.
                         newInvoke.callTarget().replaceAndDelete(b.append(callTarget));
-                        // XXX doesn't this need to check for the return mismatch logic handled at the end?
                         return true;
                     } else if (newInvokable instanceof MacroInvokable macroInvokable) {
                         macroInvokable.addMethodHandleInfo(callTarget);
