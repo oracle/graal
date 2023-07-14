@@ -59,16 +59,23 @@ public final class GraalServices {
     private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
 
     private static final Method constantPoolLookupMethodWithCaller;
+    private static final Method constantPoolLookupConstantWithResolve;
 
     static {
         Method lookupMethodWithCaller = null;
+        Method lookupMethodWithResolve = null;
 
         try {
             lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
         } catch (NoSuchMethodException e) {
         }
 
+        try {
+            lookupMethodWithResolve = ConstantPool.class.getDeclaredMethod("lookupConstant", Integer.TYPE, Boolean.TYPE);
+        } catch (NoSuchMethodException e) {
+        }
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
+        constantPoolLookupConstantWithResolve = lookupMethodWithResolve;
     }
 
     private GraalServices() {
@@ -460,9 +467,33 @@ public final class GraalServices {
         throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
     }
 
+    public static Object lookupConstant(ConstantPool constantPool, int cpi, boolean resolve) {
+        if (constantPoolLookupConstantWithResolve != null) {
+            try {
+                try {
+                    return constantPoolLookupConstantWithResolve.invoke(constantPool, cpi, resolve);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        return constantPool.lookupConstant(cpi);
+    }
+
     /**
-     * Returns true if JVMCI supports the
-     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)} API.
+     * Returns true if the JDK includes {@code ConstantPool.lookupConstant(int, boolean)}.
+     */
+    public static boolean supportsNonresolvingLookupConstant() {
+        return constantPoolLookupConstantWithResolve != null;
+    }
+
+    /**
+     * Returns true if the JDK includes
+     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)}.
      */
     public static boolean hasLookupMethodWithCaller() {
         return constantPoolLookupMethodWithCaller != null;

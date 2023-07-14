@@ -340,8 +340,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedLoadConstant(JavaType type) {
-            handleUnresolvedType(type);
+        protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
+            handleUnresolvedType(unresolvedType);
         }
 
         @Override

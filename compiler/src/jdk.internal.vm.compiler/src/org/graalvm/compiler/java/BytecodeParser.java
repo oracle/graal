@@ -1208,10 +1208,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     /**
-     * @param type the unresolved type of the constant
+     * Handles loading of an unresolved constant.
+     * 
+     * @param unresolvedType an unresolved type if a ClassConstant is being loaded. This will be
+     *            {@code null} in the case another type of resolvable constant being loaded (e.g.
+     *            DynamicConstant or MethodHandle) when the constant is unresolved.
      */
-    protected void handleUnresolvedLoadConstant(JavaType type) {
-        assert !graphBuilderConfig.unresolvedIsError();
+    protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
+        assert !graphBuilderConfig.unresolvedIsError() || unresolvedType == null;
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         /*
          * Track source position for deopt nodes even if
@@ -3970,7 +3974,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genLoadConstant(int cpi, int opcode) {
         Object con = lookupConstant(cpi, opcode);
-        if (con instanceof JavaType) {
+        if (con == null) {
+            handleUnresolvedLoadConstant(null);
+        } else if (con instanceof JavaType) {
             // this is a load of class constant which might be unresolved
             JavaType type = (JavaType) con;
             if (typeIsResolved(type)) {
@@ -4288,8 +4294,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected Object lookupConstant(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
-        Object result = constantPool.lookupConstant(cpi);
-        assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
+        Object result = GraalServices.lookupConstant(constantPool, cpi, false);
+        if (result != null) {
+            assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
+        }
         return result;
     }
 
