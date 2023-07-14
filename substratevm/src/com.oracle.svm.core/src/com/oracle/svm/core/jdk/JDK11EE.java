@@ -31,6 +31,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 public class JDK11EE implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC == 11 && JavaVersionUtil.JVM_VENDOR.contains("Oracle") ;
+        return JavaVersionUtil.JAVA_SPEC == 11 && JavaVersionUtil.JVM_VENDOR.contains("Oracle");
     }
 }
