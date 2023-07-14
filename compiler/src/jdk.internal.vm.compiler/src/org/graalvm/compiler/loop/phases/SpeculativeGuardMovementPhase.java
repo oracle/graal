@@ -217,7 +217,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         @Override
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                if (toProcess == null || toProcess.contains(guard)) {
+                if (toProcess == null || (!toProcess.isNew(guard) && toProcess.contains(guard))) {
                     HIRBlock anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
                     if (exitsLoop(anchorBlock, earliestBlock(guard))) {
                         iterate = true;
