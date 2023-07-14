@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.FixedNodeInterface;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -63,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * possible if the macro node is a {@link MacroStateSplitNode}.</li>
  * </ul>
  */
-public interface MacroInvokable extends Invokable, Lowerable {
+public interface MacroInvokable extends Invokable, Lowerable, FixedNodeInterface {
 
     CallTargetNode.InvokeKind getInvokeKind();
 
