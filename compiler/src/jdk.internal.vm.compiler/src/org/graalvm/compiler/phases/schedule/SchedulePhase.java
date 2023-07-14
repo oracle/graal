@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.word.LocationIdentity;
@@ -273,6 +274,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         if (currentBlock.getFirstDominated() == null && !(currentNode instanceof VirtualState)) {
                             // This block doesn't dominate any other blocks =>
                             // node must be scheduled in earliest block.
+                            latestBlock = currentBlock;
+                        }
+
+                        if (currentNode instanceof AllocatedObjectNode) {
                             latestBlock = currentBlock;
                         }
 
