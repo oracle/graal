@@ -32,7 +32,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * A marker interface for nodes that represent calls to other methods.
  */
-public interface Invokable extends DeoptBciSupplier, FixedNodeInterface {
+public interface Invokable extends DeoptBciSupplier {
     ResolvedJavaMethod getTargetMethod();
 
     /**

@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.FixedNodeInterface;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
@@ -59,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * During lowering subclasses may lower the node as appropriate. Otherwise, the macro node is
  * replaced with an {@link Invoke}.
  */
-public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
+public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill, FixedNodeInterface {
 
     CallTargetNode.InvokeKind getInvokeKind();
 

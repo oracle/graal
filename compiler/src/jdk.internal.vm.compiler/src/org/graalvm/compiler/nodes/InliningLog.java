@@ -33,18 +33,14 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.util.CollectionsUtil;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -691,16 +687,12 @@ public class InliningLog {
         }
     }
 
-    @NodeInfo
-    public static final class PlaceholderInvokable extends FixedNode implements Invokable {
-        public static final NodeClass<PlaceholderInvokable> TYPE = NodeClass.create(PlaceholderInvokable.class);
-
+    public static final class PlaceholderInvokable implements Invokable {
         private final int bci;
         private final ResolvedJavaMethod callerMethod;
         private final ResolvedJavaMethod method;
 
         public PlaceholderInvokable(ResolvedJavaMethod callerMethod, ResolvedJavaMethod method, int bci) {
-            super(TYPE, StampFactory.forVoid());
             this.callerMethod = callerMethod;
             this.method = method;
             this.bci = bci;
@@ -732,6 +724,11 @@ public class InliningLog {
         }
 
         @Override
+        public int hashCode() {
+            return Integer.hashCode(bci) ^ callerMethod.hashCode() ^ method.hashCode();
+        }
+
+        @Override
         public boolean equals(Object obj) {
             if (obj instanceof PlaceholderInvokable) {
                 final PlaceholderInvokable that = (PlaceholderInvokable) obj;
@@ -741,7 +738,7 @@ public class InliningLog {
         }
 
         @Override
-        public String toString(Verbosity verbosity) {
+        public String toString() {
             return String.format("Invokable(caller: %s, bci: %d, method: %s)", callerMethod.format("%H.%n"), bci, method.format("%H.%n"));
         }
     }
