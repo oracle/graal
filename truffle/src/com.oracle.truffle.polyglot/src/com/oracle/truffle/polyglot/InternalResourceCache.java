@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.polyglot.io.FileSystem;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
@@ -67,6 +68,9 @@ import java.util.stream.Stream;
 final class InternalResourceCache {
 
     private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
+    private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resources.home";
+    private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resources.%s.home";
+    private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resources.%s.%s.home";
 
     private static final Lock unpackLock = new ReentrantLock();
     private static volatile Pair<Path, Boolean> cacheRoot;
@@ -88,18 +92,20 @@ final class InternalResourceCache {
             synchronized (this) {
                 result = resourceFileSystem;
                 if (result == null) {
-                    Path root;
-                    if (hasExplicitCacheRoot()) {
-                        root = findStandaloneResourceRoot(getExplicitCacheRoot());
-                    } else if (ImageInfo.inImageRuntimeCode()) {
-                        root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
-                    } else {
-                        InternalResource resource = resourceFactory.get();
-                        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> polyglotEngine.inEnginePreInitialization);
-                        root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
-                        unpackResourceFiles(root, resource, env);
+                    Path root = findOverriddenResourceRoot();
+                    if (root == null) {
+                        if (hasExplicitCacheRoot()) {
+                            root = findStandaloneResourceRoot(getExplicitCacheRoot());
+                        } else if (ImageInfo.inImageRuntimeCode()) {
+                            root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
+                        } else {
+                            InternalResource resource = resourceFactory.get();
+                            InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> polyglotEngine.inEnginePreInitialization);
+                            root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
+                            unpackResourceFiles(root, resource, env);
+                        }
                     }
-                    ResetableCachedRoot rootSupplier = new ResetableCachedRoot(root);
+                    ResettableCachedRoot rootSupplier = new ResettableCachedRoot(root);
                     result = FileSystems.newInternalResourceFileSystem(rootSupplier);
                     resourceFileSystem = result;
                 }
@@ -147,6 +153,18 @@ final class InternalResourceCache {
         return root.resolve(Path.of(sanitize(id), sanitize(resourceId)));
     }
 
+    private Path findOverriddenResourceRoot() throws IOException {
+        String value = System.getProperty(String.format(OVERRIDDEN_RESOURCE_ROOT, id, resourceId));
+        if (value != null) {
+            return Paths.get(value).toRealPath();
+        }
+        value = System.getProperty(String.format(OVERRIDDEN_COMPONENT_ROOT, id));
+        if (value != null) {
+            return Paths.get(value).resolve(sanitize(resourceId)).toRealPath();
+        }
+        return null;
+    }
+
     private static String sanitize(String pathElement) {
         String result = pathElement;
         for (char fileSystemsSpecialChar : FILE_SYSTEM_SPECIAL_CHARACTERS) {
@@ -158,7 +176,7 @@ final class InternalResourceCache {
     private static boolean hasExplicitCacheRoot() throws IOException {
         Pair<Path, Boolean> res = cacheRoot;
         if (res == null) {
-            String resourcesFolder = System.getProperty("polyglot.engine.ResourcesFolder");
+            String resourcesFolder = System.getProperty(OVERRIDDEN_CACHE_ROOT);
             if (resourcesFolder != null) {
                 Path cache = Paths.get(resourcesFolder).toRealPath();
                 res = Pair.create(cache, true);
@@ -232,7 +250,7 @@ final class InternalResourceCache {
     private void resetFileSystemNativeImageState() {
         FileSystem fs = resourceFileSystem;
         if (fs != null) {
-            ((ResetableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).resourceCacheRoot = null;
+            ((ResettableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).resourceCacheRoot = null;
         }
     }
 
@@ -328,11 +346,11 @@ final class InternalResourceCache {
         }
     }
 
-    private final class ResetableCachedRoot implements Supplier<Path> {
+    private final class ResettableCachedRoot implements Supplier<Path> {
 
         private volatile Path resourceCacheRoot;
 
-        ResetableCachedRoot(Path resourceCacheRoot) {
+        ResettableCachedRoot(Path resourceCacheRoot) {
             Objects.requireNonNull(resourceCacheRoot, "ResourceCacheRoot must be non-null.");
             this.resourceCacheRoot = resourceCacheRoot;
         }
@@ -344,8 +362,21 @@ final class InternalResourceCache {
                 if (ImageInfo.inImageBuildtimeCode()) {
                     throw CompilerDirectives.shouldNotReachHere("Reintroducing internal resource cache path into an image heap.");
                 }
-                res = findStandaloneResourceRoot(findCacheRootOnNativeImage());
-                resourceCacheRoot = res;
+                try {
+                    res = findOverriddenResourceRoot();
+                    if (res == null) {
+                        Path cache;
+                        if (hasExplicitCacheRoot()) {
+                            cache = getExplicitCacheRoot();
+                        } else {
+                            cache = findCacheRootOnNativeImage();
+                        }
+                        res = findStandaloneResourceRoot(cache);
+                    }
+                    resourceCacheRoot = res;
+                } catch (IOException ioe) {
+                    throw new IOError(ioe);
+                }
             }
             return res;
         }

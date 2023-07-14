@@ -498,20 +498,21 @@ public class InternalResourceTest {
     }
 
     @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
-    public static class TestExplicitResourceRoot extends AbstractExecutableTestLanguage {
+    public static class TestOverriddenResourceRoot extends AbstractExecutableTestLanguage {
 
         @Override
         @TruffleBoundary
         @SuppressWarnings("try")
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            String explicitCacheRoot = (String) contextArguments[0];
+            String explicitLibRootPrefix = (String) contextArguments[0];
+            String explicitSrcRootPrefix = (String) contextArguments[1];
             LibraryResource.unpackedCalled = 0;
             SourcesResource.unpackedCalled = 0;
             TruffleFile libRoot = env.getInternalResource(LibraryResource.class);
-            assertTrue(libRoot.getCanonicalFile().getPath().startsWith(explicitCacheRoot));
+            assertTrue(libRoot.getCanonicalFile().getPath().startsWith(explicitLibRootPrefix));
             verifyResources(libRoot, LibraryResource.RESOURCES);
             TruffleFile srcRoot = env.getInternalResource(SourcesResource.class);
-            assertTrue(srcRoot.getCanonicalFile().getPath().startsWith(explicitCacheRoot));
+            assertTrue(srcRoot.getCanonicalFile().getPath().startsWith(explicitSrcRootPrefix));
             verifyResources(srcRoot, SourcesResource.RESOURCES);
             assertEquals(0, LibraryResource.unpackedCalled);
             assertEquals(0, SourcesResource.unpackedCalled);
@@ -520,23 +521,61 @@ public class InternalResourceTest {
     }
 
     @Test
-    public void testExplicitResourceRoot() throws Exception {
+    public void testOverriddenResourceRoot() throws Exception {
         Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         // Prepare standalone resources
-        Path cacheRoot = Files.createTempDirectory(null);
-        Engine.copyResources(cacheRoot, TestUtils.getDefaultLanguageId(TestExplicitResourceRoot.class));
+        Path cacheRoot1 = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot1, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
+        Path cacheRoot2 = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot2, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
+        Path cacheRoot3 = Files.createTempDirectory(null);
+        Engine.copyResources(cacheRoot3, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
         // Reset cached resource root
         TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
-        // Set explicit resource root
-        System.setProperty("polyglot.engine.ResourcesFolder", cacheRoot.toString());
-        try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestExplicitResourceRoot.class, cacheRoot.toRealPath().toString());
+        try {
+
+            // Set explicit resource cache root
+            String strPath = cacheRoot1.toRealPath().toString();
+            String libPath = strPath;
+            System.setProperty("polyglot.engine.resources.home", strPath);
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
+            }
+
+            // Set explicit component (language, instrument) cache root
+            strPath = cacheRoot2.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).toRealPath().toString();
+            libPath = strPath;
+            System.setProperty(String.format("polyglot.engine.resources.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)), strPath);
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
+            }
+
+            // Set explicit component resource cache root
+            libPath = cacheRoot3.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(LibraryResource.ID).toRealPath().toString();
+            System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID), libPath);
+            strPath = cacheRoot3.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(SourcesResource.ID).toRealPath().toString();
+            System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID), strPath);
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
+            } finally {
+                // Reset cached resource root
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
+            }
         } finally {
             // Clean explicit resource root
-            System.getProperties().remove("polyglot.engine.ResourcesFolder");
-            // Reset cached resource root
-            TemporaryResourceCacheRoot.setTestCacheRoot(null, true);
-            TemporaryResourceCacheRoot.delete(cacheRoot);
+            System.getProperties().remove("polyglot.engine.resources.home");
+            System.getProperties().remove(String.format("polyglot.engine.resources.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)));
+            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID));
+            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID));
+            TemporaryResourceCacheRoot.delete(cacheRoot1);
+            TemporaryResourceCacheRoot.delete(cacheRoot2);
+            TemporaryResourceCacheRoot.delete(cacheRoot3);
         }
     }
 
@@ -634,20 +673,20 @@ public class InternalResourceTest {
     static final class TemporaryResourceCacheRoot implements AutoCloseable {
 
         private final Path root;
-        private final boolean disposeResourceFileSystem;
+        private final boolean disposeResourceFileSystemOnClose;
 
         TemporaryResourceCacheRoot() throws IOException {
             this(true);
         }
 
-        TemporaryResourceCacheRoot(boolean disposeResourceFileSystem) throws IOException {
-            this(Files.createTempDirectory(null), disposeResourceFileSystem);
+        TemporaryResourceCacheRoot(boolean disposeResourceFileSystemOnClose) throws IOException {
+            this(Files.createTempDirectory(null), disposeResourceFileSystemOnClose);
         }
 
-        TemporaryResourceCacheRoot(Path cacheRoot, boolean disposeResourceFileSystem) throws IOException {
+        TemporaryResourceCacheRoot(Path cacheRoot, boolean disposeResourceFileSystemOnClose) throws IOException {
             try {
                 root = cacheRoot.toRealPath();
-                this.disposeResourceFileSystem = disposeResourceFileSystem;
+                this.disposeResourceFileSystemOnClose = disposeResourceFileSystemOnClose;
                 setTestCacheRoot(root, false);
             } catch (ClassNotFoundException e) {
                 throw new AssertionError("Failed to set cache root.", e);
@@ -661,7 +700,7 @@ public class InternalResourceTest {
         @Override
         public void close() {
             try {
-                setTestCacheRoot(null, disposeResourceFileSystem);
+                setTestCacheRoot(null, disposeResourceFileSystemOnClose);
                 delete(root);
             } catch (IOException | ClassNotFoundException e) {
                 throw new AssertionError("Failed to reset cache root.", e);
@@ -677,6 +716,10 @@ public class InternalResourceTest {
                 }
             }
             Files.delete(path);
+        }
+
+        static void reset(boolean disposeResourceFileSystem) throws ClassNotFoundException {
+            setTestCacheRoot(null, disposeResourceFileSystem);
         }
 
         private static void setTestCacheRoot(Path root, boolean disposeResourceFileSystem) throws ClassNotFoundException {

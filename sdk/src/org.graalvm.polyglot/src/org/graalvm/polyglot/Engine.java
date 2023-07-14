@@ -705,10 +705,10 @@ public final class Engine implements AutoCloseable {
             String systemPropertyPrefix = "polyglot.";
             synchronized (properties) {
                 for (Object systemKey : properties.keySet()) {
-                    if ("polyglot.engine.AllowExperimentalOptions".equals(systemKey) || "polyglot.engine.ResourcesFolder".equals(systemKey)) {
+                    String key = (String) systemKey;
+                    if ("polyglot.engine.AllowExperimentalOptions".equals(key) || key.startsWith("polyglot.engine.resources.")) {
                         continue;
                     }
-                    String key = (String) systemKey;
                     if (key.startsWith(systemPropertyPrefix)) {
                         final String optionKey = key.substring(systemPropertyPrefix.length());
                         // Image build time options are not set in runtime options

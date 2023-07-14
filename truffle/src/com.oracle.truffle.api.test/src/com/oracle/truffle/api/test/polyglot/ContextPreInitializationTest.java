@@ -2592,52 +2592,60 @@ public class ContextPreInitializationTest {
         setPatchable(FIRST);
         List<TruffleFile> files = new ArrayList<>();
         try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
-            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
-                try {
-                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
-                    assertNotNull(root);
-                    assertFalse(root.isAbsolute());
-                    TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
-                    assertNotNull(resource);
-                    assertFalse(resource.isAbsolute());
-                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
-                    files.add(resource);
-                } catch (IOException ioe) {
-                    throw new AssertionError(ioe);
-                }
-            });
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, newResourceBuildTimeVerifier(files));
             doContextPreinitialize(FIRST);
             assertFalse(files.isEmpty());
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(runtimeCacheRoot, FIRST);
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
-            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
-                try {
-                    TruffleFile file1 = files.get(0);
-                    assertFalse(file1.isAbsolute());
-                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file1.readAllBytes(), StandardCharsets.UTF_8));
-                    ContextPreInitializationResource.unpackCount = 0;
-                    TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
-                    assertNotNull(root);
-                    assertFalse(root.isAbsolute());
-                    assertEquals(0, ContextPreInitializationResource.unpackCount);
-                    TruffleFile file2 = root.resolve(ContextPreInitializationResource.FILE_NAME);
-                    assertNotNull(file2);
-                    assertFalse(file2.isAbsolute());
-                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file2.readAllBytes(), StandardCharsets.UTF_8));
-                    assertEquals(file1, file2);
-                    assertEquals(file1.getAbsoluteFile(), file2.getAbsoluteFile());
-                    assertTrue(file1.getAbsoluteFile().toString().startsWith(runtimeCacheRoot.toString()));
-                } catch (IOException ioe) {
-                    throw new RuntimeException(ioe);
-                }
-            });
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, newResourceExecutionTimeVerifier(files, runtimeCacheRoot.toString()));
             try (Context ctx = Context.create()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
                 assertEquals("test", res.asString());
             }
         }
+    }
+
+    private static Consumer<Env> newResourceBuildTimeVerifier(List<TruffleFile> files) {
+        return (env) -> {
+            try {
+                TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                assertNotNull(root);
+                assertFalse(root.isAbsolute());
+                TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                assertNotNull(resource);
+                assertFalse(resource.isAbsolute());
+                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
+                files.add(resource);
+            } catch (IOException ioe) {
+                throw new AssertionError(ioe);
+            }
+        };
+    }
+
+    private static Consumer<Env> newResourceExecutionTimeVerifier(List<TruffleFile> files, String expectedRootPrefix) {
+        return (env) -> {
+            try {
+                TruffleFile file1 = files.get(0);
+                assertFalse(file1.isAbsolute());
+                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file1.readAllBytes(), StandardCharsets.UTF_8));
+                ContextPreInitializationResource.unpackCount = 0;
+                TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
+                assertNotNull(root);
+                assertFalse(root.isAbsolute());
+                assertEquals(0, ContextPreInitializationResource.unpackCount);
+                TruffleFile file2 = root.resolve(ContextPreInitializationResource.FILE_NAME);
+                assertNotNull(file2);
+                assertFalse(file2.isAbsolute());
+                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file2.readAllBytes(), StandardCharsets.UTF_8));
+                assertEquals(file1, file2);
+                assertEquals(file1.getAbsoluteFile(), file2.getAbsoluteFile());
+                assertTrue(file1.getAbsoluteFile().toString().startsWith(expectedRootPrefix));
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        };
     }
 
     @Test
@@ -2714,6 +2722,89 @@ public class ContextPreInitializationTest {
                 assertNotNull(root);
                 assertTrue(root.getAbsoluteFile().toString().startsWith(runtimeCacheRoot.toString()));
             }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testOverriddenCacheRoot() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        setPatchable(FIRST);
+        List<TruffleFile> files = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, newResourceBuildTimeVerifier(files));
+            doContextPreinitialize(FIRST);
+            assertFalse(files.isEmpty());
+        }
+        Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Engine.copyResources(overriddenCacheRoot, FIRST);
+        System.setProperty("polyglot.engine.resources.home", overriddenCacheRoot.toRealPath().toString());
+        TemporaryResourceCacheRoot.reset(false);
+        try {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
+                            newResourceExecutionTimeVerifier(files, overriddenCacheRoot.toString()));
+            try (Context ctx = Context.create()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        } finally {
+            TemporaryResourceCacheRoot.reset(true);
+            System.getProperties().remove("polyglot.engine.resources.home");
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testOverriddenComponentRoot() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        setPatchable(FIRST);
+        List<TruffleFile> files = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, newResourceBuildTimeVerifier(files));
+            doContextPreinitialize(FIRST);
+            assertFalse(files.isEmpty());
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Engine.copyResources(overriddenCacheRoot, FIRST);
+        System.setProperty(String.format("polyglot.engine.resources.%s.home", FIRST), overriddenCacheRoot.resolve(FIRST).toRealPath().toString());
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
+                            newResourceExecutionTimeVerifier(files, overriddenCacheRoot.toString()));
+            try (Context ctx = Context.create()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        } finally {
+            System.getProperties().remove(String.format("polyglot.engine.resources.%s.home", FIRST));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testOverriddenResourceRoot() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        setPatchable(FIRST);
+        List<TruffleFile> files = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, newResourceBuildTimeVerifier(files));
+            doContextPreinitialize(FIRST);
+            assertFalse(files.isEmpty());
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Engine.copyResources(overriddenCacheRoot, FIRST);
+        System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", FIRST, ContextPreInitializationResource.ID),
+                        overriddenCacheRoot.resolve(FIRST).resolve(ContextPreInitializationResource.ID).toRealPath().toString());
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
+                            newResourceExecutionTimeVerifier(files, overriddenCacheRoot.toString()));
+            try (Context ctx = Context.create()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        } finally {
+            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", FIRST, ContextPreInitializationResource.ID));
         }
     }
 
@@ -3575,8 +3666,10 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @InternalResource.Id("context-pre-init-test-resource")
+    @InternalResource.Id(ContextPreInitializationResource.ID)
     static final class ContextPreInitializationResource implements InternalResource {
+
+        static final String ID = "context-pre-init-test-resource";
 
         static final String FILE_NAME = "library_source";
         static final String FILE_CONTENT = "library_content";
