@@ -257,7 +257,14 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        return javaEventWriter.get();
+        Target_jdk_jfr_internal_EventWriter eventWriter = javaEventWriter.get();
+        // Handling for virtual threads that don't have their own fast thread locals.
+        if (eventWriter != null && eventWriter.threadID != SubstrateJVM.getCurrentThreadId()) {
+            eventWriter.threadID = SubstrateJVM.getCurrentThreadId();
+            Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+            eventWriter.excluded = tjlt.jfrExcluded;
+        }
+        return eventWriter;
     }
 
     /**
