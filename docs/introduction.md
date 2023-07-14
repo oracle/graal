@@ -31,7 +31,6 @@ For more information about Oracle GraalVM licensing, see the [Oracle Java SE Lic
 
 GraalVM Community Edition is open-source software built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
 Check the [licenses](https://github.com/oracle/graal#license) of individual GraalVM components which are generally derivative of the license of a particular language and may differ.
-GraalVM Community Edition is free to use for any purpose and comes with no strings attached, but also no guarantees or support.
 
 ## What to Read Next
 
