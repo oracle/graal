@@ -193,7 +193,18 @@ public class ClassInitializationFeature implements InternalFeature {
             }
 
             if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                /*
+                 * This option enables a check that all application classes have an explicitly
+                 * specified initialization status. This is useful to ensure that most classes (all
+                 * classes for which it is feasible) are marked as "initialize at image build time"
+                 * to avoid the overhead of class initialization checks at run time.
+                 *
+                 * We exclude JDK classes from the check: the application should not interfere with
+                 * the class initialization status of the JDK because the application cannot know
+                 * which JDK classes are safe for initialization at image build time.
+                 */
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
                                 .collect(Collectors.toList());
