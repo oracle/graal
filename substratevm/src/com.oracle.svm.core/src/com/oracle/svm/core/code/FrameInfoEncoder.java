@@ -123,17 +123,15 @@ public class FrameInfoEncoder {
         /**
          * Fills the FrameInfoQueryResult.source* fields.
          */
-        protected abstract void fillSourceFields(BytecodeFrame bytecodeFrame, FrameInfoQueryResult resultFrameInfo);
+        protected abstract void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo);
     }
 
     public abstract static class SourceFieldsFromMethod extends Customization {
         private final HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
 
         @Override
-        protected void fillSourceFields(BytecodeFrame bytecodeFrame, FrameInfoQueryResult resultFrameInfo) {
-            final ResolvedJavaMethod method = bytecodeFrame.getMethod();
-
-            final StackTraceElement source = method.asStackTraceElement(bytecodeFrame.getBCI());
+        protected void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo) {
+            final StackTraceElement source = method.asStackTraceElement(resultFrameInfo.getBci());
             resultFrameInfo.sourceClass = getDeclaringJavaClass(method);
             /*
              * There is no need to have method names as interned strings. But at least sometimes the
@@ -150,8 +148,8 @@ public class FrameInfoEncoder {
 
     public abstract static class SourceFieldsFromImage extends Customization {
         @Override
-        protected void fillSourceFields(BytecodeFrame bytecodeFrame, FrameInfoQueryResult resultFrameInfo) {
-            final int deoptOffsetInImage = ((SharedMethod) bytecodeFrame.getMethod()).getDeoptOffsetInImage();
+        protected void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo) {
+            final int deoptOffsetInImage = ((SharedMethod) method).getDeoptOffsetInImage();
             if (deoptOffsetInImage != 0) {
                 CodeInfoQueryResult targetCodeInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptOffsetInImage, resultFrameInfo.encodedBci);
                 if (targetCodeInfo != null) {
@@ -180,14 +178,16 @@ public class FrameInfoEncoder {
         protected final ValueInfo[][] virtualObjects;
         protected final FrameInfoQueryResult frame;
         protected long encodedFrameInfoIndex;
+        protected boolean isDefaultFrameData;
         protected int frameSliceIndex = UNCOMPRESSED_FRAME_SLICE_INDEX;
 
-        FrameData(DebugInfo debugInfo, int totalFrameSize, ValueInfo[][] virtualObjects, FrameInfoQueryResult frame) {
-            assert debugInfo != null;
+        FrameData(DebugInfo debugInfo, int totalFrameSize, ValueInfo[][] virtualObjects, boolean isDefaultFrameData) {
+            assert (virtualObjects != null && debugInfo != null) || (virtualObjects == null && debugInfo == null);
             this.debugInfo = debugInfo;
             this.totalFrameSize = totalFrameSize;
             this.virtualObjects = virtualObjects;
-            this.frame = frame;
+            this.isDefaultFrameData = isDefaultFrameData;
+            this.frame = new FrameInfoQueryResult();
         }
     }
 
@@ -465,14 +465,14 @@ public class FrameInfoEncoder {
         boolean includeLocalValues = customization.includeLocalValues(method, infopoint, isDeoptEntry);
 
         DebugInfo debugInfo = infopoint.debugInfo;
-        FrameData data = new FrameData(debugInfo, totalFrameSize, new ValueInfo[countVirtualObjects(debugInfo)][], new FrameInfoQueryResult());
+        FrameData data = new FrameData(debugInfo, totalFrameSize, new ValueInfo[countVirtualObjects(debugInfo)][], false);
         initializeFrameInfo(data.frame, data, debugInfo.frame(), isDeoptEntry, includeLocalValues);
 
         List<CompressedFrameData> frameSlice = includeLocalValues ? null : new ArrayList<>();
         BytecodeFrame bytecodeFrame = data.debugInfo.frame();
         for (FrameInfoQueryResult resultFrame = data.frame; resultFrame != null; resultFrame = resultFrame.caller) {
             assert bytecodeFrame != null;
-            customization.fillSourceFields(bytecodeFrame, resultFrame);
+            customization.fillSourceFields(bytecodeFrame.getMethod(), resultFrame);
 
             // save source class and method name
             final Class<?> sourceClass = resultFrame.sourceClass;
@@ -493,6 +493,26 @@ public class FrameInfoEncoder {
         if (!includeLocalValues) {
             frameMetadata.addFrameSlice(data, frameSlice);
         }
+
+        allDebugInfos.add(data);
+        return data;
+    }
+
+    protected FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
+        FrameData data = new FrameData(null, totalFrameSize, null, true);
+        data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, false, false);
+        customization.fillSourceFields(method, data.frame);
+        // invalidate source line number
+        data.frame.sourceLineNumber = -1;
+        // save source class and method name
+        Class<?> sourceClass = data.frame.sourceClass;
+        String sourceMethodName = data.frame.sourceMethodName;
+        encoders.sourceClasses.addObject(sourceClass);
+        encoders.sourceMethodNames.addObject(sourceMethodName);
+
+        // save encoding metadata
+        CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, data.frame.sourceLineNumber, data.frame.encodedBci, data.frame.methodId, true);
+        frameMetadata.addFrameSlice(data, List.of(frame));
 
         allDebugInfos.add(data);
         return data;
