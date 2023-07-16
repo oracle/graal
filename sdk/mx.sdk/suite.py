@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.27.6",
   "name" : "sdk",
   "version" : "23.1.0",
   "release" : False,
