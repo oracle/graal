@@ -1291,7 +1291,6 @@ suite = {
             "description" : "SubstrateVM image builder components",
             "dependencies": [
                 "com.oracle.svm.graal",
-                "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
@@ -1308,15 +1307,12 @@ suite = {
                 "POINTSTO",
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
-                "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_RUNTIME",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
-                    "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise",
+                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1334,15 +1330,9 @@ suite = {
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
                     "org.graalvm.compiler.options.OptionDescriptors",
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-                    "com.oracle.truffle.api.provider.TruffleLanguageProvider",
-                    "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",    # Deprecated
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -1383,7 +1373,7 @@ suite = {
             },
             "noMavenJavadoc": True,
         },
-
+        
         "SVM_LIBFFI": {
             "subDir": "src",
             "description" : "SubstrateVM support for Truffle NFI LibFFI backend",
@@ -1393,7 +1383,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi.windows",
             ],
             "distDependencies": [
-                "SVM",
+                "TRUFFLE_RUNTIME_SVM",
             ],
         },
 
@@ -1486,6 +1476,60 @@ suite = {
                 ],
               }
             },
+        },
+
+        "TRUFFLE_RUNTIME_SVM": {
+            "subDir": "src",
+            "description" : "SVM Runtime for Truffle languages.",
+            "dependencies": [
+                 "com.oracle.svm.truffle",
+            ],
+            "distDependencies": [
+                "SVM",
+                "OBJECTFILE",
+                "POINTSTO",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.truffle.runtime.svm",
+                "exports" : [
+                    "com.oracle.svm.truffle.api to org.graalvm.truffle",
+                    "* to org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                ],
+                "opens" : [
+                    "com.oracle.svm.truffle to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.api to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.isolated to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                ],
+                "requires": [
+                    "java.management",
+                    "jdk.management",
+                ],
+                "uses" : [
+                    "com.oracle.truffle.api.TruffleLanguage.Provider",
+                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
+                    "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+                    "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
+                    "com.oracle.truffle.api.TruffleLanguage.Provider",                   # Deprecated
+                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
+                ],
+                "requiresConcealed": {
+                    "jdk.internal.vm.ci": [
+                        "jdk.vm.ci.common",
+                        "jdk.vm.ci.meta",
+                        "jdk.vm.ci.code",
+                        "jdk.vm.ci.services",
+                        "jdk.vm.ci.runtime",
+                        "jdk.vm.ci.amd64",
+                        "jdk.vm.ci.aarch64",
+                        "jdk.vm.ci.hotspot",
+                    ],
+                    "java.management": [
+                        "sun.management",
+                    ],
+                },
+            },
+            "noMavenJavadoc": True,
         },
 
         "GRAAL_HOTSPOT_LIBRARY": {
@@ -1645,7 +1689,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
                 ],

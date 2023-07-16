@@ -1105,6 +1105,22 @@ llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "a
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='Truffle Runtime SVM',
+    short_name='svmt',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'tfla',
+    ],
+    builder_jar_distributions=[
+        'substratevm:TRUFFLE_RUNTIME_SVM',
+    ],
+    stability="supported",
+    jlink=False,
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
