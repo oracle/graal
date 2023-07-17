@@ -117,8 +117,11 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 ## Current Limitations
 
-A subset of JFR features are currently available: custom and system events and disk-based recordings.
-Note that JFR events recording is not supported on GraalVM distribution for Windows. 
+JFR support is currently incomplete: for example, few VM-internal events are present. 
+However, JFR currently includes the following features: custom and system events, disk-based recordings, and stack traces. 
+To see an exhaustive list of JFR events and features supported by Native Image, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
+
+> Note: the GraalVM distribution for Windows does not include JFR event recording.
 
 ### Further Reading
 
