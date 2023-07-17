@@ -63,6 +63,13 @@ public final class RegexRootNode extends RootNode {
         return body.getSource();
     }
 
+    public RegexBodyNode getBodyUnwrapped() {
+        if (body instanceof InstrumentableNode.WrapperNode) {
+            return (RegexBodyNode) ((InstrumentableNode.WrapperNode) body).getDelegateNode();
+        }
+        return body;
+    }
+
     @Override
     public SourceSection getSourceSection() {
         return body.getSourceSection();
@@ -76,10 +83,7 @@ public final class RegexRootNode extends RootNode {
     @TruffleBoundary
     @Override
     public String toString() {
-        if (body instanceof InstrumentableNode.WrapperNode) {
-            return ((InstrumentableNode.WrapperNode) body).getDelegateNode().toString();
-        }
-        return body.toString();
+        return getBodyUnwrapped().toString();
     }
 
     /**

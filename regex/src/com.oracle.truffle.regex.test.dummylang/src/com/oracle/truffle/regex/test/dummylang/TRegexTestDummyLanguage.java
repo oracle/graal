@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.test;
+package com.oracle.truffle.regex.test.dummylang;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -56,7 +56,9 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexObject;
 
 @TruffleLanguage.Registration(name = TRegexTestDummyLanguage.NAME, id = TRegexTestDummyLanguage.ID, characterMimeTypes = TRegexTestDummyLanguage.MIME_TYPE, version = "0.1", dependentLanguages = RegexLanguage.ID)
 public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLanguage.DummyLanguageContext> {
@@ -73,9 +75,11 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
         if (src.startsWith(BENCH_PREFIX)) {
             final Object regex = DummyLanguageContext.get(null).getEnv().parseInternal(
                             Source.newBuilder(RegexLanguage.ID, "BooleanMatch=true," + src.substring(BENCH_PREFIX.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
+
             return new RootNode(this) {
 
                 private final Object compiledRegex = regex;
+                private final String name = parsingRequest.getSource().getName();
 
                 @Child RegexBenchNode benchNode = TRegexTestDummyLanguageFactory.RegexBenchNodeGen.create();
 
@@ -83,6 +87,11 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
                 public Object execute(VirtualFrame frame) {
                     Object[] args = frame.getArguments();
                     return benchNode.execute(this, compiledRegex, args[0], (int) args[1]);
+                }
+
+                @Override
+                public String toString() {
+                    return name + ' ' + ((RegexObject) compiledRegex).getLabel();
                 }
             }.getCallTarget();
         }
@@ -122,6 +131,17 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
+
+        @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
+        static boolean run(Object compiledRegex, TruffleString input, int fromIndex,
+                        @CachedLibrary("compiledRegex") InteropLibrary objs) {
+            try {
+                return (boolean) objs.invokeMember(compiledRegex, EXEC, input, fromIndex);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
     }
 
     @GenerateInline

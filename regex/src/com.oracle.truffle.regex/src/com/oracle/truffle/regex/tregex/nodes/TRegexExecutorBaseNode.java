@@ -96,6 +96,8 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
         return booleanMatch;
     }
 
+    public abstract int getNumberOfStates();
+
     public abstract int getNumberOfTransitions();
 
     public abstract String getName();

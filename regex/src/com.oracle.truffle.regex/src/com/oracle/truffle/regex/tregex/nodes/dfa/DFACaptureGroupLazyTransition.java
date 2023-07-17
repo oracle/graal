@@ -60,6 +60,8 @@ public abstract class DFACaptureGroupLazyTransition {
 
     protected abstract void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal);
 
+    public abstract int getCost();
+
     public static final class Single extends DFACaptureGroupLazyTransition {
 
         private static final Single EMPTY = new Single(DFACaptureGroupPartialTransition.getEmptyInstance());
@@ -77,6 +79,11 @@ public abstract class DFACaptureGroupLazyTransition {
         @Override
         protected void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal) {
             transition.apply(executor, locals.getCGData(), locals.getLastIndex(), preFinal, true);
+        }
+
+        @Override
+        public int getCost() {
+            return transition.getCost();
         }
     }
 
@@ -96,6 +103,15 @@ public abstract class DFACaptureGroupLazyTransition {
                 transitions[i] = transitions[i].subtract(common);
             }
             return transitions;
+        }
+
+        @Override
+        public int getCost() {
+            int cost = common.getCost();
+            for (DFACaptureGroupPartialTransition t : transitions) {
+                cost += t.getCost();
+            }
+            return cost;
         }
     }
 
