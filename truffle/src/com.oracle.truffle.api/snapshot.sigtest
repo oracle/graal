@@ -183,6 +183,8 @@ meth public boolean inContextPreinitialization()
 meth public boolean inNativeImageBuild()
 meth public com.oracle.truffle.api.CPUArchitecture getCPUArchitecture()
 meth public com.oracle.truffle.api.OS getOS()
+meth public java.lang.String readVersionHash(java.lang.Module,java.lang.String) throws java.io.IOException
+meth public void unpackFiles(java.nio.file.Path,java.lang.Module,java.lang.String,java.util.List<java.lang.String>) throws java.io.IOException
 supr java.lang.Object
 hfds contextPreinitializationCheck
 

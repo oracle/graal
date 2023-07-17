@@ -43,17 +43,19 @@ package com.oracle.truffle.nfi.backend.libffi;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 
 @InternalResource.Id("libtrufflenfi")
 final class LibNFIResource implements InternalResource {
 
-    private static final String RESOURCES_ROOT = "META-INF/resources";
+    private static final String HASH_ENTRY = "META-INF/resources/hash-<os>-<arch>.sha256";
+    private static final String FILE_LIST_ENTRY = "META-INF/resources/files-<os>-<arch>";
+
+    private static final List<String> RELATIVIZE_TO = List.of(
+                    "META-INF/resources/common",
+                    "META-INF/resources/<os>/<arch>");
 
     @Override
     public void unpackFiles(Path targetDirectory, Env env) throws IOException {
@@ -62,35 +64,15 @@ final class LibNFIResource implements InternalResource {
             // into resources folder.
             return;
         }
-        String sourceDirectory = String.format("%s/%s/%s", RESOURCES_ROOT, env.getOS(), env.getCPUArchitecture());
-        String relativeResourcePath = "bin/" + System.mapLibraryName("trufflenfi");
-        unpackResource(targetDirectory, sourceDirectory, relativeResourcePath);
-        sourceDirectory = RESOURCES_ROOT + "/common";
-        relativeResourcePath = "include/trufflenfi.h";
-        unpackResource(targetDirectory, sourceDirectory, relativeResourcePath);
-    }
-
-    private static void unpackResource(Path targetDirectory, String sourceDirectory, String relativeResourcePath) throws IOException {
-        String resource = sourceDirectory + "/" + relativeResourcePath;
-        Path target = targetDirectory.resolve(relativeResourcePath);
-        InputStream stream = LibNFIResource.class.getModule().getResourceAsStream(resource);
-        if (stream == null) {
-            throw new NoSuchFileException(resource);
-        }
-        Path parent = target.getParent();
-        if (parent == null) {
-            throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
-        }
-        Files.createDirectories(parent);
-        try (BufferedInputStream in = new BufferedInputStream(stream)) {
-            Files.copy(in, target);
-        }
+        env.unpackFiles(targetDirectory, this.getClass().getModule(), FILE_LIST_ENTRY, RELATIVIZE_TO);
     }
 
     @Override
     public String versionHash(Env env) {
-        // sha-256 of com.oracle.truffle.nfi.native/src/* and
-        // com.oracle.truffle.nfi.native/include/*
-        return "c19bdea84348e744485977f888a0d4b3a44b7497ff2e56c95f4e87dcbc8e1116";
+        try {
+            return env.readVersionHash(this.getClass().getModule(), HASH_ENTRY);
+        } catch (IOException ioe) {
+            throw CompilerDirectives.shouldNotReachHere(ioe);
+        }
     }
 }

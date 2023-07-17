@@ -40,12 +40,23 @@
  */
 package com.oracle.truffle.api;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
@@ -136,6 +147,116 @@ public interface InternalResource {
          */
         public OS getOS() {
             return OS.getCurrent();
+        }
+
+        /**
+         * Reads a version hash from a resource in the {@code owner} module.
+         *
+         * @param owner refers to the module that contains the version hash. If the {@code owner}
+         *            encapsulates the {@code hashResource}, see
+         *            {@link Module#getResourceAsStream(String)}, the {@code owner} needs to open
+         *            the enclosing package of the {@code hashResource} to the
+         *            {@code org.graalvm.truffle} module. It is recommended to use non-encapsulated
+         *            resource paths.
+         * @param hashResource a {@code '/'}-separated path name that identifies the resource,
+         *            similar to {@link Class#getResourceAsStream}. The {@code hashResource} may
+         *            contain {@code <os>} and {@code <arch>} wildcards, which are replaced by the
+         *            {@link #getOS() current operating system} and the {@link #getCPUArchitecture()
+         *            current CPU architecture}, respectively.
+         * @return the {@code hashResource} content
+         * @throws IOException in case of IO error
+         * @since 23.1
+         */
+        public String readVersionHash(Module owner, String hashResource) throws IOException {
+            String resourceName = substituteVariables(hashResource);
+            List<String> content = readResourceAsStrings(owner, resourceName);
+            if (content.size() != 1) {
+                throw CompilerDirectives.shouldNotReachHere("Expected a single line with hash. The " + hashResource + " content " + content);
+            }
+            return content.get(0);
+        }
+
+        /**
+         * Unpacks file listed in the {@code fileListResource} to the {@code into} folder.
+         *
+         * @param owner refers to the module that contains packed resources. If the {@code owner}
+         *            encapsulates resources, see {@link Module#getResourceAsStream(String)}, the
+         *            {@code owner} needs to open the resources enclosing package to the
+         *            {@code org.graalvm.truffle} module. It is recommended to use non-encapsulated
+         *            resource paths.
+         * @param fileListResource a {@code '/'}-separated path name that identifies the resource
+         *            containing the file list. The {@code fileListResource} may contain
+         *            {@code <os>} and {@code <arch>} wildcards, which are replaced by the
+         *            {@link #getOS() current operating system} and the {@link #getCPUArchitecture()
+         *            current CPU architecture}, respectively.
+         * @param relativizeTo a list of paths used to relativize the file list entries in the
+         *            {@code into} folder. In other words, the file list entries are resolved using
+         *            the {@code into} directory after removing the {@code relativizeTo} paths.
+         *            Similar to the {@fileListResource}, the {@relativizeTo} paths can utilize
+         *            wildcards such as {@code <os>} and {@code <arch>}.
+         * @throws IOException in case of IO error
+         * @since 23.1
+         */
+        public void unpackFiles(Path into, Module owner, String fileListResource, List<String> relativizeTo) throws IOException {
+            List<Path> roots = new ArrayList<>();
+            for (String strPath : relativizeTo) {
+                Path root = Paths.get(substituteVariables(strPath));
+                if (root.isAbsolute()) {
+                    throw new IllegalArgumentException("RelativizeTo must contain only relative paths, but the absolute path " + root + " was given.");
+                }
+                roots.add(root);
+            }
+            String resourceName = substituteVariables(fileListResource);
+            List<String> fileList = readResourceAsStrings(owner, resourceName);
+            for (String resourcePath : fileList) {
+                Path target = into.resolve(relativize(Paths.get(resourcePath), roots));
+                copyResource(target, owner, resourcePath);
+            }
+        }
+
+        private String substituteVariables(String resourceName) {
+            return resourceName.replace("<os>", getOS().toString()).replace("<arch>", getCPUArchitecture().toString());
+        }
+
+        private static Path relativize(Path path, List<Path> relativizeTo) {
+            for (Path root : relativizeTo) {
+                if (path.startsWith(root)) {
+                    return root.relativize(path);
+                }
+            }
+            return path;
+        }
+
+        private static InputStream findResource(Module module, String resourceName) throws IOException {
+            InputStream stream = module.getResourceAsStream(resourceName);
+            if (stream == null) {
+                throw new NoSuchFileException(resourceName);
+            }
+            return stream;
+        }
+
+        private static List<String> readResourceAsStrings(Module module, String resourceName) throws IOException {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(findResource(module, resourceName), StandardCharsets.UTF_8))) {
+                List<String> content = new ArrayList<>();
+                for (String line = in.readLine(); line != null; line = in.readLine()) {
+                    if (!line.isEmpty()) {
+                        content.add(line);
+                    }
+                }
+                return content;
+            }
+        }
+
+        private static void copyResource(Path target, Module owner, String relativeResourcePath) throws IOException {
+
+            Path parent = target.getParent();
+            if (parent == null) {
+                throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
+            }
+            Files.createDirectories(parent);
+            try (BufferedInputStream in = new BufferedInputStream(findResource(owner, relativeResourcePath.replace(File.separatorChar, '/')))) {
+                Files.copy(in, target);
+            }
         }
     }
 

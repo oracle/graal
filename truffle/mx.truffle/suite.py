@@ -1474,6 +1474,8 @@ suite = {
     "TRUFFLE_NFI_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/hash-<os>-<arch>.sha256",
+      "fileListEntry" : "META-INF/resources/files-<os>-<arch>",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
