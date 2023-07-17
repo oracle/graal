@@ -1748,6 +1748,15 @@ suite = {
       },
       "maven" : False,
     },
+    
+    "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for SVM",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/macro-truffle-svm.properties",
+      },
+      "maven" : False,
+    },
 
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
       "native" : True,

@@ -1180,6 +1180,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 #   suite
 # - The `SubstrateVM` component explicitly depends on this macro, to make sure
 #   that it is always present whenever `SubstrateVM` is included
+# Legacy Truffle Macro
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
@@ -1189,6 +1190,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
+    stability="supported",
+))
+
+# Truffle Unchained SVM Macro
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=_suite,
+    name='Truffle SVM Macro',
+    short_name='tflsm',
+    dir_name='truffle-svm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    priority = 0,
+    support_distributions=['truffle:TRUFFLE_SVM_GRAALVM_SUPPORT'],
     stability="supported",
 ))
 

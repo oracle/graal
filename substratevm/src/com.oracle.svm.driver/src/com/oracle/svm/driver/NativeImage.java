@@ -548,11 +548,24 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
+            result.addAll(createTruffleBuilderModulePath());
             if (modulePathBuild) {
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
             return result;
+        }
+
+        private List<Path> createTruffleBuilderModulePath() {
+            List<Path> jars = getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise");
+            if (!jars.isEmpty()) {
+                /*
+                 * If Truffle is installed as part of the JDK we always add the builder modules of
+                 * Truffle to the builder module path. This is legacy support and should in the
+                 * future no longer be needed.
+                 */
+                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle", "builder"))));
+            }
+            return jars;
         }
 
         /**
