@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 class ArgFilesOptionPreprocessor {
 
@@ -108,7 +109,8 @@ class ArgFilesOptionPreprocessor {
     }
 
     private void addArg(List<String> args, String arg) {
-        if (arg.equals(DISABLE_AT_FILES_OPTION)) {
+        Objects.requireNonNull(arg);
+        if (DISABLE_AT_FILES_OPTION.equals(arg)) {
             disableAtFiles = true;
         } else {
             args.add(arg);
