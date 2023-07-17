@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.reflect.target;
 
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import java.util.function.Function;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -38,8 +42,8 @@ import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 public final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
-@TargetClass(className = "jdk.internal.reflect.MethodAccessorGenerator", onlyWith = {JDK21OrEarlier.class})
-final class Target_jdk_internal_reflect_MethodAccessorGenerator {
+@TargetClass(classNameProvider = Name_jdk_internal_reflect_SerializationConstructorAccessorGenerator_helper.class)
+final class Target_jdk_internal_reflect_SerializationConstructorAccessorGenerator {
 
     @Substitute
     @TargetElement(onlyWith = JDK20OrLater.class)
@@ -66,4 +70,17 @@ final class Target_jdk_internal_reflect_MethodAccessorGenerator {
 
 @TargetClass(className = "jdk.internal.reflect.SerializationConstructorAccessorImpl")
 final class Target_jdk_internal_reflect_SerializationConstructorAccessorImpl {
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+final class Name_jdk_internal_reflect_SerializationConstructorAccessorGenerator_helper implements Function<TargetClass, String> {
+
+    @Override
+    public String apply(TargetClass annotation) {
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            return "jdk.internal.reflect.SerializationConstructorAccessorGenerator";
+        } else {
+            return "jdk.internal.reflect.MethodAccessorGenerator";
+        }
+    }
 }
