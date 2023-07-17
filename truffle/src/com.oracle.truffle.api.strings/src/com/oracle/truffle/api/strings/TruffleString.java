@@ -2161,7 +2161,7 @@ public final class TruffleString extends AbstractTruffleString {
             if (length == 0) {
                 return Encoding.UTF_32.getEmpty();
             }
-            if (length == 1 && value[intOffset] <= 0xff) {
+            if (length == 1 && Integer.compareUnsigned(value[intOffset], 0xff) <= 0) {
                 return TStringConstants.getSingleByte(Encoding.UTF_32, value[intOffset]);
             }
             int offsetV = intOffset << 2;
@@ -2794,9 +2794,9 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization
         final boolean isValid(AbstractTruffleString a, Encoding expectedEncoding,
-                        @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode) {
+                        @Cached TStringInternalNodes.GetValidOrBrokenCodeRangeNode getCodeRangeNode) {
             a.checkEncoding(expectedEncoding);
-            return !isBroken(getPreciseCodeRangeNode.execute(this, a, expectedEncoding));
+            return !isBroken(getCodeRangeNode.execute(this, a, expectedEncoding));
         }
 
         /**
@@ -6152,6 +6152,72 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * Node to replace all invalid bytes in a given string, such that the resulting string is
+     * encoded correctly in the given encoding. See
+     * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
+     *
+     * @since 23.1
+     */
+    public abstract static class ToWellFormedStringNode extends AbstractPublicNode {
+
+        ToWellFormedStringNode() {
+        }
+
+        /**
+         * Returns a version of string {@code a} that is encoded <em>correctly</em> in the given
+         * encoding, which may be the string itself or a converted version. Invalid byte sequences
+         * are replaced with {@code '\ufffd'} (for UTF-*) or {@code '?'}.
+         *
+         * @since 23.1
+         */
+        public abstract TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding);
+
+        @Specialization
+        final TruffleString toWellFormed(AbstractTruffleString a, Encoding encoding,
+                        @Cached InlinedConditionProfile isValidProfile,
+                        @Cached TStringInternalNodes.GetValidOrBrokenCodeRangeNode getCodeRangeNode,
+                        @Cached InternalAsTruffleStringNode asTruffleStringNode,
+                        @Cached TStringInternalNodes.ToWellFormedStringNode internalNode,
+                        @Cached ToIndexableNode toIndexableNode) {
+            a.checkEncoding(encoding);
+            int codeRangeA = getCodeRangeNode.execute(this, a, encoding);
+            if (isValidProfile.profile(this, !isBroken(codeRangeA))) {
+                return asTruffleStringNode.execute(this, a, encoding);
+            }
+            return internalNode.execute(this, a, toIndexableNode.execute(this, a, a.data()), encoding);
+        }
+
+        /**
+         * Create a new {@link SwitchEncodingNode}.
+         *
+         * @since 23.1
+         */
+        @NeverDefault
+        public static ToWellFormedStringNode create() {
+            return TruffleStringFactory.ToWellFormedStringNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link SwitchEncodingNode}.
+         *
+         * @since 23.1
+         */
+        public static ToWellFormedStringNode getUncached() {
+            return TruffleStringFactory.ToWellFormedStringNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.ToWellFormedStringNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public TruffleString toWellFormedStringUncached(Encoding expectedEncoding) {
+        return ToWellFormedStringNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
      * Node to get a given string in a specific encoding. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
      *
@@ -6217,7 +6283,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     abstract static class InternalSwitchEncodingNode extends AbstractInternalNode {
 
-        public abstract TruffleString execute(Node node, AbstractTruffleString a, Encoding targetEncoding, TranscodingErrorHandler errorHandler);
+        abstract TruffleString execute(Node node, AbstractTruffleString a, Encoding targetEncoding, TranscodingErrorHandler errorHandler);
 
         @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
         static TruffleString compatibleImmutable(TruffleString a, @SuppressWarnings("unused") Encoding targetEncoding, @SuppressWarnings("unused") TranscodingErrorHandler errorHandler) {
@@ -6287,7 +6353,6 @@ public final class TruffleString extends AbstractTruffleString {
                 return transCodeNode.execute(node, a, a.data(), codePointLengthA, codeRangeA, targetEncoding, errorHandler);
             }
         }
-
     }
 
     /**

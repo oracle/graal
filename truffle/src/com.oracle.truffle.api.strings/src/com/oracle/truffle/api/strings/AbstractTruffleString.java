@@ -382,6 +382,10 @@ public abstract class AbstractTruffleString {
         codePointLength = -1;
     }
 
+    final boolean isCodePointLengthKnown() {
+        return codePointLength >= 0;
+    }
+
     final void invalidateHashCode() {
         hashCode = 0;
     }

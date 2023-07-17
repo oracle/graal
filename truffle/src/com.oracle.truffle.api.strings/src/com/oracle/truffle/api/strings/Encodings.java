@@ -163,6 +163,10 @@ final class Encodings {
     static final byte UTF8_ACCEPT = 0;
     static final byte UTF8_REJECT = 12;
     static final byte UTF8_REVERSE_INCOMPLETE_SEQ = 24;
+    /**
+     * UTF-8 encoded 0xfffd.
+     */
+    static final byte[] CONVERSION_REPLACEMENT_UTF_8 = {(byte) 0xEF, (byte) 0xBF, (byte) 0xBD};
 
     static byte[] getUTF8DecodingStateMachine(DecodingErrorHandler errorHandler) {
         return errorHandler == DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8 ? Encodings.UTF_8_STATE_MACHINE_ALLOW_UTF16_SURROGATES : Encodings.UTF_8_STATE_MACHINE;

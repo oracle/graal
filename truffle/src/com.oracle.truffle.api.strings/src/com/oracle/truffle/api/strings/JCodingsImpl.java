@@ -282,7 +282,6 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static final byte[] CONVERSION_REPLACEMENT = {'?'};
-    private static final byte[] CONVERSION_REPLACEMENT_UTF_8 = {(byte) 0xEF, (byte) 0xBF, (byte) 0xBD};
     private static final byte[] CONVERSION_REPLACEMENT_UTF_16 = TStringGuards.littleEndian() ? new byte[]{(byte) 0xFD, (byte) 0xFF} : new byte[]{(byte) 0xFF, (byte) 0xFD};
     private static final byte[] CONVERSION_REPLACEMENT_UTF_32 = TStringGuards.littleEndian() ? new byte[]{(byte) 0xFD, (byte) 0xFF, 0, 0} : new byte[]{0, 0, (byte) 0xFF, (byte) 0xFD};
 
@@ -318,7 +317,7 @@ final class JCodingsImpl implements JCodings {
         } else {
             final byte[] replacement;
             if (isUTF8(targetEncoding)) {
-                replacement = CONVERSION_REPLACEMENT_UTF_8;
+                replacement = Encodings.CONVERSION_REPLACEMENT_UTF_8;
             } else if (isUTF16(targetEncoding)) {
                 replacement = CONVERSION_REPLACEMENT_UTF_16;
             } else if (isUTF32(targetEncoding)) {
