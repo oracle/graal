@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -31,6 +32,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -50,9 +53,9 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.internal.misc.Unsafe;
 
 /**
- * This file contains most of the code necessary for supporting VarHandle in native images. The
- * actual intrinsification of VarHandle accessors happens in hosted-only code during inlining before
- * analysis.
+ * This file contains most of the code necessary for supporting VarHandle (and DirectMethodHandle
+ * field accessors) in native images. The actual intrinsification of the accessors happens in
+ * hosted-only code during inlining before analysis.
  *
  * The VarHandle implementation in the JDK uses some invokedynamic and method handles, but also a
  * lot of explicit Java code (a lot of it automatically generated): The main entry point from the
@@ -107,52 +110,81 @@ public class VarHandleFeature implements InternalFeature {
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadOnly"),
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadWrite"));
             }
+
+            Class<?> staticAccessorClass = Class.forName("java.lang.invoke.DirectMethodHandle$StaticAccessor");
+            infos.put(staticAccessorClass, new VarHandleInfo(true, createOffsetFieldGetter(staticAccessorClass, "staticOffset"),
+                            createTypeFieldGetter(staticAccessorClass, "staticBase")));
+
+            Class<?> accessorClass = Class.forName("java.lang.invoke.DirectMethodHandle$Accessor");
+            Function<Object, Class<?>> accessorTypeGetter = obj -> ((MethodHandle) obj).type().parameterType(0);
+            infos.put(accessorClass, new VarHandleInfo(false, createOffsetFieldGetter(accessorClass, "fieldOffset"), accessorTypeGetter));
+
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
     private void buildInfo(boolean isStatic, String typeFieldName, Class<?> readOnlyClass, Class<?> readWriteClass) {
-        VarHandleInfo info = new VarHandleInfo(isStatic, ReflectionUtil.lookupField(readOnlyClass, "fieldOffset"), ReflectionUtil.lookupField(readOnlyClass, typeFieldName));
-        infos.put(readOnlyClass, info);
-        infos.put(readWriteClass, info);
+        ToLongFunction<Object> offsetGetter = createOffsetFieldGetter(readOnlyClass, "fieldOffset");
+        Function<Object, Class<?>> typeGetter = createTypeFieldGetter(readOnlyClass, typeFieldName);
+        VarHandleInfo readOnlyInfo = new VarHandleInfo(isStatic, offsetGetter, typeGetter);
+        infos.put(readOnlyClass, readOnlyInfo);
+        infos.put(readWriteClass, readOnlyInfo);
+    }
+
+    private static ToLongFunction<Object> createOffsetFieldGetter(Class<?> clazz, String offsetFieldName) {
+        Field offsetField = ReflectionUtil.lookupField(clazz, offsetFieldName);
+        return obj -> {
+            try {
+                return offsetField.getLong(obj);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        };
+    }
+
+    private static Function<Object, Class<?>> createTypeFieldGetter(Class<?> clazz, String typeFieldName) {
+        Field typeField = ReflectionUtil.lookupField(clazz, typeFieldName);
+        return obj -> {
+            try {
+                return (Class<?>) typeField.get(obj);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        };
     }
 
     /**
-     * Find the original {@link Field} referenced by a VarHandle that accessed an instance field or
-     * a static field field. The VarHandle stores the field offset and the holder type. We iterate
-     * all fields of that type and look for the field with a matching offset.
+     * Find the original {@link Field} referenced by a VarHandle that accesses an instance field or
+     * a static field. The VarHandle stores the field offset and the holder type. We iterate all
+     * fields of that type and look for the field with a matching offset.
      */
     Field findVarHandleField(Object varHandle) {
-        try {
-            VarHandleInfo info = infos.get(varHandle.getClass());
-            long originalFieldOffset = info.fieldOffsetField.getLong(varHandle);
-            Class<?> type = (Class<?>) info.typeField.get(varHandle);
+        VarHandleInfo info = infos.get(varHandle.getClass());
+        long originalFieldOffset = info.offsetGetter.applyAsLong(varHandle);
+        Class<?> type = info.typeGetter.apply(varHandle);
 
-            for (Class<?> cur = type; cur != null; cur = cur.getSuperclass()) {
-                /* Search the declared fields for a field with a matching offset. */
-                for (Field field : cur.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
-                        long fieldOffset = info.isStatic ? Unsafe.getUnsafe().staticFieldOffset(field) : Unsafe.getUnsafe().objectFieldOffset(field);
-                        if (fieldOffset == originalFieldOffset) {
-                            return field;
-                        }
+        for (Class<?> cur = type; cur != null; cur = cur.getSuperclass()) {
+            /* Search the declared fields for a field with a matching offset. */
+            for (Field field : cur.getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
+                    long fieldOffset = info.isStatic ? Unsafe.getUnsafe().staticFieldOffset(field) : Unsafe.getUnsafe().objectFieldOffset(field);
+                    if (fieldOffset == originalFieldOffset) {
+                        return field;
                     }
-                }
-
-                if (info.isStatic) {
-                    /*
-                     * For instance fields, we need to search the whole class hierarchy. For static
-                     * fields, we must only search the exact class.
-                     */
-                    break;
                 }
             }
 
-            throw VMError.shouldNotReachHere("Could not find field referenced in VarHandle: " + type + ", offset = " + originalFieldOffset + ", isStatic = " + info.isStatic);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+            if (info.isStatic) {
+                /*
+                 * For instance fields, we need to search the whole class hierarchy. For static
+                 * fields, we must only search the exact class.
+                 */
+                break;
+            }
         }
+
+        throw VMError.shouldNotReachHere("Could not find field referenced in VarHandle: " + type + ", offset = " + originalFieldOffset + ", isStatic = " + info.isStatic);
     }
 
     @Override
@@ -190,17 +222,17 @@ public class VarHandleFeature implements InternalFeature {
 
 class VarHandleInfo {
     final boolean isStatic;
-    final Field fieldOffsetField;
-    final Field typeField;
+    final ToLongFunction<Object> offsetGetter;
+    final Function<Object, Class<?>> typeGetter;
 
-    VarHandleInfo(boolean isStatic, Field fieldOffsetField, Field typeField) {
+    VarHandleInfo(boolean isStatic, ToLongFunction<Object> offsetGetter, Function<Object, Class<?>> typeGetter) {
         this.isStatic = isStatic;
-        this.fieldOffsetField = fieldOffsetField;
-        this.typeField = typeField;
+        this.offsetGetter = offsetGetter;
+        this.typeGetter = typeGetter;
     }
 }
 
-class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailability {
+class VarHandleFieldOffsetIntComputer implements FieldValueTransformerWithAvailability {
     @Override
     public ValueAvailability valueAvailability() {
         return ValueAvailability.AfterAnalysis;
@@ -213,7 +245,15 @@ class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailabil
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
         }
-        return Long.valueOf(offset);
+        return offset;
+    }
+}
+
+class VarHandleFieldOffsetComputer extends VarHandleFieldOffsetIntComputer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        Object offset = super.transform(receiver, originalValue);
+        return Long.valueOf((Integer) offset);
     }
 }
 
@@ -462,4 +502,41 @@ final class Target_java_lang_invoke_VarHandleReferences_FieldStaticReadOnly {
     Object base;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
+}
+
+/*
+ * DirectMethodHandle$Accessor and DirectMethodHandle$StaticAccessor predate VarHandle, but have a
+ * similar purpose and must be handled similarly.
+ */
+
+@TargetClass(className = "java.lang.invoke.DirectMethodHandle", innerClass = "Accessor")
+final class Target_java_lang_invoke_DirectMethodHandle_Accessor {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetIntComputer.class) //
+    int fieldOffset;
+}
+
+@TargetClass(className = "java.lang.invoke.DirectMethodHandle", innerClass = "StaticAccessor")
+final class Target_java_lang_invoke_DirectMethodHandle_StaticAccessor {
+    @Alias //
+    Class<?> fieldType;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = StaticAccessorFieldStaticBaseComputer.class) //
+    Object staticBase;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    long staticOffset;
+}
+
+class StaticAccessorFieldStaticBaseComputer implements FieldValueTransformerWithAvailability {
+    @Override
+    public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+        return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
+        if (field.getType().isPrimitive()) {
+            return StaticFieldsSupport.getStaticPrimitiveFields();
+        }
+        return StaticFieldsSupport.getStaticObjectFields();
+    }
 }
