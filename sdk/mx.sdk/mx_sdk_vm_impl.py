@@ -2997,6 +2997,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-stdlib=libc++',
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
+            '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
@@ -3010,11 +3011,31 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
         # path from language launcher to jars
         _cp = [relpath(x, start=_exe_dir) for x in _cp]
+
         if mx.is_windows():
             _cp = [x.replace('\\', '\\\\') for x in _cp]
+
+        _mp = _cp
+
+        launcher_jars = self.language_library_config.jar_distributions
+        assert len(launcher_jars) > 0, launcher_jars
+        main_class = self.language_library_config.main_class
+        main_class_package = main_class[0:main_class.rindex(".")]
+        main_module_export = main_class_package + " to org.graalvm.launcher"
+        main_module = None
+        for launcher_jar in launcher_jars:
+            dist = mx.distribution(launcher_jar)
+            if hasattr(dist, 'moduleInfo') and main_module_export in dist.moduleInfo.get('exports', []):
+                main_module = dist.moduleInfo['name']
+
+        if not main_module:
+            mx.abort("The distribution with main class {} among {} must have export: {}".format(main_class, launcher_jars, main_module_export))
+
         _dynamic_cflags += [
+            '-DLAUNCHER_MAIN_MODULE=' + main_module,
             '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
-            '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+            # '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+            '-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"',
         ]
 
         # path to libjvm
@@ -3026,6 +3047,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
+        ]
+
+        languages_dir = join(_graalvm_home, "languages")
+        tools_dir = join(_graalvm_home, "tools")
+        _dynamic_cflags += [
+            '-DLANGUAGES_DIR=' + relpath(languages_dir, start=_exe_dir),
+            '-DTOOLS_DIR=' + relpath(tools_dir, start=_exe_dir),
         ]
 
         # path to libjli - only needed on osx for AWT

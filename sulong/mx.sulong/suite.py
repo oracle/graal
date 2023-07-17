@@ -1641,6 +1641,12 @@ suite = {
     },
 
     "SULONG_LAUNCHER" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.launcher",
+        "exports" : [
+          "com.oracle.truffle.llvm.launcher to org.graalvm.launcher",
+        ],
+      },
       "subDir" : "projects",
       "mainClass" : "com.oracle.truffle.llvm.launcher.LLVMLauncher",
       "dependencies" : ["com.oracle.truffle.llvm.launcher"],
