@@ -47,6 +47,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -62,6 +63,7 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionKey;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandle;
@@ -265,7 +267,9 @@ public class ParallelGC {
 
     private static int getWorkerCount() {
         int setting = SubstrateOptions.ParallelGCThreads.getValue();
-        return setting > 0 ? setting : getDefaultWorkerCount();
+        int workerCount = setting > 0 ? setting : getDefaultWorkerCount();
+        verboseGCLog().string("[Number of ParallelGC threads: ").unsigned(workerCount).string("]").newline();
+        return workerCount;
     }
 
     private static int getDefaultWorkerCount() {
@@ -421,6 +425,10 @@ public class ParallelGC {
         while (inParallelPhase) {
             seqPhase.blockNoTransitionUnspecifiedOwner();
         }
+    }
+
+    private static Log verboseGCLog() {
+        return SubstrateGCOptions.VerboseGC.getValue() ? Log.log() : Log.noopLog();
     }
 
     @RawStructure
