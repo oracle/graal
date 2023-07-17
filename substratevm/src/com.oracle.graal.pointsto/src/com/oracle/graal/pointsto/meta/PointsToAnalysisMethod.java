@@ -243,8 +243,8 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
             /*
              * If only a stub is ever created for this method, then it will not be invoked.
              *
-             * However, for deopt targets it is possible for a root to temporarily to be a stub
-             * before a full flow graph is created.
+             * However, for deopt targets it is possible for a root to temporarily be a stub before
+             * a full flow graph is created.
              */
             return !getTypeFlow().getMethodFlowsGraphInfo().isStub() || (isDirectRootMethod() && isDeoptTarget());
         }

@@ -59,7 +59,7 @@ public interface ReachabilityAnalysis {
     AnalysisType addRootField(Class<?> clazz, String fieldName);
 
     /**
-     * Registers the method as root.
+     * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.
      *
      * Static methods are immediately analyzed and marked as implementation-invoked which will also
      * trigger their compilation.
@@ -70,6 +70,9 @@ public interface ReachabilityAnalysis {
      * can be marked as virtual invoked roots; only the implementation methods whose declaring class
      * is instantiated will actually be linked. Trying to register an abstract method as a special
      * invoked root will result in an error.
+     *
+     * If {@code otherRoots} are specified, these versions of the method will also be registered as
+     * root methods.
      *
      * @param aMethod the method to register as root
      * @param invokeSpecial if true only the target method is analyzed, even if it has overrides, or

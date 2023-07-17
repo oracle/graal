@@ -1015,18 +1015,10 @@ public class SubstrateGraphBuilderPlugins {
 
                 ResolvedJavaMethod method = b.getGraph().method();
                 if (SubstrateOptions.parseOnce()) {
-                    if (MultiMethod.isDeoptTarget(method)) {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                    } else {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                    }
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
                 } else {
                     if (method instanceof SharedMethod) {
-                        if (MultiMethod.isDeoptTarget(method)) {
-                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                        } else {
-                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                        }
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
                     } else {
                         // In analysis the value is always true.
                         b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
