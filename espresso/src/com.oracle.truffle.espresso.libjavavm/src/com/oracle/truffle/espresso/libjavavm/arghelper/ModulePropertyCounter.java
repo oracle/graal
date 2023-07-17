@@ -41,16 +41,18 @@ class ModulePropertyCounter {
     private static final String ADD_EXPORTS = JDK_MODULES_PREFIX + "addexports";
     private static final String ADD_OPENS = JDK_MODULES_PREFIX + "addopens";
     private static final String ADD_READS = JDK_MODULES_PREFIX + "addreads";
+    private static final String ENABLE_MODULE_ACCESS = JDK_MODULES_PREFIX + "enable.native.access";
 
     private static final String MODULE_PATH = JDK_MODULES_PREFIX + "path";
     private static final String UPGRADE_PATH = JDK_MODULES_PREFIX + "upgrade.path";
     private static final String LIMIT_MODS = JDK_MODULES_PREFIX + "limitmods";
 
-    private static final String[] KNOWN_OPTIONS = new String[]{
+    private static final String[] KNOWN_OPTIONS = {
                     ADD_MODULES,
                     ADD_EXPORTS,
                     ADD_OPENS,
                     ADD_READS,
+                    ENABLE_MODULE_ACCESS,
                     MODULE_PATH,
                     UPGRADE_PATH,
                     LIMIT_MODS,
@@ -62,6 +64,7 @@ class ModulePropertyCounter {
     private int addExports = 0;
     private int addOpens = 0;
     private int addReads = 0;
+    private int enableModuleAccess = 0;
 
     void addModules(String value) {
         addNumbered(ADD_MODULES, value, addModules++);
@@ -77,6 +80,10 @@ class ModulePropertyCounter {
 
     void addReads(String value) {
         addNumbered(ADD_READS, value, addReads++);
+    }
+
+    void enableNativeAccess(String value) {
+        addNumbered(ENABLE_MODULE_ACCESS, value, enableModuleAccess++);
     }
 
     void addNumbered(String prop, String value, int count) {

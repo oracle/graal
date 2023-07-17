@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,15 +80,16 @@ public class JITJITCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
+        Experiment jit1 = ExperimentParser.parseOrPanic(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit1);
         jit1.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
+        Experiment jit2 = ExperimentParser.parseOrPanic(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit2);
         jit2.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit1, jit2));
     }

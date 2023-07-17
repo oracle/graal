@@ -113,8 +113,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
                     /* Graal hotspot-specific service-providers */
                     "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider",
-                    /* Skip jline console provider until GR-44085 is fixed */
-                    "jdk.internal.org.jline.JdkConsoleProviderImpl");
+                    /* Skip console providers until GR-44085 is fixed */
+                    "jdk.internal.org.jline.JdkConsoleProviderImpl", "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
 

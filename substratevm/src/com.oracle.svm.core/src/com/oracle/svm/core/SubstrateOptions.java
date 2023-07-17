@@ -188,18 +188,53 @@ public class SubstrateOptions {
      * for a description of the levels.
      */
     public enum OptimizationLevel {
-        O0,
-        O1,
-        O2,
-        BUILD_TIME
+        O0("No optimizations", "0"),
+        O1("Basic optimizations", "1"),
+        O2("Advanced optimizations", "2"),
+        O3("All optimizations for best performance", "3"),
+        BUILD_TIME("Optimize for fastest build time", "b");
+
+        private final String description;
+        private final String optionSwitch;
+
+        OptimizationLevel(String description, String optionSwitch) {
+            this.description = description;
+            this.optionSwitch = optionSwitch;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getOptionSwitch() {
+            return optionSwitch;
+        }
+
+        /**
+         * Determine if this level is one of the given ones.
+         */
+        public boolean isOneOf(OptimizationLevel... levels) {
+            if (levels != null) {
+                for (OptimizationLevel level : levels) {
+                    if (level.equals(this)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
+    @Option(help = "Control code optimizations: b - optimize for fastest build time, " +
+                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
+
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+
             // `-g -O0` is recommended for a better debugging experience
             GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
@@ -208,6 +243,7 @@ public class SubstrateOptions {
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
+
         }
     };
 
@@ -230,11 +266,11 @@ public class SubstrateOptions {
             return OptimizationLevel.O0;
         } else if (intLevel == 1) {
             return OptimizationLevel.O1;
-        } else if (intLevel >= 2) {
-            /*
-             * We allow all positive numbers, and treat that as our current highest supported level.
-             */
+        } else if (intLevel == 2) {
             return OptimizationLevel.O2;
+        } else if (intLevel > 2) {
+            // We allow all positive numbers, and treat that as our current highest supported level.
+            return OptimizationLevel.O3;
         } else {
             throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
         }
@@ -252,6 +288,11 @@ public class SubstrateOptions {
     @Fold
     public static boolean useEconomyCompilerConfig() {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
+
+    @Fold
+    public static boolean isMaximumOptimizationLevel() {
+        return optimizationLevel() == OptimizationLevel.O3;
     }
 
     public interface ValueUpdateHandler<T> {

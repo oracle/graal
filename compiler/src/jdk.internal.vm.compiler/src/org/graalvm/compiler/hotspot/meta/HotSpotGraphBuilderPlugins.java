@@ -280,8 +280,8 @@ public class HotSpotGraphBuilderPlugins {
             // cannot install intrinsics without
             return;
         }
-
-        Registration tl = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/runtime/hotspot/HotSpotFastThreadLocal;"));
+        Registration tl = new Registration(plugins, "com.oracle.truffle.runtime.hotspot.HotSpotFastThreadLocal");
         tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

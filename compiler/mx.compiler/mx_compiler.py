@@ -704,7 +704,11 @@ def _unittest_config_participant(config):
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.internal.vm.compiler,ALL-UNNAMED'])
+
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.internal.vm.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:
@@ -1294,7 +1298,6 @@ def _graal_config():
         def __init__(self):
             self.jvmci_dists = []
             self.jvmci_jars = []
-            self.jvmci_parent_dists = []
             self.jvmci_parent_jars = []
             self.boot_dists = []
             self.boot_jars = []
@@ -1312,10 +1315,9 @@ def _graal_config():
                     self.boot_dists.append(d)
                     self.boot_jars.append(d.classpath_repr())
 
-            self.jvmci_parent_dists = [mx.distribution('truffle:TRUFFLE_API')]
-            self.jvmci_parent_jars = [jar.classpath_repr() for jar in self.jvmci_parent_dists]
+            self.jvmci_parent_jars = []
 
-            self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
+            self.dists = self.jvmci_dists + self.boot_dists
             self.jars = self.jvmci_jars + self.jvmci_parent_jars + self.boot_jars
 
             self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
@@ -1328,7 +1330,6 @@ def _jvmci_jars():
     return [
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
-        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
     ]
 
 # The community compiler component

@@ -100,7 +100,7 @@ public abstract class BlockNode<T extends Node> extends Node {
     protected BlockNode(T[] elements) {
         this.elements = elements;
         assert getClass().getName().equals("com.oracle.truffle.api.impl.DefaultBlockNode") ||
-                        getClass().getName().equals("org.graalvm.compiler.truffle.runtime.OptimizedBlockNode") : "Custom block implementations are not allowed.";
+                        getClass().getName().equals("com.oracle.truffle.runtime.OptimizedBlockNode") : "Custom block implementations are not allowed.";
     }
 
     /**

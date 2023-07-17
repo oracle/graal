@@ -60,7 +60,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -83,6 +82,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ModifiersProvider;

@@ -112,6 +112,7 @@ public class LLVMToolchainUtils {
             case O0, BUILD_TIME -> 0;
             case O1 -> 1;
             case O2 -> 2;
+            case O3 -> 3;
         };
     }
 

@@ -131,6 +131,11 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitGHASHProcessBlocks(gen.operand(state), gen.operand(hashSubkey), gen.operand(data), gen.operand(blocks));
     }

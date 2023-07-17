@@ -13,7 +13,7 @@ Jipher provides competitive performance compared to Bouncy Castle or the default
 It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used. 
 Note that some algorithms are allowed by FIPS for specific use cases only. As a result, some algorithms provided by Jipher might not be allowed by FIPS for all purposes.
 
-> Note: Jipher is an experimental feature and not available in GraalVM Community Edition. It is supported on Linux and macOS (macOS 10.15 and higher) on both AMD64 and AArch64 architectures.
+> Note: Jipher is not available in GraalVM Community Edition. It is supported on Linux and macOS (macOS 10.15 and higher) on both AMD64 and AArch64 architectures.
 
 This page describes how to use Jipher with GraalVM Native Image.
 

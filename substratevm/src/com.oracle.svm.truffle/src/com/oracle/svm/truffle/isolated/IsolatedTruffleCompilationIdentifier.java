@@ -25,8 +25,6 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
@@ -36,6 +34,8 @@ import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<CompilationIdentifier> implements TruffleCompilationIdentifier {
 

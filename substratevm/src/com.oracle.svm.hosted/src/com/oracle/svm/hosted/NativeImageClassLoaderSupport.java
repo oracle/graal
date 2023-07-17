@@ -636,7 +636,9 @@ public class NativeImageClassLoaderSupport {
 
                 List<String> requiresInit = Arrays.asList(
                                 "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
-                                "org.graalvm.sdk", "org.graalvm.truffle");
+                                "org.graalvm.sdk", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
+                                "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
+                                "org.graalvm.nativebridge");
 
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
                     if (requiresInit.contains(moduleReference.descriptor().name())) {

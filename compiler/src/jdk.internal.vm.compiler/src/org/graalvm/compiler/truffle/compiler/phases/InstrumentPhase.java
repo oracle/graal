@@ -85,10 +85,10 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
     }
 
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedCallTarget", "callDirect"),
+                    asStackPattern("com.oracle.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;
     protected final SnippetReflectionProvider snippetReflection;

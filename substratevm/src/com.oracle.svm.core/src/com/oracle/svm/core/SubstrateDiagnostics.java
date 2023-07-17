@@ -1035,7 +1035,7 @@ public class SubstrateDiagnostics {
 
         private FrameInfoQueryResult getCompilationRoot(CodeInfo imageCodeInfo, CodePointer ip) {
             FrameInfoQueryResult rootInfo = null;
-            frameInfoCursor.initialize(imageCodeInfo, ip);
+            frameInfoCursor.initialize(imageCodeInfo, ip, false);
             while (frameInfoCursor.advance()) {
                 rootInfo = frameInfoCursor.get();
             }

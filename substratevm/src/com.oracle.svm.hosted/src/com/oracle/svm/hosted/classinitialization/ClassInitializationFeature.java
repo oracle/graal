@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,7 +113,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
         universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
         metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
@@ -175,8 +174,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess a) {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
-            classInitializationSupport.setUnsupportedFeatures(null);
-
             assert classInitializationSupport.checkDelayedInitialization();
 
             if (SimulateClassInitializerSupport.singleton().isEnabled()) {
@@ -193,7 +190,18 @@ public class ClassInitializationFeature implements InternalFeature {
             }
 
             if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                /*
+                 * This option enables a check that all application classes have an explicitly
+                 * specified initialization status. This is useful to ensure that most classes (all
+                 * classes for which it is feasible) are marked as "initialize at image build time"
+                 * to avoid the overhead of class initialization checks at run time.
+                 *
+                 * We exclude JDK classes from the check: the application should not interfere with
+                 * the class initialization status of the JDK because the application cannot know
+                 * which JDK classes are safe for initialization at image build time.
+                 */
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
                                 .collect(Collectors.toList());

@@ -346,8 +346,8 @@ public class ExperimentParser {
     }
 
     /**
-     * Parses an experiment by reading the provided logs. If anything fails, it prints the error to
-     * stderr and exits.
+     * Parses an experiment by reading the provided logs. If anything fails, it throws an unchecked
+     * exception.
      *
      * @param experimentId the ID of the parsed experiment
      * @param compilationKind the compilation kind of this experiment
@@ -357,19 +357,16 @@ public class ExperimentParser {
      * @param warningWriter a writer for warning messages
      * @return an experiment parsed from the provided files
      */
-    public static Experiment parseOrExit(ExperimentId experimentId, Experiment.CompilationKind compilationKind,
+    public static Experiment parseOrPanic(ExperimentId experimentId, Experiment.CompilationKind compilationKind,
                     String proftoolPath, String optimizationLogPath, Writer warningWriter) {
         ExperimentFiles files = new ExperimentFilesImpl(experimentId, compilationKind, proftoolPath, optimizationLogPath);
         ExperimentParser parser = new ExperimentParser(files, warningWriter);
         try {
             return parser.parse();
         } catch (IOException e) {
-            System.err.println("Could not read the files of the experiment " + experimentId + ": " + e.getMessage());
-            System.exit(1);
+            throw new RuntimeException("Could not read the files of the experiment " + experimentId + ": " + e.getMessage());
         } catch (ExperimentParserError e) {
-            System.err.println(e.getMessage());
-            System.exit(1);
+            throw new RuntimeException(e.getMessage());
         }
-        return null;
     }
 }

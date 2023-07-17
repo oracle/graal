@@ -115,7 +115,7 @@ public class ReferenceProcessNode extends RootNode {
 
     public ReferenceProcessNode(EspressoLanguage lang) {
         super(lang);
-        this.context = EspressoContext.get(this);
+        this.context = EspressoContext.get(null);
 
         Method processPendingReferenceMethod = findProcessPendingReferences();
         this.processPendingReferences = DirectCallNode.create(processPendingReferenceMethod.getCallTargetForceInit());

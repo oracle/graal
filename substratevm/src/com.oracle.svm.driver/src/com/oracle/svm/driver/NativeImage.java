@@ -544,7 +544,7 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
             if (modulePathBuild) {
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }

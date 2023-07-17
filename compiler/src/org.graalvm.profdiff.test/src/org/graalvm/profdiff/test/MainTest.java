@@ -59,6 +59,7 @@ import static org.graalvm.profdiff.parser.ExperimentParser.NAME_SEPARATOR;
 import static org.graalvm.profdiff.parser.ExperimentParser.OSR_MARKER;
 import static org.graalvm.profdiff.parser.ExperimentParser.PERIOD;
 import static org.graalvm.profdiff.parser.ExperimentParser.TOTAL_PERIOD;
+import static org.junit.Assert.assertFalse;
 
 public class MainTest {
 
@@ -111,7 +112,7 @@ public class MainTest {
         Profdiff.main(new String[]{"help", "report"});
         assertNoError();
         Profdiff.main(new String[]{"help", "unknown"});
-        Assert.assertFalse(errorStream.toString().isEmpty());
+        assertFalse(errorStream.toString().isEmpty());
     }
 
     @Test
@@ -172,7 +173,7 @@ public class MainTest {
         for (String needle : List.of("10-foo", "20-foo", "30-bar", "foreign_method")) {
             Assert.assertTrue(output.contains(needle));
         }
-        Assert.assertFalse("method baz() should not be hot", output.contains("40-baz"));
+        assertFalse("method baz() should not be hot", output.contains("40-baz"));
     }
 
     @Test
@@ -224,6 +225,26 @@ public class MainTest {
         assertNoError();
         assertOutputContains(exp1.optLog.allCompilationIDs());
         assertOutputContains(exp2.optLog.allCompilationIDs());
+    }
+
+    @Test
+    public void compareJITAndAOTUnprofiled() throws IOException {
+        ExperimentMock exp1 = createJITExperiment1("profdiff_jit_aot_unprof_1", "profdiff_jit_aot_unprof_prof_1");
+
+        OptimizationLogMock optLog = new OptimizationLogMock("profdiff_jit_aot_unprof_2");
+        optLog.addLogFile().addCompilationUnit("foo()", "30-foo").addCompilationUnit("baz()", "40-baz");
+        Path logDir = optLog.writeToTempDirectory();
+
+        try {
+            String[] args = {"jit-vs-aot", exp1.logDir.toAbsolutePath().toString(), exp1.profFile.toAbsolutePath().toString(),
+                            logDir.toAbsolutePath().toString()};
+            Profdiff.main(args);
+        } finally {
+            exp1.delete();
+            deleteTree(logDir);
+        }
+        assertNoError();
+        assertOutputContains(exp1.optLog.allCompilationIDs());
     }
 
     @Test
@@ -643,5 +664,18 @@ public class MainTest {
             map.put(CODE, methodMocks.stream().map(ProftoolAOTMethodMock::toJSONMap).collect(Collectors.toList()));
             return map;
         }
+    }
+
+    @Test
+    public void argumentVerification() {
+        List<String[]> invalidArgs = List.of(
+                        new String[]{"--hot-percentile", "-1", "help"},
+                        new String[]{"--hot-percentile", "1.5", "help"},
+                        new String[]{"--hot-min-limit", "-1", "help"},
+                        new String[]{"--hot-max-limit", "-1", "help"},
+                        new String[]{"--hot-min-limit", "10", "--hot-max-limit", "9", "help"},
+                        new String[]{"invalid"},
+                        new String[]{"report", "/dev/null"});
+        invalidArgs.forEach(args -> assertFalse(Profdiff.mainImpl(args)));
     }
 }
