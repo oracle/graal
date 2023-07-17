@@ -938,7 +938,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle API', 'tflm', 'SubstrateVM Static Libraries'],
+    dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -1112,9 +1112,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[
-        'tfla',
-    ],
+    dependencies=[],
     builder_jar_distributions=[
         'substratevm:TRUFFLE_RUNTIME_SVM',
     ],

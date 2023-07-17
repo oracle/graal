@@ -1142,17 +1142,15 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal SDK'],
+    dependencies=['Graal SDK', 'Truffle Compiler'],
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
-        'truffle:TRUFFLE_COMPILER',
         'truffle:TRUFFLE_RUNTIME',
     ],
     support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
-
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -1168,6 +1166,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:LOCATOR',
+    ],
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Truffle Compiler',
+    short_name='tflc',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=[],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_COMPILER',
     ],
     stability="supported",
 ))
