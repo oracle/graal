@@ -388,12 +388,12 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_declaration : ....... DW_FORM_flag</code>
  *
- * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr</code> n.b. only for method_declaration1,
+ * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref4</code> n.b. only for method_declaration1,
  * points to param 0 DIE
  *
  * <li><code>DW_AT_virtuality : ........ DW_FORM_data1<code> (for override methods)
  *
- * <li><code>DW_AT_containing_type : ... DW_FORM_ref_addr</code> (for override methods)
+ * <li><code>DW_AT_containing_type : ... DW_FORM_ref4</code> (for override methods)
  *
  * </ul>
  *
@@ -519,7 +519,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -529,7 +529,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -569,7 +569,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
  *
- * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_specification : ... DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -638,7 +638,7 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>abbrev_code == static_field_location, tag == DW_TAG_variable,
  * no_children</code>
  *
- * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_specification : ... DW_FORM_ref4</code>
  *
  * <li><code>DW_AT_linkage_name : .... DW_FORM_strp</code>
  *
@@ -697,7 +697,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -765,7 +765,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>DW_AT_TYPE : ....... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_TYPE : ....... DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -1060,7 +1060,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1103,10 +1103,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_virtuality, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_containing_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_declaration) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_object_pointer, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         }
         /*
          * Now terminate.
@@ -1221,7 +1221,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1255,7 +1255,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1293,6 +1293,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        // n.b we use a (relocatable) ref_addr here rather than a (CU-relative) ref4
+        // because an unknown foreign pointer type will reference void which is not
+        // local to the current CU.
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         /*
@@ -1313,7 +1316,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1381,6 +1384,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
         }
+        // n.b we use a (relocatable) ref_addr here rather than a (CU-relative) ref4
+        // because a foreign array type can reference another foreign type which is
+        // not in the current CU.
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         /*
@@ -1420,7 +1426,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1509,7 +1515,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
