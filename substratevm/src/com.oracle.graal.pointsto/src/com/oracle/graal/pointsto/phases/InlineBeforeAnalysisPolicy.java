@@ -106,7 +106,8 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract AbstractPolicyScope createRootScope();
 
-    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle);
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle);
 
     protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
         return false;
@@ -150,7 +151,8 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
     };

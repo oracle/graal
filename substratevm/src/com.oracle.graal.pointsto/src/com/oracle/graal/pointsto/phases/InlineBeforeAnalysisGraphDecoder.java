@@ -85,7 +85,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             } else {
-                policyScope = policy.openCalleeScope(cast(caller).policyScope, bb.getMetaAccess(), method, invokeData.intrinsifiedMethodHandle);
+                boolean[] constArgsWithReceiver = new boolean[arguments.length];
+                for (int i = 0; i < arguments.length; i++) {
+                    constArgsWithReceiver[i] = arguments[i].isConstant();
+                }
+                policyScope = policy.openCalleeScope(cast(caller).policyScope, bb.getMetaAccess(), method, constArgsWithReceiver, invokeData.intrinsifiedMethodHandle);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }

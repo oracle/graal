@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -211,7 +210,8 @@ public class InlineBeforeAnalysisPolicyUtils {
      * has exceeded a specified count, or an illegal node is inlined, then the process will be
      * aborted.
      */
-    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
+    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMetaAccess metaAccess,
+                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -222,7 +222,7 @@ public class InlineBeforeAnalysisPolicyUtils {
             depth = 1;
             accumulativeCounters = AccumulativeCounters.create(null);
 
-        } else if (!outer.accumulativeCounters.inMethodHandleIntrinsification && (intrinsifiedMethodHandle || isMethodHandleIntrinsificationRoot(metaAccess, method))) {
+        } else if (!outer.accumulativeCounters.inMethodHandleIntrinsification && (intrinsifiedMethodHandle || isMethodHandleIntrinsificationRoot(metaAccess, method, constArgsWithReceiver))) {
             /*
              * Method handle intrinsification root: create counters with relaxed limits and permit
              * more types of nodes, but not recursively, i.e., not if we are already in a method
@@ -253,15 +253,31 @@ public class InlineBeforeAnalysisPolicyUtils {
         return new AccumulativeInlineScope(accumulativeCounters, depth);
     }
 
-    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
-        return (isVarHandleMethod(metaAccess, method) || hasMethodHandleParameter(metaAccess, method)) && !isIgnoredMethodHandleMethod(method);
+    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean[] constArgsWithReceiver) {
+        return (isVarHandleMethod(metaAccess, method) || hasConstantMethodHandleParameter(metaAccess, method, constArgsWithReceiver)) && !isIgnoredMethodHandleMethod(method);
     }
 
-    private boolean hasMethodHandleParameter(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
+    private boolean hasConstantMethodHandleParameter(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean[] constArgsWithReceiver) {
         if (methodHandleType == null) {
             methodHandleType = metaAccess.lookupJavaType(MethodHandle.class);
         }
-        return Arrays.stream(method.toParameterTypes()).anyMatch(type -> methodHandleType.isAssignableFrom((ResolvedJavaType) type));
+        for (int i = 0; i < constArgsWithReceiver.length; i++) {
+            if (constArgsWithReceiver[i] && methodHandleType.isAssignableFrom(getParameterType(method, i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static ResolvedJavaType getParameterType(ResolvedJavaMethod method, int index) {
+        int i = index;
+        if (!method.isStatic()) {
+            if (i == 0) { // receiver
+                return method.getDeclaringClass();
+            }
+            i--;
+        }
+        return (ResolvedJavaType) method.getSignature().getParameterType(i, null);
     }
 
     /**

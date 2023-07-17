@@ -1033,13 +1033,14 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean intrinsifiedMethodHandle) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             if (outer instanceof AccumulativeInlineScope accOuter) {
                 /*
                  * once the accumulative policy is activated, then we cannot return to the trivial
                  * policy
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, metaAccess, method, intrinsifiedMethodHandle);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
 
             assert outer == null || outer instanceof AlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -1051,7 +1052,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 return new AlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, metaAccess, method, intrinsifiedMethodHandle);
+                return inliningUtils.createAccumulativeInlineScope(null, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
         }
     }
