@@ -43,10 +43,10 @@ import org.graalvm.word.WordFactory;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-          lineStart = 4311,
-          lineEnd   = 4435,
-          commit    = "540c706bbcbb809ae1304aac4f2a16a5e83cb458",
-          sha1      = "bbf28398bfdef37afbb856160110d010c60e87e7")
+          lineStart = 4455,
+          lineEnd   = 4579,
+          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
+          sha1      = "34281fb78c4f0657a704dbda3e3cc85ed56dd2ad")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
