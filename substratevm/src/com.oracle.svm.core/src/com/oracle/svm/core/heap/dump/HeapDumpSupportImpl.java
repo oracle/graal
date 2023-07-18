@@ -88,15 +88,19 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
     @Override
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping on OutOfMemoryError must not allocate.")
     public void dumpHeapOnOutOfMemoryError() {
+        final Log log = Log.log();
+
         final RawFileDescriptor fd = getFileSupport().create(heapOnErrorDumpPath, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
-            Log.log().string("Invalid file descriptor opening heap dump on OutOfMemoryError.").newline();
+            log.string("Invalid file descriptor opening heap dump on OutOfMemoryError.").newline();
             return;
         }
 
         int size = SizeOf.get(HeapDumpVMOperationData.class);
         HeapDumpVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+
+        log.string("Dumping heap to ").string(heapOnErrorDumpPath).string(" ...").newline();
 
         data.setGCBefore(false);
         data.setRawFileDescriptor(fd);
