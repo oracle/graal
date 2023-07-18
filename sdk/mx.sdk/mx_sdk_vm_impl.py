@@ -2977,7 +2977,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         self.component = component
         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
         _dependencies = [] if self.jvm_launcher else [GraalVmNativeImage.project_name(self.language_library_config)]
-        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [], _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True)
+        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [],
+            _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True,
+            toolchain='sdk:LLVM_NINJA_TOOLCHAIN')
 
     @staticmethod
     def library_launcher_project_name(language_library_config):
