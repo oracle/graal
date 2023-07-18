@@ -65,7 +65,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -175,7 +174,7 @@ public class SimulateClassInitializerSupport {
      * Simulation of class initializer (like {@link InlineBeforeAnalysis}) requires ParseOnce,
      * because otherwise graphs parsed for static analysis omits exception edges.
      */
-    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue() && SubstrateOptions.parseOnce() && !DeoptimizationSupport.enabled();
+    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue() && SubstrateOptions.parseOnce();
 
     /* Cached value of options to avoid frequent lookup of option values. */
     protected final boolean collectAllReasons = ClassInitializationOptions.SimulateClassInitializerCollectAllReasons.getValue();
