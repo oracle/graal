@@ -372,7 +372,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         self.jimage_jars = set()
         self.jimage_ignore_jars = set()
         if is_graalvm:
-            for component in registered_graalvm_components(stage1=stage1):
+            for component in self.components:
                 if component.jlink:
                     self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
                     if isinstance(component, mx_sdk.GraalVmJvmciComponent):
