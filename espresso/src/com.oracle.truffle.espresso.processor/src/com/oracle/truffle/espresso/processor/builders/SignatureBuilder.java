@@ -32,8 +32,8 @@ public final class SignatureBuilder extends AbstractCodeBuilder {
     public SignatureBuilder() {
     }
 
-    public SignatureBuilder withName(String name) {
-        this.name = name;
+    public SignatureBuilder withName(String callName) {
+        this.name = callName;
         return this;
     }
 

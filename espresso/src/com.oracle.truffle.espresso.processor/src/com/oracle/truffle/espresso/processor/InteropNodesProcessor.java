@@ -172,7 +172,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         // Implementation of InteropNodes.registerMessages
         MethodBuilder registerMessages = new MethodBuilder("registerMessages").withOverrideAnnotation().withParams("Class<?> cls").withModifiers(new ModifierBuilder().asProtected());
 
-        // For all messages, add a line in registerMessages, and create the corresponding class/
+        // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
             registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORY, ".register(cls, ", INTEROP_MESSAGE, ".Message.", ProcessorUtils.capitalize(m.targetMessage), ", ", clsName, "Factory.", m.clsName,
                             "Gen::create);");

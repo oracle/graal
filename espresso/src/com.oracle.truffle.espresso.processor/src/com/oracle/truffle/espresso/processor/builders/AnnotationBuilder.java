@@ -55,7 +55,7 @@ public class AnnotationBuilder extends AbstractCodeBuilder {
 
     @Override
     void buildImpl(IndentingStringBuilder isb) {
-        isb.append("@").append(name);
+        isb.append(AT).append(name);
         if (!values.isEmpty()) {
             isb.append(PAREN_OPEN);
             boolean first = true;

@@ -35,8 +35,8 @@ public class VariableBuilder extends AbstractCodeBuilder {
     public VariableBuilder() {
     }
 
-    public VariableBuilder withName(String name) {
-        this.name = name;
+    public VariableBuilder withName(String varName) {
+        this.name = varName;
         return this;
     }
 

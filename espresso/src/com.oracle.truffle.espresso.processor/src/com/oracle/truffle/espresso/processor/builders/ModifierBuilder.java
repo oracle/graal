@@ -70,7 +70,7 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
 
     public ModifierBuilder asProtected() {
         if (qualifiedAsPublic) {
-            throw new IllegalStateException("Cannot qualify as both public and private");
+            throw new IllegalStateException("Cannot qualify as both public and protected");
         }
         if (qualifiedAsPrivate) {
             throw new IllegalStateException("Cannot qualify as both protected and private");

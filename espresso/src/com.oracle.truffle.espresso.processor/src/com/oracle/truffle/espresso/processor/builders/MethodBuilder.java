@@ -39,8 +39,8 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     private final List<MethodBodyLine> body = new ArrayList<>();
     private final List<String> params = new ArrayList<>();
     private final List<String> templateParams = new ArrayList<>();
-    private final List<String> thrown = new ArrayList<>();
-    private SignatureBuilder signature;
+    private final List<String> thrownExceptions = new ArrayList<>();
+    private SignatureBuilder signatureBuilder;
 
     public MethodBuilder(String methodName) {
         this.methodName = methodName;
@@ -76,7 +76,7 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     public MethodBuilder withParams(String... ps) {
-        if (signature != null) {
+        if (signatureBuilder != null) {
             throw new IllegalStateException("Cannot declare both a params list and a signature.");
         }
         params.addAll(Arrays.asList(ps));
@@ -87,7 +87,7 @@ public final class MethodBuilder extends AbstractCodeBuilder {
         if (!params.isEmpty()) {
             throw new IllegalStateException("Cannot declare both a params list and a signature.");
         }
-        this.signature = signature;
+        signatureBuilder = signature;
         return this;
     }
 
@@ -97,7 +97,7 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     public MethodBuilder withThrown(String thrown) {
-        this.thrown.add(thrown);
+        this.thrownExceptions.add(thrown);
         return this;
     }
 
@@ -123,14 +123,14 @@ public final class MethodBuilder extends AbstractCodeBuilder {
             sb.appendSpace(returnType);
         }
         sb.append(methodName);
-        if (signature != null) {
-            signature.buildImpl(sb);
+        if (signatureBuilder != null) {
+            signatureBuilder.buildImpl(sb);
         } else {
             sb.append(PAREN_OPEN).join(", ", params).appendSpace(PAREN_CLOSE);
         }
 
-        if (!thrown.isEmpty()) {
-            sb.appendSpace("throws").join(", ", thrown);
+        if (!thrownExceptions.isEmpty()) {
+            sb.appendSpace(" throws").join(", ", thrownExceptions);
         }
 
         sb.appendLine(BLOCK_OPEN);
