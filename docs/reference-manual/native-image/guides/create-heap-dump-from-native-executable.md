@@ -9,12 +9,13 @@ permalink: /reference-manual/native-image/guides/create-heap-dump/
 
 You can create a heap dump of a running executable to monitor its execution. Just like any other Java heap dump, it can be opened with the [VisualVM](../../../tools/visualvm.md) tool.
 
-To enable heap dump support, native executables must be built with the `--enable-monitoring=heapdump` option. Heap dumps can then be created in three different ways:
+To enable heap dump support, native executables must be built with the `--enable-monitoring=heapdump` option. Heap dumps can then be created in different ways:
 
 1. Create heap dumps with VisualVM.
 2. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
 3. Create heap dumps sending a `SIGUSR1` signal at run time.
 4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
+5. If `-XX:+HeapDumpOnOutOfMemoryError` is passed in at runtime and an `OutOfMemoryError` is encountered, a heap dump will be produced.
 
 All approaches are described below.
 
@@ -274,6 +275,18 @@ The condition to create a heap dump is provided as an option on the command line
     The resulting heap dump can be then opened with the [VisualVM](../../../tools/visualvm.md) tool like any other Java heap dump, as illustrated below.
 
     ![Native Image Heap Dump View in VisualVM](img/heap-dump-api.png)
+
+## Create a Heap Dump on `OutOfMemoryError`
+
+Start the application with `-XX:+HeapDumpOnOutOfMemoryError` option to get a heap dump when an `OutOfMemoryError` occurs.
+The generated heap dump file name will have the `svm-heapdump-<PID>.hprof` naming format.
+For example:
+
+```shell
+./example -XX:+HeapDumpOnOutOfMemoryError
+Dumping heap to svm-heapdump-67799.hprof ...
+Exception in thread "main" java.lang.OutOfMemoryError: Garbage-collected heap size exceeded.
+```
 
 ### Related Documentation
 
