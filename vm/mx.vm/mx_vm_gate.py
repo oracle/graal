@@ -680,9 +680,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-H:-InlineBeforeAnalysis',
-            '-H:-ParseOnceJIT', #GR-47163
-            '-H:-VerifyDeoptimizationEntryPoints', #GR-47163
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
