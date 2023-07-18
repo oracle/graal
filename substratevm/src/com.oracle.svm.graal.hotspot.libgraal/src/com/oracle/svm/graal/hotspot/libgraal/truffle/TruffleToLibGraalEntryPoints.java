@@ -515,11 +515,15 @@ final class TruffleToLibGraalEntryPoints {
     }
 
     static {
+        Class<?> callsClass;
         try {
-            Class<?> callsClass = Class.forName("com.oracle.truffle.runtime.hotspot.libgraal.TruffleToLibGraalCalls");
+            callsClass = Class.forName("com.oracle.truffle.runtime.hotspot.libgraal.TruffleToLibGraalCalls");
             LibGraalChecker.checkToLibGraalCalls(TruffleToLibGraalEntryPoints.class, callsClass, TruffleToLibGraal.class);
         } catch (ClassNotFoundException e) {
-            throw new InternalError(e);
+            /*
+             * Truffle might not be on the class path if libgraal is built. If it is, we should
+             * validate the usage.
+             */
         }
     }
 
