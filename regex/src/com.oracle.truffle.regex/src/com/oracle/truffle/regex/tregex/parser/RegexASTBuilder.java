@@ -676,7 +676,7 @@ public final class RegexASTBuilder {
             replaceCurTermWithDeadNode();
             return;
         }
-        if (quantifier.getMax() == 0) {
+        if (quantifier.getMax() == 0 && !options.getFlavor().hasSubexpressionCalls()) {
             removeCurTerm();
             return;
         }
