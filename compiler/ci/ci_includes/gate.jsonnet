@@ -3,8 +3,8 @@
   local utils = import '../../../ci/ci_common/common-utils.libsonnet',
   local config = import '../../../ci/repo-configuration.libsonnet',
 
-  local gate_math_stubs_listener = {
-    name: 'daily-hotspot-mathstubs-listener-' + utils.prefixed_jdk(self.jdk_version),
+  local gate_stub_ports_listener = {
+    name: 'daily-hotspot-stubports-listener-' + utils.prefixed_jdk(self.jdk_version),
     environment+: {
       "HOTSPOT_PORT_SYNC_CHECK" : "true"
     },
@@ -19,6 +19,6 @@
   },
 
   builds: [
-    common.daily + common.linux_amd64 + common.labsjdk17 + gate_math_stubs_listener,
+    common.daily + common.linux_amd64 + common.labsjdk21 + gate_stub_ports_listener,
   ]
 }
