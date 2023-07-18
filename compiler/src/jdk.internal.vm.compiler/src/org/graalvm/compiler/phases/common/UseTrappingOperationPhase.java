@@ -49,12 +49,10 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
@@ -145,25 +143,16 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
                     end.getDebug().log("Non constant deopt %s", end);
                     continue;
                 }
-                DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asJavaConstant());
                 Speculation speculationConstant = metaAccessProvider.decodeSpeculation(thisSpeculation.asJavaConstant(), deopt.graph().getSpeculationLog());
-                tryUseTrappingVersion(deopt, endPredecesssor, deoptimizationReason, speculationConstant, thisReason.asJavaConstant(), thisSpeculation.asJavaConstant(), context);
+                tryUseTrappingVersion(deopt, endPredecesssor, speculationConstant, thisReason.asJavaConstant(), thisSpeculation.asJavaConstant(), context);
             }
         }
     }
 
-    protected void tryUseTrappingVersion(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason, Speculation speculation, JavaConstant deoptReasonAndAction,
+    protected void tryUseTrappingVersion(AbstractDeoptimizeNode deopt, Node predecessor, Speculation speculation, JavaConstant deoptReasonAndAction,
                     JavaConstant deoptSpeculation, LowTierContext context) {
         assert predecessor != null;
-        if (!GraalServices.supportsArbitraryImplicitException() && !isSupportedReason(deoptimizationReason)) {
-            deopt.getDebug().log(DebugContext.INFO_LEVEL, "Not a null check / unreached / arithmetic %s", predecessor);
-            return;
-        }
         assert speculation != null;
-        if (!GraalServices.supportsArbitraryImplicitException() && !speculation.equals(SpeculationLog.NO_SPECULATION)) {
-            deopt.getDebug().log(DebugContext.INFO_LEVEL, "Has a speculation %s", predecessor);
-            return;
-        }
 
         // Skip over loop exit nodes.
         Node pred = predecessor;

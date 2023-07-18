@@ -56,7 +56,6 @@ import org.graalvm.compiler.phases.common.UseTrappingOperationPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -87,9 +86,6 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
     protected void run(StructuredGraph graph, LowTierContext context) {
         graph.clearLastSchedule();
         if (!GraalOptions.FloatingDivNodes.getValue(graph.getOptions())) {
-            return;
-        }
-        if (!GraalServices.supportsArbitraryImplicitException()) {
             return;
         }
         EconomicMap<IntegerEqualsNode, IntegerDivRemNode> trappingReplaceTargets = null;
@@ -217,7 +213,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         protected void run(StructuredGraph graph, LowTierContext context) {
             MetaAccessProvider metaAccessProvider = context.getMetaAccess();
             for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
-                tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(),
+                tryUseTrappingVersion(deopt, deopt.predecessor(),
                                 deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
                                 deopt.getSpeculation(metaAccessProvider).asJavaConstant(), context);
             }

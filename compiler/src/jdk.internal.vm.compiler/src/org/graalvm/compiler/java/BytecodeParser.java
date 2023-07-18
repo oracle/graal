@@ -1689,7 +1689,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genInvokeInterface(int cpi, int opcode) {
         JavaMethod target = lookupMethod(cpi, opcode);
-        JavaType referencedType = lookupReferencedTypeInPool(cpi, opcode);
+        JavaType referencedType = constantPool.lookupReferencedType(cpi, opcode);
         genInvokeInterface(referencedType, target);
     }
 
@@ -4256,16 +4256,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
         }
         return constantPool.lookupMethod(cpi, opcode);
-    }
-
-    protected JavaType lookupReferencedTypeInPool(int cpi, int opcode) {
-        if (GraalServices.hasLookupReferencedType()) {
-            return GraalServices.lookupReferencedType(constantPool, cpi, opcode);
-        }
-        // Returning null means that we should not attempt using CHA to devirtualize or inline
-        // interface calls. This is a normal behavior if the JVMCI doesn't support
-        // {@code ConstantPool.lookupReferencedType()}.
-        return null;
     }
 
     protected JavaField lookupField(int cpi, int opcode) {
