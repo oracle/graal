@@ -1285,6 +1285,7 @@ suite = {
         "TRUFFLE_COMPILER",
       ],
       "description" : "Truffle runtime distribution.",
+      "useModulePath": True,
       "maven": True,
     },
 
@@ -1379,6 +1380,7 @@ suite = {
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
       "maven": True,
+      "useModulePath": True,
       "graalvm" : {
         # Deploy the modular jar specified by "moduleInfo.closed"
         "moduleInfo" : "closed",
@@ -1606,6 +1608,7 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
       ],
+      "useModulePath": True,
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
     },
