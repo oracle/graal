@@ -98,8 +98,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
@@ -217,13 +221,19 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected Object lookupConstant(int cpi, int opcode) {
             try {
                 return super.lookupConstant(cpi, opcode);
-            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
-                if (linkAtBuildTime) {
-                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+            } catch (LinkageError | IllegalArgumentException ex) {
+                Object result = constantPool.lookupConstant(cpi);
+                assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
+                if (result instanceof UnresolvedJavaType || result instanceof UnresolvedJavaMethod || result instanceof UnresolvedJavaField) {
+                    if (linkAtBuildTime) {
+                        reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+                    } else {
+                        replaceWithThrowingAtRuntime(this, ex);
+                    }
+                    return ex; // indicate that the exception has already been handled
                 } else {
-                    replaceWithThrowingAtRuntime(this, ex);
+                    return result;
                 }
-                return ex;
             }
         }
 
@@ -238,19 +248,39 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void maybeEagerlyResolve(int cpi, int bytecode) {
+        protected JavaType lookupType(int cpi, int bytecode) {
             try {
-                super.maybeEagerlyResolve(cpi, bytecode);
-            } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
-                    /*
-                     * Ignore LinkageError if thrown from eager resolution attempt. This is usually
-                     * followed by a call to ConstantPool.lookupType() which should return an
-                     * UnresolvedJavaType which we know how to deal with.
-                     */
+                return super.lookupType(cpi, bytecode);
+            } catch (LinkageError le) {
+                JavaType result = constantPool.lookupType(cpi, bytecode);
+                assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaType;
+                if (result instanceof UnresolvedJavaType ujt) {
+                    return new UnresolvedJavaTypeWithCause(ujt, le);
                 } else {
-                    throw e;
+                    return result;
                 }
+            }
+        }
+
+        @Override
+        protected JavaMethod lookupMethod(int cpi, int opcode) {
+            try {
+                return super.lookupMethod(cpi, opcode);
+            } catch (LinkageError le) {
+                JavaMethod result = lookupMethodInPool(cpi, opcode);
+                assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : result.format("%H.%n(%P)%R");
+                return result;
+            }
+        }
+
+        @Override
+        protected JavaField lookupField(int cpi, int opcode) {
+            try {
+                return super.lookupField(cpi, opcode);
+            } catch (LinkageError le) {
+                JavaField result = constantPool.lookupField(cpi, method, opcode);
+                assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaField : "Not resolved: " + result;
+                return lookupField(result);
             }
         }
 
@@ -383,7 +413,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 /*
                  * Invoke method that creates and throws throwable-instance with message and cause
                  */
-                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                var errorCtor = ReflectionUtil.lookupConstructor(true, throwable.getClass(), String.class, Throwable.class);
+                if (errorCtor == null) {
+                    /* throwable has no constructor that accepts a cause, just throw cause */
+                    replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+                    return;
+                }
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
                 /*
@@ -424,14 +459,24 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         private void handleUnresolvedType(JavaType type) {
+            LinkageError cause = type instanceof UnresolvedJavaTypeWithCause t ? t.cause() : null;
             /*
              * If linkAtBuildTime was set for type, report the error during image building,
              * otherwise defer the error reporting to runtime.
              */
             if (linkAtBuildTime) {
-                reportUnresolvedElement("type", type.toJavaName());
+                reportUnresolvedElement("type", type.toJavaName(), cause);
             } else {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
+                Class<?> exceptionClass;
+                String message;
+                if (cause != null) {
+                    exceptionClass = cause.getClass();
+                    message = cause.getMessage();
+                } else {
+                    exceptionClass = NoClassDefFoundError.class;
+                    message = type.toJavaName();
+                }
+                ExceptionSynthesizer.throwException(this, exceptionClass, message);
             }
         }
 

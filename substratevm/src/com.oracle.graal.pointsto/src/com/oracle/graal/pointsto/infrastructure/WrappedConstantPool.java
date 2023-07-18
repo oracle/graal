@@ -88,17 +88,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     @Override
     public void loadReferencedType(int cpi, int opcode, boolean initialize) {
         GraalError.guarantee(!initialize, "Must not initialize classes");
-        try {
-            wrapped.loadReferencedType(cpi, opcode, initialize);
-        } catch (Throwable ex) {
-            Throwable cause = ex;
-            if (cause instanceof BootstrapMethodError && cause.getCause() != null) {
-                cause = cause.getCause();
-            } else if (cause instanceof ExceptionInInitializerError && cause.getCause() != null) {
-                cause = cause.getCause();
-            }
-            throw new UnresolvedElementException("Error loading a referenced type: " + cause.toString(), cause);
-        }
+        wrapped.loadReferencedType(cpi, opcode, initialize);
     }
 
     @Override

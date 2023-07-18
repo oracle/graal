@@ -4239,7 +4239,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return result;
     }
 
-    private JavaMethod lookupMethod(int cpi, int opcode) {
+    protected JavaMethod lookupMethod(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaMethod result = lookupMethodInPool(cpi, opcode);
         assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : result.format("%H.%n(%P)%R");
