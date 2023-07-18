@@ -195,7 +195,7 @@ def _open_module_exports_args():
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Disable DefaultRuntime warning
-    vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+    #vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
@@ -1135,7 +1135,7 @@ def glob_match(path, pattern):
                         return True
         return False
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
     short_name='tfla',
@@ -1148,11 +1148,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'truffle:TRUFFLE_API',
         'truffle:TRUFFLE_RUNTIME',
     ],
-    support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
@@ -1170,7 +1169,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle Compiler',
     short_name='tflc',
@@ -1182,6 +1181,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jvmci_parent_jars=[
         'truffle:TRUFFLE_COMPILER',
     ],
+    # GR-44222 This is only a temporary solution until we can load the attach library 
+    # from the truffle-runtime module.
+    support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
 
@@ -1221,7 +1223,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 ))
 
 # Typically not included in releases
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle DSL Processor',
     short_name='tflp',
