@@ -639,7 +639,7 @@ In this code:
 ## Polyglot Isolates
 
 On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated `native-image` isolate.
-This experimental feature is enabled with the `--engine.SpawnIsolate` option.
+This feature is enabled with the `--engine.SpawnIsolate` option.
 An engine running in this mode executes within a VM-level fault domain with its own garbage collector and JIT compiler.
 The fact that an engine runs within an isolate is completely transparent with respect to the Polyglot API and interoperability:
 
@@ -650,7 +650,6 @@ public class PolyglotIsolate {
   public static void main(String[] args) {
     Context context = Context.newBuilder("js")
       .allowHostAccess(HostAccess.SCOPED)
-      .allowExperimentalOptions(true)
       .option("engine.SpawnIsolate", "true").build();
     Value function = context.eval("js", "x => x+1")
     assert function.canExecute();
@@ -669,7 +668,6 @@ Multiple contexts can be spawned in the same isolated engine by [sharing engines
 public class PolyglotIsolateMultipleContexts {
     public static void main(String[] args) {
         try (Engine engine = Engine.newBuilder()
-                .allowExperimentalOptions(true)
                 .option("engine.SpawnIsolate", "js").build()) {
             Source source = Source.create("js", "21 + 21");
             try (Context context = Context.newBuilder()
@@ -689,7 +687,7 @@ public class PolyglotIsolateMultipleContexts {
 }
 ```
 
-Note how we need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
+Note how you need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
 The reason is that an isolated engine needs to know which set of languages should be available.
 Behind the scenes, GraalVM will then locate the corresponding Native Image language library.
 If only a single language is selected, then the library for the language will be loaded.
@@ -714,7 +712,6 @@ public class PolyglotIsolateMaxHeap {
     try {
       Context context = Context.newBuilder("js")
         .allowHostAccess(HostAccess.SCOPED)
-        .allowExperimentalOptions(true)
         .option("engine.SpawnIsolate", "true")
         .option("engine.IsolateOption.MaxHeapSize", "64m").build()
       context.eval("js", "var a = [];while (true) {a.push('foobar');}");
@@ -741,10 +738,10 @@ GraalVM will only enable access to the engine's heap when executing code of the 
 
 ## Dependency Setup
 
-To best make use of the embedding API of GraalVM (i.e. `org.graalvm.polyglot.*`) your project should use a GraalVM as `JAVA_HOME`.
+To best make use of the GraalVM Embedding API (i.e. `org.graalvm.polyglot.*`), your project should use a GraalVM as `JAVA_HOME`.
 In addition to that, you should specify the `graal-sdk.jar` (which is included in GraalVM) as a provided dependency to your projects.
 This is mainly to provide IDEs and other tools with the information that the project uses this API.
-An example of this for Maven means adding the following to the `pom.xml` file.
+For example, add the following to the `pom.xml` file of your Maven project:
 
 ```xml
 <dependency>
