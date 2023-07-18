@@ -234,7 +234,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getByteVolatile(buffer, byteOffset);
         } while (compareAndExchangeByte(buffer, byteOffset,
-                v, (byte) (v + delta)) != v);
+                        v, (byte) (v + delta)) != v);
         return v;
     }
 
@@ -244,7 +244,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getShortVolatile(buffer, byteOffset);
         } while (compareAndExchangeShort(buffer, byteOffset,
-                v, (short) (v + delta)) != v);
+                        v, (short) (v + delta)) != v);
         return v;
     }
 
@@ -264,7 +264,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getByteVolatile(buffer, byteOffset);
         } while (compareAndExchangeByte(buffer, byteOffset,
-                v, (byte) (v & mask)) != v);
+                        v, (byte) (v & mask)) != v);
         return v;
     }
 
@@ -274,7 +274,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getShortVolatile(buffer, byteOffset);
         } while (compareAndExchangeShort(buffer, byteOffset,
-                v, (short) (v & mask)) != v);
+                        v, (short) (v & mask)) != v);
         return v;
     }
 
@@ -284,7 +284,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getIntVolatile(buffer, byteOffset);
         } while (compareAndExchangeInt(buffer, byteOffset,
-                v, v & mask) != v);
+                        v, v & mask) != v);
         return v;
     }
 
@@ -294,7 +294,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getLongVolatile(buffer, byteOffset);
         } while (compareAndExchangeLong(buffer, byteOffset,
-                v, v & mask) != v);
+                        v, v & mask) != v);
         return v;
     }
 
@@ -304,7 +304,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getByteVolatile(buffer, byteOffset);
         } while (compareAndExchangeByte(buffer, byteOffset,
-                v, (byte) (v | mask)) != v);
+                        v, (byte) (v | mask)) != v);
         return v;
     }
 
@@ -314,7 +314,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getShortVolatile(buffer, byteOffset);
         } while (compareAndExchangeShort(buffer, byteOffset,
-                v, (short) (v | mask)) != v);
+                        v, (short) (v | mask)) != v);
         return v;
     }
 
@@ -324,7 +324,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getIntVolatile(buffer, byteOffset);
         } while (compareAndExchangeInt(buffer, byteOffset,
-                v, v | mask) != v);
+                        v, v | mask) != v);
         return v;
     }
 
@@ -334,7 +334,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getLongVolatile(buffer, byteOffset);
         } while (compareAndExchangeLong(buffer, byteOffset,
-                v, v | mask) != v);
+                        v, v | mask) != v);
         return v;
     }
 
@@ -344,7 +344,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getByteVolatile(buffer, byteOffset);
         } while (compareAndExchangeByte(buffer, byteOffset,
-                v, (byte) (v ^ mask)) != v);
+                        v, (byte) (v ^ mask)) != v);
         return v;
     }
 
@@ -354,7 +354,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getShortVolatile(buffer, byteOffset);
         } while (compareAndExchangeShort(buffer, byteOffset,
-                v, (short) (v ^ mask)) != v);
+                        v, (short) (v ^ mask)) != v);
         return v;
     }
 
@@ -364,7 +364,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getIntVolatile(buffer, byteOffset);
         } while (compareAndExchangeInt(buffer, byteOffset,
-                v, v ^ mask) != v);
+                        v, v ^ mask) != v);
         return v;
     }
 
@@ -374,7 +374,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getLongVolatile(buffer, byteOffset);
         } while (compareAndExchangeLong(buffer, byteOffset,
-                v, v ^ mask) != v);
+                        v, v ^ mask) != v);
         return v;
     }
 
@@ -384,7 +384,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getByteVolatile(buffer, byteOffset);
         } while (compareAndExchangeByte(buffer, byteOffset,
-                v, newValue) != v);
+                        v, newValue) != v);
         return v;
     }
 
@@ -394,7 +394,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getShortVolatile(buffer, byteOffset);
         } while (compareAndExchangeShort(buffer, byteOffset,
-                v, newValue) != v);
+                        v, newValue) != v);
         return v;
     }
 
@@ -404,7 +404,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getIntVolatile(buffer, byteOffset);
         } while (compareAndExchangeInt(buffer, byteOffset,
-                v, newValue) != v);
+                        v, newValue) != v);
         return v;
     }
 
@@ -414,7 +414,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
         do {
             v = getLongVolatile(buffer, byteOffset);
         } while (compareAndExchangeLong(buffer, byteOffset,
-                v, newValue) != v);
+                        v, newValue) != v);
         return v;
     }
 
@@ -435,7 +435,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
                 return (byte) ((fullWord & mask) >> shift);
             }
         } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 
@@ -459,7 +459,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
                 return (short) ((fullWord & mask) >> shift);
             }
         } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 
@@ -476,7 +476,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
                 return fullWord;
             }
         } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
-                fullWord, x));
+                        fullWord, x));
         return expected;
     }
 
@@ -493,7 +493,7 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
                 return fullWord;
             }
         } while (!UNSAFE.compareAndSwapLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
-                fullWord, x));
+                        fullWord, x));
         return expected;
     }
 }
