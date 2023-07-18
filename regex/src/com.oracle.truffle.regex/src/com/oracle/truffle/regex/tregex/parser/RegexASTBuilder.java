@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import com.oracle.truffle.regex.charset.ClassSetContents;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.HasCaptureGroupsVisitor;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -91,6 +92,7 @@ public final class RegexASTBuilder {
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
+    private final HasCaptureGroupsVisitor hasCaptureGroupsVisitor;
     private final boolean canExplodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
@@ -111,6 +113,7 @@ public final class RegexASTBuilder {
         this.groupCount = ast.getGroupCount();
         this.countVisitor = new NodeCountVisitor();
         this.setSourceSectionVisitor = options.isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
+        this.hasCaptureGroupsVisitor = options.getFlavor().hasSubexpressionCalls() ? new HasCaptureGroupsVisitor() : null;
         this.compilationBuffer = compilationBuffer;
         this.groupStartPositions = source.getOptions().getFlavor().needsGroupStartPositions() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
@@ -676,7 +679,7 @@ public final class RegexASTBuilder {
             replaceCurTermWithDeadNode();
             return;
         }
-        if (quantifier.getMax() == 0 && !options.getFlavor().hasSubexpressionCalls()) {
+        if (quantifier.getMax() == 0 && (!options.getFlavor().hasSubexpressionCalls() || !hasCaptureGroupsVisitor.hasCaptureGroups(curTerm))) {
             removeCurTerm();
             return;
         }
