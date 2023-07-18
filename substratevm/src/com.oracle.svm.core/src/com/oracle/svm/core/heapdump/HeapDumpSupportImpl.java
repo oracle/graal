@@ -36,4 +36,14 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
             com.oracle.svm.core.heapdump.HeapDumpWriter.singleton().writeHeapTo(fileOutputStream, live);
         }
     }
+
+    @Override
+    public void dumpHeapOnOutOfMemoryError() {
+        // No-op
+    }
+
+    @Override
+    public void initHeapDumpOnOutOfMemoryErrorPath() {
+        // No-op
+    }
 }

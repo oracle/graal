@@ -30,6 +30,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.VMRuntime;
 
@@ -39,6 +40,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.internal.misc.Signal;
+import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 @AutomaticallyRegisteredFeature
 public class DumpHeapOnSignalFeature implements InternalFeature {
@@ -59,6 +61,9 @@ final class DumpHeapStartupHook implements RuntimeSupport.Hook {
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             DumpHeapReport.install();
+            if (SubstrateOptions.isHeapDumpOnOutOfMemoryError()) {
+                ImageSingletons.lookup(HeapDumpSupport.class).initHeapDumpOnOutOfMemoryErrorPath();
+            }
         }
     }
 }

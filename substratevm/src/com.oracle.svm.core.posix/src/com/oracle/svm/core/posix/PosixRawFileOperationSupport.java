@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -61,10 +62,27 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
+    public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
+        int flags = parseMode(creationMode) | parseMode(accessMode);
+        return open0(cPath, flags);
+    }
+
+    private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
+        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
+        return WordFactory.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
+    }
+
+    @Override
     public RawFileDescriptor open(File file, FileAccessMode mode) {
         String path = file.getPath();
         int flags = parseMode(mode);
         return open0(path, flags);
+    }
+
+    @Override
+    public RawFileDescriptor open(CCharPointer cPath, FileAccessMode mode) {
+        int flags = parseMode(mode);
+        return open0(cPath, flags);
     }
 
     private static RawFileDescriptor open0(String path, int flags) {

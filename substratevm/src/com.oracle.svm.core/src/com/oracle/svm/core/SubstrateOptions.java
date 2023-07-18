@@ -825,6 +825,13 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Dump heap to file when java.lang.OutOfMemoryError is thrown.")//
+    public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false, Immutable);
+
+    public static boolean isHeapDumpOnOutOfMemoryError() {
+        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue();
+    }
+
     @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 

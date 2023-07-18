@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -150,8 +151,15 @@ public final class GCImpl implements GC {
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
-            throw OutOfMemoryUtil.heapSizeExceeded();
+            heapSizeExceeded();
         }
+    }
+
+    private static void heapSizeExceeded() {
+        if (SubstrateOptions.isHeapDumpOnOutOfMemoryError()) {
+            VMRuntime.dumpHeapOnOutOfMemoryError();
+        }
+        throw OutOfMemoryUtil.heapSizeExceeded();
     }
 
     @Override
@@ -165,7 +173,7 @@ public final class GCImpl implements GC {
         if (!hasNeverCollectPolicy()) {
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                throw OutOfMemoryUtil.heapSizeExceeded();
+                heapSizeExceeded();
             }
         }
     }

@@ -28,6 +28,7 @@ import java.io.File;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -89,6 +90,15 @@ public interface RawFileOperationSupport {
     RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode);
 
     /**
+     * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
+     * access modes}.
+     *
+     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
+     *         a value where {@link #isValid} will return false.
+     */
+    RawFileDescriptor create(CCharPointer path, FileCreationMode creationMode, FileAccessMode accessMode);
+
+    /**
      * Opens a file with the specified {@link FileAccessMode access mode}.
      *
      * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
@@ -103,6 +113,14 @@ public interface RawFileOperationSupport {
      *         a value where {@link #isValid} will return false.
      */
     RawFileDescriptor open(File file, FileAccessMode accessMode);
+
+    /**
+     * Opens a file with the specified {@link FileAccessMode access mode}.
+     *
+     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
+     *         a value where {@link #isValid} will return false.
+     */
+    RawFileDescriptor open(CCharPointer path, FileAccessMode accessMode);
 
     /**
      * Checks if a file descriptor is valid or if it represents an error value.

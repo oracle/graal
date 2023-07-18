@@ -25,19 +25,26 @@
 package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.UNRESTRICTED;
 
 import java.io.IOException;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.headers.LibC;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -56,6 +63,7 @@ import com.oracle.svm.core.thread.VMOperation;
 public class HeapDumpSupportImpl implements HeapDumpSupport {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
+    private CCharPointer heapOnErrorDumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
@@ -75,6 +83,40 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         } finally {
             getFileSupport().close(fd);
         }
+    }
+
+    @Override
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping on OutOfMemoryError must not allocate.")
+    public void dumpHeapOnOutOfMemoryError() {
+        final RawFileDescriptor fd = getFileSupport().create(heapOnErrorDumpPath, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+        if (!getFileSupport().isValid(fd)) {
+            Log.log().string("Invalid file descriptor opening heap dump on OutOfMemoryError.").newline();
+            return;
+        }
+
+        int size = SizeOf.get(HeapDumpVMOperationData.class);
+        HeapDumpVMOperationData data = StackValue.get(size);
+        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+
+        data.setGCBefore(false);
+        data.setRawFileDescriptor(fd);
+        heapDumpOperation.enqueue(data);
+    }
+
+    @Override
+    public void initHeapDumpOnOutOfMemoryErrorPath() {
+        String dumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + ".hprof";
+        String dumpPath = SubstrateOptions.getHeapDumpPath(dumpFileName);
+        try (CTypeConversion.CCharPointerHolder cPath = CTypeConversion.toCString(dumpPath)) {
+            heapOnErrorDumpPath = copyDumpPath(cPath.get());
+        }
+    }
+
+    private static CCharPointer copyDumpPath(CCharPointer cPath) {
+        final UnsignedWord length = SubstrateUtil.strlen(cPath);
+        final CCharPointer copy = UnmanagedMemory.malloc(length);
+        LibC.memcpy(copy, cPath, length);
+        return copy;
     }
 
     public void writeHeapTo(RawFileDescriptor fd, boolean gcBefore) throws IOException {
@@ -136,13 +178,13 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
                 data.setSuccess(success);
             } catch (Throwable e) {
                 reportError(e);
+                data.setSuccess(false);
             }
         }
 
-        @RestrictHeapAccess(access = UNRESTRICTED, reason = "Error reporting may allocate.")
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Error reporting must not allocate.")
         private static void reportError(Throwable e) {
-            Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt.").newline().string(e.getClass().getName()).string(": ")
-                            .string(e.getMessage());
+            Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt: ").string(e.getClass().getName());
         }
     }
 }
