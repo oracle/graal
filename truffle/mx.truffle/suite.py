@@ -70,15 +70,6 @@ suite = {
 
     # ------------- Libraries -------------
 
-    "JLINE" : {
-      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
-      "maven" : {
-        "groupId" : "jline",
-        "artifactId" : "jline",
-        "version" : "2.14.6",
-      }
-    },
-
     "LIBFFI_SOURCES" : {
       "resource" : True,
       "version" : "3.4.4",
