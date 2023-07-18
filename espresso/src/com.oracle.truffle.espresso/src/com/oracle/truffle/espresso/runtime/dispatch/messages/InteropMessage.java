@@ -179,7 +179,9 @@ public abstract class InteropMessage extends EspressoNode {
         IdentityHashCode,
         IsScope,
         HasScopeParent,
-        GetScopeParent,
+        GetScopeParent;
+
+        public static final int MESSAGE_COUNT = Message.values().length;
     }
 
     public InteropMessage() {

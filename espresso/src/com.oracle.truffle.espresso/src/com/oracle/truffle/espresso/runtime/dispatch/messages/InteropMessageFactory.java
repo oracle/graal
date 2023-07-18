@@ -44,7 +44,7 @@ public final class InteropMessageFactory {
 
     @SuppressWarnings({"unchecked", "rawtypes"}) //
     @CompilationFinal(dimensions = 1) //
-    private static final Supplier<InteropMessage>[] messages = new Supplier[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.values().length];
+    private static final Supplier<InteropMessage>[] messages = new Supplier[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.MESSAGE_COUNT];
 
     public static void register(Class<?> cls, InteropMessage.Message message, Supplier<InteropMessage> factory) {
         assert cls != null;
@@ -72,7 +72,7 @@ public final class InteropMessageFactory {
 
     public static int getIndex(int dispatchId, InteropMessage.Message message) {
         int messageId = message.ordinal();
-        return InteropMessage.Message.values().length * dispatchId + messageId;
+        return InteropMessage.Message.MESSAGE_COUNT * dispatchId + messageId;
     }
 
     static {
