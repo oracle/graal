@@ -103,14 +103,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
   // shared snippets
-  eclipse: {
-    downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
-    },
-    environment+: {
-      ECLIPSE_EXE: '$ECLIPSE/eclipse',
-    },
-  },
+  eclipse: graal_common.deps.eclipse,
 
   jdt: {
     environment+: {
