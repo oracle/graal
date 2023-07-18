@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -211,5 +211,125 @@ final class ReversedByteArraySupport extends ByteArraySupport {
     @Override
     public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
         access.putLongVolatile(buffer, byteOffset, Long.reverseBytes(value));
+    }
+
+    @Override
+    public byte getAndAddByte(byte[] buffer, long byteOffset, byte delta) throws IndexOutOfBoundsException {
+        return access.getAndAddByte(buffer, byteOffset, delta);
+    }
+
+    @Override
+    public short getAndAddShort(byte[] buffer, long byteOffset, short delta) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getAndAddShort(buffer, byteOffset, Short.reverseBytes(delta)));
+    }
+
+    @Override
+    public int getAndAddInt(byte[] buffer, long byteOffset, int delta) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getAndAddInt(buffer, byteOffset, Integer.reverseBytes(delta)));
+    }
+
+    @Override
+    public long getAndAddLong(byte[] buffer, long byteOffset, long delta) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getAndAddLong(buffer, byteOffset, Long.reverseBytes(delta)));
+    }
+
+    @Override
+    public byte getAndBitwiseAndByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        return access.getAndBitwiseAndByte(buffer, byteOffset, mask);
+    }
+
+    @Override
+    public short getAndBitwiseAndShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getAndBitwiseAndShort(buffer, byteOffset, Short.reverseBytes(mask)));
+    }
+
+    @Override
+    public int getAndBitwiseAndInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getAndBitwiseAndInt(buffer, byteOffset, Integer.reverseBytes(mask)));
+    }
+
+    @Override
+    public long getAndBitwiseAndLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getAndBitwiseAndLong(buffer, byteOffset, Long.reverseBytes(mask)));
+    }
+
+    @Override
+    public byte getAndBitwiseOrByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        return access.getAndBitwiseOrByte(buffer, byteOffset, mask);
+    }
+
+    @Override
+    public short getAndBitwiseOrShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getAndBitwiseOrShort(buffer, byteOffset, Short.reverseBytes(mask)));
+    }
+
+    @Override
+    public int getAndBitwiseOrInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getAndBitwiseOrInt(buffer, byteOffset, Integer.reverseBytes(mask)));
+    }
+
+    @Override
+    public long getAndBitwiseOrLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getAndBitwiseOrLong(buffer, byteOffset, Long.reverseBytes(mask)));
+    }
+
+    @Override
+    public byte getAndBitwiseXorByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        return access.getAndBitwiseXorByte(buffer, byteOffset, mask);
+    }
+
+    @Override
+    public short getAndBitwiseXorShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getAndBitwiseXorShort(buffer, byteOffset, Short.reverseBytes(mask)));
+    }
+
+    @Override
+    public int getAndBitwiseXorInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getAndBitwiseXorInt(buffer, byteOffset, Integer.reverseBytes(mask)));
+    }
+
+    @Override
+    public long getAndBitwiseXorLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getAndBitwiseXorLong(buffer, byteOffset, Long.reverseBytes(mask)));
+    }
+
+    @Override
+    public byte getAndSetByte(byte[] buffer, long byteOffset, byte newValue) throws IndexOutOfBoundsException {
+        return access.getAndSetByte(buffer, byteOffset, newValue);
+    }
+
+    @Override
+    public short getAndSetShort(byte[] buffer, long byteOffset, short newValue) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.getAndSetShort(buffer, byteOffset, Short.reverseBytes(newValue)));
+    }
+
+    @Override
+    public int getAndSetInt(byte[] buffer, long byteOffset, int newValue) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.getAndSetInt(buffer, byteOffset, Integer.reverseBytes(newValue)));
+    }
+
+    @Override
+    public long getAndSetLong(byte[] buffer, long byteOffset, long newValue) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.getAndSetLong(buffer, byteOffset, Long.reverseBytes(newValue)));
+    }
+
+    @Override
+    public byte compareAndExchangeByte(byte[] buffer, long byteOffset, byte expected, byte x) throws IndexOutOfBoundsException {
+        return access.compareAndExchangeByte(buffer, byteOffset, expected, x);
+    }
+
+    @Override
+    public short compareAndExchangeShort(byte[] buffer, long byteOffset, short expected, short x) throws IndexOutOfBoundsException {
+        return Short.reverseBytes(access.compareAndExchangeShort(buffer, byteOffset, Short.reverseBytes(expected), Short.reverseBytes(x)));
+    }
+
+    @Override
+    public int compareAndExchangeInt(byte[] buffer, long byteOffset, int expected, int x) throws IndexOutOfBoundsException {
+        return Integer.reverseBytes(access.compareAndExchangeInt(buffer, byteOffset, Integer.reverseBytes(expected), Integer.reverseBytes(x)));
+    }
+
+    @Override
+    public long compareAndExchangeLong(byte[] buffer, long byteOffset, long expected, long x) throws IndexOutOfBoundsException {
+        return Long.reverseBytes(access.compareAndExchangeLong(buffer, byteOffset, Long.reverseBytes(expected), Long.reverseBytes(x)));
     }
 }

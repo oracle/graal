@@ -293,6 +293,57 @@ public final class Instructions {
     public static final int ATOMIC_I64_STORE8 = 0x1B;
     public static final int ATOMIC_I64_STORE16 = 0x1C;
     public static final int ATOMIC_I64_STORE32 = 0x1D;
+
+    public static final int ATOMIC_I32_RMW_ADD = 0x1E;
+    public static final int ATOMIC_I64_RMW_ADD = 0x1F;
+    public static final int ATOMIC_I32_RMW8_U_ADD = 0x20;
+    public static final int ATOMIC_I32_RMW16_U_ADD = 0x21;
+    public static final int ATOMIC_I64_RMW8_U_ADD = 0x22;
+    public static final int ATOMIC_I64_RMW16_U_ADD = 0x23;
+    public static final int ATOMIC_I64_RMW32_U_ADD = 0x24;
+    public static final int ATOMIC_I32_RMW_SUB = 0x25;
+    public static final int ATOMIC_I64_RMW_SUB = 0x26;
+    public static final int ATOMIC_I32_RMW8_U_SUB = 0x27;
+    public static final int ATOMIC_I32_RMW16_U_SUB = 0x28;
+    public static final int ATOMIC_I64_RMW8_U_SUB = 0x29;
+    public static final int ATOMIC_I64_RMW16_U_SUB = 0x2A;
+    public static final int ATOMIC_I64_RMW32_U_SUB = 0x2B;
+    public static final int ATOMIC_I32_RMW_AND = 0x2C;
+    public static final int ATOMIC_I64_RMW_AND = 0x2D;
+    public static final int ATOMIC_I32_RMW8_U_AND = 0x2E;
+    public static final int ATOMIC_I32_RMW16_U_AND = 0x2F;
+    public static final int ATOMIC_I64_RMW8_U_AND = 0x30;
+    public static final int ATOMIC_I64_RMW16_U_AND = 0x31;
+    public static final int ATOMIC_I64_RMW32_U_AND = 0x32;
+    public static final int ATOMIC_I32_RMW_OR = 0x33;
+    public static final int ATOMIC_I64_RMW_OR = 0x34;
+    public static final int ATOMIC_I32_RMW8_U_OR = 0x35;
+    public static final int ATOMIC_I32_RMW16_U_OR = 0x36;
+    public static final int ATOMIC_I64_RMW8_U_OR = 0x37;
+    public static final int ATOMIC_I64_RMW16_U_OR = 0x38;
+    public static final int ATOMIC_I64_RMW32_U_OR = 0x39;
+    public static final int ATOMIC_I32_RMW_XOR = 0x3A;
+    public static final int ATOMIC_I64_RMW_XOR = 0x3B;
+    public static final int ATOMIC_I32_RMW8_U_XOR = 0x3C;
+    public static final int ATOMIC_I32_RMW16_U_XOR = 0x3D;
+    public static final int ATOMIC_I64_RMW8_U_XOR = 0x3E;
+    public static final int ATOMIC_I64_RMW16_U_XOR = 0x3F;
+    public static final int ATOMIC_I64_RMW32_U_XOR = 0x40;
+    public static final int ATOMIC_I32_RMW_XCHG = 0x41;
+    public static final int ATOMIC_I64_RMW_XCHG = 0x42;
+    public static final int ATOMIC_I32_RMW8_U_XCHG = 0x43;
+    public static final int ATOMIC_I32_RMW16_U_XCHG = 0x44;
+    public static final int ATOMIC_I64_RMW8_U_XCHG = 0x45;
+    public static final int ATOMIC_I64_RMW16_U_XCHG = 0x46;
+    public static final int ATOMIC_I64_RMW32_U_XCHG = 0x47;
+
+    public static final int ATOMIC_I32_RMW_CMPXCHG = 0x48;
+    public static final int ATOMIC_I64_RMW_CMPXCHG = 0x49;
+    public static final int ATOMIC_I32_RMW8_U_CMPXCHG = 0x4A;
+    public static final int ATOMIC_I32_RMW16_U_CMPXCHG = 0x4B;
+    public static final int ATOMIC_I64_RMW8_U_CMPXCHG = 0x4C;
+    public static final int ATOMIC_I64_RMW16_U_CMPXCHG = 0x4D;
+    public static final int ATOMIC_I64_RMW32_U_CMPXCHG = 0x4E;
     // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
     // used in other ways in the future)
 

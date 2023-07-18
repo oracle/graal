@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -429,19 +429,44 @@ public abstract class ByteArraySupport {
      */
     public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
 
+    // should all of these have 'throws IndexOutOfBoundsException`???
+
     public abstract byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
-
     public abstract void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException;
-
     public abstract short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
-
     public abstract void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException;
-
     public abstract int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
-
     public abstract void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException;
-
     public abstract long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
-
     public abstract void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException;
+
+    public abstract byte getAndAddByte(byte[] buffer, long byteOffset, byte delta) throws IndexOutOfBoundsException;
+    public abstract short getAndAddShort(byte[] buffer, long byteOffset, short delta) throws IndexOutOfBoundsException;
+    public abstract int getAndAddInt(byte[] buffer, long byteOffset, int delta) throws IndexOutOfBoundsException;
+    public abstract long getAndAddLong(byte[] buffer, long byteOffset, long delta) throws IndexOutOfBoundsException;
+
+    public abstract byte getAndBitwiseAndByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+    public abstract short getAndBitwiseAndShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+    public abstract int getAndBitwiseAndInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+    public abstract long getAndBitwiseAndLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    public abstract byte getAndBitwiseOrByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+    public abstract short getAndBitwiseOrShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+    public abstract int getAndBitwiseOrInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+    public abstract long getAndBitwiseOrLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    public abstract byte getAndBitwiseXorByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+    public abstract short getAndBitwiseXorShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+    public abstract int getAndBitwiseXorInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+    public abstract long getAndBitwiseXorLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    public abstract byte getAndSetByte(byte[] buffer, long byteOffset, byte newValue) throws IndexOutOfBoundsException;
+    public abstract short getAndSetShort(byte[] buffer, long byteOffset, short newValue) throws IndexOutOfBoundsException;
+    public abstract int getAndSetInt(byte[] buffer, long byteOffset, int newValue) throws IndexOutOfBoundsException;
+    public abstract long getAndSetLong(byte[] buffer, long byteOffset, long newValue) throws IndexOutOfBoundsException;
+
+    public abstract byte compareAndExchangeByte(byte[] buffer, long byteOffset, byte expected, byte x) throws IndexOutOfBoundsException;
+    public abstract short compareAndExchangeShort(byte[] buffer, long byteOffset, short expected, short x) throws IndexOutOfBoundsException;
+    public abstract int compareAndExchangeInt(byte[] buffer, long byteOffset, int expected, int x) throws IndexOutOfBoundsException;
+    public abstract long compareAndExchangeLong(byte[] buffer, long byteOffset, long expected, long x) throws IndexOutOfBoundsException;
 }

@@ -251,7 +251,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      */
     public void addAtomicMemoryInstruction(int opcode, long offset, boolean indexType64) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
-        // not optimized yet!!!
         if (!indexType64) {
             assert fitsIntoUnsignedInt(offset) : "offset does not fit into int";
             add1(opcode);

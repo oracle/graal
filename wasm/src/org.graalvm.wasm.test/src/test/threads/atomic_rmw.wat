@@ -39,14 +39,21 @@
 ;; SOFTWARE.
 ;;
 (module
-    ;; Declare 1 page (64Kib) of shared memory.
     (memory 1 1 shared)
 
-    (func (export "_main") (result i32)
-        i32.const 0
-        i32.const 155
-        i32.atomic.store
-        i32.const 0
-        i32.atomic.load
+    (func (export "_main") (result i32 i32 i32 i32 i32 i32 i32 i32)
+        atomic.fence
+
+        (i32.atomic.store (i32.const 0) (i32.const 0xFF))
+
+        (i32.atomic.rmw.add (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.sub (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.and (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.or (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.xor (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.xchg (i32.const 0) (i32.const 1))
+        (i32.atomic.rmw.cmpxchg (i32.const 0) (i32.const 1) (i32.const 2))
+
+        (i32.atomic.load (i32.const 0))
     )
 )

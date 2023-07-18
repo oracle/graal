@@ -94,6 +94,7 @@ public enum Failure {
     MEMORY_64_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 976562500 pages"),
     ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
     ATOMIC_ALIGNMENT_NOT_NATURAL(Type.INVALID, "atomic alignment must be natural"),
+    SHARED_MEMORY_MUST_HAVE_MAXIMUM(Type.INVALID, "shared memory must have maximum"),
     UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
     UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
     UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),

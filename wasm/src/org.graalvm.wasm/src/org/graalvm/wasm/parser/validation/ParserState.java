@@ -493,6 +493,13 @@ public class ParserState {
         bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, value, indexType64);
     }
 
+    /**
+     * Adds an atomic memory instruction based on the given values and index type.
+     *
+     * @param instruction The atomic memory instruction
+     * @param value The immediate value
+     * @param indexType64 If the index type is 64 bit.
+     */
     public void addAtomicMemoryInstruction(int instruction, long value, boolean indexType64) {
         bytecode.addAtomicMemoryInstruction(instruction, value, indexType64);
     }

@@ -465,6 +465,496 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
+    public int atomic_rmw_add_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndAddByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_add_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndAddShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_add_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndAddInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_add_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndAddByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_add_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndAddShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_add_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndAddInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_add_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndAddLong(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_sub_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndAddByte(byteArrayBuffer.buffer(), address, (byte) -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_sub_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndAddShort(byteArrayBuffer.buffer(), address, (short) -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_sub_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndAddInt(byteArrayBuffer.buffer(), address, -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_sub_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndAddByte(byteArrayBuffer.buffer(), address, (byte) -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_sub_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndAddShort(byteArrayBuffer.buffer(), address, (short) -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_sub_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndAddInt(byteArrayBuffer.buffer(), address, -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_sub_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndAddLong(byteArrayBuffer.buffer(), address, -value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_and_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndBitwiseAndByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_and_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndBitwiseAndShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_and_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseAndInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_and_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndBitwiseAndByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_and_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndBitwiseAndShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_and_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndBitwiseAndInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_and_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseAndLong(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_or_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndBitwiseOrByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_or_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndBitwiseOrShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_or_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseOrInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_or_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndBitwiseOrByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_or_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndBitwiseOrShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_or_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndBitwiseOrInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_or_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseOrLong(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xor_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndBitwiseXorByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xor_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndBitwiseXorShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xor_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseXorInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xor_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndBitwiseXorByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xor_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndBitwiseXorShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xor_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndBitwiseXorInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xor_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndBitwiseXorLong(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xchg_i32_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getAndSetByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xchg_i32_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getAndSetShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_xchg_i32(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().getAndSetInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xchg_i64_8u(Node node, long address, byte value) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getAndSetByte(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xchg_i64_16u(Node node, long address, short value) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getAndSetShort(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xchg_i64_32u(Node node, long address, int value) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getAndSetInt(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_xchg_i64(Node node, long address, long value) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().getAndSetLong(byteArrayBuffer.buffer(), address, value);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_00ff & ByteArraySupport.littleEndian().compareAndExchangeByte(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_ffff & ByteArraySupport.littleEndian().compareAndExchangeShort(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return ByteArraySupport.littleEndian().compareAndExchangeInt(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement) {
+        validateAtomicAddress(node, address, 1);
+        try {
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().compareAndExchangeByte(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 1);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement) {
+        validateAtomicAddress(node, address, 2);
+        try {
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().compareAndExchangeShort(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 2);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement) {
+        validateAtomicAddress(node, address, 4);
+        try {
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().compareAndExchangeInt(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement) {
+        validateAtomicAddress(node, address, 8);
+        try {
+            return ByteArraySupport.littleEndian().compareAndExchangeLong(byteArrayBuffer.buffer(), address, expected, replacement);
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+    }
+
+    @Override
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
         System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, length);

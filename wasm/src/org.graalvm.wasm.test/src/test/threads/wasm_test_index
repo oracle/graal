@@ -1,1 +1,2 @@
-atomics
+atomic_store_load
+atomic_rmw

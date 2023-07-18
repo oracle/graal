@@ -1447,11 +1447,198 @@ public class BinaryParser extends BinaryStreamParser {
                 int atomicOpcode = read1() & 0xFF;
                 state.addAtomicFlag();
                 switch (atomicOpcode) {
+                    case Instructions.ATOMIC_FENCE:
+                        read1();
+                        state.addInstruction(Bytecode.ATOMIC_FENCE);
+                        break;
                     case Instructions.ATOMIC_I32_LOAD:
                         state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD, atomicLoad(state, I32_TYPE, 32), module.memoryHasIndexType64());
                         break;
+                    case Instructions.ATOMIC_I64_LOAD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD, atomicLoad(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_LOAD8_U:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD8_U, atomicLoad(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_LOAD16_U:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD16_U, atomicLoad(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD8_U:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD8_U, atomicLoad(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD16_U:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD16_U, atomicLoad(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD32_U:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD32_U, atomicLoad(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
                     case Instructions.ATOMIC_I32_STORE:
                         state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE, atomicStore(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_STORE:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE, atomicStore(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_STORE8:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE8, atomicStore(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_STORE16:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE16, atomicStore(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_STORE8:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE8, atomicStore(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_STORE16:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE16, atomicStore(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_STORE32:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE32, atomicStore(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_ADD, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_ADD, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_ADD, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_ADD, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_ADD, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_ADD, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_ADD:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_ADD, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_SUB, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_SUB, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_SUB, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_SUB, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_SUB, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_SUB, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_SUB:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_SUB, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_AND, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_AND, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_AND, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_AND, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_AND, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_AND, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_AND:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_AND, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_OR, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_OR, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_OR, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_OR, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_OR, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_OR, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_OR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_OR, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_XOR, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_XOR, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_XOR, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_XOR, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_XOR, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_XOR, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_XOR:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_XOR, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_XCHG, atomicReadModifyWrite(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_XCHG, atomicReadModifyWrite(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_XCHG, atomicReadModifyWrite(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_XCHG, atomicReadModifyWrite(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_XCHG, atomicReadModifyWrite(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_XCHG, atomicReadModifyWrite(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_XCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_XCHG, atomicReadModifyWrite(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_CMPXCHG, atomicCompareExchange(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_CMPXCHG, atomicCompareExchange(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG, atomicCompareExchange(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG, atomicCompareExchange(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG, atomicCompareExchange(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG, atomicCompareExchange(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_CMPXCHG:
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG, atomicCompareExchange(state, I64_TYPE, 32), module.memoryHasIndexType64());
                         break;
                     default:
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFE 0x%02x", atomicOpcode);
@@ -1544,6 +1731,45 @@ public class BinaryParser extends BinaryStreamParser {
         } else {
             memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
         }
+        if (module.memoryHasIndexType64() && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(type); // loaded value
+        return memoryOffset;
+    }
+
+    private long atomicReadModifyWrite(ParserState state, byte type, int n) {
+        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+        readAtomicAlignHint(n); // align hint
+        final long memoryOffset;
+        if (memory64) {
+            memoryOffset = readUnsignedInt64(); // 64-bit load offset
+        } else {
+            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
+        }
+        state.popChecked(type); // RMW value
+        if (module.memoryHasIndexType64() && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(type); // loaded value
+        return memoryOffset;
+    }
+
+    private long atomicCompareExchange(ParserState state, byte type, int n) {
+        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+        readAtomicAlignHint(n); // align hint
+        final long memoryOffset;
+        if (memory64) {
+            memoryOffset = readUnsignedInt64(); // 64-bit load offset
+        } else {
+            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
+        }
+        state.popChecked(type); // replacement value
+        state.popChecked(type); // expected value
         if (module.memoryHasIndexType64() && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
@@ -2164,24 +2390,15 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                 } else {
                     switch (limitsPrefix) {
-                        case 0x02: {
-                            longOut[0] = readUnsignedInt32();
-                            longOut[1] = max32Bit;
-                            boolOut[0] = false;
-                            boolOut[1] = true;
+                        case 0x02:
+                        case 0x06: {
+                            fail(Failure.SHARED_MEMORY_MUST_HAVE_MAXIMUM, String.format("Limits prefix implies shared memory without meximum (got 0x%02X)", limitsPrefix));
                             break;
                         }
                         case 0x03: {
                             longOut[0] = readUnsignedInt32();
                             longOut[1] = readUnsignedInt32();
                             boolOut[0] = false;
-                            boolOut[1] = true;
-                            break;
-                        }
-                        case 0x06: {
-                            longOut[0] = readUnsignedInt64();
-                            longOut[1] = max64Bit;
-                            boolOut[0] = true;
                             boolOut[1] = true;
                             break;
                         }

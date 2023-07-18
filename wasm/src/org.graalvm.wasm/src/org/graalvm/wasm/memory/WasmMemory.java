@@ -284,6 +284,104 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void atomic_store_i64_16(Node node, long address, short value);
 
     public abstract void atomic_store_i64_32(Node node, long address, int value);
+
+    public abstract int atomic_rmw_add_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_add_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_add_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_add_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_add_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_add_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_add_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_sub_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_sub_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_sub_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_sub_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_sub_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_sub_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_sub_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_and_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_and_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_and_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_and_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_and_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_and_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_and_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_or_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_or_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_or_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_or_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_or_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_or_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_or_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_xor_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_xor_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_xor_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xor_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_xor_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_xor_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xor_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_xchg_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_xchg_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_xchg_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xchg_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_xchg_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_xchg_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xchg_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement);
+
+    public abstract int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement);
+
+    public abstract int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
