@@ -224,10 +224,6 @@ public class CountedLoopInfo {
         return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIV().initNode(), getTripCountLimit());
     }
 
-    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
-        return maxTripCountNode(assumeLoopEntered, integerHelper, initNode, tripCountLimit, false);
-    }
-
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
      * this loop assuming it is not exited by an other exit than the {@link #getLimitTest() count
@@ -244,22 +240,21 @@ public class CountedLoopInfo {
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
      *
      */
-    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit, boolean ignoreOverflow) {
-        if (!ignoreOverflow) {
-            assertNoOverflow();
-        }
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
+        assertNoOverflow();
         StructuredGraph graph = getBodyIV().valueNode().graph();
         Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
 
         ValueNode max;
         ValueNode min;
         ValueNode absStride;
-        if (getBodyIV().direction() == Direction.Up) {
+        final Direction direction = getBodyIV().direction();
+        if (direction == Direction.Up) {
             absStride = getBodyIV().strideNode();
             max = tripCountLimit;
             min = initNode;
         } else {
-            assert getBodyIV().direction() == Direction.Down;
+            assert direction == Direction.Down : "direction must be down if its not up - else loop should not be counted " + direction;
             absStride = NegateNode.create(getBodyIV().strideNode(), NodeView.DEFAULT);
             max = initNode;
             min = tripCountLimit;
@@ -271,10 +266,16 @@ public class CountedLoopInfo {
             range = add(range, one);
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
-        final boolean divisorNonZero = true;
         ValueNode denominator = add(graph, range, sub(absStride, one), NodeView.DEFAULT);
+        /*
+         * While the divisor can never be zero because that would mean the direction of the loop is
+         * not strictly known which disables counted loop detection - it is possible that the stamp
+         * contains 0 though we know it effectively cannot. This happens when we have knowledge
+         * about the stride - for example its strictly positive or negative but not a constant - in
+         * both we cannot easily fold the negated stamp.
+         */
+        final boolean divisorNonZero = true;
         ValueNode div = unsignedDivBefore(graph, divisorNonZero, loop.entryPoint(), denominator, absStride, null);
-
         if (assumeLoopEntered) {
             return graph.addOrUniqueWithInputs(div);
         }

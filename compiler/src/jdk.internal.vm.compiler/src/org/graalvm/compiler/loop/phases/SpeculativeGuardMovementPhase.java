@@ -643,6 +643,9 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 if (overflowGuard == null && !countedLoopInfo.counterNeverOverflows()) {
                     if (graph.getGuardsStage().allowsFloatingGuards()) {
                         overflowGuard = iv.getLoop().counted().createOverFlowGuard();
+                    } else {
+                        debug.log("shouldOptimizeCompare(%s): abort, cannot create overflow guard", compare);
+                        return null;
                     }
                 }
                 OptimizedCompareTests tests = computeNewCompareGuards(compare, iv, bound, mirrored, overflowGuard);
@@ -704,14 +707,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "SpeculativeGuardMovement: new if for outer loop check %s %s", duplicateOriginalLoopIV.valueNode(),
                                         duplicateOriginalLoopIV);
                         CountedLoopInfo thisLoopCounted = iv.getLoop().counted();
-                        /*
-                         * We are only checking for a deopt-always case and don't need an overflow
-                         * guard for this loop. Thus, we ignore it when computing the max trip
-                         * count.
-                         */
-                        final boolean ignoreOverflow = true;
                         ValueNode outerLoopInitBasedMaxTripCount = thisLoopCounted.maxTripCountNode(true, thisLoopCounted.getCounterIntegerHelper(), newBodyIVInit,
-                                        thisLoopCounted.getTripCountLimit(), ignoreOverflow);
+                                        thisLoopCounted.getTripCountLimit());
                         OptimizedCompareTests testStripMinedIV = computeNewCompareGuards(compare, duplicateOriginalLoopIV, bound, mirrored, iv.getLoop().counted().getOverFlowGuard(),
                                         outerLoopInitBasedMaxTripCount);
                         if (optimizedCompareUnconditionalDeopt(guard, testStripMinedIV)) {
