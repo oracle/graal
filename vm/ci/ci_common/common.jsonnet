@@ -162,9 +162,13 @@ local devkits = graal_common.devkits;
 
   graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
-  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + graal_common.deps.svm {
+  vm_linux_amd64_common: graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },
+
+  vm_linux_amd64: graal_common.linux_amd64 + self.common_vm_linux + self.vm_linux_amd64_common,
+
+  vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.common_vm + self.vm_linux_amd64_common,
 
   vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
 
@@ -194,6 +198,10 @@ local devkits = graal_common.devkits;
     targets+: ['gate']
   },
 
+  gate_vm_linux_amd64_ubuntu: self.vm_linux_amd64_ubuntu + {
+    targets+: ['gate']
+  },
+
   gate_vm_linux_aarch64: self.vm_linux_aarch64 + {
     targets+: ['gate'],
   },
@@ -208,6 +216,10 @@ local devkits = graal_common.devkits;
 
   gate_vm_windows_amd64: self.vm_windows + {
     targets+: ['gate'],
+  },
+
+  daily_vm_linux_amd64_ubuntu: self.vm_linux_amd64_ubuntu + {
+    targets+: ['daily']
   },
 
   bench_daily_vm_linux_amd64: self.vm_linux_amd64 + {
