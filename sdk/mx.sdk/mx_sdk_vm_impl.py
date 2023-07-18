@@ -2732,7 +2732,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                                         'value': contents,
                                     })
                                 else:
-                                    mx.abort("Cannot create link on windows for {}->{}".format(_dest, _target))
+                                    mx.abort("Cannot create link on windows for {}->{}".format(link_dest, link_target))
                             else:
                                 layout.setdefault(link_dest, []).append({
                                     'source_type': 'link',
