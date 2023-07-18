@@ -1213,6 +1213,9 @@ libgraal_build_args = [
 
     # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
     '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
+
+    # build libgraal with 'Full RELRO' to prevent GOT overwriting exploits (GR-46838)
+    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
