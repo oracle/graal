@@ -30,6 +30,7 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
+import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
@@ -131,11 +132,20 @@ public class NativeImageResourceTest {
     }
 
     @Test
+    public void registeredResourceDirectoryHasContent() throws IOException {
+        URL directory = NativeImageResourceUtils.class.getResource(SIMPLE_RESOURCE_DIR);
+        Assert.assertNotNull("Resource " + SIMPLE_RESOURCE_DIR + " is not found!", directory);
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(directory.openStream()));
+        Assert.assertNotNull("Resource" + SIMPLE_RESOURCE_DIR + " should have content", reader.readLine());
+    }
+
+    @Test
     public void getConditionalDirectoryResource() throws IOException {
         // check if resource is added conditionally
         String directoryName = "/resourcesFromDir";
         URL directory = NativeImageResourceUtils.class.getResource(directoryName);
-        Assert.assertNotNull("Resource " + directory + " is not found!", directory);
+        Assert.assertNotNull("Resource " + directoryName + " is not found!", directory);
 
         // check content of resource
         List<String> expected = IntStream.range(0, 4).mapToObj(i -> "cond-resource" + i + ".txt").toList();

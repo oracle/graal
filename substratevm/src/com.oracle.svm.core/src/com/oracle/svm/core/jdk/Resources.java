@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -212,11 +213,6 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, InputStream is, boolean fromJar) {
         addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(Module module, String resourceName, boolean isDir, InputStream is, boolean fromJar) {
-        addEntry(module, resourceName, isDir, inputStreamToByteArray(is), fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

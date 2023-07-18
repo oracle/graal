@@ -55,7 +55,6 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.ClassLoaderSupport;
@@ -73,6 +72,9 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private final NativeImageClassLoader imageClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
+
+    private record ConditionalResource(ConfigurationCondition condition, String resourceName) {
+    }
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
@@ -132,17 +134,17 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
             var includeAll = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
-            List<Pair<ConfigurationCondition, String>> resourcesFound = new ArrayList<>();
+            List<ConditionalResource> resourcesFound = new ArrayList<>();
             moduleReader.list().forEach(resourceName -> {
                 ConfigurationCondition condition = shouldIncludeEntry(info.module(), resourceCollector, resourceName, moduleReference.location().orElse(null), includeAll);
                 if (condition != null) {
-                    resourcesFound.add(Pair.create(condition, resourceName));
+                    resourcesFound.add(new ConditionalResource(condition, resourceName));
                 }
             });
 
-            for (Pair<ConfigurationCondition, String> entry : resourcesFound) {
-                ConfigurationCondition condition = entry.getLeft();
-                String resName = entry.getRight();
+            for (ConditionalResource entry : resourcesFound) {
+                ConfigurationCondition condition = entry.condition();
+                String resName = entry.resourceName();
                 if (resName.endsWith("/")) {
                     if (ConfigurationCondition.isAlwaysTrue(condition)) {
                         resourceCollector.addDirectoryResource(info.module, resName, "", false);
@@ -151,6 +153,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     }
                     continue;
                 }
+
                 Optional<InputStream> content = moduleReader.open(resName);
                 if (content.isEmpty()) {
                     /* This is to be resilient, but the resources returned by list() should exist */
@@ -188,9 +191,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) throws IOException {
-        Map<Pair<ConfigurationCondition, String>, List<String>> matchedDirectoryResources = new HashMap<>();
-        Map<String, List<ConfigurationCondition>> conditionsForDirectory = new HashMap<>();
-        Set<String> allEntries = new HashSet<>();
+        List<ConditionalResource> matchedDirectoryResources = new ArrayList<>();
+       Set<String> allEntries = new HashSet<>();
 
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
@@ -211,7 +213,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
             if (Files.isDirectory(entry)) {
                 if (condition != null) {
-                    matchedDirectoryResources.put(Pair.create(condition, relativeFilePath), new ArrayList<>());
+                    matchedDirectoryResources.add(new ConditionalResource(condition, relativeFilePath));
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
@@ -238,8 +240,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
 
         matchedDirectoryResources.forEach(entry -> {
-            ConfigurationCondition condition = entry.getLeft();
-            String dir = entry.getRight();
+            ConfigurationCondition condition = entry.condition();
+            String dir = entry.resourceName();
             String contentName = makeDirContent(allEntries, dir);
             if (ConfigurationCondition.isAlwaysTrue(condition)) {
                 collector.addDirectoryResource(null, dir, contentName, false);

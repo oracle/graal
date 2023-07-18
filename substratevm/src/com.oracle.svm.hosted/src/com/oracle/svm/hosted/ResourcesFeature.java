@@ -27,11 +27,13 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -53,6 +56,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -140,7 +144,13 @@ public final class ResourcesFeature implements InternalFeature {
 
     private boolean sealed = false;
 
-    private Set<Pair<ConfigurationCondition, String>> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private record ConditionalPattern(ConfigurationCondition condition, String pattern) {
+    }
+
+    private record CompiledConditionalPattern(ConfigurationCondition condition, ResourcePattern compiledPattern) {
+    }
+
+    private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
@@ -159,14 +169,18 @@ public final class ResourcesFeature implements InternalFeature {
             }
 
             try {
-                resourcePatternWorkSet.add(Pair.create(condition, pattern));
+                resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
             } catch (UnsupportedOperationException e) {
                 UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
             }
         }
 
         private String urlToJarPath(URL url) {
-            return String.valueOf(url).split("jar:file:")[1].split("!")[0];
+            try {
+                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
@@ -179,11 +193,20 @@ public final class ResourcesFeature implements InternalFeature {
             }
         }
 
+        private String getDirectoryContent(String dir) throws IOException {
+            try (Stream<Path> contentStream = Files.list(Path.of(dir))) {
+                List<String> content = new ArrayList<>(contentStream.map(Path::toString).toList());
+                content.sort(Comparator.naturalOrder());
+                return String.join(System.lineSeparator(), content);
+            }
+        }
+
         @Override
         public void addResource(Module module, String resourcePath) {
             InputStream is;
-            boolean fromJar = false;
-            boolean isDirectory = false;
+            boolean fromJar;
+            boolean isDirectory;
+            String content = "";
 
             if (module != null && module.isNamed()) {
                 try {
@@ -196,6 +219,11 @@ public final class ResourcesFeature implements InternalFeature {
                     }
 
                     is = module.getResourceAsStream(resourcePath);
+                    fromJar = false;
+                    isDirectory = new File(resourcePath).isDirectory();
+                    if (isDirectory) {
+                        content = getDirectoryContent(resourcePath);
+                    }
                 } catch (IOException e) {
                     // we should ignore if user failed to provide resource
                     return;
@@ -207,19 +235,19 @@ public final class ResourcesFeature implements InternalFeature {
                     return;
                 }
 
-                fromJar = url.getProtocol().equalsIgnoreCase("jar");
                 try {
+                    is = url.openStream();
+                    fromJar = url.getProtocol().equalsIgnoreCase("jar");
                     isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                    // if directory is from jar content should remain empty (same as in scanJar
+                    // function from ClassLoaderSupportImpl)
+                    if (isDirectory && !fromJar) {
+                        content = getDirectoryContent(url.getPath());
+                    }
                 } catch (IOException e) {
                     // we should ignore if user failed to provide resource
                     return;
                 } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
-                }
-
-                try {
-                    is = url.openStream();
-                } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -228,7 +256,11 @@ public final class ResourcesFeature implements InternalFeature {
                 return;
             }
 
-            Resources.registerResource(module, resourcePath, isDirectory, is, fromJar);
+            if (isDirectory) {
+                Resources.registerDirectoryResource(module, resourcePath, content);
+            } else {
+                Resources.registerResource(module, resourcePath, is, fromJar);
+            }
         }
 
         @Override
@@ -295,15 +327,15 @@ public final class ResourcesFeature implements InternalFeature {
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue()
                         .values()
                         .stream()
-                        .map(e -> Pair.create(ConfigurationCondition.alwaysTrue(), e))
+                        .map(e -> new ConditionalPattern(ConfigurationCondition.alwaysTrue(), e))
                         .toList());
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
 
         if (!resourcePatternWorkSet.isEmpty()) {
             FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            Set<Pair<ConfigurationCondition, ResourcePattern>> includePatterns = resourcePatternWorkSet
+            Set<CompiledConditionalPattern> includePatterns = resourcePatternWorkSet
                             .stream()
-                            .map(e -> Pair.create(e.getLeft(), makeResourcePattern(e.getRight())))
+                            .map(e -> new CompiledConditionalPattern(e.condition(), makeResourcePattern(e.pattern())))
                             .collect(Collectors.toSet());
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 for (ResourcePattern resourcePattern : includePatterns) {
@@ -330,7 +362,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     private static final class ResourceCollectorImpl implements ResourceCollector {
         private final DebugContext debugContext;
-        private final Set<Pair<ConfigurationCondition, ResourcePattern>> includePatterns;
+        private final Set<CompiledConditionalPattern> includePatterns;
         private final ResourcePattern[] excludePatterns;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
@@ -341,7 +373,7 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns) {
+        private ResourceCollectorImpl(DebugContext debugContext, Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
@@ -392,12 +424,12 @@ public final class ResourcesFeature implements InternalFeature {
                 }
             }
 
-            for (Pair<ConfigurationCondition, ResourcePattern> rp : includePatterns) {
-                if (!rp.getRight().moduleNameMatches(moduleName)) {
+            for (CompiledConditionalPattern rp : includePatterns) {
+                if (!rp.compiledPattern().moduleNameMatches(moduleName)) {
                     continue;
                 }
-                if (rp.getRight().pattern.matcher(resourceName).matches() || rp.getRight().pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return rp.getLeft();
+                if (rp.compiledPattern().pattern.matcher(resourceName).matches() || rp.compiledPattern().pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                    return rp.condition();
                 }
             }
 
