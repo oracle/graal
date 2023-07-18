@@ -454,6 +454,7 @@ public abstract class RuntimeCompilationFeature {
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);
+        objectReplacer.setAnalysisAccess(config);
         ImageSingletons.add(GraalRuntime.class, graalRuntime);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(new GraalSupport.GraalShutdownHook());
 

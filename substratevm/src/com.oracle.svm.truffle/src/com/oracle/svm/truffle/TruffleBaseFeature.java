@@ -137,6 +137,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -144,7 +145,6 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.Profile;
-import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
@@ -442,6 +442,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
             SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
+            graalGraphObjectReplacer.setAnalysisAccess(config);
         }
 
         TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup());

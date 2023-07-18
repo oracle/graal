@@ -148,21 +148,24 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial) {
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod()) {
+                    markMethodImplementationInvoked(method, "root method");
+                }
+            });
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod()) {
+                    markMethodImplementationInvoked(method, "root method");
+                }
+            });
         } else {
-            if (!method.registerAsVirtualRootMethod()) {
-                return method;
-            }
-            markMethodInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsVirtualRootMethod()) {
+                    markMethodInvoked(method, "root method");
+                }
+            });
         }
         return method;
     }

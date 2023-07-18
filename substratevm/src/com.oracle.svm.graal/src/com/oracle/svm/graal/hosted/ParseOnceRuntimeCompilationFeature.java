@@ -372,10 +372,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
-
-        if (objectReplacer.updateDataDuringAnalysis()) {
-            config.requireAnalysisIteration();
-        }
     }
 
     @Override
@@ -627,7 +623,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis();
+        objectReplacer.setMethodsImplementations();
 
         /* All the temporary data structures used during encoding are no longer necessary. */
         graphEncoder = null;
