@@ -24,7 +24,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -114,6 +114,7 @@ meth public boolean isEmpty()
 meth public int size()
 meth public java.lang.Iterable<{org.graalvm.collections.EconomicMapWrap%0}> getKeys()
 meth public java.lang.Iterable<{org.graalvm.collections.EconomicMapWrap%1}> getValues()
+meth public java.lang.String toString()
 meth public org.graalvm.collections.MapCursor<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}> getEntries()
 meth public void clear()
 meth public void replaceAll(java.util.function.BiFunction<? super {org.graalvm.collections.EconomicMapWrap%0},? super {org.graalvm.collections.EconomicMapWrap%1},? extends {org.graalvm.collections.EconomicMapWrap%1}>)
@@ -121,7 +122,6 @@ meth public {org.graalvm.collections.EconomicMapWrap%1} get({org.graalvm.collect
 meth public {org.graalvm.collections.EconomicMapWrap%1} put({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} putIfAbsent({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} removeKey({org.graalvm.collections.EconomicMapWrap%0})
-meth public java.lang.String toString()
 supr java.lang.Object
 hfds map
 
@@ -183,7 +183,6 @@ meth public abstract java.util.concurrent.atomic.AtomicReferenceArray newLinearC
 meth public abstract org.graalvm.collections.LockFreePrefixTree$Node newNode(long)
 meth public abstract void shutdown()
 supr java.lang.Object
-hfds FAILED_ALLOCATION_EXCEPTION
 
 CLSS public static org.graalvm.collections.LockFreePrefixTree$HeapAllocator
  outer org.graalvm.collections.LockFreePrefixTree
@@ -216,7 +215,7 @@ meth public java.util.concurrent.atomic.AtomicReferenceArray newLinearChildren(i
 meth public org.graalvm.collections.LockFreePrefixTree$Node newNode(long)
 meth public void shutdown()
 supr org.graalvm.collections.LockFreePrefixTree$Allocator
-hfds DEFAULT_HOUSEKEEPING_PERIOD_MILLIS,EXPECTED_MAX_HASH_NODE_SIZE,INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT,INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT,INITIAL_NODE_PREALLOCATION_COUNT,LOGGING,MAX_CHILDREN_PREALLOCATION_COUNT,MAX_NODE_PREALLOCATION_COUNT,MIN_HOUSEKEEPING_PERIOD_MILLIS,SIZE_CLASS_COUNT,hashChildrenPool,housekeepingThread,linearChildrenPool,missedHashChildrenRequestCounts,missedLinearChildrenRequestCounts,missedNodePoolRequestCount,nodePool
+hfds DEFAULT_HOUSEKEEPING_PERIOD_MILLIS,EXPECTED_MAX_HASH_NODE_SIZE,FAILED_ALLOCATION_EXCEPTION,INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT,INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT,INITIAL_NODE_PREALLOCATION_COUNT,INTERNAL_FAILURE_EXCEPTION,LOGGING,MAX_CHILDREN_PREALLOCATION_COUNT,MAX_NODE_PREALLOCATION_COUNT,MIN_HOUSEKEEPING_PERIOD_MILLIS,SIZE_CLASS_COUNT,UNSUPPORTED_SIZE_EXCEPTION,hashChildrenPool,housekeepingThread,linearChildrenPool,missedHashChildrenRequestCounts,missedLinearChildrenRequestCounts,missedNodePoolRequestCount,nodePool
 hcls HousekeepingThread
 
 CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
