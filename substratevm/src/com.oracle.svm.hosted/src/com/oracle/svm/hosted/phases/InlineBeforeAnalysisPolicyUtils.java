@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.util.Map;
 import java.util.Set;
 
@@ -57,6 +58,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -85,14 +87,19 @@ public class InlineBeforeAnalysisPolicyUtils {
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
 
-    private static final Map<String, Set<String>> IGNORED_METHOD_HANDLE_METHODS = Map.of(
-                    "java.lang.invoke.MethodHandle", Set.of("bindTo"),
-                    "java.lang.invoke.MethodHandles", Set.of("dropArguments", "filterReturnValue", "foldArguments", "insertArguments"),
-                    "java.lang.invoke.Invokers", Set.of("spreadInvoker"));
+    @SuppressWarnings("unchecked") //
+    private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
+                    (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Compiled");
+
+    private static final Class<?> INVOKERS_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.Invokers");
+
+    private static final Map<Class<?>, Set<String>> IGNORED_METHOD_HANDLE_METHODS = Map.of(
+                    MethodHandle.class, Set.of("bindTo"),
+                    MethodHandles.class, Set.of("dropArguments", "filterReturnValue", "foldArguments", "insertArguments"),
+                    INVOKERS_CLASS, Set.of("spreadInvoker"));
 
     private AnalysisType methodHandleType;
     private AnalysisType varHandleGuardsType;
-    private Class<? extends Annotation> compiledLambdaFormAnnotation;
 
     public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
@@ -296,8 +303,8 @@ public class InlineBeforeAnalysisPolicyUtils {
     }
 
     private static boolean isIgnoredMethodHandleMethod(ResolvedJavaMethod method) {
-        String className = method.getDeclaringClass().toJavaName(true);
-        Set<String> ignoredMethods = IGNORED_METHOD_HANDLE_METHODS.get(className);
+        Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
+        Set<String> ignoredMethods = IGNORED_METHOD_HANDLE_METHODS.get(declaringClass);
         return ignoredMethods != null && ignoredMethods.contains(method.getName());
     }
 
@@ -486,11 +493,6 @@ public class InlineBeforeAnalysisPolicyUtils {
      * profile-guided optimization data which prevent optimizations.
      */
     protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
-        if (compiledLambdaFormAnnotation == null) {
-            @SuppressWarnings("unchecked")
-            Class<? extends Annotation> annotation = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Compiled");
-            compiledLambdaFormAnnotation = annotation;
-        }
-        return method.isAnnotationPresent(compiledLambdaFormAnnotation);
+        return method.isAnnotationPresent(COMPILED_LAMBDA_FORM_ANNOTATION);
     }
 }

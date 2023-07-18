@@ -123,7 +123,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        if (locks == null) {
+        if (locks == null) { // possible if inspected during initialization in GraphDecoder
             return null;
         }
         if (locks.isEmpty()) {
@@ -166,7 +166,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
-        if (virtualObjects == null) {
+        if (virtualObjects == null) { // possible if inspected during initialization in GraphDecoder
             return properties;
         }
         int valuePos = 0;

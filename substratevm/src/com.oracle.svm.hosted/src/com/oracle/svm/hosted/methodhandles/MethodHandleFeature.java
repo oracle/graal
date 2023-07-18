@@ -346,8 +346,8 @@ public class MethodHandleFeature implements InternalFeature {
 
     private Object registerSeenObject(Object obj) {
         if (!BuildPhaseProvider.isAnalysisFinished()) {
-            if (obj instanceof MethodType) {
-                registerMethodType(obj);
+            if (obj instanceof MethodType mt) {
+                registerMethodType(mt);
             } else {
                 registerMethodHandleRecurse(obj);
             }
@@ -355,9 +355,9 @@ public class MethodHandleFeature implements InternalFeature {
         return obj;
     }
 
-    private void registerMethodType(Object obj) {
+    private void registerMethodType(MethodType methodType) {
         try {
-            concurrentWeakInternSetAdd.invoke(runtimeMethodTypeInternTable, obj);
+            concurrentWeakInternSetAdd.invoke(runtimeMethodTypeInternTable, methodType);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
