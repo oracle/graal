@@ -139,7 +139,6 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
-import com.oracle.svm.hosted.substitute.SubstitutionType;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1016,14 +1015,5 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
-    }
-
-    @Override
-    public ResolvedJavaType getOriginalHostType(AnalysisType type) {
-        ResolvedJavaType unwrapped = super.getOriginalHostType(type);
-        if (unwrapped instanceof SubstitutionType substituted) {
-            return substituted.getOriginal();
-        }
-        return unwrapped;
     }
 }

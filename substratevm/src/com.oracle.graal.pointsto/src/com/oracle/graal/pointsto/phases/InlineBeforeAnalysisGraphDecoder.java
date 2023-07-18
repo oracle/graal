@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,14 +41,16 @@ import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
@@ -57,9 +60,10 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -96,6 +100,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             }
         }
     }
+
+    private Field dmhStaticAccessorOffsetField;
+    private Field dmhStaticAccessorBaseField;
+    private AnalysisField dmhStaticAccessorOffsetAnalysisField;
+    private AnalysisField dmhStaticAccessorBaseAnalysisField;
 
     protected final BigBang bb;
     protected final InlineBeforeAnalysisPolicy policy;
@@ -172,48 +181,73 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         return node;
     }
 
-    /**
-     * Method handles do unsafe field accesses with offsets from the hosting VM which we need to
-     * transform to field accesses to intrinsify method handle calls in an effective way (or at all,
-     * even). {@link UnsafeAccessNode#canonical} would call {@link AnalysisField#getOffset}, which
-     * is deemed not safe in the general case and therefore not allowed. Here, however, we execute
-     * before analysis and can assume that any field offsets originate in the hosting VM because we
-     * do not assign our field offsets until after the analysis. Therefore, we can transform unsafe
-     * accesses by accessing the hosting VM's types and fields, using code adapted from
-     * {@link UnsafeAccessNode#canonical}. We cannot do the same for arrays because array offsets
-     * with our own object layout can be computed early on (using {@code Unsafe}, even).
-     */
     private Node canonicalizeUnsafeAccess(UnsafeAccessNode node) {
-        if (!node.isCanonicalizable()) {
+        if (!(node.isCanonicalizable() && node.offset() instanceof LoadFieldNode offsetLoad && offsetLoad.object() != null && offsetLoad.object().isJavaConstant())) {
             return node;
         }
-        JavaConstant offset = node.offset().asJavaConstant();
-        JavaConstant object = node.object().asJavaConstant();
-        if (offset == null || object == null) {
+        ensureDMHStaticAccessorFieldsInitialized();
+        if (!offsetLoad.field().equals(dmhStaticAccessorOffsetAnalysisField)) {
             return node;
         }
-        AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
-        if (objectType == null || objectType.isArray()) {
+        JavaConstant accessorConstant = offsetLoad.object().asJavaConstant();
+        Object accessor = bb.getSnippetReflectionProvider().asObject(Object.class, accessorConstant);
+        long offset;
+        Class<?> clazz; // HotSpot-specific: field holder Class object as Unsafe.staticFieldBase()
+        try {
+            offset = dmhStaticAccessorOffsetField.getLong(accessor);
+            clazz = (Class<?>) dmhStaticAccessorBaseField.get(accessor);
+        } catch (IllegalAccessException e) {
+            throw AnalysisError.shouldNotReachHere(e);
+        }
+        if (clazz == null) {
             return node;
         }
-        AnalysisType objectAsType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(object);
-        if (objectAsType != null) {
-            // Note: using the Class object of a type as the base object for accesses
-            // of that type's static fields is a HotSpot implementation detail.
-            ResolvedJavaType objectAsHostType = bb.getHostVM().getOriginalHostType(objectAsType);
-            ResolvedJavaField hostField = UnsafeAccessNode.findStaticFieldWithOffset(objectAsHostType, offset.asLong(), node.accessKind());
-            return canonicalizeUnsafeAccessToField(node, hostField);
+        ResolvedJavaType type = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+        ResolvedJavaField hostField = UnsafeAccessNode.findStaticFieldWithOffset(type, offset, node.accessKind());
+        if (hostField == null) {
+            return node;
         }
-        ResolvedJavaType objectHostType = bb.getHostVM().getOriginalHostType(objectType);
-        ResolvedJavaField hostField = objectHostType.findInstanceFieldWithOffset(offset.asLong(), node.accessKind());
-        return canonicalizeUnsafeAccessToField(node, hostField);
+        AnalysisField field = bb.getUniverse().lookup(hostField);
+        if (field.isInternal() || field.getJavaKind() != node.accessKind()) {
+            return node;
+        }
+        return node.cloneAsFieldAccess(field);
     }
 
-    private ValueNode canonicalizeUnsafeAccessToField(UnsafeAccessNode node, ResolvedJavaField unwrappedField) {
-        AnalysisError.guarantee(unwrappedField != null, "Unsafe access to object header?");
-        AnalysisField field = bb.getUniverse().lookup(unwrappedField);
-        AnalysisError.guarantee(!field.isInternal() && field.getJavaKind() == node.accessKind());
-        return node.cloneAsFieldAccess(field);
+    @Override
+    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node) {
+        Node canonical = node;
+        if (canonical instanceof IsNullNode isNull) {
+            canonical = canonicalizeIsNull(isNull);
+        }
+        if (canonical != node) {
+            canonical.setNodeSourcePosition(node.getNodeSourcePosition());
+            node.replaceAtUsagesAndDelete(canonical);
+        }
+        return super.handleFloatingNodeAfterAdd(s, loopScope, canonical);
+    }
+
+    private Node canonicalizeIsNull(IsNullNode node) {
+        if (!(node.getValue() instanceof LoadFieldNode fieldLoad && fieldLoad.object() != null && fieldLoad.object().isJavaConstant())) {
+            return node;
+        }
+        ensureDMHStaticAccessorFieldsInitialized();
+        if (!fieldLoad.field().equals(dmhStaticAccessorBaseAnalysisField)) {
+            return node;
+        }
+        // The base is always non-null, which we also assume in our field substitution.
+        return LogicConstantNode.contradiction(node.graph());
+    }
+
+    private void ensureDMHStaticAccessorFieldsInitialized() {
+        if (dmhStaticAccessorOffsetField == null) {
+            assert dmhStaticAccessorBaseField == null && dmhStaticAccessorOffsetAnalysisField == null && dmhStaticAccessorBaseAnalysisField == null;
+            Class<?> staticAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor");
+            dmhStaticAccessorOffsetField = ReflectionUtil.lookupField(staticAccessorClass, "staticOffset");
+            dmhStaticAccessorBaseField = ReflectionUtil.lookupField(staticAccessorClass, "staticBase");
+            dmhStaticAccessorOffsetAnalysisField = bb.getMetaAccess().lookupJavaField(dmhStaticAccessorOffsetField);
+            dmhStaticAccessorBaseAnalysisField = bb.getMetaAccess().lookupJavaField(dmhStaticAccessorBaseField);
+        }
     }
 
     @Override
