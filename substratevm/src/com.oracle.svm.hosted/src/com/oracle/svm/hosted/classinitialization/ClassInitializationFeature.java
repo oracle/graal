@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
@@ -204,6 +205,7 @@ public class ClassInitializationFeature implements InternalFeature {
                                 .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
+                                .filter(name -> !LambdaUtils.isLambdaName(name))
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
                     System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));
