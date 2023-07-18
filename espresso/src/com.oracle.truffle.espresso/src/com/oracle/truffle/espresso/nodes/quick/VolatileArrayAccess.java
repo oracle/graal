@@ -59,15 +59,6 @@ public class VolatileArrayAccess {
         return U.compareAndSwapObject(array, offsetFor(array, index), expected, value);
     }
 
-    public static <T> T compareAndExchange(T[] array, int index, T expected, T value) {
-        boolean success = compareAndSet(array, index, expected, value);
-        if (success) {
-            return value;
-        } else {
-            return volatileRead(array, index);
-        }
-    }
-
     @SuppressWarnings("unused")
     private static long offsetFor(byte[] array, int index) {
         return Unsafe.ARRAY_BYTE_BASE_OFFSET + ((long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE);

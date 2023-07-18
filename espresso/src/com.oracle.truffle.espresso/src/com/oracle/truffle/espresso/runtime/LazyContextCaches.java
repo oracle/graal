@@ -42,7 +42,7 @@ public class LazyContextCaches extends ContextAccessImpl {
 
     public LazyContextCaches(EspressoContext context) {
         super(context);
-        this.messages = new CallTarget[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.values().length];
+        this.messages = new CallTarget[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.MESSAGE_COUNT];
     }
 
     @CompilationFinal //
@@ -102,12 +102,17 @@ public class LazyContextCaches extends ContextAccessImpl {
             if (toRegister == null) {
                 toRegister = NO_IMPL;
             }
-            target = VolatileArrayAccess.compareAndExchange(messages, index, null, toRegister);
+            if (VolatileArrayAccess.compareAndSet(messages, index, null, toRegister)) {
+                target = toRegister;
+            } else {
+                target = VolatileArrayAccess.volatileRead(messages, index);
+                assert target != null;
+            }
         }
         return interpretCacheTarget(target);
     }
 
-    public static CallTarget interpretCacheTarget(CallTarget target) {
+    private static CallTarget interpretCacheTarget(CallTarget target) {
         return target == NO_IMPL ? null : target;
     }
     // endregion Shared Interop
