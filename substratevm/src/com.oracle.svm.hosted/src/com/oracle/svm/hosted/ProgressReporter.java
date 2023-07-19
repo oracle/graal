@@ -115,7 +115,7 @@ public class ProgressReporter {
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
-    private int numForeignFunctionsDowncallStubs = -1;
+    private int numForeignDowncalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -184,8 +184,8 @@ public class ProgressReporter {
         numJNIMethods = numMethods;
     }
 
-    public void setForeignFunctionsInfo(int numDowncallStubs) {
-        this.numForeignFunctionsDowncallStubs = numDowncallStubs;
+    public void setForeignFunctionsInfo(int numDowncalls) {
+        this.numForeignDowncalls = numDowncalls;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
@@ -380,11 +380,10 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
-        String stubsFormat = "%,8d stubs";
-        recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALL_STUBS, (numForeignFunctionsDowncallStubs >= 0 ? numForeignFunctionsDowncallStubs : UNAVAILABLE_METRIC));
-        if (numForeignFunctionsDowncallStubs >= 0) {
-            l().a(stubsFormat, numForeignFunctionsDowncallStubs)
-                            .doclink(" registered for foreign downcalls", "#glossary-foreign-stubs-registrations").println();
+        recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0) {
+            l().a("%,8d ", numForeignDowncalls)
+                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
