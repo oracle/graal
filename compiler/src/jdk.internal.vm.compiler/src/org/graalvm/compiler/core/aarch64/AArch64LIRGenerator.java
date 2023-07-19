@@ -88,6 +88,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SHA1Op;
 import org.graalvm.compiler.lir.aarch64.AArch64SHA256Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA3Op;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
@@ -748,6 +749,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitSha256ImplCompress(Value buf, Value state) {
         append(new AArch64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        append(new AArch64SHA3Op(this, asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
     }
 
     @Override

@@ -191,4 +191,70 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
         @NodeIntrinsic
         public static native void sha256ImplCompress(Pointer buf, Pointer state, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
     }
+
+    /**
+     * Intrinsification for {@code sun.security.provider.SHA3.implCompress0}.
+     */
+    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
+    public static final class SHA3Node extends SHANode {
+
+        public static final NodeClass<SHA3Node> TYPE = NodeClass.create(SHA3Node.class);
+        public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("sha3ImplCompress", void.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
+                        false, KILLED_LOCATIONS, false, false);
+
+        @Input protected ValueNode blockSize;
+
+        public SHA3Node(ValueNode buf, ValueNode state, ValueNode blockSize) {
+            super(TYPE, buf, state, null);
+
+            this.blockSize = blockSize;
+        }
+
+        public SHA3Node(ValueNode buf, ValueNode state, ValueNode blockSize, EnumSet<?> runtimeCheckedCPUFeatures) {
+            super(TYPE, buf, state, runtimeCheckedCPUFeatures);
+
+            this.blockSize = blockSize;
+        }
+
+        public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
+            return EnumSet.of(AArch64.CPUFeature.SHA3);
+        }
+
+        @SuppressWarnings("unlikely-arg-type")
+        public static boolean isSupported(Architecture arch) {
+            if (arch instanceof AMD64) {
+                return false;
+            } else if (arch instanceof AArch64) {
+                return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
+            }
+            return false;
+        }
+
+        @Override
+        public boolean canBeEmitted(Architecture arch) {
+            return isSupported(arch);
+        }
+
+        @Override
+        public ForeignCallDescriptor getForeignCallDescriptor() {
+            return STUB;
+        }
+
+        @Override
+        public ValueNode[] getForeignCallArguments() {
+            return new ValueNode[]{buf, state, blockSize};
+        }
+
+        @Override
+        public void emitIntrinsic(NodeLIRBuilderTool gen) {
+            gen.getLIRGeneratorTool().emitSha3ImplCompress(gen.operand(buf), gen.operand(state), gen.operand(blockSize));
+        }
+
+        @NodeIntrinsic
+        @GenerateStub(name = "sha3ImplCompress", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+        public static native void sha3ImplCompress(Pointer buf, Pointer state, int blockSize);
+
+        @NodeIntrinsic
+        public static native void sha3ImplCompress(Pointer buf, Pointer state, int blockSize, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    }
 }

@@ -66,6 +66,14 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
         data = byteBuffer.array();
     }
 
+    public ArrayDataPointerConstant(long[] array, int alignment) {
+        super(alignment);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 8);
+        byteBuffer.order(ByteOrder.nativeOrder());
+        byteBuffer.asLongBuffer().put(array);
+        data = byteBuffer.array();
+    }
+
     @Override
     public boolean isDefaultForKind() {
         return false;

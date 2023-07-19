@@ -761,7 +761,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         return reg.encoding << Rs2Offset;
     }
 
-    private static int rs3(Register reg) {
+    static int rs3(Register reg) {
         return reg.encoding << Rs3Offset;
     }
 

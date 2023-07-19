@@ -111,6 +111,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         barrierSet);
         AArch64GraphBuilderPlugins.register(plugins,
                         replacements,
+                        (AArch64) target.arch,
                         /* registerForeignCallMath */true,
                         options);
         return plugins;

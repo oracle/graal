@@ -303,7 +303,7 @@ public final class UnimplementedGraalIntrinsics {
         if (config.md5ImplCompress == 0L) {
             add(ignore, "sun/security/provider/MD5.implCompress0([BI)V");
         }
-        if (config.sha3ImplCompress == 0L) {
+        if (!SHANode.SHA3Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
         if (config.poly1305ProcessBlocks == 0L) {
