@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
 import com.oracle.truffle.espresso.nodes.quick.VolatileArrayAccess;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
-import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories;
 
 public class LazyContextCaches extends ContextAccessImpl {
     // region Command processing
@@ -95,10 +95,10 @@ public class LazyContextCaches extends ContextAccessImpl {
     }.getCallTarget();
 
     public CallTarget getInteropMessage(InteropMessage.Message message, int dispatch) {
-        int index = InteropMessageFactory.getIndex(dispatch, message);
+        int index = InteropMessageFactories.getIndex(dispatch, message);
         CallTarget target = messages[index];
         if (target == null) {
-            CallTarget toRegister = InteropMessageFactory.createInteropMessageTarget(getContext().getLanguage(), dispatch, message);
+            CallTarget toRegister = InteropMessageFactories.createInteropMessageTarget(getContext().getLanguage(), dispatch, message);
             if (toRegister == null) {
                 toRegister = NO_IMPL;
             }

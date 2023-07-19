@@ -23,71 +23,8 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
-import java.util.function.Supplier;
+public interface InteropMessageFactory {
+    int sourceDispatch();
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
-
-/**
- * Provides {@link CallTarget} for interop messages implementations.
- * <p>
- * Factories need to be registered through
- * {@link #register(Class, InteropMessage.Message, Supplier, boolean)} before being able to be
- * {@link #createInteropMessageTarget(EspressoLanguage, int, InteropMessage.Message)} fetched.
- */
-
-public final class InteropMessageFactory {
-    private InteropMessageFactory() {
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"}) //
-    @CompilationFinal(dimensions = 1) //
-    private static final Supplier<InteropMessage>[] messages = new Supplier[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.MESSAGE_COUNT];
-    @CompilationFinal(dimensions = 1) //
-    private static final boolean[] isShareable = new boolean[InteropKlassesDispatch.DISPATCH_TOTAL * InteropMessage.Message.MESSAGE_COUNT];
-
-    public static void register(Class<?> cls, InteropMessage.Message message, Supplier<InteropMessage> factory, boolean shareable) {
-        assert cls != null;
-        assert message != null;
-        assert factory != null;
-        int index = getIndex(cls, message);
-        if (messages[index] == null) {
-            messages[index] = factory;
-        }
-        if (shareable) {
-            isShareable[index] = true;
-        }
-    }
-
-    public static CallTarget createInteropMessageTarget(EspressoLanguage lang, int id, InteropMessage.Message message) {
-        int index = getIndex(id, message);
-        Supplier<InteropMessage> factory = messages[index];
-        if (factory == null) {
-            return null;
-        }
-        InteropMessage interopMessage = factory.get();
-        return new InteropMessageRootNode(lang, interopMessage).getCallTarget();
-    }
-
-    public static boolean isShareable(int dispatchId, InteropMessage.Message message) {
-        int index = getIndex(dispatchId, message);
-        return isShareable[index];
-    }
-
-    public static int getIndex(int dispatchId, InteropMessage.Message message) {
-        int messageId = message.ordinal();
-        return InteropMessage.Message.MESSAGE_COUNT * dispatchId + messageId;
-    }
-
-    private static int getIndex(Class<?> cls, InteropMessage.Message message) {
-        return getIndex(InteropKlassesDispatch.dispatchToId(cls), message);
-    }
-
-    static {
-        for (InteropNodes nodes : InteropNodesCollector.getInstances(InteropNodes.class)) {
-            nodes.register();
-        }
-    }
+    InteropMessage create(InteropMessage.Message message);
 }

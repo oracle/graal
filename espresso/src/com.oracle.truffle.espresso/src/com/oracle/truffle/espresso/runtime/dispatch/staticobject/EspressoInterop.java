@@ -85,6 +85,7 @@ import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
@@ -92,6 +93,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNode
  */
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@Shareable
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
@@ -414,12 +416,14 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static Object readArrayElement(StaticObject receiver, long index,
                     @Cached Nodes.ReadArrayElementImplNode readArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException {
         return readArrayElementNode.execute(receiver, index);
     }
 
     @ExportMessage
+    @Shareable(false)
     static void writeArrayElement(StaticObject receiver, long index, Object value,
                     @Cached Nodes.WriteArrayElementImplNode writeArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
         writeArrayElementNode.execute(receiver, index, value);
@@ -488,6 +492,7 @@ public class EspressoInterop extends BaseInterop {
     // region ### Members
 
     @ExportMessage
+    @Shareable(false)
     static Object readMember(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookupField,
                     @Cached @Exclusive LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
@@ -532,6 +537,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberReadable(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookupField,
                     @Cached @Exclusive LookupVirtualMethodNode lookupMethod) {
@@ -548,6 +554,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberModifiable(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookup) {
         receiver.checkNotForeign();
@@ -559,6 +566,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
                     @Cached @Exclusive ToEspressoNode.DynamicToEspresso toEspresso,
@@ -634,6 +642,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberInvocable(StaticObject receiver,
                     String member,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod) {
@@ -646,6 +655,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static Object invokeMember(StaticObject receiver,
                     String member,
                     Object[] arguments,

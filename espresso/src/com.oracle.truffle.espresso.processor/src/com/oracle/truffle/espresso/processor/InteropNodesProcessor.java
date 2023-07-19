@@ -68,12 +68,16 @@ public class InteropNodesProcessor extends BaseProcessor {
     private static final String SHAREABLE = "com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable";
 
     private static final String INTEROP_NODES = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes";
+    private static final String INTEROP_MESSAGE_FACTORIES = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories";
     private static final String INTEROP_MESSAGE_FACTORY = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory";
     private static final String INTEROP_MESSAGE = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage";
+    private static final String INTEROP_MESSAGE_MESSAGE = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage.Message";
 
     private static final String INSTANCE = "INSTANCE";
     private static final String INSTANCE_GETTER = "getInstance";
     private static final String ADDED_CLASS_SUFFIX = "InteropNodes";
+    private static final String FACTORY_CLASS_NAME = "Factory";
+    private static final String FACTORY_FIELD_NAME = "factory";
 
     // @GenerateInteropNodes
     private TypeElement generateInteropNodes;
@@ -174,21 +178,26 @@ public class InteropNodesProcessor extends BaseProcessor {
                         .withAnnotation(new AnnotationBuilder(COLLECT).withValue("value", interopNodes.getSimpleName().toString() + ".class", false).withValue("getter",
                                         INSTANCE_GETTER).withLineBreak()) //
                         .withSuperClass(interopNodes.getQualifiedName().toString()) //
+                        // Factory declaration
+                        .withField(new FieldBuilder(FACTORY_CLASS_NAME, FACTORY_FIELD_NAME).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
+                                        new StatementBuilder().addContent("new ", FACTORY_CLASS_NAME, "(", INTEROP_MESSAGE_FACTORIES, ".dispatchToId(", cls.getSimpleName(), ".class)", ");")))
                         // Singleton implementation
                         .withField(new FieldBuilder(interopNodes, INSTANCE).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
                                         new StatementBuilder().addContent("new " + clsName + "();"))) //
                         .withMethod(new MethodBuilder(clsName).asConstructor().withModifiers(new ModifierBuilder().asPrivate()).addBodyLine("super(", cls.getSimpleName(), ".class, ", superNodes,
                                         ");")) //
                         .withMethod(new MethodBuilder(INSTANCE_GETTER).withReturnType(interopNodes.toString()).addBodyLine("return " + INSTANCE + ";").withModifiers(
-                                        new ModifierBuilder().asStatic().asPublic()));
+                                        new ModifierBuilder().asStatic().asPublic()))
+                        // Factory implementation
+                        .withInnerClass(generateFactory(nodes, cls));
 
         // Implementation of InteropNodes.registerMessages
         MethodBuilder registerMessages = new MethodBuilder("registerMessages").withOverrideAnnotation().withParams("Class<?> cls").withModifiers(new ModifierBuilder().asProtected());
 
         // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
-            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORY, ".register(cls, ", INTEROP_MESSAGE, ".Message.", ProcessorUtils.capitalize(m.targetMessage), ", ", clsName, "Factory.", m.clsName,
-                            "Gen::create, ", m.isShareable, ");");
+            registerMessages.addBodyLine(
+                            INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", ProcessorUtils.capitalize(m.targetMessage), ", ", FACTORY_FIELD_NAME, ",", m.isShareable, ");");
             nodesClass.withInnerClass(m.cls);
         }
         nodesClass.withMethod(registerMessages);
@@ -198,7 +207,7 @@ public class InteropNodesProcessor extends BaseProcessor {
                         .withCopyright() //
                         .withClass(nodesClass) //
                         .inPackage(pkg) //
-                        .withImportGroup(List.of(COLLECT, INTEROP_NODES, INTEROP_MESSAGE_FACTORY, CACHED, CACHED_LIBRARY, BIND));
+                        .withImportGroup(List.of(COLLECT, INTEROP_NODES, INTEROP_MESSAGE_FACTORIES, CACHED, CACHED_LIBRARY, BIND));
         try {
             FileObject file = processingEnv.getFiler().createSourceFile(pkg + "." + clsName);
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
@@ -208,6 +217,65 @@ public class InteropNodesProcessor extends BaseProcessor {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), cls);
         }
 
+    }
+
+    private ClassBuilder generateFactory(List<Message> nodes, TypeElement sourceDispatch) {
+        /*-
+         static final class Factory implements InteropMessageFactory {
+            final int sourceDispatch;
+            
+            Factory(int sourceDispatch) {
+                this.sourceDispatch = sourceDispatch;
+            }
+            
+            final int sourceDispatch() {
+                return sourceDispatch;
+            }
+            
+            final InteropMessage create(InteropMessage.Message message) {
+                switch (message) {
+                    ...
+                    default: return null;
+                }
+            }
+         }
+         */
+        FieldBuilder sourceDispatchField = new FieldBuilder("int", "sourceDispatch").withQualifiers(new ModifierBuilder().asPrivate().asFinal());
+        MethodBuilder sourceDispatchMethod = new MethodBuilder("sourceDispatch") //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withOverrideAnnotation() //
+                        .withReturnType("int") //
+                        .addBodyLine("return sourceDispatch;");
+
+        MethodBuilder createMethod = new MethodBuilder("create") //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withOverrideAnnotation() //
+                        .withReturnType(INTEROP_MESSAGE) //
+                        .withSignature(new SignatureBuilder().addParam(new VariableBuilder().withDeclaration(INTEROP_MESSAGE_MESSAGE).withName("message")));
+
+        createMethod.addBodyLine("switch (message) {");
+        String clsName = sourceDispatch.getSimpleName().toString() + ADDED_CLASS_SUFFIX;
+        for (Message m : nodes) {
+            String targetMessageEnum = ProcessorUtils.capitalize(m.targetMessage);
+            String targetMessageImpl = clsName + "Factory." + m.clsName + "Gen";
+            createMethod.addIndentedBodyLine(1, "case ", targetMessageEnum, ": return ", targetMessageImpl, ".create();");
+        }
+        createMethod.addIndentedBodyLine(1, "default: return null;");
+        createMethod.addBodyLine("}");
+
+        MethodBuilder init = new MethodBuilder(FACTORY_CLASS_NAME) //
+                        .asConstructor() //
+                        .withParams("int sourceDispatch") //
+                        .addBodyLine("this.sourceDispatch = sourceDispatch;");
+
+        ClassBuilder classBuilder = new ClassBuilder(FACTORY_CLASS_NAME) //
+                        .withQualifiers(new ModifierBuilder().asFinal().asStatic()) //
+                        .withSuperInterfaces(INTEROP_MESSAGE_FACTORY) //
+                        .withField(sourceDispatchField) //
+                        .withMethod(init) //
+                        .withMethod(sourceDispatchMethod) //
+                        .withMethod(createMethod);
+        return classBuilder;
     }
 
     private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String targetMessageName, String clsName) {

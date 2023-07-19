@@ -34,7 +34,7 @@ public class StatementBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public StatementBuilder addContent(String content) {
+    public StatementBuilder addContent(Object... content) {
         contents.add(new RawBuilder(content));
         return this;
     }
@@ -47,15 +47,17 @@ public class StatementBuilder extends AbstractCodeBuilder {
     }
 
     private static class RawBuilder extends AbstractCodeBuilder {
-        private final String rawString;
+        private final Object[] rawString;
 
-        RawBuilder(String rawString) {
+        RawBuilder(Object[] rawString) {
             this.rawString = rawString;
         }
 
         @Override
         void buildImpl(IndentingStringBuilder isb) {
-            isb.append(rawString);
+            for (Object s : rawString) {
+                isb.append(s.toString());
+            }
         }
     }
 }
