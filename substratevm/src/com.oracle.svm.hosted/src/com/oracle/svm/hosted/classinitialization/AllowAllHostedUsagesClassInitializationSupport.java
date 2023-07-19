@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Proxy;
 
-import org.graalvm.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.util.UserError;
@@ -161,8 +159,8 @@ class AllowAllHostedUsagesClassInitializationSupport extends ClassInitialization
         }
         superResult = superResult.max(processInterfaces(clazz, memoize));
 
-        if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
-            forceInitializeHosted(clazz, "proxy/lambda classes with interfaces initialized at build time are also initialized at build time", false);
+        if (superResult == InitKind.BUILD_TIME && Proxy.isProxyClass(clazz)) {
+            forceInitializeHosted(clazz, "proxy classes with interfaces initialized at build time are also initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 

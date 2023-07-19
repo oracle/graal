@@ -625,7 +625,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
-        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+        int maxPrefixSize = root.getFirstAlternative().get(literalStart).getMaxPath() - 1;
+        for (int i = 0; i < literalStart; i++) {
+            if (root.getFirstAlternative().getTerms().get(i).hasLoops()) {
+                maxPrefixSize = -1;
+            }
+        }
+        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, maxPrefixSize);
     }
 
     public boolean canTransformToDFA() {

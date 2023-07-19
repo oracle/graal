@@ -85,11 +85,11 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     final MetaAccessProvider metaAccess;
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
-        if (ClassInitializationOptions.UseNewExperimentalClassInitialization.getValue()) {
-            LogUtils.warning("Using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
-            return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
+        if (ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
+            LogUtils.warning("Using old deprecated class initialization strategy. Only classes that are marked explicitly as '--initialize-at-build-time' can be used during image generation.");
+            return new ProvenSafeClassInitializationSupport(metaAccess, loader);
         }
-        return new ProvenSafeClassInitializationSupport(metaAccess, loader);
+        return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
     }
 
     public static ClassInitializationSupport singleton() {

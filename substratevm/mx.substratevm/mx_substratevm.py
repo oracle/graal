@@ -1413,9 +1413,9 @@ def clinittest(args):
         mkpath(build_dir)
 
         if new_class_init_policy:
-            policy_args = ['-H:+UseNewExperimentalClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = ['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = ['-H:-UseNewExperimentalClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = ['-H:+UseDeprecatedOldClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         native_image(

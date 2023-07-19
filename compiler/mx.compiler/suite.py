@@ -445,8 +445,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "jdk.internal.vm.compiler.test",
-        "org.graalvm.compiler.hotspot.jdk20.test",
-        "org.graalvm.compiler.hotspot.jdk21.test",
       ],
       "distDependencies" : [
         "GRAAL",
@@ -459,6 +457,20 @@ suite = {
       "exclude" : [
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
+      ],
+      "testDistribution" : True,
+      "maven": False,
+    },
+    "GRAAL_TEST_PREVIEW_FEATURE" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.jdk20.test",
+        "org.graalvm.compiler.hotspot.jdk21.test",
+      ],
+      "distDependencies" : [
+        "GRAAL_TEST",
+      ],
+      "exclude" : [
       ],
       "testDistribution" : True,
       "maven": False,
