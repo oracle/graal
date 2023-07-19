@@ -1015,6 +1015,16 @@ public class EspressoInterop extends BaseInterop {
                 }
                 return receiver.<StaticObject[]> unwrap(language)[(int) index];
             }
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = "invalidReceiver(receiver)")
+            static Object doOther(StaticObject receiver, long index) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            public static boolean invalidReceiver(StaticObject receiver) {
+                return !receiver.isArray() || !receiver.isEspressoObject();
+            }
         }
 
         @GenerateUncached
@@ -1251,6 +1261,16 @@ public class EspressoInterop extends BaseInterop {
                     throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
                 }
                 receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
+            }
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = "invalidReceiver(receiver)")
+            static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            public static boolean invalidReceiver(StaticObject receiver) {
+                return !receiver.isArray() || !receiver.isEspressoObject();
             }
         }
     }
