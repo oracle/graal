@@ -595,22 +595,21 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Abstract Inline Methods: For any method m' which has been inlined into a top level
- * compiled method m there will be an abstract_inline_method DIE for m' at level 1 DIE in
- * the CU to which m belongs. The declaration serves as an abstract_origin for any
- * corresponding inlined method DIEs appearing as children of m. The abstract_inline_method
- * DIE will inherit attributes from the method_definition DIE referenced as its
- * specification attribute without the need to repeat them, including attributes specified
- * in child DIEs of the method_definition. However, it is actually necessary to replicate
- * the method_parameter/local_declaration DIEs of the specification as children of the
- * abstract_inline_method DIE. This provides a CU-local target for references from the
- * corresponding method_parameter/local_location DIEs that sit below the inlined_subroutine
- * DIEs in the concrete inlined subroutine tree. This is needed because some tools require
- * the location DIEs abstract_origin attribute that links the location to specification to
- * be a CU-relative offset (FORM_Ref4) rather than a relcoatabel cross-CU info section
- * offset. This has the added benefit that repeated reference to abstract inline methods or
- * parameters from concrete inline method DIEs or parameter or local location DIES only
- * avoids the cost of tracking separate relocatable reference.
+ * Abstract Inline Methods: For any method m' which has been inlined into a top level compiled
+ * method m there will be an abstract_inline_method DIE for m' at level 1 DIE in the CU to which m
+ * belongs. The declaration serves as an abstract_origin for any corresponding inlined method DIEs
+ * appearing as children of m. The abstract_inline_method DIE will inherit attributes from the
+ * method_definition DIE referenced as its specification attribute without the need to repeat them,
+ * including attributes specified in child DIEs of the method_definition. However, it is actually
+ * necessary to replicate the method_parameter/local_declaration DIEs of the specification as
+ * children of the abstract_inline_method DIE. This provides a CU-local target for references from
+ * the corresponding method_parameter/local_location DIEs that sit below the inlined_subroutine DIEs
+ * in the concrete inlined subroutine tree. This is needed because some tools require the location
+ * DIEs abstract_origin attribute that links the location to specification to be a CU-relative
+ * offset (FORM_Ref4) rather than a relcoatabel cross-CU info section offset. This has the added
+ * benefit that repeated reference to abstract inline methods or parameters from concrete inline
+ * method DIEs or parameter or local location DIES only avoids the cost of tracking separate
+ * relocatable reference.
  *
  * <ul>
  *
@@ -1484,6 +1483,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
         return pos;
     }
+
     private int writeStaticFieldLocationAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
 

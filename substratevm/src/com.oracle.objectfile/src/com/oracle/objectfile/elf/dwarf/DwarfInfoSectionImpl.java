@@ -1774,6 +1774,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
         }
     }
+
     private int writeAbstractInlineMethod(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] abstract inline method %s::%s", pos, classEntry.getTypeName(), method.methodName());
@@ -1791,8 +1792,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     specification  0x%x", pos, methodSpecOffset);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
         /*
-         * If the inline method exists in a different CU then write locals and params
-         * otherwise we can just reuse the locals and params in the declaration
+         * If the inline method exists in a different CU then write locals and params otherwise we
+         * can just reuse the locals and params in the declaration
          */
         if (classEntry != method.ownerType()) {
             FileEntry fileEntry = method.getFileEntry();
@@ -1812,6 +1813,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
         return writeAttrNull(buffer, pos);
     }
+
     private int writeAttrRef4(int reference, byte[] buffer, int p) {
         // make sure we have actually started writing a CU
         assert cuStart >= 0;

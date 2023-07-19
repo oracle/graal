@@ -531,8 +531,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
         private int methodDeclarationIndex;
 
         /**
-         * Per class map that identifies the info declarations for a top level method declaration
-         * or an abstract inline method declaration.
+         * Per class map that identifies the info declarations for a top level method declaration or
+         * an abstract inline method declaration.
          */
         private EconomicMap<ClassEntry, DwarfLocalProperties> localPropertiesMap;
 
