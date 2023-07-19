@@ -390,6 +390,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 builderOption += transformed.toString();
             }
 
+            if (option.launcherOption) {
+                nativeImage.bundleLauncherArgs.add(argQueue.peek());
+            }
+
             return builderOption;
         }
         return null;
