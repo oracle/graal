@@ -24,12 +24,11 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class CallFrame {
 
