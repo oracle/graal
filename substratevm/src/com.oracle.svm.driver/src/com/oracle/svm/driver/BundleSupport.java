@@ -212,15 +212,25 @@ final class BundleSupport {
                             .skip(1)
                             .forEach(bundleSupport::parseExtendedOption);
 
+            if (!bundleSupport.useContainer && bundleSupport.bundleProperties.forceContainerBuild()) {
+                if (!OS.LINUX.isCurrent()) {
+                    LogUtils.warning(BUNDLE_INFO_MESSAGE_PREFIX, "Bundle was built in a container, but container builds are only supported for Linux.");
+                } else {
+                    bundleSupport.useContainer = true;
+                    bundleSupport.containerSupport = new ContainerSupport(bundleSupport.stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
+                }
+            }
+
             if (bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
                     nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Skipping containerized build, only supported for Linux.");
                     bundleSupport.useContainer = false;
                 } else if (nativeImage.isDryRun()) {
                     nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
+                    bundleSupport.useContainer = false;
                 } else {
-                    if (bundleSupport.containerSupport.dockerfile == null) {
-                        bundleSupport.containerSupport.dockerfile = bundleSupport.createDockerfile();
+                    if (!Files.exists(bundleSupport.containerSupport.dockerfile)) {
+                        bundleSupport.createDockerfile(bundleSupport.containerSupport.dockerfile);
                     }
                     int exitStatusCode = bundleSupport.containerSupport.initializeImage();
                     switch (ExitStatus.of(exitStatusCode)) {
@@ -250,22 +260,18 @@ final class BundleSupport {
         }
     }
 
-    private Path createDockerfile() {
-        // take Dockerfile from bundle or create default if not available
-        Path dockerfile = stageDir.resolve("Dockerfile");
-        if (!Files.exists(dockerfile)) {
-            String dockerfileText = DEFAULT_DOCKERFILE;
-            if (nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
-                dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
-            }
-            try {
-                Files.writeString(dockerfile, dockerfileText);
-                dockerfile.toFile().deleteOnExit();
-            } catch (IOException e) {
-                throw NativeImage.showError("Failed to create default Dockerfile " + dockerfile);
-            }
+    private void createDockerfile(Path dockerfile) {
+        nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
+        String dockerfileText = DEFAULT_DOCKERFILE;
+        if (nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
+            dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
         }
-        return dockerfile;
+        try {
+            Files.writeString(dockerfile, dockerfileText);
+            dockerfile.toFile().deleteOnExit();
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to create default Dockerfile " + dockerfile);
+        }
     }
 
     private void parseExtendedOption(String option) {
@@ -287,7 +293,7 @@ final class BundleSupport {
                 if (containerSupport != null) {
                     throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", optionKey));
                 }
-                containerSupport = new ContainerSupport(null, stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
+                containerSupport = new ContainerSupport(stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
                 useContainer = true;
                 if (optionValue != null) {
                     if (!ContainerSupport.SUPPORTED_TOOLS.contains(optionValue)) {
@@ -796,10 +802,12 @@ final class BundleSupport {
 
         Path dockerfilePath = stageDir.resolve("Dockerfile");
         try {
-            if ((containerSupport == null || containerSupport.dockerfile == null) && !Files.exists(dockerfilePath)) {
+            if (containerSupport == null || !Files.exists(containerSupport.dockerfile)) {
                 // if no Dockerfile was created yet create a new default Dockerfile
-                createDockerfile();
-            } else if (containerSupport != null && containerSupport.dockerfile != null && !dockerfilePath.equals(containerSupport.dockerfile)) {
+                if (!Files.exists(dockerfilePath)) {
+                    createDockerfile(dockerfilePath);
+                }
+            } else if (!dockerfilePath.equals(containerSupport.dockerfile)) {
                 Files.copy(containerSupport.dockerfile, dockerfilePath);
             }
         } catch (IOException e) {
@@ -993,6 +1001,11 @@ final class BundleSupport {
         private boolean forceBuilderOnClasspath() {
             assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
             return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILDER_ON_CLASSPATH, Boolean.FALSE.toString()));
+        }
+
+        private boolean forceContainerBuild() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILT_WITH_CONTAINER, Boolean.FALSE.toString()));
         }
 
         private void write() {

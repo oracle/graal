@@ -61,13 +61,13 @@ public class ContainerSupport {
     private final Consumer<String> warningPrinter;
     private final Consumer<String> messagePrinter;
 
-    public ContainerSupport(Path dockerfile, Path bundleStageDir, BiFunction<String, Throwable, Error> errorFunction, Consumer<String> warningPrinter, Consumer<String> messagePrinter) {
-        this.dockerfile = dockerfile;
+    public ContainerSupport(Path bundleStageDir, BiFunction<String, Throwable, Error> errorFunction, Consumer<String> warningPrinter, Consumer<String> messagePrinter) {
         this.errorFunction = errorFunction;
         this.warningPrinter = warningPrinter;
         this.messagePrinter = messagePrinter;
 
         if (bundleStageDir != null) {
+            dockerfile = bundleStageDir.resolve("Dockerfile");
             Path containerFile = bundleStageDir.resolve("container.json");
             if (Files.exists(containerFile)) {
                 try (Reader reader = Files.newBufferedReader(containerFile)) {
