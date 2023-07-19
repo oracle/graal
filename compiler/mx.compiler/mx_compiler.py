@@ -704,11 +704,7 @@ def _unittest_config_participant(config):
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-
         mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.internal.vm.compiler,ALL-UNNAMED'])
-        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
-        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
-        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:

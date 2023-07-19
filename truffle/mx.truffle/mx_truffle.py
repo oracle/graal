@@ -200,6 +200,10 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+    
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
