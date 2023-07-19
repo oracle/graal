@@ -1912,6 +1912,11 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return soleInstance;
     }
 
+    /**
+     * Do not use the field handle based field accessor our own {@link UnsafeFieldAccessorFactory}.
+     * It takes effect when {@code Target_java_lang_reflect_Field#fieldAccessor} is recomputed at
+     * runtime. See also GR-39586 and GR-46732.
+     */
     @Substitute
     public FieldAccessor newFieldAccessor(Field field0, boolean override) {
         Field field = field0;
