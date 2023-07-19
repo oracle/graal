@@ -76,7 +76,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String LEAVE_UNLOCK_SCOPE = SubstrateOptionsParser.commandArgument(SubstrateOptions.UnlockExperimentalVMOptions, "-");
 
     record OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean defaultFinal, String deprecationWarning,
-                    List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
+                    List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra, boolean launcherOption) {
         boolean isDeprecated() {
             return deprecationWarning.length() > 0;
         }
@@ -259,7 +259,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             boolean defaultFinal = booleanOption || hasFixedValue;
             apiOptions.put(apiOptionName,
                             new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
-                                            defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
+                                            defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra(), apiAnnotation.launcherOption()));
         }
 
         if (optionDescriptor.getStability() == OptionStability.STABLE) {
