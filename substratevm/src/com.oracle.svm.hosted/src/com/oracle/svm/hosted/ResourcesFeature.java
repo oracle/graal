@@ -38,13 +38,16 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -53,6 +56,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -193,12 +197,54 @@ public final class ResourcesFeature implements InternalFeature {
             }
         }
 
-        private String getDirectoryContent(String dir) throws IOException {
-            try (Stream<Path> contentStream = Files.list(Path.of(dir))) {
-                List<String> content = new ArrayList<>(contentStream.map(Path::toString).toList());
-                content.sort(Comparator.naturalOrder());
-                return String.join(System.lineSeparator(), content);
+        private String getDirectoryContent(String path, boolean fromJar) throws IOException {
+            List<String> content = new ArrayList<>();
+            if (fromJar) {
+                try (JarFile jf = new JarFile(urlToJarPath(URI.create(path).toURL()))) {
+                    String pathSeparator = FileSystems.getDefault().getSeparator();
+                    String directoryPath = path.split("!")[1];
+
+                    // we are removing leading slash because jar entry names don't start with slash
+                    if (directoryPath.startsWith(pathSeparator)) {
+                        directoryPath = directoryPath.substring(1);
+                    }
+
+                    Enumeration<JarEntry> entries = jf.entries();
+                    while (entries.hasMoreElements()) {
+                        String entry = entries.nextElement().getName();
+                        if (entry.startsWith(directoryPath)) {
+                            String contentEntry = entry.substring(directoryPath.length());
+
+                            // remove the leading slash
+                            if (contentEntry.startsWith(pathSeparator)) {
+                                contentEntry = contentEntry.substring(1);
+                            }
+
+                            // prevent adding empty strings as a content
+                            if (!contentEntry.isEmpty()) {
+                                // get top level content only
+                                int firstSlash = contentEntry.indexOf(pathSeparator);
+                                if (firstSlash != -1) {
+                                    content.add(contentEntry.substring(0, firstSlash));
+                                } else {
+                                    content.add(contentEntry);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            } else {
+                try (Stream<Path> contentStream = Files.list(Path.of(path))) {
+                    content = new ArrayList<>(contentStream
+                                    .map(Path::getFileName)
+                                    .map(Path::toString)
+                                    .toList());
+                }
             }
+
+            content.sort(Comparator.naturalOrder());
+            return String.join(System.lineSeparator(), content);
         }
 
         @Override
@@ -222,7 +268,7 @@ public final class ResourcesFeature implements InternalFeature {
                     fromJar = false;
                     isDirectory = new File(resourcePath).isDirectory();
                     if (isDirectory) {
-                        content = getDirectoryContent(resourcePath);
+                        content = getDirectoryContent(resourcePath, false);
                     }
                 } catch (IOException e) {
                     // we should ignore if user failed to provide resource
@@ -241,8 +287,8 @@ public final class ResourcesFeature implements InternalFeature {
                     isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
                     // if directory is from jar content should remain empty (same as in scanJar
                     // function from ClassLoaderSupportImpl)
-                    if (isDirectory && !fromJar) {
-                        content = getDirectoryContent(url.getPath());
+                    if (isDirectory) {
+                        content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                     }
                 } catch (IOException e) {
                     // we should ignore if user failed to provide resource
@@ -260,6 +306,12 @@ public final class ResourcesFeature implements InternalFeature {
                 Resources.registerDirectoryResource(module, resourcePath, content);
             } else {
                 Resources.registerResource(module, resourcePath, is, fromJar);
+            }
+
+            try {
+                is.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
 
