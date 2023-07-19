@@ -195,7 +195,7 @@ public class BundleLauncher {
         List<String> modulePath = new ArrayList<>();
         if (Files.isDirectory(modulePathDir)) {
             try (Stream<Path> walk = Files.walk(modulePathDir, 1)) {
-                walk.filter(path -> Files.isDirectory(path) && !path.equals(modulePathDir))
+                walk.filter(path -> (Files.isDirectory(path) && !path.equals(modulePathDir)) || path.toString().endsWith(".jar"))
                                 .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
                                 .map(Path::toString)
                                 .forEach(modulePath::add);
