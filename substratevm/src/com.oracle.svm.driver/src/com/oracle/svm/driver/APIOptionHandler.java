@@ -328,6 +328,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     String translateOption(ArgumentQueue argQueue) {
         OptionInfo option = null;
+        boolean whitespaceSeparated = false;
         String[] optionNameAndOptionValue = null;
         OptionOrigin argumentOrigin = OptionOrigin.from(argQueue.argumentOrigin);
         found: for (OptionInfo optionInfo : apiOptions.values()) {
@@ -353,6 +354,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         }
                         option = optionInfo;
                         optionNameAndOptionValue = new String[]{headArg, optionValue};
+                        whitespaceSeparated = true;
                         break found;
                     } else {
                         boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
@@ -390,8 +392,18 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 builderOption += transformed.toString();
             }
 
-            if (option.launcherOption) {
-                nativeImage.bundleLauncherArgs.add(argQueue.peek());
+            if (nativeImage.useBundle() && option.launcherOption) {
+                String optionName = optionNameAndOptionValue[0];
+                if (optionValue != null) {
+                    if (whitespaceSeparated) {
+                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionName);
+                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionValue);
+                    } else {
+                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionName + optionValue);
+                    }
+                } else {
+                    nativeImage.bundleSupport.bundleLauncherArgs.add(optionName);
+                }
             }
 
             return builderOption;
