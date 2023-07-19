@@ -197,6 +197,8 @@ public class CompileQueue {
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
 
+    private final ConcurrentMap<HostedMethod, CompilationGraph> unpublishedGraphs = new ConcurrentHashMap<>();
+
     public abstract static class CompileReason {
         /**
          * For debugging only: chaining of the compile reason, so that you can track the compilation
@@ -713,6 +715,10 @@ public class CompileQueue {
                     });
                 });
             }
+            for (Map.Entry<HostedMethod, CompilationGraph> entry : unpublishedGraphs.entrySet()) {
+                entry.getKey().compilationInfo.setCompilationGraph(entry.getValue());
+            }
+            unpublishedGraphs.clear();
         } while (inliningProgress);
     }
 
@@ -812,11 +818,12 @@ public class CompileQueue {
 
                 } else {
                     /*
-                     * Publish the new graph, it can be picked up immediately by other threads
-                     * trying to inline this method. This can be a minor source of non-determinism
-                     * in inlining decisions.
+                     * If we publish the new graph immediately, it can be picked up by other threads
+                     * trying to inline this method, and that would make the inlining
+                     * non-deterministic. This is why we are saving graphs to be published at the
+                     * end of each round.
                      */
-                    method.compilationInfo.encodeGraph(graph);
+                    unpublishedGraphs.put(method, CompilationGraph.encode(graph));
                     if (checkTrivial(method, graph)) {
                         inliningProgress = true;
                     }
