@@ -283,16 +283,16 @@ public class BundleLauncher {
                 } else if (!System.getProperty("os.name").equals("Linux")) {
                     throw new Error("container option is only supported for Linux");
                 }
-                Path dockerfile;
+                containerSupport = new ContainerSupport(stageDir, Error::new, BundleLauncher::showWarning, BundleLauncher::showMessage);
                 if (arg.indexOf(',') != -1) {
                     String option = arg.substring(arg.indexOf(',') + 1);
                     arg = arg.substring(0, arg.indexOf(','));
 
                     if (option.startsWith("dockerfile")) {
                         if (option.indexOf('=') != -1) {
-                            dockerfile = Paths.get(option.substring(option.indexOf('=') + 1));
-                            if (!Files.isReadable(dockerfile)) {
-                                throw new Error(String.format("Dockerfile '%s' is not readable", dockerfile.toAbsolutePath()));
+                            containerSupport.dockerfile = Paths.get(option.substring(option.indexOf('=') + 1));
+                            if (!Files.isReadable(containerSupport.dockerfile)) {
+                                throw new Error(String.format("Dockerfile '%s' is not readable", containerSupport.dockerfile.toAbsolutePath()));
                             }
                         } else {
                             throw new Error("container option dockerfile requires a dockerfile argument. E.g. dockerfile=path/to/Dockerfile.");
@@ -300,10 +300,7 @@ public class BundleLauncher {
                     } else {
                         throw new Error(String.format("Unknown option %s. Valid option is: dockerfile=path/to/Dockerfile.", option));
                     }
-                } else {
-                    dockerfile = stageDir.resolve("Dockerfile");
                 }
-                containerSupport = new ContainerSupport(dockerfile, stageDir, Error::new, BundleLauncher::showWarning, BundleLauncher::showMessage);
                 if (arg.indexOf('=') != -1) {
                     containerSupport.tool = arg.substring(arg.indexOf('=') + 1);
                 }
