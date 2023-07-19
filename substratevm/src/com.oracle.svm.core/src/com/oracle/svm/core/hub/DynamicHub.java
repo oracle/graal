@@ -1912,12 +1912,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return soleInstance;
     }
 
-    /**
-     * Do not use the field handle based field accessor but the one based on unsafe. It takes effect
-     * when {@code Target_java_lang_reflect_Field#fieldAccessorField#fieldAccessor} is recomputed at
-     * runtime. See also GR-39586.
-     */
-    @TargetElement(onlyWith = {JDK19OrLater.class, JDK21OrEarlier.class})
     @Substitute
     public FieldAccessor newFieldAccessor(Field field0, boolean override) {
         Field field = field0;
