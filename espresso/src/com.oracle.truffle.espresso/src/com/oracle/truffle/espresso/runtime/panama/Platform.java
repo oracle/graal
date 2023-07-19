@@ -35,14 +35,14 @@ public abstract class Platform {
         String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
         return switch (arch) {
             case "x86_64", "amd64" -> switch (OS.getCurrent()) {
-                    case Linux, Darwin -> SysVx64.INSTANCE;
-                    case Windows -> WindowsX64.INSTANCE;
-                    default -> throw EspressoError.unimplemented(OS.getCurrent() + "-x86_64");
-                };
+                case Linux, Darwin -> SysVx64.INSTANCE;
+                case Windows -> WindowsX64.INSTANCE;
+                default -> throw EspressoError.unimplemented(OS.getCurrent() + "-x86_64");
+            };
             case "aarch64", "arm64" -> switch (OS.getCurrent()) {
-                    case Linux, Darwin -> AAPCS64.INSTANCE;
-                    default -> throw EspressoError.unimplemented(OS.getCurrent() + "-aarch64");
-                };
+                case Linux, Darwin -> AAPCS64.INSTANCE;
+                default -> throw EspressoError.unimplemented(OS.getCurrent() + "-aarch64");
+            };
             default -> throw EspressoError.unimplemented(arch);
         };
     }

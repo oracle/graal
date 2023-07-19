@@ -66,7 +66,9 @@ public final class Target_jdk_test_whitebox_WhiteBox {
             case "VMContinuations" -> meta.boxBoolean(false);
             case "UseCompiler", "ProfileInterpreter" -> meta.boxBoolean(useCompiler());
             case "UseJVMCICompiler" -> meta.boxBoolean(useGraal());
-            case "TieredCompilation", "FlightRecorder", "EnableJVMCI", "ClassUnloading", "ClassUnloadingWithConcurrentMark", "UseCompressedOops", "UseVectorizedMismatchIntrinsic", "EliminateAllocations", "UseVtableBasedCHA" -> StaticObject.NULL;
+            case "TieredCompilation", "FlightRecorder", "EnableJVMCI", "ClassUnloading", "ClassUnloadingWithConcurrentMark", "UseCompressedOops", "UseVectorizedMismatchIntrinsic",
+                            "EliminateAllocations", "UseVtableBasedCHA" ->
+                StaticObject.NULL;
             default -> {
                 context.getLogger().warning(() -> "WhiteBox.getBooleanVMFlag(" + name + "): unknown flag");
                 yield StaticObject.NULL;
