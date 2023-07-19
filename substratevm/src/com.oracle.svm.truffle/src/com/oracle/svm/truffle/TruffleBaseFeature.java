@@ -759,7 +759,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                     UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
                                     "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
                                     "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, "", culprit -> ""),
                                     file.getPath());
                 }
             }
