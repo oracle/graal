@@ -1213,13 +1213,13 @@ libgraal_build_args = [
 
     # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
     '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
-
-    # build libgraal with 'Full RELRO' to prevent GOT overwriting exploits (GR-46838)
-    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
-] if mx.get_arch() == 'aarch64' else [])
+] if mx.get_arch() == 'aarch64' else []) + ([
+   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+] if mx.is_linux() else [])
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
