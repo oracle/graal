@@ -904,31 +904,44 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getMethodDeclarationIndex(methodEntry);
     }
 
+    protected void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
+        dwarfSections.setAbstractInlineMethodIndex(classEntry, methodEntry, pos);
+    }
+
+    protected int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodEntry);
+    }
+
     /**
      * Record the info section offset of a local (or parameter) declaration DIE appearing as a child
-     * of a standard method declaration.
-     * 
+     * of a standard method declaration or an abstract inline method declaration.
+     *
+     * @param classEntry the class of the top level method being declared or inlined into
      * @param methodEntry the method being declared or inlined.
      * @param localInfo the local or param whose index is to be recorded.
      * @param index the info section offset to be recorded.
      */
-    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
+    protected void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(classEntry, methodEntry, localInfo, index);
     }
 
     /**
      * Retrieve the info section offset of a local (or parameter) declaration DIE appearing as a
-     * child of a standard method declaration.
+     * child of a standard method declaration or an abstract inline method declaration.
      *
+     * @param classEntry the class of the top level method being declared or inlined into
      * @param methodEntry the method being declared or imported
      * @param localInfo the local or param whose index is to be retrieved.
      * @return the associated info section offset.
      */
-    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
+    protected int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
+        return dwarfSections.getMethodLocalIndex(classEntry, methodEntry, localInfo);
     }
 
     /**

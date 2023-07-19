@@ -110,17 +110,18 @@ public class DwarfDebugInfo extends DebugInfoBase {
     /* Level 2+K DIEs (where inline depth K >= 0) */
     public static final int DW_ABBREV_CODE_inlined_subroutine = 35;
     public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 36;
+    public static final int DW_ABBREV_CODE_abstract_inline_method = 37;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 37;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 38;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 39;
-    public static final int DW_ABBREV_CODE_method_local_declaration1 = 40;
-    public static final int DW_ABBREV_CODE_method_local_declaration2 = 41;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 38;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 39;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 40;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 41;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 42;
     /* Level 3 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_location1 = 42;
-    public static final int DW_ABBREV_CODE_method_parameter_location2 = 43;
-    public static final int DW_ABBREV_CODE_method_local_location1 = 44;
-    public static final int DW_ABBREV_CODE_method_local_location2 = 45;
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 43;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 44;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 45;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 46;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
@@ -322,7 +323,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * bits
      */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
-
     private final DwarfStrSectionImpl dwarfStrSection;
     private final DwarfAbbrevSectionImpl dwarfAbbrevSection;
     private final DwarfInfoSectionImpl dwarfInfoSection;
@@ -531,13 +531,20 @@ public class DwarfDebugInfo extends DebugInfoBase {
         private int methodDeclarationIndex;
 
         /**
-         * Index of info locations for params/locals belonging to a method.
+         * Per class map that identifies the info declarations for a top level method declaration
+         * or an abstract inline method declaration.
          */
-        private DwarfLocalProperties localProperties;
+        private EconomicMap<ClassEntry, DwarfLocalProperties> localPropertiesMap;
+
+        /**
+         * Per class map that identifies the info declaration for an abstract inline method.
+         */
+        private EconomicMap<ClassEntry, Integer> abstractInlineMethodIndex;
 
         DwarfMethodProperties() {
             methodDeclarationIndex = -1;
-            localProperties = null;
+            localPropertiesMap = null;
+            abstractInlineMethodIndex = null;
         }
 
         public int getMethodDeclarationIndex() {
@@ -550,11 +557,30 @@ public class DwarfDebugInfo extends DebugInfoBase {
             methodDeclarationIndex = pos;
         }
 
-        public DwarfLocalProperties getLocalProperties() {
+        public DwarfLocalProperties getLocalProperties(ClassEntry classEntry) {
+            if (localPropertiesMap == null) {
+                localPropertiesMap = EconomicMap.create();
+            }
+            DwarfLocalProperties localProperties = localPropertiesMap.get(classEntry);
             if (localProperties == null) {
                 localProperties = new DwarfLocalProperties();
+                localPropertiesMap.put(classEntry, localProperties);
             }
             return localProperties;
+        }
+
+        public void setAbstractInlineMethodIndex(ClassEntry classEntry, int pos) {
+            if (abstractInlineMethodIndex == null) {
+                abstractInlineMethodIndex = EconomicMap.create();
+            }
+            // replace but check it did not change
+            Integer val = abstractInlineMethodIndex.put(classEntry, pos);
+            assert val == null || val == pos;
+        }
+
+        public int getAbstractInlineMethodIndex(ClassEntry classEntry) {
+            // should be set before we get here but an NPE will guard that
+            return abstractInlineMethodIndex.get(classEntry);
         }
     }
 
@@ -813,23 +839,31 @@ public class DwarfDebugInfo extends DebugInfoBase {
         }
     }
 
+    public void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
+        lookupMethodProperties(methodEntry).setAbstractInlineMethodIndex(classEntry, pos);
+    }
+
+    public int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
+        return lookupMethodProperties(methodEntry).getAbstractInlineMethodIndex(classEntry);
+    }
+
     private DwarfLocalProperties addRangeLocalProperties(Range range) {
         DwarfLocalProperties localProperties = new DwarfLocalProperties();
         rangeLocalPropertiesIndex.put(range, localProperties);
         return localProperties;
     }
 
-    public DwarfLocalProperties lookupLocalProperties(MethodEntry methodEntry) {
-        return lookupMethodProperties(methodEntry).getLocalProperties();
+    public DwarfLocalProperties lookupLocalProperties(ClassEntry classEntry, MethodEntry methodEntry) {
+        return lookupMethodProperties(methodEntry).getLocalProperties(classEntry);
     }
 
-    public void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(methodEntry);
+    public void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
         localProperties.setIndex(localInfo, index);
     }
 
-    public int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(methodEntry);
+    public int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
         assert localProperties != null : "get of non-existent local index";
         int index = localProperties.getIndex(localInfo);
         assert index >= 0 : "get of local index before it was set";
