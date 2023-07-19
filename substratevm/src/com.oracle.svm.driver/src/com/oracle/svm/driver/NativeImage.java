@@ -267,7 +267,6 @@ public class NativeImage {
     static final String oHNumberOfThreads = oH(NativeImageOptions.NumberOfThreads);
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
-    final ArrayList<String> bundleLauncherArgs = new ArrayList<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();

@@ -99,6 +99,7 @@ final class BundleSupport {
     private final boolean forceBuilderOnClasspath;
     private final List<String> nativeImageArgs;
     private List<String> updatedNativeImageArgs;
+    final ArrayList<String> bundleLauncherArgs = new ArrayList<>();
 
     boolean loadBundle;
     boolean writeBundle;
@@ -833,7 +834,7 @@ final class BundleSupport {
         if (nativeImage.buildExecutable) {
             Path runArgsFile = stageDir.resolve("run.json");
             try (JsonWriter writer = new JsonWriter(runArgsFile)) {
-                List<String> runArgs = new ArrayList<>(nativeImage.bundleLauncherArgs);
+                List<String> runArgs = new ArrayList<>(bundleLauncherArgs);
                 boolean hasMainClassModule = nativeImage.mainClassModule != null && !nativeImage.mainClassModule.isEmpty();
                 boolean hasMainClass = nativeImage.mainClass != null && !nativeImage.mainClass.isEmpty();
                 if (hasMainClassModule) {
