@@ -76,7 +76,10 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
     }
 
     private static InliningTreeNode parseInliningTreeNode(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
-        String methodName = Method.removeMultiMethodKey(map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asString());
+        String methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asNullableString();
+        if (methodName != null) {
+            methodName = Method.removeMultiMethodKey(methodName);
+        }
         int bci = map.property(OptimizationLogImpl.CALLSITE_BCI_PROPERTY).asInt();
         boolean positive = map.property(OptimizationLogImpl.INLINED_PROPERTY).asBoolean();
         List<String> reason = new ArrayList<>();
