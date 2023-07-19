@@ -393,16 +393,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
 
             if (nativeImage.useBundle() && option.launcherOption) {
-                String optionName = optionNameAndOptionValue[0];
-                if (optionValue != null) {
-                    if (whitespaceSeparated) {
-                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionName);
-                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionValue);
-                    } else {
-                        nativeImage.bundleSupport.bundleLauncherArgs.add(optionName + optionValue);
-                    }
+                if (whitespaceSeparated) {
+                    nativeImage.bundleSupport.bundleLauncherArgs.addAll(List.of(optionNameAndOptionValue));
                 } else {
-                    nativeImage.bundleSupport.bundleLauncherArgs.add(optionName);
+                    nativeImage.bundleSupport.bundleLauncherArgs.add(argQueue.peek());
                 }
             }
 
