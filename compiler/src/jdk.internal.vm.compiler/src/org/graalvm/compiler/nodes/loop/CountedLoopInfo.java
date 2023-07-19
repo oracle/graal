@@ -273,6 +273,11 @@ public class CountedLoopInfo {
          * contains 0 though we know it effectively cannot. This happens when we have knowledge
          * about the stride - for example its strictly positive or negative but not a constant - in
          * both we cannot easily fold the negated stamp.
+         *
+         * Note that on certain architectures the division MIN/-1 also triggers a CPU divide error
+         * which has to be taken care of by the code generation via a state, thus actually deriving
+         * by stamps that this division can never trigger a divide error is very hard, and thus we
+         * refrain from doing so.
          */
         final boolean divisorNonZero = true;
         ValueNode div = unsignedDivBefore(graph, divisorNonZero, loop.entryPoint(), denominator, absStride, null);
