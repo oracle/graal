@@ -57,7 +57,9 @@ public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
         return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+                        ConfigurationFiles.Options.StrictConfiguration.getValue(),
+                        ConfigurationFiles.Options.PrintMissingMetadataElements.getValue()
+                );
     }
 
     /**

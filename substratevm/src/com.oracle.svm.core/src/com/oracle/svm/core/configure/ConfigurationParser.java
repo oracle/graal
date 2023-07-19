@@ -62,10 +62,10 @@ public abstract class ConfigurationParser {
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
-    private final boolean strictConfiguration;
+    private final boolean strictSchema;
 
     protected ConfigurationParser(boolean strictConfiguration) {
-        this.strictConfiguration = strictConfiguration;
+        this.strictSchema = strictConfiguration;
     }
 
     public void parseAndRegister(URI uri) throws IOException {
@@ -121,14 +121,20 @@ public abstract class ConfigurationParser {
 
         if (unknownAttributes.size() > 0) {
             String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
-            warnOrFail(message);
+            warnOrFailOnSchemaError(message);
             Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
             unknownAttributesForType.addAll(unknownAttributes);
         }
     }
 
-    protected void warnOrFail(String message) {
-        if (strictConfiguration) {
+    /**
+     * Used to warn about schema errors in configuration files. Should never be used if the type is
+     * missing.
+     *
+     * @param message message to be displayed.
+     */
+    protected void warnOrFailOnSchemaError(String message) {
+        if (strictSchema) {
             throw new JSONParserException(message);
         } else {
             LogUtils.warning(message);
@@ -182,7 +188,7 @@ public abstract class ConfigurationParser {
             if (conditionType instanceof String) {
                 return ConfigurationCondition.create((String) conditionType);
             } else {
-                warnOrFail("'" + TYPE_REACHABLE_KEY + "' should be of type string");
+                warnOrFailOnSchemaError("'" + TYPE_REACHABLE_KEY + "' should be of type string");
             }
         }
         return ConfigurationCondition.alwaysTrue();

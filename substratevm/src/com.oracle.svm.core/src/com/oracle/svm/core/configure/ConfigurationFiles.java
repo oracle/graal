@@ -106,8 +106,11 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Causes unknown attributes in configuration objects to abort the image build instead of emitting a warning.")//
+        @Option(help = "When configuration files don't match the schema, abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
+
+        @Option(help = "When configuration files don't match the schema, abort the image build instead of emitting a warning.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Boolean> PrintMissingMetadataElements = new HostedOptionKey<>(false);
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {
