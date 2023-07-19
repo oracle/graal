@@ -98,6 +98,7 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.hosted.c.libc.HostedLibCFeature;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -249,6 +250,8 @@ public class NativeImage {
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
+    final String oHUseLibC = oH(HostedLibCFeature.LibCOptions.UseLibC);
+    final String oHEnableStaticExecutable = oHEnabled(SubstrateOptions.StaticExecutable);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();
     final String oHColor = oH(SubstrateOptions.Color);
     final String oHEnableBuildOutputProgress = oHEnabledByDriver(SubstrateOptions.BuildOutputProgress);
@@ -1096,6 +1099,8 @@ public class NativeImage {
 
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
         buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix));
+        staticExecutable = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHEnableStaticExecutable));
+        libC = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHUseLibC);
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
         printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.matches("-H:MicroArchitecture(@[^=]*)?=list"));
 
@@ -1411,6 +1416,8 @@ public class NativeImage {
     }
 
     boolean buildExecutable;
+    boolean staticExecutable;
+    String libC;
     String mainClass;
     String mainClassModule;
     String imageName;
@@ -1572,6 +1579,27 @@ public class NativeImage {
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
         if (useBundle() && bundleSupport.useContainer) {
+            if (!Files.exists(bundleSupport.containerSupport.dockerfile)) {
+                bundleSupport.createDockerfile(bundleSupport.containerSupport.dockerfile);
+            }
+            int exitStatusCode = bundleSupport.containerSupport.initializeImage();
+            switch (ExitStatus.of(exitStatusCode)) {
+                case OK -> {
+                }
+                case BUILDER_ERROR ->
+                    /* Exit, builder has handled error reporting. */
+                    throw NativeImage.showError(null, null, exitStatusCode);
+                case OUT_OF_MEMORY -> {
+                    showOutOfMemoryWarning();
+                    throw NativeImage.showError(null, null, exitStatusCode);
+                }
+                default -> {
+                    String message = String.format("Container build request for '%s' failed with exit status %d",
+                                    imageName, exitStatusCode);
+                    throw NativeImage.showError(message, null, exitStatusCode);
+                }
+            }
+
             Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
             mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
             mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));

@@ -38,7 +38,7 @@ RUN echo "$TEMP_REGION" > /etc/dnf/vars/ociregion \
     && wget $ZLIB_LOCATION && tar -xvf zlib-1.2.11.tar.gz \
     && cd zlib-1.2.11 \
     && ./configure --prefix=$TOOLCHAIN_DIR --static \
-    && make && make install \
+    && make && make install
 
 
 FROM base as final
@@ -48,5 +48,6 @@ COPY --from=muslib /usr/local/musl /usr/local/musl
 RUN echo "" > /etc/dnf/vars/ociregion
 
 ENV TOOLCHAIN_DIR=/usr/local/musl \
-    CC=$TOOLCHAIN_DIR/bin/gcc \
-    PATH=$TOOLCHAIN_DIR/bin:$PATH
+    CC=$TOOLCHAIN_DIR/bin/gcc
+
+ENV PATH=$TOOLCHAIN_DIR/bin:$PATH

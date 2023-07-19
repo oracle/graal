@@ -67,7 +67,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.driver.launcher.BundleLauncher;
@@ -212,7 +211,7 @@ final class BundleSupport {
                             .skip(1)
                             .forEach(bundleSupport::parseExtendedOption);
 
-            if (!bundleSupport.useContainer && bundleSupport.bundleProperties.forceContainerBuild()) {
+            if (!bundleSupport.useContainer && bundleSupport.bundleProperties.requireContainerBuild()) {
                 if (!OS.LINUX.isCurrent()) {
                     LogUtils.warning(BUNDLE_INFO_MESSAGE_PREFIX, "Bundle was built in a container, but container builds are only supported for Linux.");
                 } else {
@@ -228,27 +227,6 @@ final class BundleSupport {
                 } else if (nativeImage.isDryRun()) {
                     nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
                     bundleSupport.useContainer = false;
-                } else {
-                    if (!Files.exists(bundleSupport.containerSupport.dockerfile)) {
-                        bundleSupport.createDockerfile(bundleSupport.containerSupport.dockerfile);
-                    }
-                    int exitStatusCode = bundleSupport.containerSupport.initializeImage();
-                    switch (ExitStatus.of(exitStatusCode)) {
-                        case OK -> {
-                        }
-                        case BUILDER_ERROR ->
-                            /* Exit, builder has handled error reporting. */
-                            throw NativeImage.showError(null, null, exitStatusCode);
-                        case OUT_OF_MEMORY -> {
-                            nativeImage.showOutOfMemoryWarning();
-                            throw NativeImage.showError(null, null, exitStatusCode);
-                        }
-                        default -> {
-                            String message = String.format("Container build request for '%s' failed with exit status %d",
-                                            nativeImage.imageName, exitStatusCode);
-                            throw NativeImage.showError(message, null, exitStatusCode);
-                        }
-                    }
                 }
             }
 
@@ -260,10 +238,10 @@ final class BundleSupport {
         }
     }
 
-    private void createDockerfile(Path dockerfile) {
+    void createDockerfile(Path dockerfile) {
         nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
         String dockerfileText = DEFAULT_DOCKERFILE;
-        if (nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
+        if (nativeImage.staticExecutable && nativeImage.libC.equals("musl")) {
             dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
         }
         try {
@@ -1003,7 +981,7 @@ final class BundleSupport {
             return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILDER_ON_CLASSPATH, Boolean.FALSE.toString()));
         }
 
-        private boolean forceContainerBuild() {
+        private boolean requireContainerBuild() {
             assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
             return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILT_WITH_CONTAINER, Boolean.FALSE.toString()));
         }
