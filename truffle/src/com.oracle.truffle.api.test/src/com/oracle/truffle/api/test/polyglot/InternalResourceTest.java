@@ -106,7 +106,7 @@ public class InternalResourceTest {
         static int unpackedCalled;
 
         @Override
-        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
             unpackedCalled++;
             for (String resource : RESOURCES) {
                 Files.createFile(targetDirectory.resolve(resource));
@@ -129,7 +129,7 @@ public class InternalResourceTest {
         static int unpackedCalled;
 
         @Override
-        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
             unpackedCalled++;
             for (String resource : RESOURCES) {
                 Files.createFile(targetDirectory.resolve(resource));
@@ -151,7 +151,7 @@ public class InternalResourceTest {
         static String linkName;
 
         @Override
-        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
             Path sources = Files.createDirectory(targetDirectory.resolve("sources"));
             folderName = targetDirectory.relativize(sources).toString();
             Path source = Files.writeString(sources.resolve("source"), "source");
@@ -537,7 +537,7 @@ public class InternalResourceTest {
             // Set explicit resource cache root
             String strPath = cacheRoot1.toRealPath().toString();
             String libPath = strPath;
-            System.setProperty("polyglot.engine.resources.home", strPath);
+            System.setProperty("polyglot.engine.resourcePath", strPath);
             try (Context context = Context.create()) {
                 AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
             } finally {
@@ -548,7 +548,7 @@ public class InternalResourceTest {
             // Set explicit component (language, instrument) cache root
             strPath = cacheRoot2.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).toRealPath().toString();
             libPath = strPath;
-            System.setProperty(String.format("polyglot.engine.resources.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)), strPath);
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)), strPath);
             try (Context context = Context.create()) {
                 AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
             } finally {
@@ -558,9 +558,9 @@ public class InternalResourceTest {
 
             // Set explicit component resource cache root
             libPath = cacheRoot3.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(LibraryResource.ID).toRealPath().toString();
-            System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID), libPath);
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID), libPath);
             strPath = cacheRoot3.resolve(TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)).resolve(SourcesResource.ID).toRealPath().toString();
-            System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID), strPath);
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID), strPath);
             try (Context context = Context.create()) {
                 AbstractExecutableTestLanguage.execute(context, TestOverriddenResourceRoot.class, libPath, strPath);
             } finally {
@@ -569,10 +569,10 @@ public class InternalResourceTest {
             }
         } finally {
             // Clean explicit resource root
-            System.getProperties().remove("polyglot.engine.resources.home");
-            System.getProperties().remove(String.format("polyglot.engine.resources.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)));
-            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID));
-            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID));
+            System.getProperties().remove("polyglot.engine.resourcePath");
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)));
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID));
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID));
             TemporaryResourceCacheRoot.delete(cacheRoot1);
             TemporaryResourceCacheRoot.delete(cacheRoot2);
             TemporaryResourceCacheRoot.delete(cacheRoot3);
@@ -647,6 +647,133 @@ public class InternalResourceTest {
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesLookedUpById.class);
         }
+    }
+
+    @Registration(/* ... */internalResources = {LibraryResource.class})
+    public static class TestUnsupportedResource extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                AbstractPolyglotTest.assertFails(() -> env.getInternalResource(SourcesResource.class), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> env.getInternalResource(SourcesResource.ID), IllegalArgumentException.class);
+                return "";
+            }
+        }
+    }
+
+    @Test
+    public void testUnsupportedResource() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestUnsupportedResource.class);
+        }
+    }
+
+    @Registration(internal = true, /* ... */internalResources = {LibraryResource.class})
+    public static class TestCopyResourcesInternal extends AbstractExecutableTestLanguage {
+
+        @Override
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
+
+    @Registration(/* ... */internalResources = {SourcesResource.class})
+    public static class TestCopyResourcesDependent extends AbstractExecutableTestLanguage {
+
+        // Used as an annotation value, needs to be s compile time constant.
+        static final String ID = "com_oracle_truffle_api_test_polyglot_internalresourcetest_testcopyresourcesdependent";
+
+        @Override
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
+
+    @Registration(/* ... */dependentLanguages = TestCopyResourcesDependent.ID, internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestCopyResourcesRoot extends AbstractExecutableTestLanguage {
+
+        @Override
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
+
+    @TruffleInstrument.Registration(id = TestCopyResourcesInternalInstrument.ID, name = TestCopyResourcesInternalInstrument.ID, //
+                    internal = true, internalResources = {LibraryResource.class})
+    public static final class TestCopyResourcesInternalInstrument extends TruffleInstrument {
+        static final String ID = "TestCopyResourcesInternalInstrument";
+
+        @Override
+        @SuppressWarnings("try")
+        protected void onCreate(Env env) {
+        }
+    }
+
+    @TruffleInstrument.Registration(id = TestCopyResourcesInstrument.ID, name = TestCopyResourcesInstrument.ID, //
+                    internalResources = {LibraryResource.class, SourcesResource.class})
+    public static final class TestCopyResourcesInstrument extends TruffleInstrument {
+        static final String ID = "TestCopyResourcesInstrument";
+
+        @Override
+        @SuppressWarnings("try")
+        protected void onCreate(Env env) {
+        }
+    }
+
+    @Test
+    public void testCopyResources() throws IOException {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        Path tmpDir = Files.createTempDirectory(null);
+        try {
+            assertTrue(Engine.copyResources(tmpDir, TestUtils.getDefaultLanguageId(TestCopyResourcesRoot.class)));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInternal.class, LibraryResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesDependent.class, SourcesResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesRoot.class, LibraryResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesRoot.class, SourcesResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInternalInstrument.ID, LibraryResource.class));
+            assertFalse(hasResource(tmpDir, TestCopyResourcesInstrument.ID, LibraryResource.class));
+            assertFalse(hasResource(tmpDir, TestCopyResourcesInstrument.ID, SourcesResource.class));
+        } finally {
+            TemporaryResourceCacheRoot.delete(tmpDir);
+        }
+        tmpDir = Files.createTempDirectory(null);
+        try {
+            assertTrue(Engine.copyResources(tmpDir, TestCopyResourcesInstrument.ID));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInternal.class, LibraryResource.class));
+            assertFalse(hasResource(tmpDir, TestCopyResourcesDependent.class, SourcesResource.class));
+            assertFalse(hasResource(tmpDir, TestCopyResourcesRoot.class, LibraryResource.class));
+            assertFalse(hasResource(tmpDir, TestCopyResourcesRoot.class, SourcesResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInternalInstrument.ID, LibraryResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInstrument.ID, LibraryResource.class));
+            assertTrue(hasResource(tmpDir, TestCopyResourcesInstrument.ID, SourcesResource.class));
+        } finally {
+            TemporaryResourceCacheRoot.delete(tmpDir);
+        }
+        tmpDir = Files.createTempDirectory(null);
+        try {
+            Path tmpDirFinal = tmpDir;
+            AbstractPolyglotTest.assertFails(() -> Engine.copyResources(tmpDirFinal, InternalResourceTest.class.getSimpleName() + ".invalid_id"),
+                            IllegalArgumentException.class);
+        } finally {
+            TemporaryResourceCacheRoot.delete(tmpDir);
+        }
+    }
+
+    private static boolean hasResource(Path folder, Class<? extends AbstractExecutableTestLanguage> language, Class<? extends InternalResource> resource) {
+        return hasResource(folder, TestUtils.getDefaultLanguageId(language), resource);
+    }
+
+    private static boolean hasResource(Path folder, String componentId, Class<? extends InternalResource> resource) {
+        String resourceId = resource.getAnnotation(InternalResource.Id.class).value();
+        Path path = Path.of(componentId, resourceId);
+        return Files.isDirectory(folder.resolve(path));
     }
 
     private static void assertSecurityException(TruffleFileAction action) {

@@ -520,7 +520,9 @@ public abstract class TruffleLanguage<C> {
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
         /**
-         * Declarative list of {@link InternalResource} classes supported by this language.
+         * Declarative list of {@link InternalResource} classes that is associated with this
+         * language. To unpack all resources of a language embedders may use
+         * {@link Engine#copyResources(Path, String...)}.
          *
          * @since 23.1
          */
@@ -1939,7 +1941,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Creates a builder for threads that have access to the given context.
-         *
+         * 
          * @param runnable the runnable to run on the threads created by the builder.
          * @return the builder for threads that have access to the given context.
          *
@@ -3501,10 +3503,11 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns the {@link TruffleFile} representing the target directory of an internal
          * resource. The internal resource is guaranteed to be fully
-         * {@link InternalResource#unpackFiles(Path) unpacked} before this method returns. When this
-         * method is called for the first time and the resource is not cached than the resource will
-         * be unpacked. Unpacking an internal resource can be an expensive operation, but the
-         * implementation makes sure that unpacking internal resources is cached.
+         * {@link InternalResource#unpackFiles(InternalResource.Env, Path)} s unpacked} before this
+         * method returns. When this method is called for the first time and the resource is not
+         * cached than the resource will be unpacked. Unpacking an internal resource can be an
+         * expensive operation, but the implementation makes sure that unpacking internal resources
+         * is cached.
          * <p>
          * The returned {@link TruffleFile} will only grant read-only access to the target
          * directory, but access is provided even if IO access is disabled.
@@ -3515,6 +3518,7 @@ public abstract class TruffleLanguage<C> {
          * and stored relative to the native-image.
          *
          * @param resource the resource class to load
+         * @throws IllegalArgumentException if {@code resource} is not associated with this language
          * @throws IOException in case of IO error
          * @since 23.1
          */
@@ -3530,6 +3534,8 @@ public abstract class TruffleLanguage<C> {
          * {@link Engine#copyResources(Path, String...)}.
          *
          * @param resourceId unique id of the resource to be loaded
+         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
+         *             associated with this language
          * @throws IOException in case of IO error
          * @see #getInternalResource(Class)
          * @see Engine#copyResources(Path, String...)
@@ -4127,7 +4133,6 @@ public abstract class TruffleLanguage<C> {
          */
         HARD
     }
-
 }
 
 class TruffleLanguageSnippets {

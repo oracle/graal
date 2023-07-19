@@ -1049,9 +1049,8 @@ public final class TruffleBaseFeature implements InternalFeature {
                 });
             }
             try {
-                List<Path> internalResourceFolders = Engine.copyResources(resourcesDir);
-                for (Path internalResourceFolder : internalResourceFolders) {
-                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCE, internalResourceFolder);
+                if (Engine.copyResources(resourcesDir)) {
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
                 }
             } catch (IOException ioe) {
                 throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);

@@ -370,11 +370,14 @@ public final class Engine implements AutoCloseable {
      * @param components names of languages or instruments whose resources should be unpacked. If no
      *            languages or instruments are provided, then all installed languages and
      *            instruments are used
-     * @return list of folders created in the {@code targetFolder}
+     * @return {@code true} if at least one of the {@code components} has associated resources that
+     *         were unpacked into {@code targetFolder}
+     * @throws IllegalArgumentException if the {@code components} list contains an id of a language
+     *             or instrument that is not installed
      * @throws IOException in case of an IO error
      * @since 23.1
      */
-    public static List<Path> copyResources(Path targetFolder, String... components) throws IOException {
+    public static boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getImpl().copyResources(targetFolder, components);
     }
 
@@ -706,7 +709,7 @@ public final class Engine implements AutoCloseable {
             synchronized (properties) {
                 for (Object systemKey : properties.keySet()) {
                     String key = (String) systemKey;
-                    if ("polyglot.engine.AllowExperimentalOptions".equals(key) || key.startsWith("polyglot.engine.resources.")) {
+                    if ("polyglot.engine.AllowExperimentalOptions".equals(key) || key.equals("polyglot.engine.resourcePath") || key.startsWith("polyglot.engine.resourcePath.")) {
                         continue;
                     }
                     if (key.startsWith(systemPropertyPrefix)) {
@@ -1188,7 +1191,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public List<Path> copyResources(Path targetFolder, String... components) {
+        public boolean copyResources(Path targetFolder, String... components) {
             throw noPolyglotImplementationFound();
         }
 

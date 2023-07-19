@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.OS;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -56,21 +55,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 final class InternalResourceCache {
 
     private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
-    private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resources.home";
-    private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resources.%s.home";
-    private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resources.%s.%s.home";
+    private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resourcePath";
+    private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resourcePath.%s";
+    private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resourcePath.%s.%s";
 
     private static final Lock unpackLock = new ReentrantLock();
     private static volatile Pair<Path, Boolean> cacheRoot;
@@ -100,7 +102,7 @@ final class InternalResourceCache {
                             root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
                         } else {
                             InternalResource resource = resourceFactory.get();
-                            InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> polyglotEngine.inEnginePreInitialization);
+                            InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource.getClass().getModule(), () -> polyglotEngine.inEnginePreInitialization);
                             root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
                             unpackResourceFiles(root, resource, env);
                         }
@@ -124,7 +126,7 @@ final class InternalResourceCache {
                 }
                 Path owner = Files.createDirectories(Objects.requireNonNull(parent));
                 Path tmpDir = Files.createTempDirectory(owner, null);
-                resource.unpackFiles(tmpDir, env);
+                resource.unpackFiles(env, tmpDir);
                 try {
                     Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
                 } catch (FileAlreadyExistsException existsException) {
@@ -202,7 +204,7 @@ final class InternalResourceCache {
                 throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
             }
             Path userHome = Paths.get(userHomeValue);
-            Path container = switch (OS.getCurrent()) {
+            Path container = switch (InternalResource.OS.getCurrent()) {
                 case DARWIN -> userHome.resolve(Path.of("Library", "Caches"));
                 case LINUX -> userHome.resolve(".cache");
                 case WINDOWS -> userHome.resolve(Path.of("AppData", "Local"));
@@ -258,45 +260,65 @@ final class InternalResourceCache {
      * Unpacks internal resources after native-image write. This method is called reflectively by
      * the {@code TruffleBaseFeature#afterAnalysis}.
      */
-    static List<Path> copyResourcesForNativeImage(Path target, String... components) throws IOException {
-        List<Path> result = new ArrayList<>();
-        Set<String> filter = components.length == 0 ? null : Set.of(components);
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            if (filter == null || filter.contains(language.getId())) {
-                for (String resourceId : language.getResourceIds()) {
-                    InternalResourceCache cache = language.getResourceCache(resourceId);
-                    Path resourceRoot = cache.copyResourcesForNativeImage(target);
-                    if (resourceRoot != null) {
-                        result.add(resourceRoot);
-                    }
-                }
+    static boolean copyResourcesForNativeImage(Path target, String... components) throws IOException {
+        boolean result = false;
+        Collection<LanguageCache> languages;
+        Collection<InstrumentCache> instruments;
+        if (components.length == 0) {
+            languages = LanguageCache.languages().values();
+            instruments = InstrumentCache.load();
+        } else {
+            Set<String> requiredComponentIds = new HashSet<>();
+            Collections.addAll(requiredComponentIds, components);
+            Set<String> requiredLanguageIds = new HashSet<>(LanguageCache.languages().keySet());
+            requiredLanguageIds.retainAll(requiredComponentIds);
+            Set<String> requiredInstrumentIds = InstrumentCache.load().stream().map(InstrumentCache::getId).collect(Collectors.toSet());
+            requiredInstrumentIds.retainAll(requiredComponentIds);
+            requiredComponentIds.removeAll(requiredLanguageIds);
+            requiredComponentIds.removeAll(requiredInstrumentIds);
+            if (!requiredComponentIds.isEmpty()) {
+                Set<String> installedComponents = new TreeSet<>(LanguageCache.languages().keySet());
+                InstrumentCache.load().stream().map(InstrumentCache::getId).forEach(installedComponents::add);
+                throw new IllegalArgumentException(String.format("Components with ids %s are not installed. Installed components are: %s.",
+                                String.join(", ", requiredComponentIds),
+                                String.join(", ", installedComponents)));
+            }
+            Set<LanguageCache> requiredLanguages = new HashSet<>(LanguageCache.internalLanguages());
+            for (String requiredLanguageId : requiredLanguageIds) {
+                requiredLanguages.addAll(LanguageCache.computeTransitiveLanguageDependencies(requiredLanguageId));
+            }
+            languages = requiredLanguages;
+            Set<InstrumentCache> requiredInstruments = new HashSet<>(InstrumentCache.internalInstruments());
+            InstrumentCache.load().stream().filter((ic) -> requiredInstrumentIds.contains(ic.getId())).forEach(requiredInstruments::add);
+            instruments = requiredInstruments;
+        }
+        for (LanguageCache language : languages) {
+            for (String resourceId : language.getResourceIds()) {
+                InternalResourceCache cache = language.getResourceCache(resourceId);
+                result |= cache.copyResourcesForNativeImage(target);
             }
         }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            if (filter == null || filter.contains(instrument.getId())) {
-                for (String resourceId : instrument.getResourceIds()) {
-                    InternalResourceCache cache = instrument.getResourceCache(resourceId);
-                    Path resourceRoot = cache.copyResourcesForNativeImage(target);
-                    if (resourceRoot != null) {
-                        result.add(resourceRoot);
-                    }
-                }
+        for (InstrumentCache instrument : instruments) {
+            for (String resourceId : instrument.getResourceIds()) {
+                InternalResourceCache cache = instrument.getResourceCache(resourceId);
+                result |= cache.copyResourcesForNativeImage(target);
             }
         }
         return result;
     }
 
-    private Path copyResourcesForNativeImage(Path target) throws IOException {
+    private boolean copyResourcesForNativeImage(Path target) throws IOException {
         Path resourceRoot = findStandaloneResourceRoot(target);
         unlink(resourceRoot);
         Files.createDirectories(resourceRoot);
-        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(() -> false);
-        resourceFactory.get().unpackFiles(resourceRoot, env);
+        InternalResource resource = resourceFactory.get();
+        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource.getClass().getModule(), () -> false);
+        resource.unpackFiles(env, resourceRoot);
         if (isEmpty(resourceRoot)) {
             Files.deleteIfExists(resourceRoot);
-            return null;
+            return false;
         } else {
-            return resourceRoot;
+            return true;
         }
     }
 

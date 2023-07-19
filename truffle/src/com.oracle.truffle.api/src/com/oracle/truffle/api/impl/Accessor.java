@@ -899,7 +899,7 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
-        public abstract InternalResource.Env createInternalResourceEnv(BooleanSupplier contextPreinitializationCheck);
+        public abstract InternalResource.Env createInternalResourceEnv(Module ownerModule, BooleanSupplier contextPreinitializationCheck);
 
     }
 

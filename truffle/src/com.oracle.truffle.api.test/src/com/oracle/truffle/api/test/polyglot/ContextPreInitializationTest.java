@@ -2738,7 +2738,7 @@ public class ContextPreInitializationTest {
         }
         Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(overriddenCacheRoot, FIRST);
-        System.setProperty("polyglot.engine.resources.home", overriddenCacheRoot.toRealPath().toString());
+        System.setProperty("polyglot.engine.resourcePath", overriddenCacheRoot.toRealPath().toString());
         TemporaryResourceCacheRoot.reset(false);
         try {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
@@ -2749,7 +2749,7 @@ public class ContextPreInitializationTest {
             }
         } finally {
             TemporaryResourceCacheRoot.reset(true);
-            System.getProperties().remove("polyglot.engine.resources.home");
+            System.getProperties().remove("polyglot.engine.resourcePath");
         }
     }
 
@@ -2767,7 +2767,7 @@ public class ContextPreInitializationTest {
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(overriddenCacheRoot, FIRST);
-        System.setProperty(String.format("polyglot.engine.resources.%s.home", FIRST), overriddenCacheRoot.resolve(FIRST).toRealPath().toString());
+        System.setProperty(String.format("polyglot.engine.resourcePath.%s", FIRST), overriddenCacheRoot.resolve(FIRST).toRealPath().toString());
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
                             newResourceExecutionTimeVerifier(files, overriddenCacheRoot.toString()));
@@ -2776,7 +2776,7 @@ public class ContextPreInitializationTest {
                 assertEquals("test", res.asString());
             }
         } finally {
-            System.getProperties().remove(String.format("polyglot.engine.resources.%s.home", FIRST));
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", FIRST));
         }
     }
 
@@ -2794,7 +2794,7 @@ public class ContextPreInitializationTest {
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(overriddenCacheRoot, FIRST);
-        System.setProperty(String.format("polyglot.engine.resources.%s.%s.home", FIRST, ContextPreInitializationResource.ID),
+        System.setProperty(String.format("polyglot.engine.resourcePath.%s.%s", FIRST, ContextPreInitializationResource.ID),
                         overriddenCacheRoot.resolve(FIRST).resolve(ContextPreInitializationResource.ID).toRealPath().toString());
         try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
@@ -2804,7 +2804,7 @@ public class ContextPreInitializationTest {
                 assertEquals("test", res.asString());
             }
         } finally {
-            System.getProperties().remove(String.format("polyglot.engine.resources.%s.%s.home", FIRST, ContextPreInitializationResource.ID));
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", FIRST, ContextPreInitializationResource.ID));
         }
     }
 
@@ -3679,7 +3679,7 @@ public class ContextPreInitializationTest {
         static boolean preInitialization;
 
         @Override
-        public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
             unpackCount++;
             Files.writeString(targetDirectory.resolve(FILE_NAME), FILE_CONTENT);
             assertEquals(preInitialization, env.inContextPreinitialization());

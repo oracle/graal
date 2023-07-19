@@ -385,7 +385,7 @@ public abstract class AbstractPolyglotImpl {
         return getNext().createHostAccess();
     }
 
-    public List<Path> copyResources(Path targetFolder, String... components) throws IOException {
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getNext().copyResources(targetFolder, components);
     }
 

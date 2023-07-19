@@ -2067,32 +2067,28 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public TruffleFile getInternalResource(Object owner, String resourceId) throws IOException {
+            Map<String, TruffleFile> cachedRoots;
+            InternalResourceCache resourceCache;
             if (owner instanceof PolyglotLanguageContext languageContext) {
                 PolyglotLanguage polyglotLanguage = languageContext.language;
-                TruffleFile root = polyglotLanguage.internalResources.get(resourceId);
-                if (root == null) {
-                    InternalResourceCache resourceCache = languageContext.language.cache.getResourceCache(resourceId);
-                    PolyglotEngineImpl polyglotEngine = languageContext.getEngine();
-                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
-                    root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                    var prevValue = polyglotLanguage.internalResources.putIfAbsent(resourceId, root);
-                    root = prevValue != null ? prevValue : root;
-                }
-                return root;
+                cachedRoots = polyglotLanguage.internalResources;
+                resourceCache = languageContext.language.cache.getResourceCache(resourceId);
             } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
-                TruffleFile root = polyglotInstrument.internalResources.get(resourceId);
-                if (root == null) {
-                    InternalResourceCache resourceCache = polyglotInstrument.cache.getResourceCache(resourceId);
-                    PolyglotEngineImpl polyglotEngine = polyglotInstrument.getEngine();
-                    Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
-                    root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                    var prevValue = polyglotInstrument.internalResources.putIfAbsent(resourceId, root);
-                    root = prevValue != null ? prevValue : root;
-                }
-                return root;
+                cachedRoots = polyglotInstrument.internalResources;
+                resourceCache = polyglotInstrument.cache.getResourceCache(resourceId);
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
+
+            TruffleFile root = cachedRoots.get(resourceId);
+            if (root == null) {
+                PolyglotEngineImpl polyglotEngine = ((VMObject) owner).getEngine();
+                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
+                root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
+                var prevValue = cachedRoots.putIfAbsent(resourceId, root);
+                root = prevValue != null ? prevValue : root;
+            }
+            return root;
         }
     }
 

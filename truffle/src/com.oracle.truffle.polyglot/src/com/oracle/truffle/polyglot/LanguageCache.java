@@ -51,9 +51,11 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -66,7 +68,6 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -208,7 +209,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     /**
      * Returns {@code true} if any registered language has {@link Registration#needsAllEncodings()}
      * set.
-     *
+     * <p>
      * NOTE: this method is called reflectively by downstream projects.
      */
     @SuppressWarnings("unused")
@@ -223,6 +224,35 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     static Map<String, LanguageCache> languages() {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
+    }
+
+    static Collection<LanguageCache> internalLanguages() {
+        Set<LanguageCache> result = new HashSet<>();
+        for (Map.Entry<String, LanguageCache> e : languages().entrySet()) {
+            if (e.getValue().isInternal()) {
+                result.add(e.getValue());
+            }
+        }
+        return result;
+    }
+
+    static Collection<LanguageCache> computeTransitiveLanguageDependencies(String id) {
+        Map<String, LanguageCache> languagesById = languages();
+        LanguageCache root = languagesById.get(id);
+        if (root == null) {
+            throw new IllegalArgumentException(String.format("A language with id '%s' is not installed. Installed languages are: %s.",
+                            id, String.join(", ", languagesById.keySet())));
+        }
+        Set<LanguageCache> result = new HashSet<>();
+        Deque<LanguageCache> todo = new ArrayDeque<>();
+        todo.add(root);
+        while (!todo.isEmpty()) {
+            LanguageCache current = todo.removeFirst();
+            if (result.add(current)) {
+                current.getDependentLanguages().stream().map(languagesById::get).filter(Objects::nonNull).forEach(todo::add);
+            }
+        }
+        return result;
     }
 
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
@@ -619,7 +649,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     InternalResourceCache getResourceCache(String resourceId) {
         InternalResourceCache cache = internalResources.get(resourceId);
         if (cache == null) {
-            throw CompilerDirectives.shouldNotReachHere(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
+            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
                             resourceId, id, String.join(", ", internalResources.keySet())));
         } else {
             return cache;

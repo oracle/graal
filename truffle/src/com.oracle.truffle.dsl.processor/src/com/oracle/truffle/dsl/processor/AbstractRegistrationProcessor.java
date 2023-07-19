@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -287,39 +288,31 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
     static void generateGetServicesClassNames(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
         List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
-        if (services.isEmpty()) {
-            builder.startReturn().startStaticCall(context.getType(List.class), "of").end().end();
-        } else {
-            Types types = context.getEnvironment().getTypeUtils();
-            builder.startReturn();
-            builder.startStaticCall(context.getType(List.class), "of");
-            for (TypeMirror service : services) {
-                builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
-            }
-            builder.end(2);
+        Types types = context.getEnvironment().getTypeUtils();
+        builder.startReturn();
+        builder.startStaticCall(context.getType(List.class), "of");
+        for (TypeMirror service : services) {
+            builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
         }
+        builder.end(2);
     }
 
     static void generateGetInternalResourceIds(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
         List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
-        if (resources.isEmpty()) {
-            builder.startReturn().startStaticCall(context.getType(List.class), "of").end().end();
-        } else {
-            builder.startReturn();
-            builder.startStaticCall(context.getType(List.class), "of");
-            Set<String> resourceIds = getResourcesById(resources, context).keySet();
-            for (String resourceId : resourceIds) {
-                builder.doubleQuote(resourceId);
-            }
-            builder.end(2);
+        builder.startReturn();
+        builder.startStaticCall(context.getType(List.class), "of");
+        Set<String> resourceIds = getResourcesById(resources, context).keySet();
+        for (String resourceId : resourceIds) {
+            builder.doubleQuote(resourceId);
         }
+        builder.end(2);
     }
 
     static void generateCreateInternalResource(AnnotationMirror registration, VariableElement resourceIdParameter, CodeTreeBuilder builder, ProcessorContext context) {
         List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
         String resourceIdParameterName = resourceIdParameter.getSimpleName().toString();
         if (resources.isEmpty()) {
-            generateThrowIllegalErgumentException(builder, context, resourceIdParameterName, Set.of());
+            generateThrowIllegalArgumentException(builder, context, resourceIdParameterName, Set.of());
         } else {
             builder.startSwitch().string(resourceIdParameterName).end().startBlock();
             Map<String, TypeMirror> resourcesByName = getResourcesById(resources, context);
@@ -331,12 +324,12 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             }
             builder.caseDefault();
             builder.startCaseBlock();
-            generateThrowIllegalErgumentException(builder, context, resourceIdParameterName, resourcesByName.keySet());
+            generateThrowIllegalArgumentException(builder, context, resourceIdParameterName, resourcesByName.keySet());
             builder.end(2);
         }
     }
 
-    private static void generateThrowIllegalErgumentException(CodeTreeBuilder builder, ProcessorContext context, String resourceIdParameterName, Set<String> supportedIds) {
+    private static void generateThrowIllegalArgumentException(CodeTreeBuilder builder, ProcessorContext context, String resourceIdParameterName, Set<String> supportedIds) {
         builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).startStaticCall(context.getType(String.class), "format");
         builder.doubleQuote("Unsupported internal resource id %s, supported ids are " + String.join(", ", supportedIds));
         builder.string(resourceIdParameterName);
@@ -344,7 +337,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     }
 
     private static Map<String, TypeMirror> getResourcesById(List<TypeMirror> resources, ProcessorContext context) {
-        Map<String, TypeMirror> res = new HashMap<>();
+        Map<String, TypeMirror> res = new LinkedHashMap<>();
         TruffleTypes types = context.getTypes();
         for (TypeMirror resource : resources) {
             AnnotationMirror id = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(resource).getAnnotationMirrors(), types.InternalResource_Id);

@@ -27,16 +27,6 @@ meth public static com.oracle.truffle.api.Assumption create()
 meth public static com.oracle.truffle.api.Assumption create(java.lang.String)
 meth public void invalidate(java.lang.String)
 
-CLSS public final !enum com.oracle.truffle.api.CPUArchitecture
-fld public final static com.oracle.truffle.api.CPUArchitecture AARCH64
-fld public final static com.oracle.truffle.api.CPUArchitecture AMD64
-meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.CPUArchitecture getCurrent()
-meth public static com.oracle.truffle.api.CPUArchitecture valueOf(java.lang.String)
-meth public static com.oracle.truffle.api.CPUArchitecture[] values()
-supr java.lang.Enum<com.oracle.truffle.api.CPUArchitecture>
-hfds id
-
 CLSS public abstract interface com.oracle.truffle.api.CallTarget
 meth public abstract !varargs java.lang.Object call(java.lang.Object[])
 
@@ -173,20 +163,33 @@ hfds id,name,polyglotInstrument,version
 
 CLSS public abstract interface com.oracle.truffle.api.InternalResource
 innr public abstract interface static !annotation Id
+innr public final static !enum CPUArchitecture
+innr public final static !enum OS
 innr public final static Env
 meth public abstract java.lang.String versionHash(com.oracle.truffle.api.InternalResource$Env)
-meth public abstract void unpackFiles(java.nio.file.Path,com.oracle.truffle.api.InternalResource$Env) throws java.io.IOException
+meth public abstract void unpackFiles(com.oracle.truffle.api.InternalResource$Env,java.nio.file.Path) throws java.io.IOException
+
+CLSS public final static !enum com.oracle.truffle.api.InternalResource$CPUArchitecture
+ outer com.oracle.truffle.api.InternalResource
+fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AARCH64
+fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AMD64
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture getCurrent()
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture[] values()
+supr java.lang.Enum<com.oracle.truffle.api.InternalResource$CPUArchitecture>
+hfds id
 
 CLSS public final static com.oracle.truffle.api.InternalResource$Env
  outer com.oracle.truffle.api.InternalResource
 meth public boolean inContextPreinitialization()
 meth public boolean inNativeImageBuild()
-meth public com.oracle.truffle.api.CPUArchitecture getCPUArchitecture()
-meth public com.oracle.truffle.api.OS getOS()
-meth public java.lang.String readVersionHash(java.lang.Module,java.lang.String) throws java.io.IOException
-meth public void unpackFiles(java.nio.file.Path,java.lang.Module,java.lang.String,java.util.List<java.lang.String>) throws java.io.IOException
+meth public com.oracle.truffle.api.InternalResource$CPUArchitecture getCPUArchitecture()
+meth public com.oracle.truffle.api.InternalResource$OS getOS()
+meth public java.util.List<java.lang.String> readResourceLines(java.nio.file.Path) throws java.io.IOException
+meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 supr java.lang.Object
-hfds contextPreinitializationCheck
+hfds contextPreinitializationCheck,owner
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.InternalResource$Id
  outer com.oracle.truffle.api.InternalResource
@@ -195,15 +198,16 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Interna
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String value()
 
-CLSS public final !enum com.oracle.truffle.api.OS
-fld public final static com.oracle.truffle.api.OS DARWIN
-fld public final static com.oracle.truffle.api.OS LINUX
-fld public final static com.oracle.truffle.api.OS WINDOWS
+CLSS public final static !enum com.oracle.truffle.api.InternalResource$OS
+ outer com.oracle.truffle.api.InternalResource
+fld public final static com.oracle.truffle.api.InternalResource$OS DARWIN
+fld public final static com.oracle.truffle.api.InternalResource$OS LINUX
+fld public final static com.oracle.truffle.api.InternalResource$OS WINDOWS
 meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.OS getCurrent()
-meth public static com.oracle.truffle.api.OS valueOf(java.lang.String)
-meth public static com.oracle.truffle.api.OS[] values()
-supr java.lang.Enum<com.oracle.truffle.api.OS>
+meth public static com.oracle.truffle.api.InternalResource$OS getCurrent()
+meth public static com.oracle.truffle.api.InternalResource$OS valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.InternalResource$OS[] values()
+supr java.lang.Enum<com.oracle.truffle.api.InternalResource$OS>
 hfds id
 
 CLSS public com.oracle.truffle.api.OptimizationFailedException

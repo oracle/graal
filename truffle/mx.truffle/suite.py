@@ -1474,8 +1474,8 @@ suite = {
     "TRUFFLE_NFI_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,
-      "hashEntry" :  "META-INF/resources/hash-<os>-<arch>.sha256",
-      "fileListEntry" : "META-INF/resources/files-<os>-<arch>",
+      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
@@ -1486,9 +1486,8 @@ suite = {
       ],
       "layout" : {
         "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
-        "META-INF/resources/common/include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
-      "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
+      "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
     },
 

@@ -58,7 +58,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -534,7 +533,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public List<Path> copyResources(Path targetFolder, String... components) throws IOException {
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
     }
 

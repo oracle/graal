@@ -587,8 +587,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public InternalResource.Env createInternalResourceEnv(BooleanSupplier contextPreinitializationCheck) {
-            return new InternalResource.Env(contextPreinitializationCheck);
+        public InternalResource.Env createInternalResourceEnv(Module ownerModule, BooleanSupplier contextPreinitializationCheck) {
+            return new InternalResource.Env(ownerModule, contextPreinitializationCheck);
         }
     }
 

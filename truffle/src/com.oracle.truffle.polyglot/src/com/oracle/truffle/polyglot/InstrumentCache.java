@@ -56,7 +56,6 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -154,6 +153,16 @@ final class InstrumentCache {
             }
             return cache;
         }
+    }
+
+    static Collection<InstrumentCache> internalInstruments() {
+        Set<InstrumentCache> result = new HashSet<>();
+        for (InstrumentCache i : load()) {
+            if (i.isInternal()) {
+                result.add(i);
+            }
+        }
+        return result;
     }
 
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
@@ -270,7 +279,7 @@ final class InstrumentCache {
     InternalResourceCache getResourceCache(String resourceId) {
         InternalResourceCache cache = internalResources.get(resourceId);
         if (cache == null) {
-            throw CompilerDirectives.shouldNotReachHere(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
+            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
                             resourceId, id, String.join(", ", internalResources.keySet())));
         } else {
             return cache;

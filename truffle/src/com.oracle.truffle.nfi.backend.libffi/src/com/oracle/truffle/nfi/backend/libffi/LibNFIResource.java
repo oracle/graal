@@ -45,32 +45,26 @@ import com.oracle.truffle.api.InternalResource;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 
 @InternalResource.Id("libtrufflenfi")
 final class LibNFIResource implements InternalResource {
 
-    private static final String HASH_ENTRY = "META-INF/resources/hash-<os>-<arch>.sha256";
-    private static final String FILE_LIST_ENTRY = "META-INF/resources/files-<os>-<arch>";
-
-    private static final List<String> RELATIVIZE_TO = List.of(
-                    "META-INF/resources/common",
-                    "META-INF/resources/<os>/<arch>");
-
     @Override
-    public void unpackFiles(Path targetDirectory, Env env) throws IOException {
+    public void unpackFiles(Env env, Path targetDirectory) throws IOException {
         if (env.inNativeImageBuild() && !env.inContextPreinitialization()) {
             // The trufflenfi is fully intrinsified in the native-image. We don't need to copy it
             // into resources folder.
             return;
         }
-        env.unpackFiles(targetDirectory, this.getClass().getModule(), FILE_LIST_ENTRY, RELATIVIZE_TO);
+        Path base = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString());
+        env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
     }
 
     @Override
     public String versionHash(Env env) {
         try {
-            return env.readVersionHash(this.getClass().getModule(), HASH_ENTRY);
+            Path hashResource = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
+            return env.readResourceLines(hashResource).get(0);
         } catch (IOException ioe) {
             throw CompilerDirectives.shouldNotReachHere(ioe);
         }

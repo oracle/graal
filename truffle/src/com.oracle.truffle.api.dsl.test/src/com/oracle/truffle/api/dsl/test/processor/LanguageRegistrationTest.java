@@ -332,7 +332,7 @@ public class LanguageRegistrationTest {
     static class ProxyInternalResource implements InternalResource {
 
         @Override
-        public void unpackFiles(Path targetDirectory, Env env) {
+        public void unpackFiles(Env env, Path targetDirectory) {
         }
 
         @Override
