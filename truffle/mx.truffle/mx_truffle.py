@@ -195,7 +195,7 @@ def _open_module_exports_args():
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Disable DefaultRuntime warning
-    #vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+    vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
@@ -204,6 +204,7 @@ def _unittest_config_participant(config):
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
