@@ -727,12 +727,12 @@ Exceeding the maximum heap size will automatically close the context and raise a
 
 ### Ensuring Host Callback Stack Headroom
 
-With Polyglot Isolates, the experimental `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
+With Polyglot Isolates, the `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
 If the available stack size drops below the specified threshold, the host callback fails.
 
 ### Memory Protection
 
-In Linux environments that support Memory Protection Keys, the experimental `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
+In Linux environments that support Memory Protection Keys, the `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
 GraalVM will only enable access to the engine's heap when executing code of the Polyglot Isolate.
 
