@@ -41,6 +41,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
@@ -126,7 +128,7 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         protected void operate(NativeVMOperationData d) {
             HeapDumpVMOperationData data = (HeapDumpVMOperationData) d;
             if (data.getGCBefore()) {
-                System.gc();
+                Heap.getHeap().getGC().collectCompletely(GCCause.HeapDump);
             }
 
             try {
@@ -138,7 +140,7 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         }
 
         @RestrictHeapAccess(access = UNRESTRICTED, reason = "Error reporting may allocate.")
-        private void reportError(Throwable e) {
+        private static void reportError(Throwable e) {
             Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt.").newline().string(e.getClass().getName()).string(": ")
                             .string(e.getMessage());
         }
