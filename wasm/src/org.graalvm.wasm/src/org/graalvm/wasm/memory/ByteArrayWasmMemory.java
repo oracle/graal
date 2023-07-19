@@ -317,7 +317,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    private void validateAtomicAddress(Node node, long address, int length) {
+    private static void validateAtomicAddress(Node node, long address, int length) {
         if ((address & (length - 1)) != 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw trapUnalignedAtomic(node, address, length);

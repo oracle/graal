@@ -48,9 +48,9 @@ package com.oracle.truffle.api.memory;
  *
  * <h2>Thread safety</h2>
  * <p>
- * The methods of this class are <em>not</em> safe for use by multiple concurrent threads,
- * unless otherwise stated. If a byte array is to be used by more than one thread
- * then access to the byte array should be controlled by appropriate synchronization.
+ * The methods of this class are <em>not</em> safe for use by multiple concurrent threads, unless
+ * otherwise stated. If a byte array is to be used by more than one thread then access to the byte
+ * array should be controlled by appropriate synchronization.
  *
  * <h2>Alignment</h2>
  * <p>
@@ -500,8 +500,8 @@ public abstract class ByteArraySupport {
     public abstract byte getAndAddByte(byte[] buffer, long byteOffset, byte delta) throws IndexOutOfBoundsException;
 
     /**
-     * Atomically adds the given short to the current short at the given byte offset from the start of
-     * the buffer.
+     * Atomically adds the given short to the current short at the given byte offset from the start
+     * of the buffer.
      *
      * @param buffer the byte array to read from
      * @param byteOffset the byte offset at which the short will be read and written to
@@ -796,8 +796,8 @@ public abstract class ByteArraySupport {
     public abstract short compareAndExchangeShort(byte[] buffer, long byteOffset, short expected, short x) throws IndexOutOfBoundsException;
 
     /**
-     * Atomically exchanges the given int with the current int at the given byte offset
-     * from the start of the buffer, if and only if the current int equals the expected int.
+     * Atomically exchanges the given int with the current int at the given byte offset from the
+     * start of the buffer, if and only if the current int equals the expected int.
      *
      * @param buffer the byte array to read from
      * @param byteOffset the byte offset at which the int will be read and written to
