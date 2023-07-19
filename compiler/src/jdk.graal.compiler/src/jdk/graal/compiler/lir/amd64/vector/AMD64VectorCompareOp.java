@@ -29,26 +29,35 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 public final class AMD64VectorCompareOp extends AMD64VectorInstruction {
     public static final LIRInstructionClass<AMD64VectorCompareOp> TYPE = LIRInstructionClass.create(AMD64VectorCompareOp.class);
 
-    @Opcode private final VexRMOp opcode;
+    @Opcode private final VexRROp opcode;
     @Use({OperandFlag.REG}) protected AllocatableValue x;
     @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue y;
+    protected Register fixedY;
 
-    public AMD64VectorCompareOp(VexRMOp opcode, AllocatableValue x, AllocatableValue y) {
+    public AMD64VectorCompareOp(VexRROp opcode, AllocatableValue x, AllocatableValue y) {
         this(opcode, AVXSize.XMM, x, y);
     }
 
-    public AMD64VectorCompareOp(VexRMOp opcode, AVXSize size, AllocatableValue x, AllocatableValue y) {
+    public AMD64VectorCompareOp(VexRROp opcode, AVXSize size, AllocatableValue x, Register y) {
+        this(opcode, size, x, (AllocatableValue) null);
+        fixedY = y;
+    }
+
+    public AMD64VectorCompareOp(VexRROp opcode, AVXSize size, AllocatableValue x, AllocatableValue y) {
         super(TYPE, size);
         this.opcode = opcode;
         this.x = x;
@@ -60,7 +69,11 @@ public final class AMD64VectorCompareOp extends AMD64VectorInstruction {
         if (isRegister(y)) {
             opcode.emit(masm, size, asRegister(x), asRegister(y));
         } else {
-            opcode.emit(masm, size, asRegister(x), (AMD64Address) crb.asAddress(y));
+            if (opcode instanceof VexRMOp opcodeRM) {
+                opcodeRM.emit(masm, size, asRegister(x), (AMD64Address) crb.asAddress(y));
+            } else {
+                GraalError.shouldNotReachHere("must not emit vector RM compare for non RM opcode");
+            }
         }
     }
 }

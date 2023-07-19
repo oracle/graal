@@ -32,6 +32,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.EvexRMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -57,12 +58,12 @@ public class AMD64VectorUnary {
     public static final class AVXUnaryOp extends AMD64VectorInstruction {
         public static final LIRInstructionClass<AVXUnaryOp> TYPE = LIRInstructionClass.create(AVXUnaryOp.class);
 
-        @Opcode private final VexRMOp opcode;
+        @Opcode private final VexRROp opcode;
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-        public AVXUnaryOp(VexRMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+        public AVXUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;
@@ -74,7 +75,11 @@ public class AMD64VectorUnary {
             if (isRegister(input)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(input));
             } else {
-                opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
+                if (opcode instanceof VexRMOp opcodeRM) {
+                    opcodeRM.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
+                } else {
+                    GraalError.shouldNotReachHere("must not emit vector RM unary for non RM opcode");
+                }
             }
         }
     }

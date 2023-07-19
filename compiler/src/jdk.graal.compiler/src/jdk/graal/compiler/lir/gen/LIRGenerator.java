@@ -466,11 +466,19 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
+    public abstract void emitOpMaskTestBranch(Value left, boolean invertLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
+    public abstract void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
     @Override
     public abstract Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     @Override
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskTestMove(Value leftVal, boolean invertLeft, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue);
 
     /** Loads the target address for indirect {@linkplain #emitForeignCall foreign calls}. */
     protected Value emitIndirectForeignCallAddress(@SuppressWarnings("unused") ForeignCallLinkage linkage) {

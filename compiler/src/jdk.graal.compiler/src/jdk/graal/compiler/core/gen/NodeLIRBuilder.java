@@ -103,6 +103,8 @@ import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.calc.OpMaskOrTestNode;
+import jdk.graal.compiler.nodes.calc.OpMaskTestNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
@@ -594,6 +596,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             gen.emitJump(((LogicConstantNode) node).getValue() ? trueSuccessor : falseSuccessor);
         } else if (node instanceof IntegerTestNode) {
             gen.emitIntegerTestBranch(operand(((IntegerTestNode) node).getX()), operand(((IntegerTestNode) node).getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        } else if (node instanceof OpMaskTestNode test) {
+            gen.emitOpMaskTestBranch(operand(test.getX()), test.invertX(), operand(test.getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        } else if (node instanceof OpMaskOrTestNode orTest) {
+            gen.emitOpMaskOrTestBranch(operand(orTest.getX()), operand(orTest.getY()), orTest.allZeros(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else if (node instanceof OpaqueLogicNode) {
             emitBranch(((OpaqueLogicNode) node).value(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else {
@@ -623,6 +629,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof IntegerTestNode) {
             IntegerTestNode test = (IntegerTestNode) node;
             return gen.emitIntegerTestMove(operand(test.getX()), operand(test.getY()), trueValue, falseValue);
+        } else if (node instanceof OpMaskTestNode test) {
+            return gen.emitOpMaskTestMove(operand(test.getX()), test.invertX(), operand(test.getY()), trueValue, falseValue);
+        } else if (node instanceof OpMaskOrTestNode orTest) {
+            return gen.emitOpMaskOrTestMove(operand(orTest.getX()), operand(orTest.getY()), orTest.allZeros(), trueValue, falseValue);
         } else {
             throw GraalError.unimplemented(node.toString());
         }
