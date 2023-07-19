@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.vm.VM;
  */
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@Shareable
 public class BaseInterop {
     @ExportMessage
     public static boolean isNull(StaticObject object) {

@@ -65,6 +65,7 @@ public class InteropNodesProcessor extends BaseProcessor {
     private static final String CACHED = "com.oracle.truffle.api.dsl.Cached";
     private static final String CACHED_LIBRARY = "com.oracle.truffle.api.library.CachedLibrary";
     private static final String BIND = "com.oracle.truffle.api.dsl.Bind";
+    private static final String SHAREABLE = "com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable";
 
     private static final String INTEROP_NODES = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes";
     private static final String INTEROP_MESSAGE_FACTORY = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory";
@@ -78,7 +79,8 @@ public class InteropNodesProcessor extends BaseProcessor {
     private TypeElement generateInteropNodes;
     // @ExportMessage
     private TypeElement exportMessage;
-    // @Collect
+    // @Shareable
+    private TypeElement shareable;
     // @Cached
     private TypeElement cached;
     // @CachedLibrary
@@ -96,6 +98,7 @@ public class InteropNodesProcessor extends BaseProcessor {
     private void collectAndCheckRequiredAnnotations() {
         generateInteropNodes = getTypeElement(GENERATE_INTEROP_NODES);
         exportMessage = getTypeElement(EXPORT_MESSAGE);
+        shareable = getTypeElement(SHAREABLE);
         cached = getTypeElement(CACHED);
         cachedLibrary = getTypeElement(CACHED_LIBRARY);
         bind = getTypeElement(BIND);
@@ -128,12 +131,21 @@ public class InteropNodesProcessor extends BaseProcessor {
         return false;
     }
 
+    private boolean isShareable(Element e, boolean topLevelShareable) {
+        AnnotationMirror shareableAnnotation = getAnnotation(e, shareable.asType());
+        if (shareableAnnotation != null) {
+            return getAnnotationValue(shareableAnnotation, "value", Boolean.class);
+        }
+        return topLevelShareable;
+    }
+
     private void processElement(TypeElement cls) {
         if (processedClasses.contains(cls)) {
             return;
         }
 
         processedClasses.add(cls);
+        boolean shareableCls = isShareable(cls, false);
         List<Message> nodes = new ArrayList<>();
         for (Element methodElement : cls.getEnclosedElements()) {
             List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType());
@@ -141,11 +153,12 @@ public class InteropNodesProcessor extends BaseProcessor {
             // Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
                 String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-                if (targetMessageName.length() == 0) {
+                if (targetMessageName != null && targetMessageName.length() == 0) {
                     targetMessageName = methodElement.getSimpleName().toString();
                 }
                 String clsName = ProcessorUtils.capitalize(methodElement.getSimpleName().toString()) + "Node";
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName), targetMessageName, clsName));
+                boolean isShareable = isShareable(methodElement, shareableCls);
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName), targetMessageName, clsName, isShareable));
             }
         }
 
@@ -175,7 +188,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
             registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORY, ".register(cls, ", INTEROP_MESSAGE, ".Message.", ProcessorUtils.capitalize(m.targetMessage), ", ", clsName, "Factory.", m.clsName,
-                            "Gen::create);");
+                            "Gen::create, ", m.isShareable, ");");
             nodesClass.withInnerClass(m.cls);
         }
         nodesClass.withMethod(registerMessages);
@@ -269,11 +282,13 @@ public class InteropNodesProcessor extends BaseProcessor {
         final ClassBuilder cls;
         final String targetMessage;
         final String clsName;
+        final boolean isShareable;
 
-        Message(ClassBuilder cls, String targetMessage, String clsName) {
+        Message(ClassBuilder cls, String targetMessage, String clsName, boolean isShareable) {
             this.cls = cls;
             this.targetMessage = targetMessage;
             this.clsName = clsName;
+            this.isShareable = isShareable;
         }
     }
 }
