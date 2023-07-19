@@ -1252,6 +1252,8 @@ suite = {
           "* to org.graalvm.truffle, com.oracle.truffle.enterprise",
           # keep exports to SVM minimal as they need to be stable across API boundaries
           "com.oracle.truffle.runtime to org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          # necessary to instantiate access truffle compiler from the runtime during host compilation
+          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
