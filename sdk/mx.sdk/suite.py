@@ -503,6 +503,9 @@ suite = {
       "distDependencies" : [
         "GRAAL_SDK",
       ],
+      "exclude" : [
+        "JLINE3",
+      ],
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
       "allowsJavadocWarnings": True,
     },
