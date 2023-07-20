@@ -245,7 +245,8 @@ public final class UnimplementedGraalIntrinsics {
         if (!AESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
         }
 
         if (!CounterModeAESNode.isSupported(arch)) {
@@ -350,7 +351,6 @@ public final class UnimplementedGraalIntrinsics {
             // without JIT implementation
             add(ignore,
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.storeStoreFence()V",
                             "jdk/internal/vm/Continuation.doYield()I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
