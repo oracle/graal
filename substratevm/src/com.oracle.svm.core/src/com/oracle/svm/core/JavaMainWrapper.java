@@ -220,16 +220,7 @@ public class JavaMainWrapper {
             }
 
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
-                if (VMInspectionOptions.hasHeapDumpSupport()) {
-                    String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
-                    VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
-                    System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
-                    return 0;
-                } else {
-                    System.err.println("Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native executables built with `" +
-                                    VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
-                    return 1;
-                }
+                return VMInspectionOptions.dumpImageHeap() ? 0 : 1;
             }
 
             ThreadListenerSupport.get().beforeThreadRun();
