@@ -221,16 +221,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected Object lookupConstant(int cpi, int opcode) {
             try {
                 return super.lookupConstant(cpi, opcode);
-            } catch (LinkageError | IllegalArgumentException ex) {
-                Object result = constantPool.lookupConstant(cpi);
+            } catch (LinkageError le) {
+                Object result;
+                try {
+                    result = constantPool.lookupConstant(cpi);
+                } catch (LinkageError | IllegalArgumentException ex) {
+                    handleUnresolvedConstant(ex);
+                    return le; // indicate that the exception has already been handled
+                }
                 assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
                 if (result instanceof UnresolvedJavaType || result instanceof UnresolvedJavaMethod || result instanceof UnresolvedJavaField) {
-                    if (linkAtBuildTime) {
-                        reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
-                    } else {
-                        replaceWithThrowingAtRuntime(this, ex);
-                    }
-                    return ex; // indicate that the exception has already been handled
+                    handleUnresolvedConstant(le);
+                    return le; // indicate that the exception has already been handled
                 } else {
                     return result;
                 }
@@ -392,6 +394,14 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
             handleUnresolvedMethod(javaMethod);
+        }
+
+        private void handleUnresolvedConstant(Throwable ex) {
+            if (linkAtBuildTime) {
+                reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+            } else {
+                replaceWithThrowingAtRuntime(this, ex);
+            }
         }
 
         /**
