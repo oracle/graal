@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.aarch64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderPhase;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+public class AMD64HotSpotSuitesCreator extends AMD64SuitesCreator {
 
-public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
-    public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
-                        new AArch64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
+    public AMD64HotSpotSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+        super(compilerConfiguration, plugins);
     }
+
+    @Override
+    protected GraphBuilderPhase createGraphBuilderPhase(GraphBuilderConfiguration graphBuilderConfiguration) {
+        return new HotSpotGraphBuilderPhase(graphBuilderConfiguration);
+    }
+
 }

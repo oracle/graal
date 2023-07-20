@@ -39,7 +39,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 
 import jdk.vm.ci.code.Architecture;
 
-public class AMD64SuitesCreator extends DefaultSuitesCreator {
+public abstract class AMD64SuitesCreator extends DefaultSuitesCreator {
 
     public AMD64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);
