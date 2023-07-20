@@ -3,7 +3,6 @@ layout: docs
 toc_group: docs
 title: Overview
 permalink: /docs/introduction/
-redirect_from: /$version/docs/introduction/
 ---
 
 # GraalVM Overview
