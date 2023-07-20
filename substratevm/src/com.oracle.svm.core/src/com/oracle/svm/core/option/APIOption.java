@@ -62,7 +62,8 @@ public @interface APIOption {
     boolean extra() default false;
 
     /**
-     * This option should be stored in a native image bundle and passed to the jvm when executed with {@code com.oracle.svm.driver.launcher.BundleLauncher}.
+     * This option should be stored in a native image bundle and passed to the jvm when executed
+     * with {@code com.oracle.svm.driver.launcher.BundleLauncher}.
      */
     boolean launcherOption() default false;
 

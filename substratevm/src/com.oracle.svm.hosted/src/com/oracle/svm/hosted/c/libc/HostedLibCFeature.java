@@ -26,18 +26,13 @@ package com.oracle.svm.hosted.c.libc;
 
 import java.util.ServiceLoader;
 
-import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticallyRegisteredFeature
@@ -47,31 +42,9 @@ public class HostedLibCFeature implements InternalFeature {
         return HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class);
     }
 
-    public static class LibCOptions {
-        @APIOption(name = "libc")//
-        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
-        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
-            @Override
-            public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-                if (!values.containsKey(this)) {
-                    return Platform.includedIn(Platform.ANDROID.class)
-                                    ? "bionic"
-                                    : System.getProperty("substratevm.HostLibC", "glibc");
-                }
-                return (String) values.get(this);
-            }
-
-            @Override
-            public String getValue(OptionValues values) {
-                assert checkDescriptorExists();
-                return getValueOrDefault(values.getMap());
-            }
-        };
-    }
-
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        String targetLibC = LibCOptions.UseLibC.getValue();
+        String targetLibC = SubstrateOptions.UseLibC.getValue();
         ServiceLoader<HostedLibCBase> loader = ServiceLoader.load(HostedLibCBase.class);
         for (HostedLibCBase libc : loader) {
             if (libc.getName().equals(targetLibC)) {

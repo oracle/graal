@@ -116,6 +116,26 @@ public class SubstrateOptions {
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
 
+    @APIOption(name = "libc")//
+    @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+    public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
+        @Override
+        public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                return Platform.includedIn(Platform.ANDROID.class)
+                                ? "bionic"
+                                : System.getProperty("substratevm.HostLibC", "glibc");
+            }
+            return (String) values.get(this);
+        }
+
+        @Override
+        public String getValue(OptionValues values) {
+            assert checkDescriptorExists();
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
     public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("") {
