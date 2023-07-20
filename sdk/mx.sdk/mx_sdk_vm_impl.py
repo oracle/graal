@@ -463,12 +463,12 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
 
         svm_component = get_component('svm', stage1=True)
 
-        def _add_native_image_macro(image_config, component=None):
+        def _add_native_image_macro(image_config, component, stage1):
             # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
             if svm_component and (component is None or has_component(component.short_name, stage1=False)):
                 # create macro to build this launcher
                 _macro_dir = _get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(image_config) + '/'
-                _project_name = GraalVmNativeProperties.project_name(image_config)
+                _project_name = GraalVmNativeProperties.project_name(image_config, stage1)
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
                 # Add profiles
                 for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
@@ -650,7 +650,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 if stage1 or _rebuildable_image(_launcher_config):
-                    _add_native_image_macro(_launcher_config, _component)
+                    _add_native_image_macro(_launcher_config, _component, stage1)
                 if isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
@@ -685,7 +685,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         _link_path = _add_link(_jdk_jre_bin, _component_base + _executable)
                         _jre_bin_names.append(basename(_link_path))
                 if stage1 or _rebuildable_image(_library_config):
-                    _add_native_image_macro(_library_config, _component)
+                    _add_native_image_macro(_library_config, _component, stage1)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
             if _libpolyglot_macro_dir is not None and GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
@@ -1071,7 +1071,9 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                         layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
                     if not _rebuildable_image(image_config):
                         macro_dir = GraalVmNativeProperties.macro_name(image_config) + '/'
-                        layout.setdefault(macro_dir, []).append('dependency:{}'.format(GraalVmNativeProperties.project_name(image_config)))
+                        # Debuginfo dists include the Stage1 macro, used to build the native image. Non-rebuildable
+                        # native images don't have a macro in the final distribution.
+                        layout.setdefault(macro_dir, []).append('dependency:{}'.format(GraalVmNativeProperties.project_name(image_config, stage1=True)))
                         for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
                             layout[macro_dir].append('file:{}'.format(abspath(profile)))
                         if isinstance(image_config, mx_sdk_vm.LibraryConfig) and not isinstance(image_config, mx_sdk_vm.LanguageLibraryConfig):
@@ -1208,24 +1210,27 @@ class GraalVmProject(mx.Project):
 
 
 class GraalVmNativeProperties(GraalVmProject):
-    def __init__(self, component, image_config, **kw_args):
+    def __init__(self, component, image_config, stage1=False, **kw_args):
         """
         :type component: mx_sdk.GraalVmComponent | None
         :type image_config: mx_sdk.AbstractNativeImageConfig
+        :type stage1: bool
         """
         self.image_config = image_config
+        self.stage1 = stage1
         # With Java > 8 there are cases where image_config.get_add_exports is getting called in
         # mx_sdk_vm_impl.NativePropertiesBuildTask.contents. This only works after the jar_distributions
         # are made into proper modules. Therefore they have to be specified as dependencies here.
         deps = list(image_config.jar_distributions)
-        super(GraalVmNativeProperties, self).__init__(component, GraalVmNativeProperties.project_name(image_config), deps=deps, **kw_args)
+        super(GraalVmNativeProperties, self).__init__(component, GraalVmNativeProperties.project_name(image_config, stage1), deps=deps, **kw_args)
 
     @staticmethod
-    def project_name(image_config):
+    def project_name(image_config, stage1):
         """
         :type image_config: mx_sdk.AbstractNativeImageConfig
+        :type stage1: bool
         """
-        return GraalVmNativeProperties.macro_name(image_config) + "_native-image.properties"
+        return GraalVmNativeProperties.macro_name(image_config) + ("_stage1" if stage1 else "") + "_native-image.properties"
 
     @staticmethod
     def canonical_image_name(image_config):
@@ -1250,7 +1255,7 @@ class GraalVmNativeProperties(GraalVmProject):
         yield out, basename(out)
 
     def properties_output_file(self):
-        return join(self.get_output_base(), "native-image.properties", GraalVmNativeProperties.macro_name(self.image_config), "native-image.properties")
+        return join(self.get_output_base(), "native-image.properties", GraalVmNativeProperties.macro_name(self.image_config) + ("_stage1" if self.stage1 else ""), "native-image.properties")
 
     def getBuildTask(self, args):
         return NativePropertiesBuildTask(self, args)
@@ -3178,6 +3183,12 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     config_class = GraalVmMiscLauncher
                 for launcher_config in _get_launcher_configs(component):
                     register_project(config_class(component, launcher_config, stage1=True))
+            for component in registered_graalvm_components(stage1=False):
+                # native properties in the final distribution also need native properties in the stage1 distribution
+                for launcher_config in _get_launcher_configs(component):
+                    register_project(GraalVmNativeProperties(component, launcher_config, stage1=True))
+                for library_config in _get_library_configs(component):
+                    register_project(GraalVmNativeProperties(component, library_config, stage1=True))
         register_distribution(get_stage1_graalvm_distribution())
 
     if register_project:
