@@ -29,8 +29,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK21OrLater;
 
 /**
- * Method handle base field accessor. We must not reach this because we have our own unsafe-based
- * field accessor code {@link com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory}.
+ * Method handle base field accessor. This class must not become reachable because we have our own
+ * unsafe-based field accessor code
+ * {@link com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory}.
  *
  * @see com.oracle.svm.core.reflect.fieldaccessor
  */
