@@ -225,14 +225,14 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
         Label labelSHA3512OrSha3384 = new Label();
         Label labelSHAke128 = new Label();
 
-        // mark v8-v15 as @Temp
+        // We have marked v8-v11 as @Temp. The register allocator will take care of the spilling.
 
-        // load state
         try (ScratchRegister scratchReg1 = masm.getScratchRegister();
                         ScratchRegister scratchReg2 = masm.getScratchRegister()) {
             Register rscratch1 = scratchReg1.getRegister();
             Register rscratch2 = scratchReg2.getRegister();
 
+            // load state
             masm.add(64, rscratch1, state, 32);
 
             masm.neon.ld1MultipleVVVV(HalfReg, ElementSize.DoubleWord, v0, v1, v2, v3,
@@ -384,8 +384,19 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             masm.neon.bcaxVVVV(v23, v23, v31, v24);
             masm.neon.bcaxVVVV(v24, v24, v8, v31);
 
-            masm.neon.ld1MultipleV(FullReg, ElementSize.DoubleWord, v31,
-                            AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_1R, FullReg, ElementSize.DoubleWord, rscratch1, 8));
+            // TODO our assembler does not allow [rscratch1] + 8 while fetching 16 bytes
+            // __ ld1r(v31, __ T2D, __ post(rscratch1, 8));
+
+            // the following two options pass the unit tests
+            // option 1:
+            // this fetches only one double word while the original stub fetches two
+            masm.neon.ld1MultipleV(HalfReg, ElementSize.DoubleWord, v31,
+                            AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_1R, HalfReg, ElementSize.DoubleWord, rscratch1, 8));
+
+            // option 2:
+            // masm.neon.ld1MultipleV(FullReg, ElementSize.DoubleWord, v31,
+            // AArch64Address.createStructureImmediatePostIndexAddress(LD1_MULTIPLE_1R, FullReg, ElementSize.DoubleWord, rscratch1, 16));
+            // masm.sub(64, rscratch1, rscratch1, 8);
 
             masm.neon.bcaxVVVV(v17, v25, v19, v3);
             masm.neon.bcaxVVVV(v18, v3, v15, v19);
@@ -439,7 +450,8 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             masm.neon.st1MultipleV(HalfReg, ElementSize.DoubleWord, v24,
                             AArch64Address.createStructureNoOffsetAddress(state));
 
-            // mark v8-v15 as @Temp
+            // We have marked v8-v11 as @Temp. The register allocator will take care of the
+            // spilling.
         }
     }
 

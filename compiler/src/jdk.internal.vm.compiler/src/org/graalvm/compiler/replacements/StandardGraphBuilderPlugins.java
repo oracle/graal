@@ -183,6 +183,7 @@ import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.SHANode;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
@@ -2384,10 +2385,14 @@ public class StandardGraphBuilderPlugins {
                 ValueNode nonNullReceiver = receiver.get();
                 ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                 ValueNode state = helper.loadField(nonNullReceiver, stateField);
-                ValueNode stateStart = helper.arrayStart(state, JavaKind.Int);
+                ValueNode stateStart = helper.arrayStart(state, getStateElementType());
                 b.add(supplier.create(bufStart, stateStart));
                 return true;
             }
+        }
+
+        protected JavaKind getStateElementType() {
+            return JavaKind.Int;
         }
     }
 
@@ -2397,6 +2402,14 @@ public class StandardGraphBuilderPlugins {
 
         Registration rSha2 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
         rSha2.registerConditional(SHA256Node.isSupported(arch), new SHAPlugin(SHA256Node::new));
+
+        Registration rSha5 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
+        rSha5.registerConditional(SHA512Node.isSupported(arch), new SHAPlugin(SHA512Node::new) {
+            @Override
+            protected JavaKind getStateElementType() {
+                return JavaKind.Long;
+            }
+        });
     }
 
 }

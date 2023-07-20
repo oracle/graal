@@ -47,6 +47,7 @@ import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
 import org.graalvm.compiler.replacements.nodes.SHANode.SHA3Node;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -75,6 +76,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 SHA1Node.class,
                 SHA256Node.class,
                 SHA3Node.class,
+                SHA512Node.class,
 })
 public final class SVMIntrinsicStubs {
 }

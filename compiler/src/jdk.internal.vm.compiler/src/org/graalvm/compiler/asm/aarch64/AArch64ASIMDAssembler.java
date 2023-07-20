@@ -580,7 +580,13 @@ public abstract class AArch64ASIMDAssembler {
         SHA256SU0(0b00010 << 12),
 
         /* Cryptographic three-register SHA512 */
-        RAX1(0b11 << 11),
+        SHA512H(0b00 << 10),
+        SHA512H2(0b01 << 10),
+        SHA512SU1(0b10 << 10),
+        RAX1(0b11 << 10),
+
+        /* Cryptographic two-register SHA 512 */
+        SHA512SU0(0b00 << 10),
 
         /* Cryptographic four-register */
         EOR3(0b00 << 21),
@@ -879,6 +885,11 @@ public abstract class AArch64ASIMDAssembler {
     private void cryptographicThreeSHA512(ASIMDInstruction instr, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b11001110011_00000_1_0_00_00_00000_00000;
         emitInt(instr.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    private void cryptographicTwoSHA512(ASIMDInstruction instr, Register dst, Register src) {
+        int baseEncoding = 0b11001110110000001000_00_00000_00000;
+        emitInt(instr.encoding | baseEncoding | rd(dst) | rn(src));
     }
 
     private void cryptographicFour(ASIMDInstruction instr, Register dst, Register src1, Register src2, Register src3) {
@@ -2865,6 +2876,64 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         cryptographicThreeSHA(ASIMDInstruction.SHA256SU1, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.249 SHA512 Hash update part 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512h(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512H, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.250 SHA512 Hash update part 2.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512h2(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512H2, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.251 SHA512 Schedule Update 0.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sha512su0(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicTwoSHA512(ASIMDInstruction.SHA512SU0, dst, src);
+    }
+
+    /**
+     * C7.2.252 SHA512 Schedule Update 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512su1(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512SU1, dst, src1, src2);
     }
 
     /**

@@ -1060,12 +1060,6 @@ public class HotSpotGraphBuilderPlugins {
         // HotSpot runtime sha256_implCompress stub AVX2 variant is not yet ported
         Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
         rSha256.registerConditional(useSha256 && !SHANode.SHA256Node.isSupported(arch), new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
-
-        Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-        rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
-
-        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA3_IMPL_COMPRESS));
     }
 
     private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {

@@ -35,7 +35,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import java.lang.reflect.Type;
 
-import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -88,6 +87,7 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -578,7 +578,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ValueNode nonNullReceiver = receiver.get();
                     ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
-                    ValueNode stateStart = helper.arrayStart(state, JavaKind.Int);
+                    ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);
                     ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
                     b.add(new SHANode.SHA3Node(bufStart, stateStart, blockSize));
                     return true;
