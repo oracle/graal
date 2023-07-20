@@ -1789,14 +1789,13 @@ suite = {
         "requires" : [
         ],
         "exports" : [
-          # Unqualified exports
-          # [GR-46850] Replace with qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang",
-          "org.graalvm.shadowed.com.ibm.icu.math",
-          "org.graalvm.shadowed.com.ibm.icu.number",
-          "org.graalvm.shadowed.com.ibm.icu.text",
-          "org.graalvm.shadowed.com.ibm.icu.util",
-          "org.graalvm.shadowed.com.ibm.icu.charset",
+          # Qualified exports.
+          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.util to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.charset to org.graalvm.js, org.graalvm.py",
         ],
       },
       "subDir" : "src",
