@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -823,6 +824,16 @@ public class TestClassInitialization {
         return 42;
     }
 
+    /*
+     * Since {@link Function} is a core JDK type that is always marked as
+     * "initialize at build time", it is allowed to have a lambda for it in the image heap.
+     */
+    static Function<String, String> buildTimeLambda = TestClassInitialization::duplicate;
+
+    static String duplicate(String s) {
+        return s + s;
+    }
+
     public static void main(String[] args) {
         for (var checkedClass : checkedClasses) {
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
@@ -832,6 +843,8 @@ public class TestClassInitialization {
                 throw new RuntimeException("Class " + checkedClass.getName() + ": nameHasSimulated=" + nameHasSimulated + ", nameHasDelayed=" + nameHasDelayed + ", initialized=" + initialized);
             }
         }
+
+        assertTrue("123123".equals(buildTimeLambda.apply("123")));
 
         assertSame(42, PureMustBeSafeEarly.v);
         assertSame(84, PureCallMustBeSafeEarly.v);
