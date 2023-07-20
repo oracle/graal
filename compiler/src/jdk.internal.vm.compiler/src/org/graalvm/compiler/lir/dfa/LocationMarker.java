@@ -191,7 +191,7 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
                 }
                 DebugContext debug = lir.getDebug();
                 if (debug.isLogEnabled()) {
-                    if (value != operand) {
+                    if (!value.equals(operand)) {
                         debug.log("changing operand from %s to %s", operand, value);
                     }
                     debug.log("set operand: %s", value);
