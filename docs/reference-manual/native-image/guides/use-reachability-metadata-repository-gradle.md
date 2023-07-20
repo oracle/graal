@@ -27,14 +27,13 @@ We recommend that you follow the instructions and create the application step-by
 
 ## Prepare a Demo Application
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ``
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
 
-3. Rename the default `app` directory to `H2Example`, then rename the default filename `App.java` to `H2Example.java` and replace its contents with the following: 
+3. Rename the default _app_ directory to _H2Example_, then rename the default filename _App.java_ to _H2Example.java_ and replace its contents with the following: 
 
     ```java
     package org.graalvm.example;
