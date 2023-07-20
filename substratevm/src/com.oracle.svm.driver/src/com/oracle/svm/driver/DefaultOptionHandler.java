@@ -93,7 +93,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (addModulesArgs == null) {
                     NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
                 }
-                nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
                 nativeImage.addAddedModules(addModulesArgs);
                 return true;
             case limitModulesOption:
@@ -189,7 +188,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (addModulesArgs.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
             nativeImage.addAddedModules(addModulesArgs);
             return true;
         }

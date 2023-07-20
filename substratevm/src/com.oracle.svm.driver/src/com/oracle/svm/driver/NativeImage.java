@@ -1430,6 +1430,15 @@ public class NativeImage {
             arguments.addAll(strings);
         }
 
+        String javaExecutable = canonicalize(config.getJavaExecutable()).toString();
+        if (!addModules.isEmpty()) {
+            var builderModules = getBuilderObservableModules(javaExecutable, arguments);
+            var addModulesForBuilderVM = addModules.stream().filter(builderModules::contains).toList();
+            if (!addModulesForBuilderVM.isEmpty()) {
+                arguments.add(DefaultOptionHandler.addModulesOption + "=" + String.join(",", addModulesForBuilderVM));
+            }
+        }
+
         arguments.addAll(config.getGeneratorMainClass());
 
         if (IS_AOT && OS.getCurrent().hasProcFS) {
@@ -1455,7 +1464,6 @@ public class NativeImage {
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
-        String javaExecutable = canonicalize(config.getJavaExecutable()).toString();
         command.add(javaExecutable);
         command.add(createVMInvocationArgumentFile(arguments));
         command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
@@ -1518,6 +1526,40 @@ public class NativeImage {
                 p.destroy();
             }
         }
+    }
+
+    private Set<String> getBuilderObservableModules(String javaExecutable, List<String> arguments) {
+        Process listModulesProcess = null;
+        Set<String> result = new HashSet<>();
+        try {
+            var pb = new ProcessBuilder(javaExecutable);
+            pb.command().addAll(arguments);
+            pb.command().add("--list-modules");
+            pb.environment().clear();
+            listModulesProcess = pb.start();
+            try (var br = new BufferedReader(new InputStreamReader(listModulesProcess.getInputStream()))) {
+                while (true) {
+                    var line = br.readLine();
+                    if (line == null) {
+                        break;
+                    }
+                    var moduleNameColumn = StringUtil.split(line, " ", 2)[0];
+                    var versionStrippedModuleName = StringUtil.split(moduleNameColumn, "@", 2)[0];
+                    result.add(versionStrippedModuleName);
+                }
+            }
+            int exitStatus = listModulesProcess.waitFor();
+            if (exitStatus != 0) {
+                throw showError("Determining image-builder observable modules failed (Exit status %d).".formatted(exitStatus));
+            }
+        } catch (IOException | InterruptedException e) {
+            throw showError(e.getMessage());
+        } finally {
+            if (listModulesProcess != null) {
+                listModulesProcess.destroy();
+            }
+        }
+        return result;
     }
 
     /**
