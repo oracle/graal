@@ -65,4 +65,35 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
             }
         }
     }
+
+    public static int snippetOverflowInt(int min, int max, int[] arr) {
+        if (arr == null) {
+            return 0;
+        }
+        int counter = 0;
+        int i;
+        int result = 0;
+        for (i = min; GraalDirectives.injectIterationCount(1000, i <= max); i++) {
+            counter++;
+            if (counter >= 3) {
+                result += arr[i];
+                if (counter == 1222) {
+                    continue;
+                }
+                return -1;
+            }
+            GraalDirectives.neverStripMine();
+            GraalDirectives.neverWriteSink();
+        }
+        return counter + result;
+    }
+
+    @Test
+    public void testOverflow() {
+        final int min = Byte.MAX_VALUE - 5;
+        final int max = Byte.MAX_VALUE;
+        int[] arr = new int[1000];
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.PartialUnroll, false, GraalOptions.LoopUnswitch, false);
+        test(opt, "snippetOverflowInt", min, max, arr);
+    }
 }
