@@ -425,9 +425,21 @@ class ReflectionMustBeSafeEarly {
             m1 = c1Local.getDeclaredMethod("foo", int.class);
             f2 = c2Local.getDeclaredField("field");
 
+            /*
+             * Check that reflective class lookup and the elimination of the class initialization
+             * check also works when the class name is not constant yet during bytecode parsing.
+             */
+            if (c1Local != Class.forName(forNameMustBeSafeEarly(), true, ReflectionMustBeSafeEarly.class.getClassLoader())) {
+                throw new Error("wrong class");
+            }
+
         } catch (ReflectiveOperationException ex) {
             throw new Error(ex);
         }
+    }
+
+    private static String forNameMustBeSafeEarly() {
+        return "com.oracle.svm.test.clinit.ForNameMustBeSafeEarly";
     }
 }
 
