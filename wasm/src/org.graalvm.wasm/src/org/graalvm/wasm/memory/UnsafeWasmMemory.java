@@ -1013,7 +1013,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
                 return (byte) ((fullWord & mask) >> shift);
             }
         } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 
@@ -1036,7 +1036,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
                 return (short) ((fullWord & mask) >> shift);
             }
         } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 
@@ -1052,7 +1052,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
                 return fullWord;
             }
         } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                fullWord, x));
+                        fullWord, x));
         return expected;
     }
 
@@ -1068,7 +1068,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
                 return fullWord;
             }
         } while (!unsafe.compareAndSwapLong(null, startAddress + wordOffset,
-                fullWord, x));
+                        fullWord, x));
         return expected;
     }
 

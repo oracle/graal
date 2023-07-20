@@ -92,7 +92,7 @@ public class WasmOptions {
     public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
 
     @Option(help = "Enable support for threads and atomics", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Threads = new OptionKey<>(false);
 
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //

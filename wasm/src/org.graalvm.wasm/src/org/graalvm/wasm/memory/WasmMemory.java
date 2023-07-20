@@ -393,19 +393,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
-     * 
+     *
      * @throws UnsupportedOperationException If this method is called on an unsafe wasm memory.
      */
     public abstract void initialize(byte[] source, int sourceOffset, long destinationOffset, int length);
 
     /**
      * Initializes the content of an unsafe wasm memory with the given date instance.
-     * 
+     *
      * @param sourceAddress The address of the memory portion that should be copied to the memory
      * @param sourceOffset The offset from the data instance address
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
-     * 
+     *
      * @throws UnsupportedOperationException If the method is called on a byte array based memory
      */
     @TruffleBoundary
@@ -442,7 +442,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     @TruffleBoundary
     protected static WasmException trapUnalignedAtomic(Node node, long address, int length) {
         final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
-                length, address, address);
+                        length, address, address);
         return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
     }
 
@@ -807,7 +807,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     /**
      * Copy data from an input stream into memory.
-     * 
+     *
      * @param node the node used for errors
      * @param stream the input stream
      * @param offset the offset in the memory
@@ -819,7 +819,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     /**
      * Copy data from memory into an output stream.
-     * 
+     *
      * @param node the node used for errors
      * @param stream the output stream
      * @param offset the offset in the memory

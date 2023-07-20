@@ -444,42 +444,42 @@ public abstract class ByteArraySupport {
     public abstract void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #getShort(byte[], long)}
+     * Volatile version of {@link #getShort(byte[], long)}.
      *
      * @since 23.1
      */
     public abstract short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #putShort(byte[], long, short)}
+     * Volatile version of {@link #putShort(byte[], long, short)}.
      *
      * @since 23.1
      */
     public abstract void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #getInt(byte[], long)}
+     * Volatile version of {@link #getInt(byte[], long)}.
      *
      * @since 23.1
      */
     public abstract int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #putInt(byte[], long, int)}
+     * Volatile version of {@link #putInt(byte[], long, int)}.
      *
      * @since 23.1
      */
     public abstract void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #getLong(byte[], long)}
+     * Volatile version of {@link #getLong(byte[], long)}.
      *
      * @since 23.1
      */
     public abstract long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
 
     /**
-     * Volatile version of {@link #putLong(byte[], long, long)}
+     * Volatile version of {@link #putLong(byte[], long, long)}.
      *
      * @since 23.1
      */

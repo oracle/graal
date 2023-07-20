@@ -1444,6 +1444,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.addInstruction(Bytecode.REF_FUNC, functionIndex);
                 break;
             case Instructions.ATOMIC:
+                checkThreadsSupport(opcode);
                 int atomicOpcode = read1() & 0xFF;
                 state.addAtomicFlag();
                 switch (atomicOpcode) {
@@ -1666,6 +1667,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkBulkMemoryAndRefTypesSupport(int opcode) {
         checkContextOption(wasmContext.getContextOptions().supportBulkMemoryAndRefTypes(), "Bulk memory operations and reference types are not enabled (opcode: 0x%02x)", opcode);
+    }
+
+    private void checkThreadsSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().supportThreads(), "Threads and atomics are not enabled (opcode: 0x%02x)", opcode);
     }
 
     private long store(ParserState state, byte type, int n) {
