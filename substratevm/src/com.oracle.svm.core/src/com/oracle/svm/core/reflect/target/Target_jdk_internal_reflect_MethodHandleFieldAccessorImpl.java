@@ -26,6 +26,7 @@ package com.oracle.svm.core.reflect.target;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 
 /**
  * Method handle base field accessor. We must not reach this because we have our own unsafe-based
@@ -33,7 +34,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  *
  * @see com.oracle.svm.core.reflect.fieldaccessor
  */
-@TargetClass(className = "jdk.internal.reflect.MethodHandleFieldAccessorImpl")
+@TargetClass(className = "jdk.internal.reflect.MethodHandleFieldAccessorImpl", onlyWith = JDK21OrLater.class)
 @Delete
 public final class Target_jdk_internal_reflect_MethodHandleFieldAccessorImpl {
 }
