@@ -45,17 +45,23 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public final class TStringTestUtil {
 
-    static byte[] byteArray(int... values) {
+    public static byte[] byteArray(int... values) {
         byte[] ret = new byte[values.length];
         for (int i = 0; i < ret.length; i++) {
             assert 0 <= values[i] && values[i] <= 0xff;
             ret[i] = (byte) values[i];
         }
         return ret;
+    }
+
+    public static int readS0(byte[] array, int index) {
+        return Byte.toUnsignedInt(array[index]);
     }
 
     public static int readValue(byte[] array, int stride, int index) {
@@ -187,5 +193,50 @@ public final class TStringTestUtil {
         byte[] array = Arrays.copyOf(arrayA, arrayA.length + arrayB.length);
         System.arraycopy(arrayB, 0, array, arrayA.length, arrayB.length);
         return array;
+    }
+
+    public static int utf8DecodeValid(AbstractTruffleString a, int i) {
+        InternalByteArray internalByteArray = a.getInternalByteArrayUncached(TruffleString.Encoding.UTF_8);
+        return utf8DecodeValid(internalByteArray.getArray(), internalByteArray.getOffset(), internalByteArray.getLength(), i);
+    }
+
+    @SuppressWarnings("fallthrough")
+    static int utf8DecodeValid(byte[] arrayA, int offsetA, int lengthA, int index) {
+        int i = offsetA + index;
+        int b = readS0(arrayA, i);
+        if (b < 0x80) {
+            return b;
+        }
+        int nBytes = utf8CodePointLength(b);
+        int codepoint = b & (0xff >>> nBytes);
+        assert 1 < nBytes && nBytes < 5 : nBytes;
+        assert index + nBytes <= lengthA;
+        int j = i + 1;
+        // Checkstyle: stop
+        switch (nBytes) {
+            case 4:
+                assert isUTF8ContinuationByte(arrayA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, j++) & 0x3f);
+            case 3:
+                assert isUTF8ContinuationByte(arrayA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, j++) & 0x3f);
+            default:
+                assert isUTF8ContinuationByte(arrayA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, j) & 0x3f);
+        }
+        // Checkstyle: resume
+        return codepoint;
+    }
+
+    static int utf8CodePointLength(int firstByte) {
+        return Integer.numberOfLeadingZeros(~(firstByte << 24));
+    }
+
+    static boolean isUTF8ContinuationByte(int b) {
+        return (b & 0xc0) == 0x80;
+    }
+
+    static boolean isUTF8ContinuationByte(byte[] array, int i) {
+        return isUTF8ContinuationByte(readS0(array, i));
     }
 }

@@ -80,7 +80,7 @@ final class IndexOfCodePointSet {
         if ((ranges.length & 1) != 0) {
             throw new IllegalArgumentException("ranges must have an even number of elements");
         }
-        int maxCodePoint = maxCodePoint(encoding);
+        int maxCodePoint = Encodings.maxCodePoint(encoding);
         int lastHi = -2;
         for (int i = 0; i < ranges.length; i += 2) {
             int lo = ranges[i];
@@ -154,24 +154,6 @@ final class IndexOfCodePointSet {
             nodes.remove(nodes.size() - 1);
         }
         nodes.add(node);
-    }
-
-    private static int maxCodePoint(Encoding encoding) {
-        switch (encoding) {
-            case US_ASCII:
-                return 0x7f;
-            case ISO_8859_1:
-            case BYTES:
-                return 0xff;
-            case UTF_8:
-            case UTF_16BE:
-            case UTF_16LE:
-            case UTF_32BE:
-            case UTF_32LE:
-                return Character.MAX_CODE_POINT;
-            default:
-                return Integer.MAX_VALUE;
-        }
     }
 
     private static void checkIllegalCodepoint(int c, int maxCodePoint) {
@@ -436,7 +418,7 @@ final class IndexOfCodePointSet {
                         codepointLength = firstByte <= 0x7f ? 1 : Encodings.utf8CodePointLength(firstByte);
                         codepoint = Encodings.utf8DecodeValid(arrayA, offsetA, lengthA, i);
                     } else {
-                        codepointLength = Encodings.utf8GetCodePointLength(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT);
+                        codepointLength = Encodings.utf8GetCodePointLength(arrayA, offsetA, lengthA, i, DecodingErrorHandler.DEFAULT);
                         codepoint = Encodings.utf8DecodeBroken(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT);
                     }
                 } else {
