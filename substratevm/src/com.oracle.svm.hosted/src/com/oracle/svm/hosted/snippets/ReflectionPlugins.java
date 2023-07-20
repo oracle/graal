@@ -220,30 +220,24 @@ public final class ReflectionPlugins {
             }
         });
 
-        Registration dmh = new Registration(plugins, "java.lang.invoke.DirectMethodHandle");
-        dmh.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
+        Registration dmh = new Registration(plugins, "java.lang.invoke.MemberName");
+        dmh.register(new RequiredInvocationPlugin("getDeclaringClass", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 JavaConstant constReceiver = receiver.get().asJavaConstant();
                 if (constReceiver == null || constReceiver.isNull()) {
                     return false;
                 }
-                ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member"); // final
-                JavaConstant member = b.getConstantReflection().readFieldValue(memberField, constReceiver);
-                if (member == null || member.isNull()) {
-                    return false;
-                }
                 /*
                  * The clazz field of MemberName qualifies as stable except when an object is cloned
                  * and the new object's field is nulled. We should not observe it in that state.
                  */
-                ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
-                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
-                ResolvedJavaType type = b.getConstantReflection().asJavaType(clazz);
-                if (type == null) {
+                ResolvedJavaField clazzField = findField(targetMethod.getDeclaringClass(), "clazz");
+                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, constReceiver);
+                if (clazz == null || clazz.isNull()) {
                     return false;
                 }
-                classInitializationPlugin.apply(b, type, () -> null, null);
+                b.push(JavaKind.Object, ConstantNode.forConstant(clazz, b.getMetaAccess(), b.getGraph()));
                 return true;
             }
         });
