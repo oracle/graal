@@ -3,7 +3,9 @@ layout: docs
 toc_group: reference-manual
 link_title: Reference Manuals
 permalink: /reference-manual/
-redirect_from: /docs/reference-manual/
+redirect_from: 
+- /docs/reference-manual/
+- /reference-manuals/
 ---
 
 # GraalVM Reference Manuals
