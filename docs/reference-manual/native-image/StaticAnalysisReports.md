@@ -3,7 +3,7 @@ layout: docs
 toc_group: debugging-and-diagnostics
 link_title: Points-to Analysis Reports
 permalink: /reference-manual/native-image/debugging-and-diagnostics/StaticAnalysisReports/
-redirect_from: /$version/reference-manual/native-image/Reports/
+redirect_from: /reference-manual/native-image/Reports/
 ---
 
 # Points-to Analysis Reports
