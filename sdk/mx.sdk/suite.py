@@ -126,9 +126,14 @@ suite = {
       }
     },
     "JLINE3" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "digest" : "sha512:5dd249dbcf35677f0d8390d4a55526c5f7a037349382b344e861278d7129b169849ddba049a2d51202f820471dd4259b9571ab71e483b718220cc404bc93fb3d",
       "version" : "3.23.0.1",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
+      "maven" : { # maven-deploy information, downloading is from url above
+        "version" : "3.23.0.1",
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "jline3",
+      },
       "license" : "BSD-new",
       "requires" : ["java.logging"],
       "exports" : [
