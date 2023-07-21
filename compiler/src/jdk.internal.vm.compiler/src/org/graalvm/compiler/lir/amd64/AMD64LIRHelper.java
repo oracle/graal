@@ -62,4 +62,8 @@ public final class AMD64LIRHelper {
     protected static ArrayDataPointerConstant pointerConstant(int alignment, int[] ints) {
         return new ArrayDataPointerConstant(ints, alignment);
     }
+
+    protected static ArrayDataPointerConstant pointerConstant(int alignment, long[] longs) {
+        return new ArrayDataPointerConstant(longs, alignment);
+    }
 }

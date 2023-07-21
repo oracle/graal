@@ -2281,10 +2281,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         // AVX2 128-bit permutation
         public static final VexRVMIOp VPERM2I128   = new VexRVMIOp("VPERM2I128",   P_66, M_0F3A, W0,  0x46, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRVMIOp VPERM2F128   = new VexRVMIOp("VPERM2F128",   P_66, M_0F3A, W0,  0x06, VEXOpAssertion.AVX1_256ONLY);
         // Carry-Less Multiplication Quadword
         public static final VexRVMIOp VPCLMULQDQ   = new VexRVMIOp("VPCLMULQDQ",   P_66, M_0F3A, WIG, 0x44, VEXOpAssertion.AVX1_128ONLY_CLMUL);
         // Packed Align Right
         public static final VexRVMIOp VPALIGNR     = new VexRVMIOp("VPALIGNR",     P_66, M_0F3A, WIG, 0x0F, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,    EVEXTuple.FVM,      WIG);
+        // Blend Packed Dwords
+        public static final VexRVMIOp VPBLENDD     = new VexRVMIOp("VPBLENDD",     P_66, M_0F3A, W0,  0x02, VEXOpAssertion.AVX2);
 
         // AVX-512 insert
         public static final VexRVMIOp VINSERTF32X4 = new VexRVMIOp("VINSERTF32X4", P_66, M_0F3A, W0,  0x18, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT, W0);
@@ -4022,6 +4025,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, imm8);
     }
 
+    public final void vpblendd(Register dst, Register nds, Register src, int imm8, AVXSize size) {
+        VexRVMIOp.VPBLENDD.emit(this, size, dst, nds, src, imm8);
+    }
+
     public final void vpclmullqlqdq(Register dst, Register nds, Register src) {
         VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x00);
     }
@@ -4036,6 +4043,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void vpclmulhqhqdq(Register dst, Register nds, Register src) {
         VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x11);
+    }
+
+    public final void vpsrlq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSRLQ.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsllq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSLLQ.emit(this, size, dst, src, imm8);
     }
 
     public final void rcpps(Register dst, Register src) {
@@ -4246,6 +4261,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void addq(Register dst, Register src) {
+        ADD.rmOp.emit(this, QWORD, dst, src);
+    }
+
+    public final void addq(Register dst, AMD64Address src) {
         ADD.rmOp.emit(this, QWORD, dst, src);
     }
 
@@ -5051,6 +5070,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(7, adr, 0);
     }
 
+    public final void vpaddq(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpaddq(Register dst, Register nds, AMD64Address src, AVXSize size) {
+        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
+    }
+
     public final void vpand(Register dst, Register nds, Register src, AVXSize size) {
         VexRVMOp.VPAND.emit(this, size, dst, nds, src);
     }
@@ -5059,8 +5086,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         VexRVMOp.VPANDN.emit(this, AVXSize.YMM, dst, nds, src);
     }
 
-    public final void vpor(Register dst, Register nds, Register src) {
-        VexRVMOp.VPOR.emit(this, AVXSize.YMM, dst, nds, src);
+    public final void vpor(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPOR.emit(this, size, dst, nds, src);
     }
 
     public final void vptest(Register dst, Register src, AVXSize size) {
@@ -5119,6 +5146,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
     }
 
+    public final void vmovdqu(Register dst, Register src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
     public final void vmovdqu(AMD64Address dst, Register src) {
         assert inRC(XMM, src);
         VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
@@ -5136,6 +5167,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void vpmovzxbw(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX2);
         VexRMOp.VPMOVZXBW.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vpalignr(Register dst, Register nds, Register src, int imm8, AVXSize size) {
+        VexRVMIOp.VPALIGNR.emit(this, size, dst, nds, src, imm8);
+    }
+
+    public final void vperm2f128(Register dst, Register nds, Register src, int imm8) {
+        VexRVMIOp.VPERM2F128.emit(this, AVXSize.YMM, dst, nds, src, imm8);
     }
 
     public final void vzeroupper() {

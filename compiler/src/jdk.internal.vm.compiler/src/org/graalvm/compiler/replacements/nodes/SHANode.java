@@ -276,7 +276,7 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
         }
 
         public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-            return EnumSet.of(AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.AVX2);
+            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.BMI2);
         }
 
         public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
