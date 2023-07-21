@@ -44,9 +44,9 @@ public class HotSpotBytecodeParser extends BytecodeParser {
     }
 
     @Override
-    protected Object lookupConstant(int cpi, int opcode) {
+    protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
         try {
-            return super.lookupConstant(cpi, opcode);
+            return super.lookupConstant(cpi, opcode, allowBootstrapMethodInvocation);
         } catch (BootstrapMethodError e) {
             DeoptimizeNode deopt = append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
             /*

@@ -214,9 +214,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected Object lookupConstant(int cpi, int opcode) {
+        protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
             try {
-                return super.lookupConstant(cpi, opcode);
+                // Native Image forces bootstrap method invocation at build time
+                // until support has been added for doing the invocation at runtime (GR-45806)
+                return super.lookupConstant(cpi, opcode, true);
             } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);

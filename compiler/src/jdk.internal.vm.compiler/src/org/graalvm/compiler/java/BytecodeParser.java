@@ -1209,7 +1209,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     /**
      * Handles loading of an unresolved constant.
-     * 
+     *
      * @param unresolvedType an unresolved type if a ClassConstant is being loaded. This will be
      *            {@code null} in the case another type of resolvable constant being loaded (e.g.
      *            DynamicConstant or MethodHandle) when the constant is unresolved.
@@ -3973,7 +3973,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        Object con = lookupConstant(cpi, opcode);
+        Object con = lookupConstant(cpi, opcode, false);
         if (con == null) {
             handleUnresolvedLoadConstant(null);
         } else if (con instanceof JavaType) {
@@ -4288,13 +4288,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     /**
-     * This method may return a value of the type {@code Throwable} to indicate that an exceptional
-     * scenario has occurred and has been handled properly. The caller of this method may therefore
-     * ignore the exceptional return value.
+     * This method may return a {@code Throwable} to indicate that an exception occurred but has
+     * been handled. The caller can choose to ignore the exception in this case.
+     *
+     * @param allowBootstrapMethodInvocation specifies if lookup can resolve a constant that may
+     *            require execution of a bootstrap method. If {@code false} and the constant is not
+     *            resolved, {@code null} is returned.
      */
-    protected Object lookupConstant(int cpi, int opcode) {
+    protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
         maybeEagerlyResolve(cpi, opcode);
-        Object result = GraalServices.lookupConstant(constantPool, cpi, false);
+        Object result = GraalServices.lookupConstant(constantPool, cpi, allowBootstrapMethodInvocation);
         if (result != null) {
             assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
         }
