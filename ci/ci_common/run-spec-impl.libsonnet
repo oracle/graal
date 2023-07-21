@@ -471,8 +471,8 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
   // Add properties that need to be evaluated late
   //
   // This works around ordering issues. For example, a platform needs to add a download, which depdends
-  // on the JDK version. However, the JDK definition might come after the platform defintion. To avoid this,
-  // the defintion can be added to the `evaluate_late` field. The content of the `evaluate_late` field
+  // on the JDK version. However, the JDK definition might come after the platform definition. To avoid this,
+  // the definition can be added to the `evaluate_late` field. The content of the `evaluate_late` field
   // (if it exists) will be added late when all other properties have been set.
   apply_evaluate_late(task_dict):: {
     local evaluate_late_impl(b) =

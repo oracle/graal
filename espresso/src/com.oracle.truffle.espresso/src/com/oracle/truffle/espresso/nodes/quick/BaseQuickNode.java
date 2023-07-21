@@ -54,7 +54,7 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
         return new BaseQuickNodeWrapper(this, probeNode);
     }
 
-    public boolean removedByRedefintion() {
+    public boolean removedByRedefinition() {
         return false;
     }
 

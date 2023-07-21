@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-public class RedefintionNotSupportedException extends Exception {
+public class RedefinitionNotSupportedException extends Exception {
 
     private static final long serialVersionUID = -5767957395371919542L;
     private final int errorCode;
 
-    public RedefintionNotSupportedException(int errorCode) {
+    public RedefinitionNotSupportedException(int errorCode) {
         this.errorCode = errorCode;
     }
 
