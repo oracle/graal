@@ -317,14 +317,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         MethodHandleWithExceptionNode node = invokableData.invoke;
         Node replacement = node.trySimplify(providers.getConstantReflection().getMethodHandleAccess());
         boolean intrinsifiedMethodHandle = (replacement != node);
-        InlineBeforeAnalysisMethodScope methodScope = cast(s);
         if (!intrinsifiedMethodHandle) {
-            if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
-                if (!methodScope.policyScope.shouldInterpretMethodHandleInvoke(methodScope.method, node)) {
-                    abortInlining(methodScope);
-                    return loopScope;
-                }
-            }
             replacement = node.replaceWithInvoke().asNode();
         }
 

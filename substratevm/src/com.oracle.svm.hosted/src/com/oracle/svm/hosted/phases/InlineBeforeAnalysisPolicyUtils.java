@@ -178,12 +178,6 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
-        protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
-            // always inlining
-            return true;
-        }
-
-        @Override
         public String toString() {
             return "AlwaysInlineScope";
         }
@@ -468,11 +462,6 @@ public class InlineBeforeAnalysisPolicyUtils {
 
             // With method handle intrinsification we permit all node types to become more effective
             return allow || accumulativeCounters.inMethodHandleIntrinsification;
-        }
-
-        @Override
-        protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
-            return false;
         }
 
         @Override

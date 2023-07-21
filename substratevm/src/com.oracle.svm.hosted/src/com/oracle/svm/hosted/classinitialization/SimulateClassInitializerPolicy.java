@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -88,12 +87,6 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
 
         @Override
         public boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node) {
-            return true;
-        }
-
-        @Override
-        protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
-            /* Same as elsewhere, we inline greedily. */
             return true;
         }
 
