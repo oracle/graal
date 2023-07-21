@@ -59,7 +59,7 @@ suite = {
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 "TruffleJWS",
             ],
             "requires" : [
@@ -154,7 +154,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -184,7 +184,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -213,7 +213,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -244,7 +244,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -287,7 +287,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "truffle:TruffleJSON"
+                "truffle:TRUFFLE_JSON"
             ],
             "requires" : [
                 "java.logging",
@@ -369,6 +369,7 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "chromeinspector",
@@ -478,6 +479,7 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "profiler",
@@ -515,6 +517,7 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "coverage",
@@ -552,6 +555,7 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "dap",
@@ -615,6 +619,7 @@ suite = {
             ],
             "distDependencies" : [
                 "LSP_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "lsp",

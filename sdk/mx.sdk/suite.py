@@ -593,6 +593,7 @@ suite = {
             "exclude": [
               # filter out some things that we don't want to redistribute
               "bin/bugpoint*",
+              "bin/bbc",
               "bin/c-index-test*",
               "bin/clang-check*",
               "bin/clang-extdef-mapping*",
@@ -602,6 +603,7 @@ suite = {
               "bin/clang-rename*",
               "bin/clang-scan-deps*",
               "bin/diagtool*",
+              "bin/fir-opt",
               "bin/git-clang-format",
               "bin/hmaptool",
               "bin/llvm-addr2line*",
@@ -638,11 +640,13 @@ suite = {
               "bin/llvm-undname*",
               "bin/llvm-windres*", # symlink to llvm-rc
               "bin/llvm-xray*",
+              "bin/mlir-*",
               "bin/obj2yaml*",
               "bin/sancov*",
               "bin/sanstats*",
               "bin/scan-build*",
               "bin/scan-view*",
+              "bin/tco",
               "bin/verify-uselistorder*",
               "bin/yaml2obj*",
               "bin/set-xcode-analyzer",
@@ -661,7 +665,17 @@ suite = {
               "lib/libclang.dylib*",
               "lib/libclang*.a",
               "lib/liblld*.a",
+              "lib/libMLIR*",
+              "lib/libmlir*",
+              "lib/lib*FIR*.a",
+              "lib/libflang*.a",
+              "lib/libFortranEvaluate.a",
+              "lib/libFortranLower.a",
+              "lib/libFortranParser.a",
+              "lib/libFortranSemantics.a",
               "libexec",
+              "lib/objects-Release",
+              "include/mlir*",
               # Windows libarary excludes
               "lib/*.lib",
             ]

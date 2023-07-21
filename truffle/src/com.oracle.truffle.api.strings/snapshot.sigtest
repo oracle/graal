@@ -74,7 +74,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds GIL_LOCK,PARENT_LIMIT,parent
+hfds GIL_LOCK,PARENT_LIMIT,SAME_LANGUAGE_CHECK_VISITOR,parent
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
@@ -107,6 +107,7 @@ meth public final com.oracle.truffle.api.strings.TruffleString repeatUncached(in
 meth public final com.oracle.truffle.api.strings.TruffleString substringByteIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public final com.oracle.truffle.api.strings.TruffleString substringUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public final com.oracle.truffle.api.strings.TruffleString switchEncodingUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final com.oracle.truffle.api.strings.TruffleString switchEncodingUncached(com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TranscodingErrorHandler)
 meth public final com.oracle.truffle.api.strings.TruffleString$CodeRange getByteCodeRangeUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final com.oracle.truffle.api.strings.TruffleString$CodeRange getCodeRangeImpreciseUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final com.oracle.truffle.api.strings.TruffleString$CodeRange getCodeRangeUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -158,6 +159,7 @@ meth public final void copyToByteArrayUncached(int,byte[],int,int,com.oracle.tru
 meth public final void copyToNativeMemoryNodeUncached(int,java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final void copyToNativeMemoryUncached(int,java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public void materializeUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
 hfds DEBUG_ALWAYS_CREATE_JAVA_STRING,DEBUG_NON_ZERO_OFFSET,DEBUG_STRICT_ENCODING_CHECKS,codePointLength,codeRange,data,encoding,flags,hashCode,length,offset,stride
 hcls LazyConcat,LazyLong,NativePointer
@@ -250,7 +252,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.MutableTruffleString$SwitchEncodingNode
  outer com.oracle.truffle.api.strings.MutableTruffleString
-meth public abstract com.oracle.truffle.api.strings.MutableTruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.MutableTruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TranscodingErrorHandler)
+meth public final com.oracle.truffle.api.strings.MutableTruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.MutableTruffleString$SwitchEncodingNode create()
 meth public static com.oracle.truffle.api.strings.MutableTruffleString$SwitchEncodingNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -270,6 +273,24 @@ hcls AsManagedNodeGen,AsMutableTruffleStringNodeGen,CalcLazyAttributesNodeGen,Co
 CLSS public abstract interface com.oracle.truffle.api.strings.NativeAllocator
  anno 0 java.lang.FunctionalInterface()
 meth public abstract java.lang.Object allocate(int)
+
+CLSS public abstract interface com.oracle.truffle.api.strings.TranscodingErrorHandler
+ anno 0 java.lang.FunctionalInterface()
+fld public final static com.oracle.truffle.api.strings.TranscodingErrorHandler DEFAULT
+fld public final static com.oracle.truffle.api.strings.TranscodingErrorHandler DEFAULT_KEEP_SURROGATES_IN_UTF8
+innr public final static ReplacementString
+meth public abstract com.oracle.truffle.api.strings.TranscodingErrorHandler$ReplacementString apply(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$Encoding)
+
+CLSS public final static com.oracle.truffle.api.strings.TranscodingErrorHandler$ReplacementString
+ outer com.oracle.truffle.api.strings.TranscodingErrorHandler
+cons public init(com.oracle.truffle.api.strings.TruffleString,int)
+meth public com.oracle.truffle.api.strings.TruffleString replacement()
+meth public final boolean equals(java.lang.Object)
+meth public final int hashCode()
+meth public final java.lang.String toString()
+meth public int byteLength()
+supr java.lang.Record
+hfds byteLength,replacement
 
 CLSS public final com.oracle.truffle.api.strings.TruffleString
 innr public abstract static AsManagedNode
@@ -688,6 +709,7 @@ fld public final static com.oracle.truffle.api.strings.TruffleString$ErrorHandli
 meth public static com.oracle.truffle.api.strings.TruffleString$ErrorHandling valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.strings.TruffleString$ErrorHandling[] values()
 supr java.lang.Enum<com.oracle.truffle.api.strings.TruffleString$ErrorHandling>
+hfds errorHandler
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ForceEncodingNode
  outer com.oracle.truffle.api.strings.TruffleString
@@ -950,7 +972,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$SwitchEncodingNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TranscodingErrorHandler)
+meth public final com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$SwitchEncodingNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$SwitchEncodingNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -1029,7 +1052,7 @@ meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF8 creat
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilderUTF8 createUTF8(int)
 supr java.lang.Object
 hfds DEFAULT_INITIAL_CAPACITY,buf,codePointLength,codeRange,encoding,length,stride
-hcls AppendCodePointIntlNode
+hcls AppendCodePointIntlNode,AppendStringIntlNode,ToStringIntlNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringBuilder$AppendByteNode
  outer com.oracle.truffle.api.strings.TruffleStringBuilder
@@ -1101,7 +1124,7 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderFactory
 cons public init()
 supr java.lang.Object
-hcls AppendByteNodeGen,AppendCharUTF16NodeGen,AppendCodePointIntlNodeGen,AppendCodePointNodeGen,AppendIntNumberNodeGen,AppendJavaStringUTF16NodeGen,AppendLongNumberNodeGen,AppendStringNodeGen,AppendSubstringByteIndexNodeGen,ToStringNodeGen
+hcls AppendByteNodeGen,AppendCharUTF16NodeGen,AppendCodePointIntlNodeGen,AppendCodePointNodeGen,AppendIntNumberNodeGen,AppendJavaStringUTF16NodeGen,AppendLongNumberNodeGen,AppendStringIntlNodeGen,AppendStringNodeGen,AppendSubstringByteIndexNodeGen,ToStringIntlNodeGen,ToStringNodeGen
 
 CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilderUTF16
 supr com.oracle.truffle.api.strings.TruffleStringBuilder
@@ -1219,6 +1242,13 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract java.lang.Record
+cons protected init()
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.String toString()
+supr java.lang.Object
 
 CLSS public java.lang.RuntimeException
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)

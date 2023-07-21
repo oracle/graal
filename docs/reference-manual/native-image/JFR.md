@@ -3,7 +3,7 @@ layout: docs
 toc_group: debugging-and-diagnostics
 link_title: JDK Flight Recorder
 permalink: /reference-manual/native-image/debugging-and-diagnostics/JFR/
-redirect_from: /$version/reference-manual/native-image/JFR/
+redirect_from: /reference-manual/native-image/JFR/
 ---
 
 # JDK Flight Recorder (JFR) with Native Image

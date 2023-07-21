@@ -30,8 +30,8 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.RootCoverage;
 import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 final class JSONPrinter {
 

@@ -29,14 +29,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class ExceptionDetails {
 

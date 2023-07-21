@@ -3,7 +3,7 @@ layout: docs
 toc_group: build-overview
 link_title: Build Options
 permalink: /reference-manual/native-image/overview/BuildOptions/
-redirect_from: /$version/reference-manual/native-image/Options/
+redirect_from: /reference-manual/native-image/Options/
 ---
 
 #  Native Image Build Options

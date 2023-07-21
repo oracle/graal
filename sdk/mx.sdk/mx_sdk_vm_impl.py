@@ -2719,10 +2719,25 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         if link not in excluded_paths:
                             link_dest = path_prefix + link
                             link_target = relpath(launcher_dest, start=dirname(link_dest))
-                            layout.setdefault(link_dest, []).append({
-                                'source_type': 'link',
-                                'path': link_target,
-                            })
+                            if mx.is_windows():
+                                if link_target.endswith('.exe') or link_target.endswith('.cmd'):
+                                    link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
+                                    with open(link_template_name, 'r') as template:
+                                        _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+                                        _template_subst.register_no_arg('target', normpath(link_target))
+                                        contents = _template_subst.substitute(template.read())
+                                    full_dest = link_dest[:-len('.exe')] + '.cmd'
+                                    layout.setdefault(full_dest, []).append({
+                                        'source_type': 'string',
+                                        'value': contents,
+                                    })
+                                else:
+                                    mx.abort("Cannot create link on windows for {}->{}".format(link_dest, link_target))
+                            else:
+                                layout.setdefault(link_dest, []).append({
+                                    'source_type': 'link',
+                                    'path': link_target,
+                                })
 
             for library_config in library_configs:
                 library_dest = path_prefix + library_config.destination

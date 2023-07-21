@@ -24,7 +24,8 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import java.util.Objects;
 
 public class ConfigurationItem extends JSONBase {

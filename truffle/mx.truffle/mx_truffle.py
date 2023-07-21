@@ -1025,7 +1025,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
 
         javaSubstitutions = [
                                 sub for orig, shad in dist.shaded_package_names().items() for sub in [
-                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+\b)'), shad),
+                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+)?\b'), shad),
                                 ]
                             ] + [
                                 sub for orig, shad in dist.shaded_package_paths().items() for sub in [
@@ -1265,6 +1265,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
+    standalone=False,
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle JSON Library',
+    short_name='truffle-json',
+    dir_name='truffle-json',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['truffle:TruffleJSON',
+        'truffle:TRUFFLE_JSON',
+    ],
+    support_distributions=['truffle:TRUFFLE_JSON_GRAALVM_SUPPORT'],
+    installable=False,
     standalone=False,
     stability="supported",
 ))

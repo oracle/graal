@@ -135,7 +135,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     @Override
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
-        AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins);
+        AArch64SuitesCreator suitesCreator = new AArch64HotSpotSuitesCreator(compilerConfiguration, plugins);
         BasePhase<CoreProviders> addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64LIRKindTool(), true));
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
     }

@@ -99,6 +99,7 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
@@ -350,6 +351,7 @@ public abstract class RuntimeCompilationFeature {
     protected GraphBuilderConfiguration graphBuilderConfig;
     protected OptimisticOptimizations optimisticOpts;
     protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
+    private boolean runtimeCompilationCandidatePredicateUpdated = false;
     protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
     private SubstrateUniverseFactory universeFactory = new SubstrateUniverseFactory();
@@ -491,8 +493,13 @@ public abstract class RuntimeCompilationFeature {
         return false;
     }
 
-    public void initializeRuntimeCompilationConfiguration(RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate) {
+    public void initializeRuntimeCompilationForTesting(FeatureImpl.BeforeAnalysisAccessImpl config, RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate) {
         initializeRuntimeCompilationConfiguration(hostedProviders, graphBuilderConfig, newRuntimeCompilationCandidatePredicate, deoptimizeOnExceptionPredicate);
+        initializeRuntimeCompilationForTesting(config);
+    }
+
+    public void initializeRuntimeCompilationForTesting(BeforeAnalysisAccessImpl config) {
+        initializeAnalysisProviders(config.getBigBang(), provider -> provider);
     }
 
     public void initializeRuntimeCompilationConfiguration(HostedProviders newHostedProviders, GraphBuilderConfiguration newGraphBuilderConfig,
@@ -503,7 +510,9 @@ public abstract class RuntimeCompilationFeature {
 
         hostedProviders = newHostedProviders;
         graphBuilderConfig = newGraphBuilderConfig;
+        assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
+        runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
         if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
