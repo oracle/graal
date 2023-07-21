@@ -112,6 +112,7 @@ import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.amd64.AMD64HaltOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
+import org.graalvm.compiler.lir.amd64.AMD64MD5Op;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
@@ -661,7 +662,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64VectorizedHashCodeOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, arrayStart, length, initialValue, arrayKind));
+        append(new AMD64VectorizedHashCodeOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, asAllocatable(arrayStart), asAllocatable(length), asAllocatable(initialValue), arrayKind));
         return result;
     }
 
@@ -930,6 +931,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rState, state);
 
         append(new AMD64SHA512Op(rBuf, rState));
+    }
+
+    @Override
+    public void emitMD5ImplCompress(Value buf, Value state) {
+        append(new AMD64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
     }
 
     @SuppressWarnings("unchecked")

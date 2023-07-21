@@ -62,6 +62,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256MSG2
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256RNDS2;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VCVTPS2PH;
@@ -4312,6 +4313,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void mulxq(Register dst1, Register dst2, Register src) {
         MULX.emit(this, AVXSize.QWORD, dst1, dst2, src);
+    }
+
+    public final void roll(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        ROL.miOp.emit(this, DWORD, dst, (byte) imm8);
     }
 
     public final void rorq(Register dst, int imm8) {

@@ -83,6 +83,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HaltOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
+import org.graalvm.compiler.lir.aarch64.AArch64MD5Op;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -760,6 +761,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitSha512ImplCompress(Value buf, Value state) {
         append(new AArch64SHA512Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitMD5ImplCompress(Value buf, Value state) {
+        append(new AArch64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
     }
 
     @Override

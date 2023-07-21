@@ -26,6 +26,8 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_128;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_256;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import java.util.EnumSet;
@@ -47,9 +49,9 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = Memory)
-public abstract class SHANode extends MemoryKillStubIntrinsicNode {
+public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
 
-    public static final NodeClass<SHANode> TYPE = NodeClass.create(SHANode.class);
+    public static final NodeClass<MessageDigestNode> TYPE = NodeClass.create(MessageDigestNode.class);
 
     private static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
@@ -61,7 +63,7 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
     @Input protected ValueNode buf;
     @Input protected ValueNode state;
 
-    public SHANode(NodeClass<? extends SHANode> c, ValueNode buf, ValueNode state, EnumSet<?> runtimeCheckedCPUFeatures) {
+    public MessageDigestNode(NodeClass<? extends MessageDigestNode> c, ValueNode buf, ValueNode state, EnumSet<?> runtimeCheckedCPUFeatures) {
         super(c, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
         this.buf = buf;
         this.state = state;
@@ -81,7 +83,7 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
      * Intrinsification for {@code sun.security.provider.SHA.implCompress0}.
      */
     @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-    public static final class SHA1Node extends SHANode {
+    public static final class SHA1Node extends MessageDigestNode {
 
         public static final NodeClass<SHA1Node> TYPE = NodeClass.create(SHA1Node.class);
         public static final ForeignCallDescriptor STUB = foreignCallDescriptor("sha1ImplCompress");
@@ -139,7 +141,7 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
      * Intrinsification for {@code sun.security.provider.SHA2.implCompress0}.
      */
     @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-    public static final class SHA256Node extends SHANode {
+    public static final class SHA256Node extends MessageDigestNode {
 
         public static final NodeClass<SHA256Node> TYPE = NodeClass.create(SHA256Node.class);
         public static final ForeignCallDescriptor STUB = foreignCallDescriptor("sha256ImplCompress");
@@ -196,8 +198,8 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
     /**
      * Intrinsification for {@code sun.security.provider.SHA3.implCompress0}.
      */
-    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-    public static final class SHA3Node extends SHANode {
+    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_128)
+    public static final class SHA3Node extends MessageDigestNode {
 
         public static final NodeClass<SHA3Node> TYPE = NodeClass.create(SHA3Node.class);
         public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("sha3ImplCompress", void.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
@@ -260,10 +262,10 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
     }
 
     /**
-     * Intrinsification for {@code sun.security.provider.SHA2.implCompress0}.
+     * Intrinsification for {@code sun.security.provider.SHA5.implCompress0}.
      */
-    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-    public static final class SHA512Node extends SHANode {
+    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_256)
+    public static final class SHA512Node extends MessageDigestNode {
 
         public static final NodeClass<SHA512Node> TYPE = NodeClass.create(SHA512Node.class);
         public static final ForeignCallDescriptor STUB = foreignCallDescriptor("sha512ImplCompress");
@@ -315,5 +317,41 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
 
         @NodeIntrinsic
         public static native void sha512ImplCompress(Pointer buf, Pointer state, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    }
+
+    /**
+     * Intrinsification for {@code sun.security.provider.MD5.implCompress0}.
+     */
+    @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
+    public static final class MD5Node extends MessageDigestNode {
+
+        public static final NodeClass<MD5Node> TYPE = NodeClass.create(MD5Node.class);
+        public static final ForeignCallDescriptor STUB = foreignCallDescriptor("md5ImplCompress");
+
+        public MD5Node(ValueNode buf, ValueNode state) {
+            super(TYPE, buf, state, null);
+        }
+
+        public MD5Node(ValueNode buf, ValueNode state, EnumSet<?> runtimeCheckedCPUFeatures) {
+            super(TYPE, buf, state, runtimeCheckedCPUFeatures);
+        }
+
+        @Override
+        public ForeignCallDescriptor getForeignCallDescriptor() {
+            return STUB;
+        }
+
+        @Override
+        public void emitIntrinsic(NodeLIRBuilderTool gen) {
+            gen.getLIRGeneratorTool().emitMD5ImplCompress(gen.operand(buf), gen.operand(state));
+        }
+
+        @NodeIntrinsic
+        @GenerateStub(name = "md5ImplCompress")
+        public static native void md5ImplCompress(Pointer buf, Pointer state);
+
+        @NodeIntrinsic
+        public static native void md5ImplCompress(Pointer buf, Pointer state, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
     }
 }

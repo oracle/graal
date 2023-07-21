@@ -39,10 +39,10 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA3Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA512Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -305,9 +305,6 @@ public final class UnimplementedGraalIntrinsics {
         }
         if (config.electronicCodeBookDecrypt == 0L) {
             add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
-        }
-        if (config.md5ImplCompress == 0L) {
-            add(ignore, "sun/security/provider/MD5.implCompress0([BI)V");
         }
         if (config.poly1305ProcessBlocks == 0L) {
             add(ignore, "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V");

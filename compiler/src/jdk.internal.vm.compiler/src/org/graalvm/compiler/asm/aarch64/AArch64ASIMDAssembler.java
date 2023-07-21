@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -874,12 +875,12 @@ public abstract class AArch64ASIMDAssembler {
 
     private void cryptographicThreeSHA(ASIMDInstruction instr, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b01011110_00_0_00000_0_000_00_00000_00000;
-        emitInt(instr.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2));
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rs1(src1) | rs2(src2));
     }
 
     private void cryptographicTwoSHA(ASIMDInstruction instr, Register dst, Register src) {
         int baseEncoding = 0b01011110_00_10100_00000_10_00000_00000;
-        emitInt(instr.encoding | baseEncoding | rd(dst) | rn(src));
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
     }
 
     private void cryptographicThreeSHA512(ASIMDInstruction instr, Register dst, Register src1, Register src2) {
@@ -895,11 +896,6 @@ public abstract class AArch64ASIMDAssembler {
     private void cryptographicFour(ASIMDInstruction instr, Register dst, Register src1, Register src2, Register src3) {
         int baseEncoding = 0b110011100_00_00000_0_00000_00000_00000;
         emitInt(instr.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | rs3(src3));
-    }
-
-    private void cryptographicXAR(Register dst, Register src1, Register src2, int imm6) {
-        int baseEncoding = 0b110011101_00_00000_000000_00000_00000;
-        emitInt(baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | imm6 << 10);
     }
 
     private void scalarThreeSameEncoding(ASIMDInstruction instr, int eSizeEncoding, Register dst, Register src1, Register src2) {
@@ -3895,7 +3891,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.217 Exclusive-OR and Rotate.<br>
+     * C7.2.401 Exclusive-OR and Rotate.<br>
      *
      * Exclusive-OR and Rotate performs a bitwise exclusive-OR of the 128-bit vectors in the two
      * source SIMD&FP registers, rotates each 64-bit element of the resulting 128-bit vector right
@@ -3911,9 +3907,10 @@ public abstract class AArch64ASIMDAssembler {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
-        assert (imm6 & 0b111111) == imm6;
+        assert NumUtil.isUnsignedNbit(6, imm6);
 
-        cryptographicXAR(dst, src1, src2, imm6);
+        int baseEncoding = 0b110011101_00_00000_000000_00000_00000;
+        emitInt(baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | imm6 << 10);
     }
 
     /**

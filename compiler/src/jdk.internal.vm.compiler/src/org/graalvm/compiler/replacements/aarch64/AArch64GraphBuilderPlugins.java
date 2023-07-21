@@ -81,8 +81,8 @@ import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
-import org.graalvm.compiler.replacements.nodes.SHANode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -566,7 +566,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerSHA3Plugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(SHANode.SHA3Node.isSupported(arch), new InvocationPlugin("implCompress0", InvocationPlugin.Receiver.class, byte[].class, int.class) {
+        rSha3.registerConditional(MessageDigestNode.SHA3Node.isSupported(arch), new InvocationPlugin("implCompress0", InvocationPlugin.Receiver.class, byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -579,7 +579,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
                     ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);
                     ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
-                    b.add(new SHANode.SHA3Node(bufStart, stateStart, blockSize));
+                    b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
                     return true;
                 }
             }

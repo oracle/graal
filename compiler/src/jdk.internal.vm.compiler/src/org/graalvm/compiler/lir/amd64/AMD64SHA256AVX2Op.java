@@ -71,7 +71,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
@@ -80,11 +80,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp",
-          lineStart = 496,
-          lineEnd   = 1035,
-          commit    = "f4ba7b219851217c48e46258d9977d51a757a1a6",
-          sha1      = "f9283840deab5f199d600017cde5548f80ca0699")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0487aa61c67de695d008af4fe75c2a3072261a6f/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L496-L1035",
+          sha1 = "f9283840deab5f199d600017cde5548f80ca0699")
 // @formatter:on
 public final class AMD64SHA256AVX2Op extends AMD64LIRInstruction {
 

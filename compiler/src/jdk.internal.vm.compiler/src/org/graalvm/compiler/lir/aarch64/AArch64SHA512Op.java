@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -81,11 +81,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 3797,
-          lineEnd   = 3970,
-          commit    = "94eb44b192ba421692549a178c386ea34164ea50",
-          sha1      = "9a27893e95da304e616ebd2105529e39d9634483")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/94eb44b192ba421692549a178c386ea34164ea50/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3797-L3970",
+          sha1 = "9a27893e95da304e616ebd2105529e39d9634483")
 // @formatter:on
 public final class AArch64SHA512Op extends AArch64LIRInstruction {
 
@@ -223,7 +220,7 @@ public final class AArch64SHA512Op extends AArch64LIRInstruction {
             limit = Register.None;
         }
 
-        // We have marked v8-v11 as @Temp. The register allocator will take care of the spilling.
+        // We have marked v8-v15 as @Temp. The register allocator will take care of the spilling.
 
         Label labelSHA512Loop = new Label();
 

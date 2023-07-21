@@ -44,10 +44,11 @@ import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA3Node;
-import org.graalvm.compiler.replacements.nodes.SHANode.SHA512Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -77,6 +78,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 SHA256Node.class,
                 SHA3Node.class,
                 SHA512Node.class,
+                MD5Node.class,
 })
 public final class IntrinsicStubs {
 }

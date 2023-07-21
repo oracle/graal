@@ -71,6 +71,7 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -97,7 +98,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     @Temp({REG}) Value[] vectorTemp;
 
     public AMD64VectorizedHashCodeOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
-                    Value result, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+                    AllocatableValue result, AllocatableValue arrayStart, AllocatableValue length, AllocatableValue initialValue, JavaKind arrayKind) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.resultValue = result;
         this.arrayStart = arrayStart;
