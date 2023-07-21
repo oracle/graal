@@ -244,7 +244,7 @@ def registered_graalvm_components(stage1=False):
     return _registered_graalvm_components[stage1]
 
 
-def _get_component_type_base(c, apply_substitutions=False):
+def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     if isinstance(c, mx_sdk.GraalVmLanguage):
         result = '<jre_base>/languages/'
     elif isinstance(c, mx_sdk.GraalVmTool):
@@ -256,13 +256,13 @@ def _get_component_type_base(c, apply_substitutions=False):
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
         # Get the 'svm' component, even if it's not part of the GraalVM image
         svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
-        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/macros/'
+        result = _get_component_type_base(svm_component, graalvm_dist_for_substitutions=graalvm_dist_for_substitutions) + svm_component.dir_name + '/macros/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
         raise mx.abort("Unknown component type for {}: {}".format(c.name, type(c).__name__))
-    if apply_substitutions:
-        result = get_final_graalvm_distribution().path_substitutions.substitute(result)
+    if graalvm_dist_for_substitutions is not None:
+        result = graalvm_dist_for_substitutions.path_substitutions.substitute(result)
     return result
 
 
@@ -1272,7 +1272,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         super(NativePropertiesBuildTask, self).__init__(args, 1, subject)
         self._contents = None
         self._location_classpath = None
-        self._graalvm_dist = get_final_graalvm_distribution() if _rebuildable_image(self.subject.image_config) else get_stage1_graalvm_distribution()
+        self._graalvm_dist = get_stage1_graalvm_distribution() if self.subject.stage1 else get_final_graalvm_distribution()
         self._graalvm_location = self._graalvm_dist.find_single_source_location('dependency:' + self.subject.name)
 
     def newestOutput(self):
@@ -1295,7 +1295,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         if image_config.dir_jars:
             if not component:
                 raise mx.abort("dir_jars=True can only be used on launchers associated with a component")
-            component_dir = _get_component_type_base(component, apply_substitutions=True)
+            component_dir = _get_component_type_base(component, graalvm_dist_for_substitutions=graalvm_dist)
             dir_name = component.dir_name
             if dir_name:
                 component_dir = component_dir + dir_name + os.sep
@@ -1322,9 +1322,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if getattr(image_config, 'link_at_build_time', True):
                 build_args += ['--link-at-build-time']
 
-            graalvm_dist = get_final_graalvm_distribution()
+            # graalvm_dist = get_final_graalvm_distribution()
             location_classpath = self._get_location_classpath()
-            graalvm_home = _get_graalvm_archive_path("")
+            graalvm_home = _get_graalvm_archive_path("", self._graalvm_dist)
 
             if isinstance(image_config, mx_sdk.LibraryConfig):
                 suffix = _lib_suffix
@@ -1347,12 +1347,15 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     build_args += ['-Dorg.graalvm.launcher.class=' + image_config.main_class]
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
-            graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
+            # The launcher home is relative to the native image, which only exists in the final distribution.
+            final_graalvm_dist = get_final_graalvm_distribution()
+            final_graalvm_home = _get_graalvm_archive_path("", final_graalvm_dist)
+            final_graalvm_image_destination = final_graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
 
             if image_config.home_finder:
                 build_args += [
                     '--features=org.graalvm.home.HomeFinderFeature',
-                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(final_graalvm_image_destination, final_graalvm_home),
                 ]
 
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
@@ -1365,7 +1368,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 if image_config.is_sdk_launcher:
-                    launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
+                    launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(self._graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
                     if isinstance(image_config, mx_sdk.LauncherConfig):
                         build_args += ['-H:-ParseRuntimeOptions']
@@ -1379,7 +1382,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
 
             image_config_build_args = image_config.build_args + (image_config.build_args_enterprise if has_component('svmee', stage1=True) else [])
-            build_args += [graalvm_dist.string_substitutions.substitute(arg) for arg in image_config_build_args]
+            build_args += [self._graalvm_dist.string_substitutions.substitute(arg) for arg in image_config_build_args]
 
             name = basename(image_config.destination)
             if suffix:
@@ -1416,7 +1419,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 myself = myself[:-1]
             _write_ln(u"# Generated with \u2764 by " + myself)
             _write_ln(u'ImageName=' + java_properties_escape(name))
-            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), dirname(self._graalvm_location)).replace(os.sep, '/')))
+            # This requires computing a relative path between the location of the native image (in the final
+            # distribution) and the location of the macro (available only on the stage1 in case of non-rebuildable
+            # images)
+            final_destination_within_home = relpath(final_graalvm_image_destination, final_graalvm_home)
+            location_within_home = relpath(self._graalvm_location, graalvm_home)
+            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(final_destination_within_home), dirname(location_within_home)).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
