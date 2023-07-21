@@ -61,7 +61,7 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info, get_module_name
+from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
 from mx_unittest import unittest
 
@@ -144,33 +144,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def _path_args(depNames=None):
-    """
-    Gets the VM args for putting the dependencies named in `depNames` on the
-    class path and module path (if running on JDK9 or later).
-
-    :param names: a Dependency, str or list containing Dependency/str objects. If None,
-           then all registered dependencies are used.
-    """
-    jdk = mx.get_jdk()
-    if jdk.javaCompliance >= '1.9':
-        modules = [as_java_module(dist, jdk) for dist in _suite.dists if get_java_module_info(dist)]
-        if modules:
-            # Partition resources between the class path and module path
-            modulepath = []
-            classpath = []
-            cpEntryToModule = {m.dist.path : m for m in modules}
-
-            for e in mx.classpath(depNames).split(os.pathsep):
-                if e in cpEntryToModule:
-                    modulepath.append(cpEntryToModule[e].jarpath)
-                else:
-                    classpath.append(e)
-            # The Truffle modules must be eagerly loaded as they could be referenced from
-            # the main class hence the --add-modules argument
-            return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
-    return ['-cp', mx.classpath(depNames)]
-
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
@@ -216,8 +189,17 @@ mx_unittest.add_config_participant(_unittest_config_participant)
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"]) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing = True)
+    java_path = os.path.join(graalvm_home, 'bin', 'java')
+    mx.run([java_path] + vmArgs + mx.get_runtime_jvm_args(names=['TRUFFLE_SL', 'TRUFFLE_RUNTIME', 'TRUFFLE_SL_LAUNCHER'], exclude_names='GRAAL_SDK') + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
 
+def slimage(args):
+    """build a native image of an SL program"""
+    vmArgs, slArgs = mx.extract_VM_args(args)
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing = True)
+    native_image_path = os.path.join(graalvm_home, 'bin', 'native-image')
+    mx.run([native_image_path] + vmArgs + mx.get_runtime_jvm_args(names=['TRUFFLE_SL', 'TRUFFLE_RUNTIME', 'TRUFFLE_SL_LAUNCHER'], exclude_names=['GRAAL_SDK', 'TRUFFLE_COMPILER', 'JNIUTILS', 'NATIVEBRIDGE']) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
+    
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     if jdk.javaCompliance < '9':
@@ -264,6 +246,7 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
+    'slimage' : [slimage, '[SL args|@VM options]'],
 })
 
 def _is_graalvm(jdk):
