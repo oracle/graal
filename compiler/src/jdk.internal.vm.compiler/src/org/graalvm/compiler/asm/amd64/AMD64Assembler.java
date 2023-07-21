@@ -65,6 +65,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VCVTPS2PH;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTPH2PS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VGF2P8AFFINEQB;
@@ -1481,6 +1482,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMIOp VPSHUFLW         = new VexRMIOp("VPSHUFLW",         P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, WIG);
         public static final VexRMIOp VPSHUFHW         = new VexRMIOp("VPSHUFHW",         P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, WIG);
         public static final VexRMIOp VPSHUFD          = new VexRMIOp("VPSHUFD",          P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,    EVEXTuple.FVM, W0);
+        public static final VexRMIOp RORXL            = new VexRMIOp("RORXL",            P_F2, M_0F3A, W0,  0xF0, VEXOpAssertion.BMI2);
         public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            P_F2, M_0F3A, W1,  0xF0, VEXOpAssertion.BMI2);
         // @formatter:on
 
@@ -2493,6 +2495,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void addl(Register dst, Register src) {
+        ADD.rmOp.emit(this, DWORD, dst, src);
+    }
+
+    public final void addl(Register dst, AMD64Address src) {
         ADD.rmOp.emit(this, DWORD, dst, src);
     }
 
@@ -4021,6 +4027,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         VexRVMOp.VPSHUFB.emit(this, size, dst, src1, src2);
     }
 
+    public final void vpshufd(Register dst, Register src, int imm8, AVXSize size) {
+        VexRMIOp.VPSHUFD.emit(this, size, dst, src, imm8);
+    }
+
     public final void vpclmulqdq(Register dst, Register nds, Register src, int imm8) {
         VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, imm8);
     }
@@ -4307,6 +4317,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void rorq(Register dst, int imm8) {
         GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
         ROR.miOp.emit(this, QWORD, dst, (byte) imm8);
+    }
+
+    public final void rorxl(Register dst, Register src, int imm8) {
+        RORXL.emit(this, AVXSize.QWORD, dst, src, (byte) imm8);
     }
 
     public final void rorxq(Register dst, Register src, int imm8) {
@@ -5070,6 +5084,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(7, adr, 0);
     }
 
+    public final void vpaddd(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpaddd(Register dst, Register nds, AMD64Address src, AVXSize size) {
+        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
+    }
+
     public final void vpaddq(Register dst, Register nds, Register src, AVXSize size) {
         VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
     }
@@ -5175,6 +5197,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void vperm2f128(Register dst, Register nds, Register src, int imm8) {
         VexRVMIOp.VPERM2F128.emit(this, AVXSize.YMM, dst, nds, src, imm8);
+    }
+
+    public final void vperm2i128(Register dst, Register nds, Register src, int imm8) {
+        VexRVMIOp.VPERM2I128.emit(this, AVXSize.YMM, dst, nds, src, imm8);
     }
 
     public final void vzeroupper() {

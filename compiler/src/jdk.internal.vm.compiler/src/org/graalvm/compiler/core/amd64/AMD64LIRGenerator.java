@@ -118,6 +118,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
 import org.graalvm.compiler.lir.amd64.AMD64SHA1Op;
+import org.graalvm.compiler.lir.amd64.AMD64SHA256AVX2Op;
 import org.graalvm.compiler.lir.amd64.AMD64SHA256Op;
 import org.graalvm.compiler.lir.amd64.AMD64SHA512Op;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
@@ -907,7 +908,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitSha256ImplCompress(Value buf, Value state) {
-        append(new AMD64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+        if (supportsCPUFeature(CPUFeature.SHA)) {
+            append(new AMD64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+        } else {
+            RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+            RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+
+            emitMove(rBuf, buf);
+            emitMove(rState, state);
+
+            append(new AMD64SHA256AVX2Op(rBuf, rState));
+        }
     }
 
     @Override

@@ -160,7 +160,6 @@ import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.replacements.nodes.SHANode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -244,7 +243,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32Plugins(invocationPlugins, config, replacements);
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
-                registerSHAPlugins(invocationPlugins, config, replacements, target.arch);
+                registerSHAPlugins(invocationPlugins, config, replacements);
                 registerMD5Plugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
@@ -1024,10 +1023,9 @@ public class HotSpotGraphBuilderPlugins {
             }
             return true;
         }
-
     }
 
-    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements, Architecture arch) {
+    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         boolean useMD5 = config.md5ImplCompressMultiBlock != 0L;
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
@@ -1056,10 +1054,6 @@ public class HotSpotGraphBuilderPlugins {
                 return templates.implCompressMultiBlock0;
             }
         });
-
-        // HotSpot runtime sha256_implCompress stub AVX2 variant is not yet ported
-        Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        rSha256.registerConditional(useSha256 && !SHANode.SHA256Node.isSupported(arch), new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
     }
 
     private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {

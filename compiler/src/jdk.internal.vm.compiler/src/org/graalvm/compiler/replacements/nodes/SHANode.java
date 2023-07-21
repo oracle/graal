@@ -46,15 +46,13 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
-/**
- * Intrinsification for {@code sun.security.provider.SHA.implCompress0}.
- */
 @NodeInfo(allowedUsageTypes = Memory)
 public abstract class SHANode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<SHANode> TYPE = NodeClass.create(SHANode.class);
 
-    private static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Int)};
+    private static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Int),
+                    NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name) {
         return new ForeignCallDescriptor(name, void.class, new Class<?>[]{Pointer.class, Pointer.class}, false, KILLED_LOCATIONS, false, false);
@@ -79,6 +77,9 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
         return new ValueNode[]{buf, state};
     }
 
+    /**
+     * Intrinsification for {@code sun.security.provider.SHA.implCompress0}.
+     */
     @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
     public static final class SHA1Node extends SHANode {
 
@@ -152,7 +153,7 @@ public abstract class SHANode extends MemoryKillStubIntrinsicNode {
         }
 
         public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-            return EnumSet.of(AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.SHA);
+            return EnumSet.of(AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.BMI2);
         }
 
         public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
