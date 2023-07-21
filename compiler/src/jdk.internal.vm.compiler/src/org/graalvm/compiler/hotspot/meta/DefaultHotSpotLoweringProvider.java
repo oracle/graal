@@ -175,6 +175,7 @@ import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -694,8 +695,12 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void lowerInvoke(Invoke invoke, LoweringTool tool, StructuredGraph graph) {
+        if (invoke.callTarget() instanceof Lowerable) {
+            ((Lowerable) invoke.callTarget()).lower(tool);
+        }
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+            assert callTarget.getClass() == MethodCallTargetNode.class : "unexpected subclass of MethodCallTargetNode";
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.isEmpty() ? null : parameters.get(0);
 
