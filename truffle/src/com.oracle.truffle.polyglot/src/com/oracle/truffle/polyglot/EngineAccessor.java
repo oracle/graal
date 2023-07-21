@@ -2062,6 +2062,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException {
             InternalResource.Id id = resourceType.getAnnotation(InternalResource.Id.class);
+            assert id != null : resourceType + " must be annotated by @InternalResource.Id";
             return getInternalResource(owner, id.value());
         }
 

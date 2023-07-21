@@ -1275,6 +1275,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.runtime",
+        "TRUFFLE_RUNTIME_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
@@ -1323,6 +1324,9 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+        ],
+        "opens" : [
+          "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1380,21 +1384,24 @@ suite = {
       }
     },
 
-    "TRUFFLE_RUNTIME_ATTACH" : {
-      "native" : True,
+    "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
+      "type" : "dir",
       "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
           "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
+          "windows-aarch64",
       ],
       "layout" : {
-        "bin/" : "dependency:com.oracle.truffle.runtime.attach",
+        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
-      "maven": True,
+      "maven": False,
     },
 
     "TRUFFLE_RUNTIME_ATTACH_SUPPORT" : {

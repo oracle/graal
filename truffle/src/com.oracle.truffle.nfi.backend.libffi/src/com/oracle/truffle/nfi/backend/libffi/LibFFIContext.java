@@ -275,16 +275,12 @@ class LibFFIContext {
             try {
                 TruffleFile libNFIResources = env.getInternalResource(LibNFIResource.class);
                 TruffleFile libNFI = libNFIResources.resolve("bin").resolve(System.mapLibraryName("trufflenfi"));
-                nfiLib = libNFI.exists() ? libNFI.getAbsoluteFile().getPath() : null;
+                nfiLib = libNFI.getAbsoluteFile().getPath();
             } catch (IOException ioe) {
                 throw CompilerDirectives.shouldNotReachHere(ioe);
             }
         }
-        if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-        } else {
-            System.load(nfiLib);
-        }
+        System.load(nfiLib);
     }
 
     ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {

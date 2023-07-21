@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -49,6 +50,7 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOError;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -63,6 +65,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,6 +93,38 @@ final class InternalResourceCache {
     }
 
     FileSystem getResourceFileSystem(PolyglotEngineImpl polyglotEngine) throws IOException {
+        return getResourceFileSystemImpl((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization));
+    }
+
+    /**
+     * Installs truffleattach library. Used reflectively by
+     * {@code com.oracle.truffle.runtime.ModulesSupport}. The {@code ModulesSupport} is initialized
+     * before the Truffle runtime is created and accessor classes are initialized. For this reason,
+     * it cannot use {@code EngineSupport} to call this method, nor can this method use any
+     * accessor.
+     */
+    static Path installRuntimeResource(InternalResource resource) throws IOException {
+        InternalResourceCache cache = createRuntimeResourceCache(resource);
+        return cache.getResourceFileSystemImpl(InternalResourceCache::createInternalResourceEnvReflectively).parsePath("").toAbsolutePath();
+    }
+
+    private static InternalResourceCache createRuntimeResourceCache(InternalResource resource) {
+        InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
+        assert id != null : resource.getClass() + " must be annotated by @InternalResource.Id";
+        return new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id.value(), () -> resource);
+    }
+
+    private static InternalResource.Env createInternalResourceEnvReflectively(InternalResource resource) {
+        try {
+            Constructor<InternalResource.Env> newEnv = InternalResource.Env.class.getDeclaredConstructor(InternalResource.class, BooleanSupplier.class);
+            newEnv.setAccessible(true);
+            return newEnv.newInstance(resource, (BooleanSupplier) () -> TruffleOptions.AOT);
+        } catch (ReflectiveOperationException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
+
+    private FileSystem getResourceFileSystemImpl(Function<InternalResource, InternalResource.Env> createEnv) throws IOException {
         FileSystem result = resourceFileSystem;
         if (result == null) {
             synchronized (this) {
@@ -102,7 +138,7 @@ final class InternalResourceCache {
                             root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
                         } else {
                             InternalResource resource = resourceFactory.get();
-                            InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource.getClass().getModule(), () -> polyglotEngine.inEnginePreInitialization);
+                            InternalResource.Env env = createEnv.apply(resource);
                             root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
                             unpackResourceFiles(root, resource, env);
                         }
@@ -304,6 +340,10 @@ final class InternalResourceCache {
                 result |= cache.copyResourcesForNativeImage(target);
             }
         }
+        // Always install Truffle runtime resource caches
+        for (InternalResource resource : EngineAccessor.RUNTIME.getInternalResources()) {
+            result |= createRuntimeResourceCache(resource).copyResourcesForNativeImage(target);
+        }
         return result;
     }
 
@@ -312,7 +352,7 @@ final class InternalResourceCache {
         unlink(resourceRoot);
         Files.createDirectories(resourceRoot);
         InternalResource resource = resourceFactory.get();
-        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource.getClass().getModule(), () -> false);
+        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false);
         resource.unpackFiles(env, resourceRoot);
         if (isEmpty(resourceRoot)) {
             Files.deleteIfExists(resourceRoot);

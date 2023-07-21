@@ -106,8 +106,8 @@ public interface InternalResource {
         private final Module owner;
         private final BooleanSupplier contextPreinitializationCheck;
 
-        Env(Module owner, BooleanSupplier contextPreinitializationCheck) {
-            this.owner = Objects.requireNonNull(owner, "Owner must be non-null.");
+        Env(InternalResource resource, BooleanSupplier contextPreinitializationCheck) {
+            this.owner = resource.getClass().getModule();
             this.contextPreinitializationCheck = Objects.requireNonNull(contextPreinitializationCheck, "ContextPreinitializationCheck  must be non-null.");
         }
 
