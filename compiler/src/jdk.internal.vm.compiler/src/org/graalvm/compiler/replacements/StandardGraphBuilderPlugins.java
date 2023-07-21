@@ -180,6 +180,9 @@ import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
+import org.graalvm.compiler.replacements.nodes.SHANode;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.SHANode.SHA256Node;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
@@ -255,6 +258,8 @@ public class StandardGraphBuilderPlugins {
             registerAESPlugins(plugins, replacements, lowerer.getTarget().arch);
             registerGHASHPlugin(plugins, replacements, lowerer.getTarget().arch);
             registerBigIntegerPlugins(plugins, replacements);
+
+            registerSHAPlugins(plugins, replacements, lowerer.getTarget().arch);
         }
     }
 
@@ -2121,10 +2126,10 @@ public class StandardGraphBuilderPlugins {
         public static ValueNode readFieldArrayStart(GraphBuilderContext b,
                         InvocationPluginHelper helper,
                         ResolvedJavaType klass,
-                        String filed,
+                        String fieldName,
                         ValueNode receiver,
                         JavaKind arrayKind) {
-            ResolvedJavaField field = helper.getField(klass, filed);
+            ResolvedJavaField field = helper.getField(klass, fieldName);
             ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
             return helper.arrayStart(array, arrayKind);
         }
@@ -2356,4 +2361,42 @@ public class StandardGraphBuilderPlugins {
             });
         }
     }
+
+    public static class SHAPlugin extends InvocationPlugin {
+
+        public interface SHANodeSupplier {
+            SHANode create(ValueNode buf, ValueNode state);
+        }
+
+        private final SHANodeSupplier supplier;
+
+        public SHAPlugin(SHANodeSupplier supplier) {
+            super("implCompress0", Receiver.class, byte[].class, int.class);
+            this.supplier = supplier;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                ResolvedJavaField stateField = helper.getField(receiverType, "state");
+
+                ValueNode nonNullReceiver = receiver.get();
+                ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
+                ValueNode state = helper.loadField(nonNullReceiver, stateField);
+                ValueNode stateStart = helper.arrayStart(state, JavaKind.Int);
+                b.add(supplier.create(bufStart, stateStart));
+                return true;
+            }
+        }
+    }
+
+    private static void registerSHAPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
+        rSha1.registerConditional(SHA1Node.isSupported(arch), new SHAPlugin(SHA1Node::new));
+
+        Registration rSha2 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
+        rSha2.registerConditional(SHA256Node.isSupported(arch), new SHAPlugin(SHA256Node::new));
+    }
+
 }
