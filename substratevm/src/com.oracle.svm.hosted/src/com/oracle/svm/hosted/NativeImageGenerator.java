@@ -193,6 +193,7 @@ import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -1310,7 +1311,10 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
-        if (SubstrateOptions.parseOnce() && InlineBeforeAnalysis.Options.InlineBeforeAnalysis.getValue(aUniverse.getBigbang().getOptions())) {
+        boolean useInlineBeforeAnalysisMethodHandleSupport = SubstrateOptions.parseOnce() &&
+                        InlineBeforeAnalysis.Options.InlineBeforeAnalysis.getValue(aUniverse.getBigbang().getOptions()) &&
+                        !DeoptimizationSupport.enabled();
+        if (useInlineBeforeAnalysisMethodHandleSupport) {
             if (reason.duringAnalysis()) {
                 plugins.appendNodePlugin(new MethodHandleWithExceptionPlugin(providers.getConstantReflection().getMethodHandleAccess(), false));
             }
