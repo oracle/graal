@@ -58,7 +58,7 @@ public class JNIThreadLocalPrimitiveArrayViews {
         return createArrayView(array).addressOfArrayElement(0);
     }
 
-    public static boolean destroyArrayViewByAddress(PointerBase address, int mode) {
+    public static void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
         ReferencedObjectListNode previous = null;
         ReferencedObjectListNode current = referencedObjectsListHead.get();
         while (current != null) {
@@ -77,12 +77,11 @@ public class JNIThreadLocalPrimitiveArrayViews {
                 } else {
                     current.object.untrack();
                 }
-                return true;
+                return;
             }
             previous = current;
             current = current.next;
         }
-        return false;
     }
 
     static int getCount() {

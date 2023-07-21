@@ -85,6 +85,12 @@ public class InlineBeforeAnalysisPolicyUtils {
 
         @Option(help = "Maximum call depth for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
+
+        @Option(help = "Maximum number of computation nodes for method handle internals inlined before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedNodes = new HostedOptionKey<>(100);
+
+        @Option(help = "Maximum number of invokes for method handle internals inlined before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedInvokes = new HostedOptionKey<>(20);
     }
 
     @SuppressWarnings("unchecked") //
@@ -193,7 +199,10 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         static AccumulativeCounters createForMethodHandleIntrinsification(AccumulativeCounters outer) {
-            return new AccumulativeCounters(100, 20, outer.maxInliningDepth, true);
+            return new AccumulativeCounters(Options.InlineBeforeAnalysisMethodHandleAllowedNodes.getValue(),
+                            Options.InlineBeforeAnalysisMethodHandleAllowedInvokes.getValue(),
+                            outer.maxInliningDepth,
+                            true);
         }
 
         int maxNodes;

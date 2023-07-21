@@ -554,7 +554,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer chars) {
-        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(chars, JNIMode.JNI_ABORT());
+        JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(chars, JNIMode.JNI_ABORT());
     }
 
     /*
@@ -801,7 +801,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, int mode) {
-        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(carray, mode);
+        JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(carray, mode);
     }
 
     /*
@@ -1329,7 +1329,7 @@ public final class JNIFunctions {
         }
 
         static void releaseString(CShortPointer cstr) {
-            JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(cstr, JNIMode.JNI_ABORT());
+            JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(cstr, JNIMode.JNI_ABORT());
         }
 
         @Uninterruptible(reason = "exception handler")

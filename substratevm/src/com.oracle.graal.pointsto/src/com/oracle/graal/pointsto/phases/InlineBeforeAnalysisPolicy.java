@@ -109,6 +109,7 @@ public abstract class InlineBeforeAnalysisPolicy {
     protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
                     ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle);
 
+    /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
     protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
         return false;
     }

@@ -93,6 +93,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
 
         @Override
         protected boolean shouldInterpretMethodHandleInvoke(ResolvedJavaMethod method, MethodHandleWithExceptionNode node) {
+            /* Same as elsewhere, we inline greedily. */
             return true;
         }
 
