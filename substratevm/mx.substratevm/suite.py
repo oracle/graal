@@ -1022,7 +1022,7 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
-
+        
         "com.oracle.svm.truffle.nfi": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1504,6 +1504,9 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    # the runtime might not be available at runtime
+                    # the module can still be used with the TruffleBaseFeature
+                    "static org.graalvm.truffle.runtime",
                 ],
                 "uses" : [
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
