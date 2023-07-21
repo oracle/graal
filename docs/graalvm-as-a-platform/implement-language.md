@@ -108,7 +108,7 @@ IGV is developed to view and inspect intermediate representation graphs – a la
     ./sl -dump language/tests/SumPrint.sl
     ```
 
-This dumps compiler graphs in the IGV format over the network to an IGV process listening on [127.0.0.1:4445](127.0.0.1:4445). 
+This dumps compiler graphs in the IGV format over the network to an IGV process listening on _127.0.0.1:4445_. 
 Once the connection is made, you are able to see the graphs in the Outline window. 
 Open a specific graph, search for nodes by name, ID, or by `property=value` data, and all matching results will be shown. 
 Learn more [here](../tools/ideal-graph-visualizer.md).
