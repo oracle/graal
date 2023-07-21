@@ -120,7 +120,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
-import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -170,6 +169,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public String getDescription() {
         return "Provides base support for Truffle";
+    }
+
+    public static Class<?> lookupClass(String className) {
+        try {
+            return Class.forName(className, false, TruffleBaseFeature.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     public static class Options {
@@ -289,7 +296,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
-        UserError.guarantee(runtime instanceof SubstrateTruffleRuntime || runtime instanceof DefaultTruffleRuntime,
+        UserError.guarantee(isSubstrateRuntime(runtime) || runtime instanceof DefaultTruffleRuntime,
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
@@ -311,19 +318,21 @@ public final class TruffleBaseFeature implements InternalFeature {
         profilingEnabled = false;
     }
 
+    @SuppressWarnings({"null", "unused"})
+    private static boolean isSubstrateRuntime(TruffleRuntime runtime) {
+        /*
+         * We cannot directly depend on SubstrateTruffleRuntime from the base feature, as the
+         * runtime might not be on the module-path.
+         */
+        return runtime.getClass().getName().equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+    }
+
     public void setProfilingEnabled(boolean profilingEnabled) {
         this.profilingEnabled = profilingEnabled;
     }
 
     @Override
     public void cleanup() {
-        /*
-         * Clean the cached call target nodes to prevent them from keeping application classes alive
-         */
-        TruffleRuntime runtime = Truffle.getRuntime();
-        if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
-            throw VMError.shouldNotReachHere("Only SubstrateTruffleRuntime and DefaultTruffleRuntime supported");
-        }
 
         // clean up the language cache
         invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotFastThreadLocals", "resetNativeImageState", Collections.emptyList());
@@ -376,7 +385,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(TruffleFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
+        if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
         access.registerObjectReplacer(this::processInlinedField);
@@ -1257,10 +1266,11 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
          */
         return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
     }
+
 }
 
 final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTransformerWithAvailability {
-    static final Class<?> SHAPE_GENERATOR = ReflectionUtil.lookupClass(false, "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+    static final Class<?> SHAPE_GENERATOR = TruffleBaseFeature.lookupClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
 
     private final String storageClassFieldName;
 

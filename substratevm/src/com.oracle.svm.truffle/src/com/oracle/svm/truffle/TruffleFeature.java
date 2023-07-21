@@ -263,7 +263,11 @@ public class TruffleFeature implements InternalFeature {
     }
 
     public static boolean isInConfiguration() {
-        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
+        String property = System.getProperty("truffle.TruffleRuntime");
+        if (property != null) {
+            return property.equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+        }
+        return false;
     }
 
     @Override
@@ -357,7 +361,6 @@ public class TruffleFeature implements InternalFeature {
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, partialEvaluator.getTypes());
-        TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
