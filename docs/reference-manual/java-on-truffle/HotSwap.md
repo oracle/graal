@@ -3,6 +3,7 @@ layout: docs
 toc_group: espresso
 link_title: Enhanced HotSwap
 permalink: /reference-manual/java-on-truffle/hotswap/
+redirect_from: /reference-manual/java-on-truffle/hotswap-plugin/
 ---
 
 # Enhanced HotSwap Capabilities with Java on Truffle

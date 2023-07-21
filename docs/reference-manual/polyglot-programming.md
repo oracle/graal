@@ -3,7 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: Polyglot Programming
 permalink: /reference-manual/polyglot-programming/
-redirect_from: /$version/docs/polyglot-programming/
+redirect_from: /docs/polyglot-programming/
 ---
 
 # Polyglot Programming

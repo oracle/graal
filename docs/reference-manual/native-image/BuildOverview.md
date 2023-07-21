@@ -3,7 +3,7 @@ layout: docs
 toc_group: build-overview
 link_title: Build Overview
 permalink: /reference-manual/native-image/overview/Build-Overview/
-redirect_from: /$version/reference-manual/native-image/Build-Overview/
+redirect_from: /reference-manual/native-image/Build-Overview/
 ---
 
 # Native Image Build Overview
