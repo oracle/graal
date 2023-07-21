@@ -1743,6 +1743,7 @@ suite = {
       "native" : True,
       "description" : "Truffle support distribution for ICU4J",
       "layout" : {
+        "LICENSE_ICU4J" : "extracted-dependency:truffle:ICU4J/LICENSE",
         "native-image.properties" : "file:mx.truffle/language-icu4j.properties",
       },
       "maven" : False,
