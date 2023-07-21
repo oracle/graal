@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.common.option.CommonOptions.PrintFlags;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -49,7 +47,6 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -58,8 +55,7 @@ public final class ConfigurationParserUtils {
     public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
         return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.PrintMissingMetadataElements.getValue()
-                );
+                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
     }
 
     /**
@@ -76,12 +72,11 @@ public final class ConfigurationParserUtils {
 
         List<Path> paths = configFilesOption.getValue().values();
         List<String> resourceValues = configResourcesOption.getValue().values();
-        var configFilesOptionName = configFilesOption.getName();
-        return parseAndRegisterConfigurations(parser, classLoader, featureName, configFilesOptionName, configResourcesOption.getName(), directoryFileName, paths, resourceValues);
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
     }
 
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
-                    String featureName, String configFilesOptionName, String configResourcesOptionName,
+                    String featureName,
                     String directoryFileName, List<Path> paths,
                     List<String> resourceValues) {
         int parsedCount = 0;
@@ -91,7 +86,7 @@ public final class ConfigurationParserUtils {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
-            doParseAndRegister(parser, featureName, path, configFilesOptionName);
+            doParseAndRegister(parser, featureName, path);
             return 1;
         }).sum();
 
@@ -118,13 +113,13 @@ public final class ConfigurationParserUtils {
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
         parsedCount += resources.mapToInt(url -> {
-            doParseAndRegister(parser, featureName, url, configResourcesOptionName);
+            doParseAndRegister(parser, featureName, url);
             return 1;
         }).sum();
         return parsedCount;
     }
 
-    private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location, String optionName) {
+    private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location) {
         try {
             URI uri;
             if (location instanceof Path) {
@@ -138,8 +133,10 @@ public final class ConfigurationParserUtils {
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
             }
-            throw UserError.abort("Error parsing %s configuration in %s:%n%s%nVerify that the configuration matches the schema described in the %s output for option %s.",
-                            featureName, location, errorMessage, SubstrateOptionsParser.commandArgument(PrintFlags, "+"), optionName);
+            throw UserError.abort(
+                            "Error parsing %s configuration in %s:%n%s%nVerify that the configuration matches the corresponding schema at " +
+                                            "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/",
+                            featureName, location, errorMessage);
         }
     }
 }
