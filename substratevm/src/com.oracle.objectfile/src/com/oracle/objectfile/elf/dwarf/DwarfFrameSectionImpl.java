@@ -57,7 +57,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         int pos = 0;
 
         /*
-         * The frame section contains one CIE at offset 0 followed by an FIE for each method.
+         * The frame section contains one CIE at offset 0 followed by an FIE for each compiled
+         * method.
          */
         pos = writeCIE(null, pos);
         pos = writeMethodFrames(null, pos);
