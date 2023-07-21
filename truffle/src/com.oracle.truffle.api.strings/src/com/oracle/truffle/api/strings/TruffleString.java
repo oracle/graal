@@ -6153,7 +6153,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to replace all invalid bytes in a given string, such that the resulting string is
-     * encoded correctly in the given encoding. See
+     * {@link IsValidNode valid}. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
      *
      * @since 23.1
@@ -6164,9 +6164,11 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Returns a version of string {@code a} that is encoded <em>correctly</em> in the given
-         * encoding, which may be the string itself or a converted version. Invalid byte sequences
-         * are replaced with {@code '\ufffd'} (for UTF-*) or {@code '?'}.
+         * Returns a version of string {@code a} that contains only valid codepoints, which may be
+         * the string itself or a converted version. Invalid byte sequences are replaced with
+         * {@code '\ufffd'} (for UTF-*) or {@code '?'}. This is useful for string sanitization in
+         * all uses cases where a string is required to actually be {@link IsValidNode valid}, such
+         * as libraries that actively reject broken input, network and file system I/O, etc.
          *
          * @since 23.1
          */
