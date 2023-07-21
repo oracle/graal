@@ -74,16 +74,19 @@ public final class IsolatedTruffleRuntimeSupport {
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
-        return codeInstallBridge -> {
-            ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
-            if (codeInstallBridge != null) {
-                installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+        return new Consumer<>() {
+            @Override
+            public void accept(OptimizedAssumptionDependency codeInstallBridge) {
+                ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
+                if (codeInstallBridge != null) {
+                    installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+                }
+
+                @SuppressWarnings("unchecked")
+                ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
+
+                notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
             }
-
-            @SuppressWarnings("unchecked")
-            ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
-
-            notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
         };
     }
 
