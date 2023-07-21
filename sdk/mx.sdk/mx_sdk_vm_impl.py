@@ -3107,15 +3107,17 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if launcher_project.is_native():
                     needs_stage1 = True
                 if with_svm:
-                    register_project(GraalVmNativeProperties(component, launcher_config))
-                    if not _rebuildable_image(launcher_config):
+                    if _rebuildable_image(launcher_config):
+                        register_project(GraalVmNativeProperties(component, launcher_config))
+                    else:
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
-                    register_project(GraalVmNativeProperties(component, library_config))
-                    if not _rebuildable_image(library_config):
+                    if _rebuildable_image(library_config):
+                        register_project(GraalVmNativeProperties(component, library_config))
+                    else:
                         with_non_rebuildable_configs = True
                     if library_config.add_to_module:
                         jmod_file = library_config.add_to_module + ('' if library_config.add_to_module.endswith('.jmod') else '.jmod')
