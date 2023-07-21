@@ -42,7 +42,7 @@
     "labsjdk-ee-21Debug": {"name": "labsjdk",   "version": "ee-21+30-jvmci-23.1-b10-debug", "platformspecific": true },
     "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21+30-jvmci-23.1-b10-sulong", "platformspecific": true },
 
-    "oraclejdk22":        {"name": "jpg-jdk",   "version": "22",      "build_id": "1", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]}
+    "oraclejdk22":        {"name": "jpg-jdk",   "version": "22",      "build_id": "2", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]}
   },
 
   "eclipse": {

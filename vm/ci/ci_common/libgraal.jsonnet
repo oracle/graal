@@ -146,7 +146,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     for jdk in [
       "22"
     ]
-    for os_arch in ["linux-amd64"]
+    for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
     ]
