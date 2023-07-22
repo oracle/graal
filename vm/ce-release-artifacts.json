@@ -27,9 +27,9 @@
         ]
     },
     {
-        "name": "graalvm-community-java20",
+        "name": "graalvm-community-java21",
         "core": true,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -175,9 +175,9 @@
         ]
     },
     {
-        "name": "llvm-installable-svm-java20",
+        "name": "llvm-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -229,9 +229,9 @@
         ]
     },
     {
-        "name": "llvm-toolchain-installable-ce-java20",
+        "name": "llvm-toolchain-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -275,9 +275,9 @@
         ]
     },
     {
-        "name": "native-image-llvm-backend-installable-ce-java20",
+        "name": "native-image-llvm-backend-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -321,9 +321,9 @@
         ]
     },
     {
-        "name": "python-installable-svm-java20",
+        "name": "python-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -371,9 +371,9 @@
         ]
     },
     {
-        "name": "ruby-installable-svm-java20",
+        "name": "ruby-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -421,9 +421,9 @@
         ]
     },
     {
-        "name": "wasm-installable-svm-java20",
+        "name": "wasm-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -475,9 +475,9 @@
         ]
     },
     {
-        "name": "espresso-installable-svm-java20",
+        "name": "espresso-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -517,9 +517,9 @@
         ]
     },
     {
-        "name": "espresso-llvm-installable-ce-java20",
+        "name": "espresso-llvm-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -559,9 +559,9 @@
         ]
     },
     {
-        "name": "nodejs-installable-svm-java20",
+        "name": "nodejs-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -613,9 +613,9 @@
         ]
     },
     {
-        "name": "js-installable-svm-java20",
+        "name": "js-installable-svm-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -667,9 +667,9 @@
         ]
     },
     {
-        "name": "icu4j-installable-ce-java20",
+        "name": "icu4j-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -721,9 +721,9 @@
         ]
     },
     {
-        "name": "regex-installable-ce-java20",
+        "name": "regex-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -775,9 +775,9 @@
         ]
     },
     {
-        "name": "visualvm-installable-ce-java20",
+        "name": "visualvm-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -829,9 +829,9 @@
         ]
     },
     {
-        "name": "antlr4-installable-ce-java20",
+        "name": "antlr4-installable-ce-java21",
         "core": false,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
