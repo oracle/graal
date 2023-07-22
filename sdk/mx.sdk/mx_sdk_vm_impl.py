@@ -1614,11 +1614,12 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, **kw_args):
+    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, default_to_jvmci=False, **kw_args):
         super(GraalVmJImage, self).__init__(suite=suite, name=name, subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
-                                            **kw_args)
+                                            default_to_jvmci=default_to_jvmci, **kw_args)
         self.jimage_ignore_jars = jimage_ignore_jars or []
+        self.default_to_jvmci = default_to_jvmci
 
     def isPlatformDependent(self):
         return True
@@ -1660,7 +1661,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
                                  self.subject.jimage_ignore_jars,
                                  with_source=with_source,
                                  vendor_info=vendor_info,
-                                 use_upgrade_module_path=use_upgrade_module_path)
+                                 use_upgrade_module_path=use_upgrade_module_path,
+                                 default_to_jvmci=self.subject.default_to_jvmci)
         else:
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
             if exists(out_dir):
@@ -3209,6 +3211,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     jimage_jars=sorted(_stage1_graalvm_distribution.jimage_jars),
                     jimage_ignore_jars=sorted(_stage1_graalvm_distribution.jimage_ignore_jars),
                     workingSets=None,
+                    default_to_jvmci=False,  # decide depending on the included modules
                 ))
         final_jimage_project = GraalVmJImage(
             suite=_suite,
@@ -3216,6 +3219,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
             jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
             workingSets=None,
+            default_to_jvmci=_get_libgraal_component() is not None,
         )
         register_project(final_jimage_project)
 
