@@ -1322,7 +1322,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if getattr(image_config, 'link_at_build_time', True):
                 build_args += ['--link-at-build-time']
 
-            # graalvm_dist = get_final_graalvm_distribution()
             location_classpath = self._get_location_classpath()
             graalvm_home = _get_graalvm_archive_path("", self._graalvm_dist)
 
@@ -1419,12 +1418,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 myself = myself[:-1]
             _write_ln(u"# Generated with \u2764 by " + myself)
             _write_ln(u'ImageName=' + java_properties_escape(name))
-            # This requires computing a relative path between the location of the native image (in the final
-            # distribution) and the location of the macro (available only on the stage1 in case of non-rebuildable
-            # images)
-            final_destination_within_home = relpath(final_graalvm_image_destination, final_graalvm_home)
-            location_within_home = relpath(self._graalvm_location, graalvm_home)
-            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(final_destination_within_home), dirname(location_within_home)).replace(os.sep, '/')))
+            if not self.subject.stage1:
+                # Only macros in the final distribution need `ImagePath`.
+                #
+                # During a `mx build`, `mx_sdk_vm_impl` always provides an explicit value for `-H:Path` when building a
+                # native-image in order to have the output land in the appropriate mxbuild directory instead of inside
+                # the stage1.
+                _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(final_graalvm_image_destination), dirname(self._graalvm_location)).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
