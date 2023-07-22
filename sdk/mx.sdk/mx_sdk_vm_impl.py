@@ -2698,7 +2698,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         other_comp_names = []
         dependencies = component.standalone_dependencies_enterprise if svm_support.is_ee_supported() else component.standalone_dependencies
         self.involved_components = [component] + [get_component(dep) for dep in dependencies]
-        assert require_svm(self.involved_components), "Standalones that do not require SVM have not been tested in a while and might not work as intended"
+
         if svm_support.is_supported():
             other_comp_names.append('svm')
         if svm_support.is_ee_supported():
@@ -2716,6 +2716,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         default_jvm_modules_dir = base_dir + 'modules/'
         default_jvm_libs_dir = base_dir + 'jvmlibs/'
         layout = {}
+
+        assert require_svm(self.involved_components), "The '{}' standalone does not require SVM. This has not been tested in a while and might not work as intended. Involved components: '{}'".format(name, [c.name for c in self.involved_components])
 
         # Compute paths from standalone component launchers to other homes
         home_paths = {}
