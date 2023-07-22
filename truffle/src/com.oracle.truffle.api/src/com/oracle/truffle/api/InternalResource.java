@@ -54,9 +54,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -163,7 +167,7 @@ public interface InternalResource {
          * @since 23.1
          */
         public List<String> readResourceLines(Path location) throws IOException {
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(findResource(location.toString().replace(File.separatorChar, '/')), StandardCharsets.UTF_8))) {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(findResource(location), StandardCharsets.UTF_8))) {
                 List<String> content = new ArrayList<>();
                 for (String line = in.readLine(); line != null; line = in.readLine()) {
                     content.add(line);
@@ -179,6 +183,19 @@ public interface InternalResource {
          * {@link Module#getResourceAsStream(String)}, the module needs to open the enclosing
          * package of the resources to the {@code org.graalvm.truffle} module. It is recommended to
          * use non-encapsulated resource paths.
+         * <p>
+         * The file list is a {@link Properties Java properties} file where resource files serve as
+         * keys, and the corresponding values consist of serialized attributes separated by
+         * {@code ','}. Currently, only the POSIX file permissions attribute is supported. The
+         * format of this attribute follows the same convention used by the
+         * {@link PosixFilePermissions#fromString(String)}.
+         * <p>
+         * Example of a file list content:
+         *
+         * <pre>
+         * META-INF/resources/darwin/amd64/bin/libtrufflenfi.dylib = rwxr-xr-x
+         * META-INF/resources/common/include/trufflenfi.h = rw-r--r--
+         * </pre>
          *
          * @param source the path that identifies the file list resource in the module.
          * @param target the folder to extract resources to
@@ -195,21 +212,40 @@ public interface InternalResource {
             if (relativizeTo.isAbsolute()) {
                 throw new IllegalArgumentException("RelativizeTo must be a relative path, but the absolute path " + relativizeTo + " was given.");
             }
-            List<String> fileList = readResourceLines(source);
-            for (String fileListEntry : fileList) {
-                if (fileListEntry.isEmpty()) {
-                    continue;
-                }
-                Path resource = Path.of(fileListEntry);
+            Properties fileList = loadFileList(source);
+            for (var e : fileList.entrySet()) {
+                Path resource = Path.of((String) e.getKey());
+                Set<PosixFilePermission> attrs = parseAttrs((String) e.getValue());
                 if (resource.isAbsolute()) {
-                    throw new IllegalArgumentException("The filelist must contain only relative paths, but the absolute path " + fileListEntry + " was given.");
+                    throw new IllegalArgumentException("The file list must contain only relative paths, but the absolute path " + resource + " was given.");
                 }
                 Path relativizedPath = resource.startsWith(relativizeTo) ? relativizeTo.relativize(resource) : relativizeTo;
-                copyResource(target.resolve(relativizedPath), fileListEntry);
+                copyResource(resource, target.resolve(relativizedPath), attrs);
             }
         }
 
-        private InputStream findResource(String resourceName) throws IOException {
+        private Properties loadFileList(Path source) throws IOException {
+            Properties props = new Properties();
+            try (BufferedInputStream in = new BufferedInputStream(findResource(source))) {
+                props.load(in);
+            }
+            return props;
+        }
+
+        /**
+         * Parses attributes. Now a single attribute, the posix permissions, is supported. But the
+         * format can be extended by other attributes separated by {@code ','}.
+         */
+        private static Set<PosixFilePermission> parseAttrs(String rawValue) {
+            String[] attrComponents = rawValue.split(",");
+            if (attrComponents.length != 1) {
+                throw new IllegalArgumentException("Invalid attributes format " + rawValue + ". Attribute value can have only a single component");
+            }
+            return PosixFilePermissions.fromString(attrComponents[0].trim());
+        }
+
+        private InputStream findResource(Path path) throws IOException {
+            String resourceName = path.toString().replace(File.separatorChar, '/');
             InputStream stream = owner.getResourceAsStream(resourceName);
             if (stream == null) {
                 throw new NoSuchFileException(resourceName);
@@ -217,14 +253,17 @@ public interface InternalResource {
             return stream;
         }
 
-        private void copyResource(Path target, String relativeResourcePath) throws IOException {
+        private void copyResource(Path source, Path target, Set<PosixFilePermission> attrs) throws IOException {
             Path parent = target.getParent();
             if (parent == null) {
                 throw CompilerDirectives.shouldNotReachHere("RelativeResourcePath must be non-empty.");
             }
             Files.createDirectories(parent);
-            try (BufferedInputStream in = new BufferedInputStream(findResource(relativeResourcePath.replace(File.separatorChar, '/')))) {
+            try (BufferedInputStream in = new BufferedInputStream(findResource(source))) {
                 Files.copy(in, target);
+            }
+            if (getOS() != OS.WINDOWS) {
+                Files.setPosixFilePermissions(target, attrs);
             }
         }
     }
