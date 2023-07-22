@@ -1365,7 +1365,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (element != null) {
             builder.startAssert().string("assertAdopted()").end();
         } else {
-            builder.startAssert().string("getRootNode() != null : ").doubleQuote("Invalid library usage. Cached library must be adopted by a RootNode before it is executed.").end();
+            builder.startAssert().startCall("assertAdopted").string("this").end().end();
         }
         builder.tree(body);
     }
