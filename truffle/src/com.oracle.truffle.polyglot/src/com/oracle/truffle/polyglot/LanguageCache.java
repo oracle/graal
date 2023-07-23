@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
@@ -434,12 +435,28 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = System.getProperty("org.graalvm.language." + languageId + ".home");
+        String home = getAndCanonicalize("org.graalvm.language." + languageId + ".home");
         if (home == null) {
             // check legacy property
-            home = System.getProperty(languageId + ".home");
+            home = getAndCanonicalize(languageId + ".home");
         }
         return home;
+    }
+
+    private static String getAndCanonicalize(String propertyName) {
+        String path = System.getProperty(propertyName);
+        if (path != null) {
+            try {
+                String canonicalizedPath = new File(path).getCanonicalPath();
+                if (!path.equals(canonicalizedPath)) {
+                    System.setProperty(propertyName, canonicalizedPath);
+                }
+                path = canonicalizedPath;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return path;
     }
 
     static boolean overridesPathContext(String languageId) {

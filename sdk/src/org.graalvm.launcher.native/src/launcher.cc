@@ -424,7 +424,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             std::stringstream ss;
             std::stringstream relativeHome;
             relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
-            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << std::filesystem::canonical(relativeHome.str()).c_str();
+            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << fs::canonical(relativeHome.str()).c_str();
             vmArgs.push_back(ss.str());
         }
     }
