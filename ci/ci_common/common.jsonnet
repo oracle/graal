@@ -80,8 +80,10 @@ common + common.frequencies + {
     },
   },
 
-  linux_amd64: linux_deps_extras + common.linux_amd64 + graal_common_extras,
-  linux_aarch64: linux_deps_extras + common.linux_aarch64 + graal_common_extras,
+  linux_amd64_common: {os:: "linux"}  + graal_common_extras,
+  linux_amd64: {os_distro:: "ol"} + common.linux_amd64 + self.linux_amd64_common + linux_deps_extras,
+  linux_amd64_ubuntu: {os_distro:: "ubuntu"} + common.linux_amd64_ubuntu + self.linux_amd64_common,
+  linux_aarch64: {os_distro:: "ol"} + linux_deps_extras + common.linux_aarch64 + graal_common_extras,
   darwin_amd64: common.darwin_amd64 + graal_common_extras,
   darwin_aarch64: common.darwin_aarch64 + graal_common_extras,
   windows_amd64: common.windows_amd64 + graal_common_extras,
