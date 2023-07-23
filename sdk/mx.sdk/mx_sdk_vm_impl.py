@@ -2724,8 +2724,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         for dependency_name, details in dependencies.items():
             dependency_path = details[0]
             comp = get_component(dependency_name, fatalIfMissing=True)
-            if isinstance(comp, mx_sdk_vm.GraalVmTruffleComponent):
-                home_paths[comp.installable_id] = base_dir + dependency_path
+            home_paths[comp.installable_id] = base_dir + dependency_path
 
         def add_files_from_component(comp, is_main, path_prefix, excluded_paths, force_modules_as_jars=False):
             """
