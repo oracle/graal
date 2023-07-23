@@ -81,7 +81,7 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
         }
         MetaAccessProvider metaAccessProvider = context.getMetaAccess();
         for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
-            tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(), deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
+            tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
                             deopt.getSpeculation(metaAccessProvider).asJavaConstant(), context);
         }
         for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.TYPE)) {

@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.polyglot.Context;
@@ -105,9 +104,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
     @Test
     public void testSingleImplementor() {
-        if (GraalServices.hasLookupReferencedType()) {
-            testHelper(new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
-        }
+        testHelper(new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test

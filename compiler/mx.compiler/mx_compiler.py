@@ -1176,7 +1176,7 @@ def java_base_unittest(args):
     # Remove GRAAL_MANAGEMENT from the module path as it
     # depends on the java.management module which is not in
     # the limited module set
-    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'jdk.unsupported', 'jdk.compiler', 'java.instrument']
+    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'org.graalvm.truffle.runtime', 'jdk.unsupported', 'jdk.compiler', 'java.instrument']
     compiler_modules = [as_java_module(d, jdk).name for d in _graal_config().dists if d.name != 'GRAAL_MANAGEMENT']
     root_module_names = base_modules + compiler_modules
     extra_args = ['--limit-modules=' + ','.join(root_module_names)]
