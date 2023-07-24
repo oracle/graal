@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -54,6 +55,7 @@ public class PolyglotNativeAPIFeature implements Feature {
             throw UserError.abort("Polyglot native API supports only the C11 standard. Pass -H:CStandard=C11 on the command line to make the build work.");
         }
         ImageSingletons.add(LogHandler.class, new PolyglotNativeAPI.PolyglotNativeLogHandler());
+        RuntimeSupport.getRuntimeSupport().addStartupHook(PolyglotNativeAPI.startupHook);
     }
 
     @Override
