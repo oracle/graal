@@ -2217,6 +2217,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("operationSp = 0");
             b.statement("numLocals = 0");
             b.statement("numLabels = 0");
+            b.statement("numNodes = 0");
 
             if (model.hasBoxingElimination()) {
                 b.statement("stackValueBciStack = new int[8]");
