@@ -255,7 +255,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
             throw UnknownIdentifierException.create(member);
         } catch (EspressoException e) {
-            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+            if (getMeta().polyglot != null && e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
                 // rethrow the original foreign exception when leaving espresso interop
                 throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
             }

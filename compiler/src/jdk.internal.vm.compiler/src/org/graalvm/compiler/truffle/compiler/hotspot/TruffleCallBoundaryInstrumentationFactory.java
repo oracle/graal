@@ -30,10 +30,12 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 
+import com.oracle.truffle.compiler.TruffleCompilable;
+
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
  * the beginning of a
- * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod, org.graalvm.compiler.truffle.common.TruffleCompilable)
+ * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod, TruffleCompilable)
  * call boundary method}. The injected code tests the {@code entryPoint} field of the
  * {@code installedCode} field of the receiver and tail calls it if it is non-zero:
  *

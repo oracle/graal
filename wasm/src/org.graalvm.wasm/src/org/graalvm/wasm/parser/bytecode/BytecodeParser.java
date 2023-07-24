@@ -74,7 +74,7 @@ import static org.graalvm.wasm.WasmType.I32_TYPE;
 /**
  * Allows to parse the runtime bytecode and reset modules.
  */
-public class BytecodeParser {
+public abstract class BytecodeParser {
     /**
      * Reset the state of the globals in a module that had already been parsed and linked.
      */

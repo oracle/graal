@@ -26,16 +26,19 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.FixedNodeInterface;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -57,9 +60,29 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * During lowering subclasses may lower the node as appropriate. Otherwise, the macro node is
  * replaced with an {@link Invoke}.
  */
-public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
+public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill, FixedNodeInterface {
 
     CallTargetNode.InvokeKind getInvokeKind();
+
+    StampPair getReturnStamp();
+
+    /**
+     * Access to the original arguments for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    NodeInputList<ValueNode> getOriginalArguments();
+
+    /**
+     * Access to the original target methods for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    ResolvedJavaMethod getOriginalTargetMethod();
+
+    /**
+     * Access to the original return stamp for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    StampPair getOriginalReturnStamp();
 
     /**
      * Gets the arguments for this macro node.
@@ -151,4 +174,26 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         }
         invoke.lower(tool);
     }
+
+    /**
+     * Create the call target when converting this node back into a normal {@link Invoke}. For a
+     * method handle invoke site this will be a {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    default MethodCallTargetNode createCallTarget() {
+        ValueNode[] arguments = getArguments().toArray(new ValueNode[getArguments().size()]);
+        if (getOriginalTargetMethod() != null) {
+            ValueNode[] originalArguments = getOriginalArguments().toArray(new ValueNode[getOriginalArguments().size()]);
+            return asNode().graph().add(ResolvedMethodHandleCallTargetNode.create(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), getOriginalTargetMethod(), originalArguments,
+                            getOriginalReturnStamp()));
+
+        } else {
+            return asNode().graph().add(new MethodCallTargetNode(getInvokeKind(), getTargetMethod(), arguments, getReturnStamp(), null));
+        }
+    }
+
+    /**
+     * Captures the method handle information so that it can be properly lowered back to an
+     * {@link Invoke} later.
+     */
+    void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle);
 }

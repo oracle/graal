@@ -3,7 +3,7 @@ layout: docs
 toc_group: dynamic-features
 link_title: JCA Security Services
 permalink: /reference-manual/native-image/dynamic-features/JCASecurityServices/
-redirect_from: /$version/reference-manual/native-image/featuresJCASecurityServices/
+redirect_from: /reference-manual/native-image/featuresJCASecurityServices/
 ---
 
 # JCA Security Services in Native Image

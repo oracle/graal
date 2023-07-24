@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
+import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
@@ -52,9 +53,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.MutableTruffleString;
+import com.oracle.truffle.api.strings.TranscodingErrorHandler;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
+import com.oracle.truffle.api.strings.test.TStringTestUtil;
 
 @RunWith(Parameterized.class)
 public class TStringSwitchEncodingTest extends TStringTestBase {
@@ -70,9 +75,51 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
     }
 
     @Test
+    public void testCustomErrorHandler() {
+        String brokenStr = "ab" + Character.MIN_SURROGATE;
+        TruffleString a = TruffleString.fromJavaStringUncached(brokenStr, TruffleString.Encoding.UTF_16);
+        TruffleString b = node.execute(a, TruffleString.Encoding.UTF_8, TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8);
+        Assert.assertEquals(brokenStr, a.toJavaStringUncached());
+        Assert.assertEquals(brokenStr, node.execute(b, TruffleString.Encoding.UTF_16, TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8).toJavaStringUncached());
+        Assert.assertEquals("abX", node.execute(a, TruffleString.Encoding.UTF_8, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_8, 2)).toJavaStringUncached());
+        Assert.assertEquals("abX", node.execute(b, TruffleString.Encoding.UTF_16, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_16, 3)).toJavaStringUncached());
+        Assert.assertEquals("abXXX", node.execute(b, TruffleString.Encoding.UTF_16, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_16, -1)).toJavaStringUncached());
+        Assert.assertEquals("abXXX", node.execute(b, TruffleString.Encoding.UTF_16, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_16, 1)).toJavaStringUncached());
+        TruffleString c = TruffleString.fromByteArrayUncached(byteArray('a', 'b', 0xff), TruffleString.Encoding.ISO_8859_1);
+        Assert.assertEquals("ab?", node.execute(c, TruffleString.Encoding.US_ASCII, TranscodingErrorHandler.DEFAULT).toJavaStringUncached());
+        Assert.assertEquals("ab?", node.execute(c, TruffleString.Encoding.US_ASCII, TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8).toJavaStringUncached());
+        Assert.assertEquals("abX", node.execute(c, TruffleString.Encoding.US_ASCII, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.US_ASCII, 1)).toJavaStringUncached());
+
+        // incomplete UTF-8 sequence:
+        TruffleString d = TruffleString.fromByteArrayUncached(byteArray(0xf0, 0x90, 0x80), TruffleString.Encoding.UTF_8);
+        Assert.assertEquals("\ufffd", node.execute(d, TruffleString.Encoding.UTF_16, TranscodingErrorHandler.DEFAULT).toJavaStringUncached());
+        TruffleString d2 = TruffleString.fromCodePointUncached(0x10ffff, TruffleString.Encoding.UTF_8).concatUncached(d, TruffleString.Encoding.UTF_8, false);
+        Assert.assertEquals("\udbff\udfff\ufffd", node.execute(d2, TruffleString.Encoding.UTF_16, TranscodingErrorHandler.DEFAULT).toJavaStringUncached());
+        Assert.assertEquals("X", node.execute(d, TruffleString.Encoding.UTF_16, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_16, -1)).toJavaStringUncached());
+        Assert.assertEquals("X", node.execute(d, TruffleString.Encoding.UTF_16, (string, index, length, src, dst) -> result("X", TruffleString.Encoding.UTF_16, 3)).toJavaStringUncached());
+
+        TruffleString e = TruffleString.fromByteArrayUncached(byteArray(0xff), TruffleString.Encoding.CESU_8);
+        Assert.assertEquals("?", node.execute(e, TruffleString.Encoding.US_ASCII, TranscodingErrorHandler.DEFAULT).toJavaStringUncached());
+        Assert.assertEquals("X",
+                        node.execute(e, TruffleString.Encoding.US_ASCII, (string, index, length, src, dst) -> {
+                            Assert.assertEquals(0, index);
+                            Assert.assertEquals(1, length);
+                            Assert.assertEquals(TruffleString.Encoding.CESU_8, src);
+                            Assert.assertEquals(TruffleString.Encoding.US_ASCII, dst);
+                            Assert.assertEquals(0xff, string.readByteUncached(0, TruffleString.Encoding.CESU_8));
+                            return result("X", TruffleString.Encoding.US_ASCII, -1);
+                        }).toJavaStringUncached());
+    }
+
+    private static TranscodingErrorHandler.ReplacementString result(String s, TruffleString.Encoding encoding, int len) {
+        return new TranscodingErrorHandler.ReplacementString(TruffleString.fromJavaStringUncached(s, encoding), len);
+    }
+
+    @Test
     public void testAll() throws Exception {
         EnumSet<TruffleString.Encoding> reducedEncodingSet = EnumSet.allOf(TruffleString.Encoding.class);
-        reducedEncodingSet.removeIf(e -> e.name().startsWith("IBM") || e.name().startsWith("Windows") || e.name().startsWith("ISO_8859_"));
+        reducedEncodingSet.removeIf(e -> e.name().startsWith("IBM") || e.name().startsWith("Windows") ||
+                        e.name().startsWith("ISO_8859_"));
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             if (encoding == TruffleString.Encoding.UTF8_SoftBank || encoding == TruffleString.Encoding.CP51932) {
                 // TODO: these encodings crash in JCodings (GR-34837)
@@ -80,16 +127,45 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                 return;
             }
             for (TruffleString.Encoding targetEncoding : reducedEncodingSet) {
-                TruffleString b = node.execute(a, targetEncoding);
-                MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding);
-                if (a instanceof TruffleString && (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
-                    Assert.assertSame(a, b);
-                }
-                if (a instanceof MutableTruffleString && encoding == targetEncoding) {
-                    Assert.assertSame(a, bMutable);
-                }
-                if (isUTF(encoding) && isUTF(targetEncoding) && isValid) {
-                    assertCodePointsEqual(b, targetEncoding, codepoints);
+                boolean bothUTF = isUTF(encoding) && isUTF(targetEncoding);
+                for (TranscodingErrorHandler errorHandler : bothUTF ? new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT,
+                                TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8}
+                                : new TranscodingErrorHandler[]{TranscodingErrorHandler.DEFAULT}) {
+                    TruffleString b = node.execute(a, targetEncoding, errorHandler);
+                    MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandler);
+                    if (a instanceof TruffleString &&
+                                    (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
+                        Assert.assertSame(a, b);
+                    }
+                    if (a instanceof MutableTruffleString && encoding == targetEncoding) {
+                        Assert.assertSame(a, bMutable);
+                    }
+                    if (bothUTF) {
+                        for (AbstractTruffleString target : new AbstractTruffleString[]{b, bMutable}) {
+                            if (encoding == targetEncoding || isValid) {
+                                assertCodePointsEqual(target, targetEncoding, codepoints);
+                            } else {
+                                TruffleStringIterator it = target.createCodePointIteratorUncached(targetEncoding);
+                                for (int codepoint : codepoints) {
+                                    int expected = codepoint;
+                                    if (codepoint > Character.MAX_CODE_POINT) {
+                                        expected = 0xfffd;
+                                    } else if (targetEncoding == TruffleString.Encoding.UTF_8 && codepoint <= 0xffff &&
+                                                    Character.isSurrogate((char) codepoint)) {
+                                        if (errorHandler == TranscodingErrorHandler.DEFAULT) {
+                                            expected = 0xfffd;
+                                        } else if (errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8) {
+                                            expected = 0xfffd;
+                                            Assert.assertEquals(codepoint, TStringTestUtil.utf8DecodeValid(b, it.getByteIndex()));
+                                        } else {
+                                            Assert.fail();
+                                        }
+                                    }
+                                    Assert.assertEquals(expected, it.nextUncached());
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });

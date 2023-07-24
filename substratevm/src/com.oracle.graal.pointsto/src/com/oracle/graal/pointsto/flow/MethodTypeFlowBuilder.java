@@ -109,7 +109,6 @@ import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -1528,8 +1527,18 @@ public class MethodTypeFlowBuilder {
              */
             ActualReturnTypeFlow actualReturn = null;
 
-            /* Infer the receiver type. Insert a filter for the receiver type flow if necessary. */
-            AnalysisType receiverType = getReceiverType(invokeKind, targetMethod, arguments, invokeLocation, actualParameters);
+            AnalysisType receiverType = null;
+            if (invokeKind.hasReceiver()) {
+                receiverType = targetMethod.getDeclaringClass();
+                AnalysisType receiverArgType = (AnalysisType) StampTool.typeOrNull(arguments.get(0));
+                if (receiverArgType != null && receiverType.isAssignableFrom(receiverArgType)) {
+                    /*
+                     * If the stamp of the receiver argument is a subtype of the declared type, then
+                     * adjust the receiver type to be more precise.
+                     */
+                    receiverType = receiverArgType;
+                }
+            }
 
             MultiMethod.MultiMethodKey multiMethodKey = method.getMultiMethodKey();
             InvokeTypeFlow invokeFlow;
@@ -1620,41 +1629,6 @@ public class MethodTypeFlowBuilder {
 
         /* Invokes must not be removed. */
         typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
-    }
-
-    /**
-     * Infer the receiver type by first checking the stamp of the first argument. If that's less
-     * precise than the declaring type of the target method then return the declaring type, but also
-     * insert a filter for the formal receiver type flow.
-     * <p>
-     * If the receiver flow comes from a {@link WordCastNode} without a precise stamp then it is an
-     * {@code AllInstantiatedTypeFlow<Object>} since there's no more concrete type information. In
-     * this case the declaring class of the target method is more precise.
-     * <p>
-     * Strengthening the receiver type avoids triggering invoke-type-flow updates for incompatible
-     * types. For virtual invokes it would just lead to failed method resolutions, but for special
-     * invokes it would lead to linking the callee even if the declaring type (or a type assignable
-     * from it) is not present.
-     */
-    private AnalysisType getReceiverType(InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
-                    BytecodePosition invokeLocation, TypeFlow<?>[] actualParameters) {
-        if (invokeKind.hasReceiver()) {
-            AnalysisType declaringType = targetMethod.getDeclaringClass();
-            /* Unproxify the receiver node to match the behaviour in TypeFlowsOfNodes.lookup() */
-            ValueNode receiverNode = GraphUtil.unproxify(arguments.get(0));
-            AnalysisType receiverStampType = (AnalysisType) StampTool.typeOrNull(receiverNode, bb.getMetaAccess());
-            if (receiverStampType == null || !receiverStampType.equals(declaringType) && receiverStampType.isAssignableFrom(declaringType)) {
-                /* The argument stamp type is less precise. Filter with the declaring type. */
-                FilterTypeFlow receiverFilter = new FilterTypeFlow(invokeLocation, declaringType, false, true, true);
-                flowsGraph.addMiscEntryFlow(receiverFilter);
-                actualParameters[0].addUse(bb, receiverFilter);
-                actualParameters[0] = receiverFilter;
-                return declaringType;
-            } else {
-                return receiverStampType;
-            }
-        }
-        return null;
     }
 
     protected void processCommitAllocation(CommitAllocationNode commitAllocationNode, TypeFlowsOfNodes state) {

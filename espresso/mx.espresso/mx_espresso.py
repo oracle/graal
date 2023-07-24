@@ -323,7 +323,7 @@ mx.update_commands(_suite, {
 def register_espresso_envs(suite):
     # pylint: disable=bad-whitespace
     # pylint: disable=line-too-long
-    tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro']
+    tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'truffle-json']
     _llvm_toolchain_wrappers = ['bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil']
     if LLVM_JAVA_HOME:
         mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkl', 'tfl', 'tfla', 'cmp', 'antlr4', 'llrc', 'llrn'                                                    , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')

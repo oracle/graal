@@ -71,14 +71,17 @@ A native shared library can have an unlimited number of **entrypoints**, for exa
 In the following example, you'll create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses the shared library.
 The C application takes a string as its argument, passes it to the shared library, and prints environment variables that contain the argument.
 
-1. Download and install the latest GraalVM JDK with Native Image and LLVM toolchain using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+
+2. Then install the LLVM toolchain: 
     ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk) -c 'llvm-toolchain' 
+    gu install llvm-toolchain
     ```
+    > Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
 
-  >Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
-
-2. Save the following Java code to a file named _LibEnvMap.java_:
+3. Save the following Java code to a file named _LibEnvMap.java_:
 
     ```java
     import java.util.Map;
@@ -108,7 +111,7 @@ The C application takes a string as its argument, passes it to the shared librar
     ```
     Notice how the method `filterEnv()` is identified as an **entrypoint** using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation. 
 
-3. Compile the Java code and build a native shared library, as follows:
+4. Compile the Java code and build a native shared library, as follows:
     ```shell
     $JAVA_HOME/bin/javac LibEnvMap.java
     ```
@@ -131,7 +134,7 @@ The C application takes a string as its argument, passes it to the shared librar
 
     If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
 
-4. Create a C application, _main.c_, in the same directory containing the following code:
+5. Create a C application, _main.c_, in the same directory containing the following code:
 
     ```c
     #include <stdio.h>
@@ -162,12 +165,12 @@ The C application takes a string as its argument, passes it to the shared librar
     The statement `#include "libenvmap.h"` loads the native shared library.
 
 
-5. Compile the C application using `clang`. 
+6. Compile the C application using `clang`. 
     ```shell
     $JAVA_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
     ```
 
-6. Run the C application by passing a string as an argument. For example:
+7. Run the C application by passing a string as an argument. For example:
     ```shell
     ./main USER
     ```

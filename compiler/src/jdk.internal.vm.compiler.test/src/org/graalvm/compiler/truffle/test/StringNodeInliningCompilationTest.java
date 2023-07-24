@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assume.assumeFalse;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -35,6 +34,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
  * Basic smoke test to ensure TruffleString inlined nodes compile cleanly.

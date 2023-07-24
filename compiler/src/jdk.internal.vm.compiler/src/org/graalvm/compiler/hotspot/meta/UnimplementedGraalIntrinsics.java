@@ -39,6 +39,7 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import org.graalvm.compiler.replacements.nodes.SHANode;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -273,10 +274,10 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
         }
         // SHA intrinsics
-        if (!config.useSHA1Intrinsics()) {
+        if (!SHANode.SHA1Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
         }
-        if (!config.useSHA256Intrinsics()) {
+        if (!SHANode.SHA256Node.isSupported(arch) && !config.useSHA256Intrinsics()) {
             add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
         }
         if (!config.useSHA512Intrinsics()) {

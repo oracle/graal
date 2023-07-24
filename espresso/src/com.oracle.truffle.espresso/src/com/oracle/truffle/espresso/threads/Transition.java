@@ -61,7 +61,7 @@ final class NativeToGuestTransition implements Transition {
 
     NativeToGuestTransition(EspressoContext context) {
         this.access = context.getThreadAccess();
-        this.thread = context.getCurrentThread();
+        this.thread = context.getCurrentPlatformThread();
         this.old = access.getState(thread);
         assert (old & State.IN_NATIVE.value) != 0;
         access.setState(thread, State.RUNNABLE.value);
@@ -80,7 +80,7 @@ final class ThreadStateTransitionImpl implements Transition {
 
     ThreadStateTransitionImpl(EspressoContext context, State state) {
         this.access = context.getThreadAccess();
-        this.thread = context.getCurrentThread();
+        this.thread = context.getCurrentPlatformThread();
         this.old = access.fromRunnable(thread, state);
     }
 

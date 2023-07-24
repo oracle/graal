@@ -296,11 +296,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 nodeFlows.put(node, cursor.getValue());
             }
 
-            /*
-             * Currently constant folding is only enabled for original methods. More work is needed
-             * to support it within deoptimization targets and runtime-compiled methods.
-             */
-            this.allowConstantFolding = method.isOriginalMethod() && strengthenGraphWithConstants;
+            this.allowConstantFolding = strengthenGraphWithConstants && bb.getHostVM().allowConstantFolding(method);
 
             /*
              * In deoptimization target methods optimizing the return parameter can make new values

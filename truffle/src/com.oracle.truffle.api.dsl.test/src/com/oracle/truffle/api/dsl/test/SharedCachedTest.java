@@ -401,13 +401,13 @@ public class SharedCachedTest {
 
         public abstract Object execute(String arg0);
 
-        @Specialization(guards = "name == cachedName", limit = "1")
+        @Specialization(guards = "name == cachedName")
         public Object s0(String name,
                         @Cached(value = "name", neverDefault = true) @Shared("name") String cachedName) {
             return cachedName;
         }
 
-        @Specialization(guards = "name == cachedName", limit = "1")
+        @Specialization(guards = "name == cachedName")
         public Object s1(String name,
                         @Cached(value = "name", neverDefault = true) @Shared("name") String cachedName) {
             return cachedName;

@@ -41,14 +41,14 @@ public class RedefineAddedField extends Field {
     public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isDelegation) {
         super(holder, linkedField, pool);
         if (!isDelegation) {
-            StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getLanguage());
-            shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
+            StaticShape.Builder shapeBuilder = StaticShape.newBuilder(holder.getKlass().getLanguage());
+            shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), linkedField.getParserField().isFinal());
             this.extensionShape = shapeBuilder.build(FieldStorageObject.class, ExtensionFieldObjectFactory.class);
         }
-        if (isStatic() && !isDelegation) {
+        if (linkedField.getParserField().isStatic() && !isDelegation) {
             // create the extension field object eagerly for static fields
             staticStorageObject = extensionShape.getFactory().create();
-            if (getKind().isObject()) {
+            if (linkedField.getKind().isObject()) {
                 linkedField.setObject(staticStorageObject, StaticObject.NULL);
             }
         } else {

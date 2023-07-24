@@ -210,7 +210,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
     }
 
-    private static void execute(AnalysisUniverse universe, Runnable task) {
+    protected static void execute(AnalysisUniverse universe, Runnable task) {
         /*
          * Post the tasks to the analysis executor. This ensures that even for elements registered
          * as reachable early, before the analysis is started, the reachability callbacks are run

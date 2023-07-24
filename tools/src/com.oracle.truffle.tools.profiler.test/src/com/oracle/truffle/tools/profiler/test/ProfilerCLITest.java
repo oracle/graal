@@ -36,6 +36,8 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Ignore;
@@ -45,8 +47,6 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerCLITest {
 

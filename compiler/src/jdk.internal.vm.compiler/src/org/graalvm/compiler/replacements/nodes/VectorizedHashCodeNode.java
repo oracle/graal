@@ -115,6 +115,11 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitVectorizedHashCode(runtimeCheckedCPUFeatures, gen.operand(arrayStart), gen.operand(length), gen.operand(initialValue), arrayKind));
     }

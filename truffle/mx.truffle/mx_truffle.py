@@ -731,7 +731,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.4.2'),
+                                                           mx.join(self.out_dir, 'libffi-3.4.4'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
@@ -768,7 +768,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.4.2'))
+                                                 mx.join(self.out_dir, 'libffi-3.4.4'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
@@ -802,8 +802,9 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
             return mx.join(self.source_dirs()[0], d)
 
         def get_patches(patchdir):
-            for patch in os.listdir(patchdir):
-                yield mx.join(patchdir, patch)
+            if os.path.isdir(patchdir):
+                for patch in os.listdir(patchdir):
+                    yield mx.join(patchdir, patch)
 
         for p in get_patches(patch_dir('common')):
             yield p
@@ -1024,11 +1025,12 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
 
         javaSubstitutions = [
                                 sub for orig, shad in dist.shaded_package_names().items() for sub in [
-                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+\b)'), shad),
+                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+)?\b'), shad),
                                 ]
                             ] + [
                                 sub for orig, shad in dist.shaded_package_paths().items() for sub in [
                                     (re.compile(r'(?<=")' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
+                                    (re.compile(r'(?<="/)' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
                                 ]
                             ]
 
@@ -1144,7 +1146,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
+        'truffle:TRUFFLE_COMPILER',
+        'truffle:TRUFFLE_RUNTIME',
     ],
+    support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
 
@@ -1260,6 +1265,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
+    standalone=False,
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle JSON Library',
+    short_name='truffle-json',
+    dir_name='truffle-json',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['truffle:TruffleJSON',
+        'truffle:TRUFFLE_JSON',
+    ],
+    support_distributions=['truffle:TRUFFLE_JSON_GRAALVM_SUPPORT'],
+    installable=False,
     standalone=False,
     stability="supported",
 ))

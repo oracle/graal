@@ -101,7 +101,7 @@ public class Field extends Member<Type> implements FieldRef {
         return linkedField.getType();
     }
 
-    public void removeByRedefintion() {
+    public void removeByRedefinition() {
         removedByRedefinition = true;
     }
 

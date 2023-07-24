@@ -3,7 +3,7 @@ layout: docs
 toc_group: build-overview
 link_title: Build Output
 permalink: /reference-manual/native-image/overview/BuildOutput/
-redirect_from: /$version/reference-manual/native-image/BuildOutput/
+redirect_from: /reference-manual/native-image/BuildOutput/
 ---
 
 # Native Image Build Output

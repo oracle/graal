@@ -243,10 +243,6 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
-
-        if (objectReplacer.updateDataDuringAnalysis()) {
-            config.requireAnalysisIteration();
-        }
     }
 
     @SuppressWarnings("try")
@@ -496,7 +492,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
         ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis();
+        objectReplacer.setMethodsImplementations();
 
         /* All the temporary data structures used during encoding are no longer necessary. */
         graphEncoder = null;

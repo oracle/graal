@@ -3,7 +3,9 @@ layout: docs
 toc_group: security-guide
 link_title: Polyglot Sandboxing
 permalink: /security-guide/polyglot-sandbox/
+redirect_from: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
+
 # Polyglot Sandboxing
 
 GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot Embedding API](../reference-manual/embedding/embed-languages.md).

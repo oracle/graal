@@ -81,7 +81,7 @@ public abstract class EnginesGCedTest {
             for (Thread t : threads) {
                 if (t != null) {
                     if (!threadIDs.contains(getThreadId(t))) {
-                        if (t.getClass().getPackage().getName().startsWith("org.graalvm.compiler")) {
+                        if (t.getClass().getPackage().getName().startsWith("com.oracle.truffle.runtime")) {
                             // A compiler thread
                             continue;
                         }

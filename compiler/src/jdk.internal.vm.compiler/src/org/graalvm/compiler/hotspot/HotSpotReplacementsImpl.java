@@ -37,14 +37,19 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation;
+import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 
@@ -250,5 +255,23 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                         className.contains("org.graalvm.") ||
                         className.contains("com.oracle.graal") ||
                         className.contains("com.oracle.truffle");
+    }
+
+    @Override
+    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
+        return new HotSpotGraphMaker(this, substitute, original);
+    }
+
+    static class HotSpotGraphMaker extends GraphMaker {
+
+        HotSpotGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
+            super(replacements, substitute, substitutedMethod);
+        }
+
+        @Override
+        protected Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            return new HotSpotGraphBuilderInstance(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        }
+
     }
 }

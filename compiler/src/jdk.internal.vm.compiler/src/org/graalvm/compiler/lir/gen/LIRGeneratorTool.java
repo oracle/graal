@@ -176,6 +176,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitUnwind(Value operand);
 
+    default void emitHalt() {
+        throw GraalError.unimplemented("Halt operation is not implemented on this architecture");  // ExcludeFromJacocoGeneratedReport
+    }
+
     /**
      * Emits a return instruction. Implementations need to insert a move if the input is not in the
      * correct location.
@@ -505,6 +509,16 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitSha1ImplCompress(Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitSha256ImplCompress(Value buf, Value state) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

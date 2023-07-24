@@ -48,6 +48,10 @@ public interface LanguageAccess {
         return getLanguage().getJavaVersion();
     }
 
+    default boolean isPreviewEnabled() {
+        return getLanguage().isPreviewEnabled();
+    }
+
     default EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
         return getLanguage().getSpecComplianceMode();
     }
