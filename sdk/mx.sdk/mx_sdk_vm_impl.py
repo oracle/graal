@@ -2675,11 +2675,11 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 
 
 class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, component, graalvm, is_java, **kw_args):
+    def __init__(self, component, graalvm, is_jvm, **kw_args):
         """
         :param mx_sdk.GraalVmTruffleComponent component
         :param GraalVmLayoutDistribution graalvm
-        :param bool is_java: True for Java Standalones, False for Native Standalones
+        :param bool is_jvm: True for JVM Standalones, False for Native Standalones
         """
         def require_svm(components):
             """
@@ -2689,7 +2689,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             return any(_get_launcher_configs(comp) or _get_library_configs(comp) for comp in components)
 
         svm_support = _get_svm_support()
-        self.is_java = is_java
+        self.is_jvm = is_jvm
         self.main_comp_dir_name = component.dir_name
         self.jvm_jars = []
         self.jvm_modules = []
@@ -2708,7 +2708,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         other_comp_names = sorted(other_comp_names)
 
-        name = '_'.join([component.installable_id, 'java' if self.is_java else 'native', 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
+        name = '_'.join([component.installable_id, 'java' if self.is_jvm else 'native', 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         dir_name = component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else component.standalone_dir_name
         self.base_dir_name = graalvm.string_substitutions.substitute(dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
@@ -2741,9 +2741,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             launcher_configs = _get_launcher_configs(comp)
             library_configs = _get_library_configs(comp)
 
-            if self.is_java:
+            if self.is_jvm:
                 if comp.jvmci_parent_jars:
-                    mx.warn("Java standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\nComponent '{}' adds '{}', which is skipped".format(comp.name, comp.jvmci_parent_jars))
+                    mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\nComponent '{}' adds '{}', which is skipped".format(comp.name, comp.jvmci_parent_jars))
 
                 for jar_dist in comp.jar_distributions:
                     layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
@@ -2771,7 +2771,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     'path': None,
                 })
 
-            assert not self.is_java or not is_main or len(launcher_configs) == 0, "Java standalones do not yet support main components with launcher configs, only thin launchers. Found: '{}'".format(name)
+            assert not self.is_jvm or not is_main or len(launcher_configs) == 0, "JVM standalones do not yet support main components with launcher configs, only thin launchers. Found: '{}'".format(name)
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
                 if launcher_config.destination not in excluded_paths:
@@ -2817,9 +2817,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             for library_config in library_configs:
                 library_dest = path_prefix + library_config.destination
                 if library_config.destination not in excluded_paths:
-                    if self.is_java and is_main:
+                    if self.is_jvm and is_main:
                         if not isinstance(library_config, mx_sdk.LanguageLibraryConfig):
-                            mx.warn("Component '{}' declares '{}' as 'library_config', which is ignored by the build process of the '{}' java standalone".format(comp.name, library_config, name))
+                            mx.warn("Component '{}' declares '{}' as 'library_config', which is ignored by the build process of the '{}' jvm standalone".format(comp.name, library_config, name))
                     else:
                         dependency = GraalVmLibrary.project_name(library_config)
                         layout.setdefault(library_dest, []).append({
@@ -2840,7 +2840,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         for executable in library_config.launchers:
                             layout.setdefault(path_prefix + executable, []).append({
                                 'source_type': 'dependency',
-                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config, for_jvm_standalone=is_main and self.is_java),
+                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config, for_jvm_standalone=is_main and self.is_jvm),
                                 'exclude': excluded_paths,
                                 'path': None,
                             })
@@ -2865,14 +2865,14 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     launcher_config.add_relative_home_path(language, relative_path_from_launcher_dir)
 
             for boot_jar in comp.boot_jars:
-                mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' {} standalone".format(comp.name, boot_jar, 'java' if self.is_java else 'native', name))
+                mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' {} standalone".format(comp.name, boot_jar, 'java' if self.is_jvm else 'native', name))
 
         # List of components that have already been added.
         added_components = []
 
         # Add files from the standalone dependencies (`standalone_dependencies` or `standalone_dependencies_enterprise`)
         # of the main standalone component.
-        # Must be done for both Native and Java Standalones.
+        # Must be done for both Native and JVM Standalones.
         for dependency_name, details in dependencies.items():  # dependencies of the standalone
             dependency_path = details[0]
             excluded_paths = details[1] if len(details) > 1 else []
@@ -2883,7 +2883,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             added_components.append(dependency)
 
         # Add files from the main standalone component.
-        # Must be done for both Native and Java Standalones.
+        # Must be done for both Native and JVM Standalones.
         add_files_from_component(component, is_main=True, path_prefix=base_dir, excluded_paths=[])
         added_components.append(component)
 
@@ -2892,8 +2892,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
         layout.setdefault(base_dir + 'release', []).append('string:' + metadata)
 
-        # Everything that follows is done only for Java Standalones.
-        if self.is_java:
+        # Everything that follows is done only for JVM Standalones.
+        if self.is_jvm:
             # Add files from the GraalVM dependencies of the main standalone component.
             #
             # From this list we exclude:
@@ -2934,7 +2934,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # Add LibGraal.
             lg_component = _get_libgraal_component()
             if lg_component is None:
-                mx.warn("Java standalone '{}' misses LibGraal. Make sure that it is part of the main GraalVM distribution".format(name))
+                mx.warn("JVM standalone '{}' misses LibGraal. Make sure that it is part of the main GraalVM distribution".format(name))
             else:
                 for library_config in _get_libgraal_component().library_configs:
                     dependency = GraalVmLibrary.project_name(library_config)
@@ -2960,7 +2960,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                             add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
 
-        mx.logvv("{} standalone '{}' has layout:\n{}".format('Java' if self.is_java else 'Native', name, pprint.pformat(layout)))
+        mx.logvv("{} standalone '{}' has layout:\n{}".format('Java' if self.is_jvm else 'Native', name, pprint.pformat(layout)))
 
         self.maven = _graalvm_maven_attributes(tag='standalone')
         super(GraalVmStandaloneComponent, self).__init__(
@@ -3076,21 +3076,21 @@ def get_final_graalvm_distribution():
     return _final_graalvm_distribution
 
 
-def get_standalone_distribution(comp_dir_name, is_java):
+def get_standalone_distribution(comp_dir_name, is_jvm):
     """
     :type comp_dir_name: str
-    :type is_java: bool
+    :type is_jvm: bool
     :rtype: GraalVmStandaloneComponent
     """
     standalones = _get_dists(GraalVmStandaloneComponent)
     if standalones:
         for standalone in standalones:
-            if standalone.is_java == is_java and standalone.main_comp_dir_name == comp_dir_name:
+            if standalone.is_jvm == is_jvm and standalone.main_comp_dir_name == comp_dir_name:
                 return standalone
         raise mx.abort("Cannot find a {type} standalone with dir_name '{dir_name}'.\nAvailable {type} standalones:\n{standalones}".format(
-            type='java' if is_java else 'native',
+            type='java' if is_jvm else 'native',
             dir_name=comp_dir_name,
-            standalones='\n'.join((('- ' + s.main_comp_dir_name for s in standalones if s.is_java == is_java))))
+            standalones='\n'.join((('- ' + s.main_comp_dir_name for s in standalones if s.is_jvm == is_jvm))))
         )
     raise mx.abort('No standalone available. Did you forget to dynamically import a component?')
 
@@ -3458,20 +3458,20 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone of '{}' because the following components are excluded:\n * {}".format(main_component.name, '\n * '.join(missing_dependency_names)))
             else:
-                # Java standalones
+                # JVM standalones
                 if len(main_component.launcher_configs):
                     if mx.get_opts().verbose:
-                        mx.warn("Skipping java standalone of '{}' because it contains launcher configs that are not yet supported".format(main_component.name))
+                        mx.warn("Skipping JVM standalone of '{}' because it contains launcher configs that are not yet supported".format(main_component.name))
                 else:
                     needs_java_standalone_jimage = True
-                    java_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_java=True, defaultBuild=False)
+                    java_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_jvm=True, defaultBuild=False)
                     standalone_deps_names.append(java_standalone.name)
                     register_distribution(java_standalone)
                     with_debuginfo.append(java_standalone)
 
                     for library_config in _get_library_configs(main_component):
                         if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
-                            # Create dedicated NativeLibraryLauncherProject for Java Standalones, which can find the JVM
+                            # Create dedicated NativeLibraryLauncherProject for JVM Standalones, which can find the JVM
                             jvm_standalone_launcher_project = NativeLibraryLauncherProject(main_component, library_config, jvm_standalone=java_standalone, defaultBuild=False)
                             standalone_deps_names.append(jvm_standalone_launcher_project.name)
                             register_project(jvm_standalone_launcher_project)
@@ -3480,7 +3480,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
                 only_native_libraries = not main_component.library_configs or (svm_support.is_supported() and not _has_skipped_libraries(main_component))
                 if only_native_launchers and only_native_libraries:
-                    native_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_java=False, defaultBuild=False)
+                    native_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_jvm=False, defaultBuild=False)
                     standalone_deps_names.append(native_standalone.name)
                     register_distribution(native_standalone)
                     with_debuginfo.append(native_standalone)
@@ -3769,13 +3769,13 @@ def graalvm_home(stage1=False, fatalIfMissing=False):
     return _graalvm_home
 
 
-def standalone_home(comp_dir_name, is_java):
+def standalone_home(comp_dir_name, is_jvm):
     """
     :type comp_dir_name: str
-    :type is_java: bool
+    :type is_jvm: bool
     :rtype: str
     """
-    _standalone_dist = get_standalone_distribution(comp_dir_name, is_java)
+    _standalone_dist = get_standalone_distribution(comp_dir_name, is_jvm)
     return join(_standalone_dist.output, _standalone_dist.base_dir_name)
 
 
@@ -3818,11 +3818,11 @@ def print_standalone_home(args):
     """print the GraalVM standalone home dir"""
     parser = ArgumentParser(prog='mx standalone-home', description='Print the standalone home directory')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--java', '--jvm', action='store_true', dest='is_java', help='select the Java Standalone')
-    group.add_argument('--native', action='store_false', dest='is_java', help='select the Native Standalone (default)')
+    group.add_argument('--jvm', action='store_true', dest='is_jvm', help='select the JVM Standalone')
+    group.add_argument('--native', action='store_false', dest='is_jvm', help='select the Native Standalone (default)')
     parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
     args = parser.parse_args(args)
-    print(standalone_home(args.comp_dir_name, is_java=args.is_java))
+    print(standalone_home(args.comp_dir_name, is_jvm=args.is_jvm))
 
 
 def _infer_env(graalvm_dist):
@@ -4035,17 +4035,17 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("No installable")
 
         if not args.stage1:
-            java_standalones = []
+            jvm_standalones = []
             native_standalones = []
             for standalone in _get_dists(GraalVmStandaloneComponent):
-                if standalone.is_java:
-                    java_standalones.append(standalone)
+                if standalone.is_jvm:
+                    jvm_standalones.append(standalone)
                 else:
                     native_standalones.append(standalone)
 
-            if java_standalones:
-                print("Java Standalones:")
-                for s in java_standalones:
+            if jvm_standalones:
+                print("JVM Standalones:")
+                for s in jvm_standalones:
                     print(" - {}".format(s))
                     if args.verbose:
                         for c in s.involved_components:
@@ -4057,7 +4057,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
                     if args.verbose:
                         for c in s.involved_components:
                             print("    - {}".format(c.name))
-            if not java_standalones and not native_standalones:
+            if not jvm_standalones and not native_standalones:
                 print("No standalone")
 
         if args.print_env:
