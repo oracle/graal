@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -50,7 +51,7 @@ import jdk.vm.ci.code.BytecodeFrame;
  * deoptimization entry points.
  */
 @NodeInfo(allowedUsageTypes = InputType.Anchor, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntrySupport, DeoptimizingNode.DeoptAfter, SingleMemoryKill {
+public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntrySupport, DeoptimizingNode.DeoptAfter, SingleMemoryKill, ControlFlowAnchored {
     public static final NodeClass<DeoptEntryNode> TYPE = NodeClass.create(DeoptEntryNode.class);
 
     @OptionalInput(InputType.State) protected FrameState stateAfter;

@@ -125,7 +125,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             if (n instanceof PhiNode) {
                 return blockFor(((PhiNode) n).merge());
             } else if (n instanceof ProxyNode) {
-                return blockFor(((ProxyNode)n).proxyPoint());
+                return blockFor(((ProxyNode) n).proxyPoint());
             } else {
                 return nodeToBlockMap.get(n);
             }
