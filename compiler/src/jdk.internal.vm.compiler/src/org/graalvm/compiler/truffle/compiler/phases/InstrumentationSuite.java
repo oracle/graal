@@ -30,7 +30,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 public class InstrumentationSuite extends PhaseSuite<TruffleTierContext> {
     @SuppressWarnings("this-escape")
-    public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, SnippetReflectionProvider snippetReflection, InstrumentPhase.Instrumentation instrumentation) {
+    public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, SnippetReflectionProvider snippetReflection,
+                    InstrumentPhase.Instrumentation instrumentation) {
         if (instrumentationCfg.instrumentBranches) {
             appendPhase(new InstrumentBranchesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBranchesPerInlineSite));
         }
