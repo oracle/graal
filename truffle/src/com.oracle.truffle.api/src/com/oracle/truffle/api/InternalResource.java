@@ -399,13 +399,12 @@ public interface InternalResource {
             String arch = System.getProperty("os.arch");
             if (arch == null) {
                 throw CompilerDirectives.shouldNotReachHere("The 'os.arch' system property is not set.");
-            } else if (arch.equalsIgnoreCase("amd64") || arch.equalsIgnoreCase("x86_64")) {
-                return AMD64;
-            } else if (arch.equalsIgnoreCase("aarch64") || arch.equalsIgnoreCase("arm64")) {
-                return AARCH64;
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("Unsupported CPU architecture " + arch);
             }
+            return switch (arch) {
+                case "amd64", "x86_64" -> AMD64;
+                case "aarch64", "arm64" -> AARCH64;
+                default -> throw CompilerDirectives.shouldNotReachHere("Unsupported CPU architecture " + arch);
+            };
         }
     }
 }
