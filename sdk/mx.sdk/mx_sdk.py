@@ -127,7 +127,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    jar_distributions=['sdk:LAUNCHER_COMMON', 'sdk:JLINE3'],
     boot_jars=[],
     stability="supported",
 ))
