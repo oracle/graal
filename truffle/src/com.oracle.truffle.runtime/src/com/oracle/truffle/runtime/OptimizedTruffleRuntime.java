@@ -218,7 +218,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     public final void initializeEngineCacheSupport(EngineCacheSupport support) {
-        if (engineCacheSupport == null) {
+        if (this.engineCacheSupport instanceof EngineCacheSupport.Disabled) {
             this.engineCacheSupport = support;
             this.runtimeOptionDescriptors.add(support.getEngineOptions());
         }
