@@ -962,7 +962,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer -= 2;
                     break;
                 }
-                case Bytecode.I32_STORE_U8:
+                case Bytecode.I32_STORE_U8: {
+                    final int memOffset = rawPeekU8(bytecode, offset);
+                    offset++;
+
+                    final int baseAddress = popInt(frame, stackPointer - 2);
+                    final long address = effectiveMemoryAddress(memOffset, baseAddress);
+
+                    final int value = popInt(frame, stackPointer - 1);
+                    zeroMemory.store_i32(this, address, value);
+                    stackPointer -= 2;
+                    break;
+                }
+                case Bytecode.I32_STORE_I32: {
+                    final int memOffset = rawPeekI32(bytecode, offset);
+                    offset += 4;
+
+                    final int baseAddress = popInt(frame, stackPointer - 2);
+                    final long address = effectiveMemoryAddress(memOffset, baseAddress);
+
+                    final int value = popInt(frame, stackPointer - 1);
+                    zeroMemory.store_i32(this, address, value);
+                    stackPointer -= 2;
+                    break;
+                }
                 case Bytecode.I64_STORE_U8:
                 case Bytecode.F32_STORE_U8:
                 case Bytecode.F64_STORE_U8:
@@ -982,7 +1005,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                     break;
                 }
-                case Bytecode.I32_STORE_I32:
                 case Bytecode.I64_STORE_I32:
                 case Bytecode.F32_STORE_I32:
                 case Bytecode.F64_STORE_I32:
@@ -1588,13 +1610,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.I64_TRUNC_SAT_F64_U:
                             i64_trunc_sat_f64_u(frame, stackPointer);
                             break;
-                        case Bytecode.MEMORY_INIT: {
+                        case Bytecode.MEMORY_INIT:
+                        case Bytecode.MEMORY_INIT_UNSAFE:
+                        case Bytecode.MEMORY64_INIT:
+                        case Bytecode.MEMORY64_INIT_UNSAFE: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
                             final int memoryIndex = rawPeekI32(bytecode, offset + 4);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_init(n, src, dst, dataIndex, memoryIndex);
+                            executeMemoryInit(frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1616,12 +1638,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 8;
                             break;
                         }
-                        case Bytecode.MEMORY_FILL: {
+                        case Bytecode.MEMORY_FILL:
+                        case Bytecode.MEMORY64_FILL: {
                             final int memoryIndex = rawPeekI32(bytecode, offset);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int val = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_fill(n, val, dst, memoryIndex);
+                            executeMemoryFill(frame, stackPointer, miscOpcode, memoryIndex);
                             stackPointer -= 3;
                             offset += 4;
                             break;
@@ -1686,17 +1706,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 4;
                             break;
                         }
-                        case Bytecode.MEMORY_INIT_UNSAFE: {
-                            final int dataIndex = rawPeekI32(bytecode, offset);
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
                         case Bytecode.DATA_DROP_UNSAFE: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
                             data_drop_unsafe(dataIndex);
@@ -1723,38 +1732,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             } else {
                                 pushLong(frame, stackPointer - 1, -1L);
                             }
-                            break;
-                        }
-                        case Bytecode.MEMORY64_INIT: {
-                            final int dataIndex = rawPeekI32(bytecode, offset);
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final long dst = popLong(frame, stackPointer - 3);
-                            memory_init(n, src, dst, dataIndex, memoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.MEMORY64_INIT_UNSAFE: {
-                            final int dataIndex = rawPeekI32(bytecode, offset);
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final long dst = popLong(frame, stackPointer - 3);
-                            memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
-                            stackPointer -= 3;
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.MEMORY64_FILL: {
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            final long n = popLong(frame, stackPointer - 1);
-                            final int val = popInt(frame, stackPointer - 2);
-                            final long dst = popLong(frame, stackPointer - 3);
-                            memory_fill(n, val, dst, memoryIndex);
-                            stackPointer -= 3;
-                            offset += 4;
                             break;
                         }
                         default:
@@ -2026,8 +2003,48 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
+    private void executeMemoryInit(VirtualFrame frame, int stackPointer, int opcode, int memoryIndex, int dataIndex) {
+        final int n;
+        final int src;
+        final long dst;
+        switch (opcode) {
+            case Bytecode.MEMORY_INIT: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popInt(frame, stackPointer - 3);
+                memory_init(n, src, dst, dataIndex, memoryIndex);
+                break;
+            }
+            case Bytecode.MEMORY64_INIT: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popLong(frame, stackPointer - 3);
+                memory_init(n, src, dst, dataIndex, memoryIndex);
+                break;
+            }
+            case Bytecode.MEMORY_INIT_UNSAFE: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popInt(frame, stackPointer - 3);
+                memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
+                break;
+            }
+            case Bytecode.MEMORY64_INIT_UNSAFE: {
+                n = popInt(frame, stackPointer - 1);
+                src = popInt(frame, stackPointer - 2);
+                dst = popLong(frame, stackPointer - 3);
+                memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
     private void executeMemoryCopy(VirtualFrame frame, int stackPointer, int opcode, int destMemoryIndex, int srcMemoryIndex) {
-        final long n, src, dst;
+        final long n;
+        final long src;
+        final long dst;
         switch (opcode) {
             case Bytecode.MEMORY_COPY: {
                 n = popInt(frame, stackPointer - 1);
@@ -2057,6 +2074,29 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 throw CompilerDirectives.shouldNotReachHere();
         }
         memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
+    }
+
+    private void executeMemoryFill(VirtualFrame frame, int stackPointer, int opcode, int memoryIndex) {
+        final int val;
+        final long n;
+        final long dst;
+        switch (opcode) {
+            case Bytecode.MEMORY_FILL: {
+                n = popInt(frame, stackPointer - 1);
+                val = popInt(frame, stackPointer - 2);
+                dst = popInt(frame, stackPointer - 3);
+                break;
+            }
+            case Bytecode.MEMORY64_FILL: {
+                n = popLong(frame, stackPointer - 1);
+                val = popInt(frame, stackPointer - 2);
+                dst = popLong(frame, stackPointer - 3);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        memory_fill(n, val, dst, memoryIndex);
     }
 
     // Checkstyle: stop method name check
