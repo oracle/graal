@@ -321,6 +321,7 @@ public class BundleLauncher {
         }
     }
 
+    // Checkstyle: Allow raw info or warning printing - begin
     private static void showMessage(String msg) {
         System.out.println(msg);
     }
@@ -328,6 +329,7 @@ public class BundleLauncher {
     private static void showWarning(String msg) {
         System.out.println("Warning: " + msg);
     }
+    // Checkstyle: Allow raw info or warning printing - end
 
     private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
 
