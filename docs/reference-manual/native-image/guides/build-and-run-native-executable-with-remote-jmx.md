@@ -12,20 +12,23 @@ Remote management using [Java Management Extensions (JMX)](https://www.oracle.co
 > Note: The feature is experimental.
 
 This guide covers the steps required to build, run, and interact with such a native executable using JMX.
-It also shows you how to register a custom managed bean (MBean), with the JMX server and the additional steps required for it to work with Native Image.
+It also shows you how to register a custom managed bean (MBean) with the JMX server and the additional steps required for it to work with Native Image.
+
 ## Currently Supported Features and Limitations
-Currently, JMX connection from a client to a remote MBean server is supported. The client, server, or both may be a native executable.
-For now, only MXBeans, and standard user-defined MBeans are supported. Dynamic and model MBeans are not currently supported because 
-their management interfaces are defined at runtime. Although remote management of MXBeans is supported, not all platform MXBean functionality 
-is implemented or is applicable in SubstrateVM. Additionally, in order to define and use standard MBeans, metadata configuration must be specified. 
-This is further explained later in this guide.    
+
+A JMX connection from a client to a remote MBean server is supported. 
+The client, the server, or both may be a native executable.
+Only MXBeans, and standard user-defined MBeans, are supported. 
+Dynamic and model MBeans are not supported because their management interfaces are defined at run time. 
+Although remote management of MXBeans is supported, not all platform MXBean functionality is implemented or is applicable in Native Image. Additionally, to define and use standard MBeans, you must specify metadata configuration. 
+This is further explained in this guide.    
 
 ## Step 1: Create a Demo Application
 
-Create a demo application in a directory named `demo`.
-Change your working directory to there and run the commands from this directory.
+Create a demo application in a directory named _demo_.
+Change your working directory to there and run the commands from that directory.
 
-Save the following code to a file named `SimpleJmx.java`.
+Save the following code to a file named _SimpleJmx.java_.
 The `main()` method registers a custom MBean, then loop endlessly, so you have time to inspect the process using VisualVM.
 
 ```java
@@ -77,18 +80,21 @@ public class SimpleJmx {
 
 ## Step 2: Compile to Java Bytecode
 
-Compile the Java file using the GraalVM JDK:
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-```shell 
-$JAVA_HOME/bin/javac SimpleJmx.java
-```
-This creates `SimpleJmx.class`, `SimpleJmx$Simple.class`, and `SimpleJmx$SimpleMBean.class` files.
+2. Compile the Java file using the GraalVM JDK:
+    ```shell 
+    $JAVA_HOME/bin/javac SimpleJmx.java
+    ```
+    This creates _SimpleJmx.class_, _SimpleJmx$Simple.class_, and _SimpleJmx$SimpleMBean.class_ files.
 
 ## Step 3: Make a Dynamic Proxy Configuration
 
 JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans.
-To be able to interact with the custom `SimpleMBean` at run time, we need to provide Native Image with additional [dynamic proxy configuration](../DynamicProxy.md) for the MBean interface.
-For this, create a JSON file named `proxy-config.json` with the following contents:
+To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic proxy configuration](../DynamicProxy.md) for the MBean interface.
+For this, create a JSON file named _proxy-config.json_ with the following contents:
 
 ```json
 [
