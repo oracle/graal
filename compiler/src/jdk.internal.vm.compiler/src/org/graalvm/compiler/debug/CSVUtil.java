@@ -82,7 +82,15 @@ public final class CSVUtil {
             return escapeArgs(SEPARATOR, QUOTE, ESCAPE, args);
         }
 
+        public static Object[] escapeArgsFormatString(Object... args) {
+            return escapeArgs(SEPARATOR, QUOTE, ESCAPE, true, args);
+        }
+
         public static Object[] escapeArgs(char separator, char quote, char escape, Object... args) {
+            return escapeArgs(separator, quote, escape, false, args);
+        }
+
+        public static Object[] escapeArgs(char separator, char quote, char escape, boolean isFormatString, Object... args) {
             String separatorStr = String.valueOf(separator);
             for (int i = 0; i < args.length; i++) {
                 Object obj = args[i];
@@ -91,6 +99,9 @@ public final class CSVUtil {
                     if (str.contains(separatorStr)) {
                         args[i] = escapeRaw(str, quote, escape);
                     }
+                    if (isFormatString && str.contains("%")) {
+                        args[i] = str.replace("%", "%%");
+                    }
                 }
             }
             return args;
@@ -98,7 +109,7 @@ public final class CSVUtil {
 
         public static String escape(String str, char separator, char quote, char escape) {
             String separatorStr = String.valueOf(separator);
-            if (str.contains(separatorStr)) {
+            if (str.contains(separatorStr) || str.contains("%")) {
                 return escapeRaw(str, quote, escape);
             }
             return str;

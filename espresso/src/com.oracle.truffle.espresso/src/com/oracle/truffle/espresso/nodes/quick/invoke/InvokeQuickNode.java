@@ -110,7 +110,7 @@ public abstract class InvokeQuickNode extends QuickNode {
     }
 
     @Override
-    public final boolean removedByRedefintion() {
+    public final boolean removedByRedefinition() {
         if (method.getRedefineAssumption().isValid()) {
             return false;
         } else {

@@ -45,6 +45,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -89,8 +90,10 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaul
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaultNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedNeverDefaultObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceLibraryCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstancePrimitiveCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstanceSharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseMultiInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedDefaultInlinedNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedNeverDefaultInlinedNodeNodeGen;
@@ -119,7 +122,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     abstract static class SharedDefaultIntNode extends TestNode {
 
-        @Specialization(guards = "value == cachedValue", limit = "1")
+        @Specialization(guards = "value == cachedValue")
         int s0(int value,
                         @Shared("a") @Cached(value = "value", neverDefault = false) int cachedValue,
                         @Cached(value = "value", neverDefault = false) int notShared) {
@@ -140,7 +143,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     abstract static class SharedNeverDefaultIntNode extends TestNode {
 
-        @Specialization(guards = "value == cachedValue", limit = "1")
+        @Specialization(guards = "value == cachedValue")
         int s0(int value,
                         @Shared("a") @Cached(value = "value", neverDefault = true) int cachedValue,
                         @Cached(value = "value", neverDefault = true) int notShared) {
@@ -685,6 +688,62 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
         SingleInstancePrimitiveCacheNode node = adoptNode(SingleInstancePrimitiveCacheNodeGen.create()).get();
         assertFails(() -> node.execute(null, 0), AssertionError.class);
+    }
+
+    @GenerateInline
+    abstract static class SingleInstanceSharedCacheNode extends InlinableTestNode {
+
+        @Specialization(guards = "guardNode.execute(value)")
+        int s0(int value, @SuppressWarnings("unused") @Shared @Cached InnerGuardNode guardNode) {
+            assertNotNull(guardNode);
+            return value;
+        }
+
+        @Specialization
+        int s1(int value, @SuppressWarnings("unused") @Shared @Cached InnerGuardNode guardNode) {
+            fail("must not fallthrough");
+            return value;
+        }
+
+    }
+
+    @Test
+    public void testSingleInstanceSharedCacheNode() throws InterruptedException {
+        assertInParallel(SingleInstanceSharedCacheNodeGen::create, (node, threadIndex, objectIndex) -> {
+            node.execute(node, 0);
+        });
+    }
+
+    @GenerateInline
+    abstract static class SingleInstanceLibraryCacheNode extends InlinableTestNode {
+
+        @Specialization(guards = "value == 1", limit = "1")
+        int s0(int value, @CachedLibrary("value") InteropLibrary interop,
+                        @Cached RegularNode node) {
+            assertNotNull(interop);
+            assertNotNull(node);
+            return value;
+        }
+
+        @Specialization(guards = {"value == 1 || value == 2"}, replaces = "s0")
+        int s1(int value, @Cached RegularNode node) {
+            assertNotNull(node);
+            return value;
+        }
+
+        @Specialization
+        int s1(int value) {
+            fail("must not fallthrough");
+            return value;
+        }
+
+    }
+
+    @Test
+    public void testSingleInstanceLibraryCacheNode() throws InterruptedException {
+        assertInParallel(SingleInstanceLibraryCacheNodeGen::create, (node, threadIndex, objectIndex) -> {
+            node.execute(node, threadIndex % 2 + 1);
+        });
     }
 
     @SuppressWarnings("truffle-inlining")

@@ -25,7 +25,6 @@
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.MemoryFeedback;
-import com.oracle.truffle.tools.utils.json.JSONException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +45,7 @@ import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory.HttpConnectionException;
+import org.graalvm.shadowed.org.json.JSONException;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;

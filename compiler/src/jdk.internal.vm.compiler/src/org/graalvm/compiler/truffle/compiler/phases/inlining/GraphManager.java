@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
@@ -50,6 +49,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

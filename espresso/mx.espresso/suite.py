@@ -125,6 +125,7 @@ suite = {
             "requires": [
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
+                "java.management",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",

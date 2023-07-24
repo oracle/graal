@@ -30,12 +30,9 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assume;
@@ -43,6 +40,9 @@ import org.junit.Before;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
@@ -52,7 +52,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     protected TruffleCompilerImplTest() {
         if (!TruffleOptions.AOT) {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             TruffleCompiler compiler = runtime.newTruffleCompiler();
             Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
             this.truffleCompiler = (TruffleCompilerImpl) compiler;
@@ -62,7 +62,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     @Before
     public void onlyWhiteBox() {
         if (TruffleOptions.AOT) {
-            TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().getTruffleCompiler(getInitCallTarget());
+            TruffleCompiler compiler = OptimizedTruffleRuntime.getRuntime().getTruffleCompiler(getInitCallTarget());
             Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
             this.truffleCompiler = (TruffleCompilerImpl) compiler;
         }

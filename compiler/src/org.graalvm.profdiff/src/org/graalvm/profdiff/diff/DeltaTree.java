@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,15 +147,14 @@ public class DeltaTree<T extends TreeNode<T>> {
             if (operation.getDepth() == stack.getLast().getDepth() + 1) {
                 DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, operation.getLeft(), operation.getRight());
                 stack.add(child);
-            } else if (operation.getDepth() <= stack.getLast().getDepth()) {
+            } else {
+                assert operation.getDepth() <= stack.getLast().getDepth() : "the edit script must be in dfs preorder";
                 int toPop = stack.getLast().getDepth() - operation.getDepth() + 1;
                 for (int i = 0; i < toPop; i++) {
                     stack.removeLast();
                 }
                 DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, operation.getLeft(), operation.getRight());
                 stack.add(child);
-            } else {
-                throw new RuntimeException("The edit script is not in dfs preorder.");
             }
         }
         if (stack.isEmpty()) {
@@ -181,10 +180,9 @@ public class DeltaTree<T extends TreeNode<T>> {
                 script.delete(deltaNode.getLeft(), deltaNode.getDepth());
             } else if (deltaNode.isInsertion()) {
                 script.insert(deltaNode.getRight(), deltaNode.getDepth());
-            } else if (deltaNode.isRelabeling()) {
-                script.relabel(deltaNode.getLeft(), deltaNode.getRight(), deltaNode.getDepth());
             } else {
-                throw new RuntimeException("Inconsistent state of a delta node.");
+                assert deltaNode.isRelabeling() : "the node represents one of the possible operations";
+                script.relabel(deltaNode.getLeft(), deltaNode.getRight(), deltaNode.getDepth());
             }
         }
         return script;
@@ -196,6 +194,10 @@ public class DeltaTree<T extends TreeNode<T>> {
      * @param visitor the visitor that will visit this delta tree
      */
     public void accept(DeltaTreeVisitor<T> visitor) {
+        if (root == null) {
+            visitor.visitEmptyTree();
+            return;
+        }
         visitor.beforeVisit();
         forEach(node -> {
             if (node.isIdentity()) {
@@ -205,7 +207,7 @@ public class DeltaTree<T extends TreeNode<T>> {
             } else if (node.isInsertion()) {
                 visitor.visitInsertion(node);
             } else {
-                assert node.isRelabeling();
+                assert node.isRelabeling() : "the node represents one of the possible operations";
                 visitor.visitRelabeling(node);
             }
         });

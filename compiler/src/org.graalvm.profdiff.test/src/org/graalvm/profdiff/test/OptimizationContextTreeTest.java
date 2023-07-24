@@ -27,15 +27,22 @@ package org.graalvm.profdiff.test;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
+import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class OptimizationContextTreeTest {
     /**
@@ -208,5 +215,67 @@ public class OptimizationContextTreeTest {
         ce.addChild(cf);
 
         assertEquals(root, actual.getRoot());
+    }
+
+    @Test
+    public void nodeEqualsAndHashCode() {
+        OptimizationContextTreeNode node1 = new OptimizationContextTreeNode();
+        OptimizationContextTreeNode node2 = new OptimizationContextTreeNode();
+        assertEquals(node1, node1);
+        assertEquals(node1, node2);
+        assertEquals(node1.hashCode(), node2.hashCode());
+        assertNotEquals(node1, null);
+        assertNotEquals(node1, new Object());
+
+        InliningTreeNode inliningTreeNode1 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        InliningTreeNode inliningTreeNode2 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        assertEquals(new OptimizationContextTreeNode(inliningTreeNode1), new OptimizationContextTreeNode(inliningTreeNode2));
+
+        Optimization optimization1 = new Optimization("Opt", "Event", null, null);
+        Optimization optimization2 = new Optimization("Opt", "Event", null, null);
+        assertEquals(new OptimizationContextTreeNode(optimization1), new OptimizationContextTreeNode(optimization2));
+    }
+
+    @Test
+    public void writeOptimizationContextTree() {
+        var writer = Writer.stringBuilder(new OptionValues());
+        new OptimizationContextTree(null).write(writer);
+        assertTrue(writer.getOutput().isEmpty());
+
+        InliningTreeNode inliningRoot = new InliningTreeNode("foo()", -1, true, null, false, null, false);
+        InliningTreeNode inliningChild = new InliningTreeNode("bar()", 1, false, List.of("not inlined"), true, new ReceiverTypeProfile(false, null), true);
+        inliningRoot.addChild(inliningChild);
+
+        Optimization optimization = new Optimization("Opt", "Foo", null, null);
+
+        OptimizationContextTreeNode root = new OptimizationContextTreeNode();
+        OptimizationContextTreeNode optimizationNode = new OptimizationContextTreeNode(optimization);
+        root.addChild(optimizationNode);
+        OptimizationContextTreeNode foo = new OptimizationContextTreeNode(inliningRoot);
+        root.addChild(foo);
+        OptimizationContextTreeNode bar = new OptimizationContextTreeNode(inliningChild);
+        foo.addChild(bar);
+        OptimizationContextTree tree = new OptimizationContextTree(root);
+
+        writer = Writer.stringBuilder(new OptionValues());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization-context tree
+                            Opt Foo
+                            (root) foo()
+                                (indirect) bar() at bci 1
+                                    |_ immature receiver-type profile
+                        """, writer.getOutput());
+
+        writer = Writer.stringBuilder(OptionValues.builder().withAlwaysPrintInlinerReasoning(true).build());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization-context tree
+                            Opt Foo
+                            (root) foo()
+                                (indirect) bar() at bci 1
+                                    |_ reasoning: not inlined
+                                    |_ immature receiver-type profile
+                        """, writer.getOutput());
     }
 }

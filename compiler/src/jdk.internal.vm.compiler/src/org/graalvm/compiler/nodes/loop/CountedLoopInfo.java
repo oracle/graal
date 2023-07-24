@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -191,6 +192,10 @@ public class CountedLoopInfo {
         return end;
     }
 
+    private void assertNoOverflow() {
+        GraalError.guarantee(loopCanNeverOverflow(), "Counter must never overflow when reasoning about trip counts of a loop");
+    }
+
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
      * this loop assuming it is not exited by an other exit than the {@linkplain #getLimitTest()
@@ -201,6 +206,7 @@ public class CountedLoopInfo {
      * THIS VALUE SHOULD BE TREATED AS UNSIGNED.
      */
     public ValueNode maxTripCountNode() {
+        assertNoOverflow();
         return maxTripCountNode(false);
     }
 
@@ -209,10 +215,12 @@ public class CountedLoopInfo {
     }
 
     public ValueNode maxTripCountNode(boolean assumeLoopEntered) {
+        assertNoOverflow();
         return maxTripCountNode(assumeLoopEntered, getCounterIntegerHelper());
     }
 
     protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
+        assertNoOverflow();
         return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIV().initNode(), getTripCountLimit());
     }
 
@@ -233,18 +241,20 @@ public class CountedLoopInfo {
      *
      */
     public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
+        assertNoOverflow();
         StructuredGraph graph = getBodyIV().valueNode().graph();
         Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
 
         ValueNode max;
         ValueNode min;
         ValueNode absStride;
-        if (getBodyIV().direction() == Direction.Up) {
+        final Direction direction = getBodyIV().direction();
+        if (direction == Direction.Up) {
             absStride = getBodyIV().strideNode();
             max = tripCountLimit;
             min = initNode;
         } else {
-            assert getBodyIV().direction() == Direction.Down;
+            assert direction == Direction.Down : "direction must be down if its not up - else loop should not be counted " + direction;
             absStride = NegateNode.create(getBodyIV().strideNode(), NodeView.DEFAULT);
             max = initNode;
             min = tripCountLimit;
@@ -257,8 +267,20 @@ public class CountedLoopInfo {
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
         ValueNode denominator = add(graph, range, sub(absStride, one), NodeView.DEFAULT);
-        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride, null);
-
+        /*
+         * While the divisor can never be zero because that would mean the direction of the loop is
+         * not strictly known which disables counted loop detection - it is possible that the stamp
+         * contains 0 though we know it effectively cannot. This happens when we have knowledge
+         * about the stride - for example its strictly positive or negative but not a constant - in
+         * both we cannot easily fold the negated stamp.
+         *
+         * Note that on certain architectures the division MIN/-1 also triggers a CPU divide error
+         * which has to be taken care of by the code generation via a state, thus actually deriving
+         * by stamps that this division can never trigger a divide error is very hard, and thus we
+         * refrain from doing so.
+         */
+        final boolean divisorNonZero = true;
+        ValueNode div = unsignedDivBefore(graph, divisorNonZero, loop.entryPoint(), denominator, absStride, null);
         if (assumeLoopEntered) {
             return graph.addOrUniqueWithInputs(div);
         }
@@ -404,6 +426,7 @@ public class CountedLoopInfo {
     }
 
     public ValueNode exactTripCountNode() {
+        assertNoOverflow();
         assert isExactTripCount();
         return maxTripCountNode();
     }
@@ -414,6 +437,7 @@ public class CountedLoopInfo {
     }
 
     public UnsignedLong constantExactTripCount() {
+        assertNoOverflow();
         assert isExactTripCount();
         return constantMaxTripCount();
     }
@@ -464,6 +488,10 @@ public class CountedLoopInfo {
 
     public GuardingNode getOverFlowGuard() {
         return loop.loopBegin().getOverflowGuard();
+    }
+
+    public boolean loopCanNeverOverflow() {
+        return counterNeverOverflows() || getOverFlowGuard() != null;
     }
 
     public boolean counterNeverOverflows() {
@@ -545,27 +573,8 @@ public class CountedLoopInfo {
             return overflowGuard;
         }
         try (DebugCloseable position = loop.loopBegin().withNodeSourcePosition()) {
-            IntegerStamp stamp = (IntegerStamp) getBodyIV().valueNode().stamp(NodeView.DEFAULT);
-            IntegerHelper integerHelper = getCounterIntegerHelper();
             StructuredGraph graph = getBodyIV().valueNode().graph();
-            LogicNode cond; // we use a negated guard with a < condition to achieve a >=
-            ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
-            if (getBodyIV().direction() == Direction.Up) {
-                ValueNode v1 = sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), sub(getBodyIV().strideNode(), one));
-                if (isLimitIncluded) {
-                    v1 = sub(v1, one);
-                }
-                cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, getTripCountLimit(), NodeView.DEFAULT));
-            } else {
-                assert getBodyIV().direction() == Direction.Down;
-                ValueNode v1 = add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), sub(one, getBodyIV().strideNode()));
-                if (isLimitIncluded) {
-                    v1 = add(v1, one);
-                }
-                cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(getTripCountLimit(), v1, NodeView.DEFAULT));
-            }
-            assert graph.getGuardsStage().allowsFloatingGuards();
-
+            LogicNode cond = createOverflowGuardCondition();
             SpeculationLog speculationLog = graph.getSpeculationLog();
             SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
             if (speculationLog != null) {
@@ -577,12 +586,38 @@ public class CountedLoopInfo {
                     GraalError.shouldNotReachHere("Must not create overflow guard for loop " + loop.loopBegin() + " where the speculation guard already failed, this can create deopt loops"); // ExcludeFromJacocoGeneratedReport
                 }
             }
-
+            assert graph.getGuardsStage().allowsFloatingGuards();
             overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
                             speculation, null));
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }
+    }
+
+    public LogicNode createOverflowGuardCondition() {
+        StructuredGraph graph = getBodyIV().valueNode().graph();
+        if (counterNeverOverflows()) {
+            return LogicConstantNode.contradiction(graph);
+        }
+        IntegerStamp stamp = (IntegerStamp) getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        IntegerHelper integerHelper = getCounterIntegerHelper();
+        LogicNode cond; // we use a negated guard with a < condition to achieve a >=
+        ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
+        if (getBodyIV().direction() == Direction.Up) {
+            ValueNode v1 = sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), sub(getBodyIV().strideNode(), one));
+            if (isLimitIncluded) {
+                v1 = sub(v1, one);
+            }
+            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, getTripCountLimit(), NodeView.DEFAULT));
+        } else {
+            assert getBodyIV().direction() == Direction.Down;
+            ValueNode v1 = add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), sub(one, getBodyIV().strideNode()));
+            if (isLimitIncluded) {
+                v1 = add(v1, one);
+            }
+            cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(getTripCountLimit(), v1, NodeView.DEFAULT));
+        }
+        return cond;
     }
 
     public IntegerStamp getStamp() {

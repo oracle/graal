@@ -5,7 +5,6 @@ link_title: Security Guide
 permalink: /security-guide/
 redirect_from:
 - /docs/security-guide/
-- /$version/docs/security-guide/
 ---
 
 # Security Guide

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.runtime.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -58,6 +59,7 @@ public abstract class ExpectStringNode extends Node {
     @Specialization
     static TruffleString doString(String input, TruffleString.Encoding encoding,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        CompilerAsserts.partialEvaluationConstant(encoding);
         return fromJavaStringNode.execute(input, encoding);
     }
 

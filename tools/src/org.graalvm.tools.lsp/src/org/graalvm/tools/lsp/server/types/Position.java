@@ -24,7 +24,7 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * Position in a text document expressed as zero-based line and character offset. The offsets are

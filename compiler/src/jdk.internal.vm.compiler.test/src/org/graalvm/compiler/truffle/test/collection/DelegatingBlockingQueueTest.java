@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test.collection;
 
-import org.graalvm.compiler.truffle.runtime.collection.ArrayQueue;
-import org.graalvm.compiler.truffle.runtime.collection.DelegatingBlockingQueue;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.runtime.collection.ArrayQueue;
+import com.oracle.truffle.runtime.collection.DelegatingBlockingQueue;
 
 import java.util.ArrayList;
 

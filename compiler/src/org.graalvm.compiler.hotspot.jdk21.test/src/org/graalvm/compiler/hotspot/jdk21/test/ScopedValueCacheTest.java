@@ -29,8 +29,6 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.test.AddExports;
 
-import java.lang.ScopedValue;
-
 @AddExports("java.base/jdk.internal.misc")
 public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
 

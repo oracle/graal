@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -162,7 +163,7 @@ public final class PointsToAnalyzer {
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader);
         aUniverse.setHeapScanner(heapScanner);
-        HeapSnapshotVerifier heapVerifier = new HeapSnapshotVerifier(bigbang, heap, heapScanner);
+        HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */
         aUniverse.getTypes().forEach(t -> {
@@ -192,6 +193,17 @@ public final class PointsToAnalyzer {
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bigbang.addRootClass(kind.toJavaClass(), false, true);
+                    bigbang.addRootField(kind.toBoxedJavaClass(), "value");
+                    bigbang.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
+                    bigbang.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
+                    /*
+                     * Register the cache location as reachable.
+                     * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
+                     */
+                    Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+                    if (innerClasses != null && innerClasses.length > 0) {
+                        bigbang.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("root class");
+                    }
                 }
             }
             bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");

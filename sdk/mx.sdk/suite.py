@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.27.6",
   "name" : "sdk",
   "version" : "23.1.0",
   "release" : False,
@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"],
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
       "mavenId" : "lafo",
     },
   },
@@ -209,7 +209,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -232,7 +232,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,SDK",
     },
@@ -245,7 +245,7 @@ suite = {
         "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "com.oracle.svm.core.annotate" : {
@@ -255,7 +255,7 @@ suite = {
          "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.nativeimage.test" : {
@@ -332,7 +332,7 @@ suite = {
         "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.home.test" : {
@@ -345,6 +345,58 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+    },
+    "org.graalvm.jniutils" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "GRAAL_SDK",
+      ],
+      "requires" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+    },
+    "org.graalvm.nativebridge" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JNIUTILS"
+      ],
+      "requires" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+    },
+    "org.graalvm.nativebridge.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "requires" : [
+        "java.compiler"
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Graal",
+    },
+    "org.graalvm.nativebridge.processor.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "NATIVEBRIDGE",
+      ],
+      "annotationProcessors" : [
+        "NATIVEBRIDGE_PROCESSOR",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
     },
     "org.graalvm.toolchain.test" : {
       "class" : "ToolchainTestProject",
@@ -368,6 +420,10 @@ suite = {
     "Apache-2.0-wrk-a211dd5" : {
       "name" : "Modified Apache 2.0 License",
       "url" : "https://raw.githubusercontent.com/wg/wrk/a211dd5a7050b1f9e8a9870b95513060e72ac4a0/LICENSE"
+    },
+    "ICU" : {
+      "name" : "Unicode/ICU License",
+      "url" : "https://raw.githubusercontent.com/unicode-org/icu/main/LICENSE",
     },
 },
 
@@ -405,7 +461,7 @@ suite = {
           "org.graalvm.polyglot",
           "org.graalvm.options",
           "org.graalvm.word",
-          "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.graal.graal_enterprise",
+          "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.truffle.enterprise",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
           "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.base,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise,org.graalvm.extraimage.builder",
           "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
@@ -467,6 +523,54 @@ suite = {
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
     },
+    "JNIUTILS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.jniutils",
+        "exports" : [
+          "org.graalvm.jniutils",
+        ],
+      },
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.jniutils"],
+      "distDependencies" : ["GRAAL_SDK"],
+      "description" : "Utilities for JNI calls from within native-image.",
+      "allowsJavadocWarnings": True,
+    },
+    "NATIVEBRIDGE" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.nativebridge",
+        "exports" : [
+          "org.graalvm.nativebridge",
+        ],
+      },
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.nativebridge"],
+      "distDependencies" : ["JNIUTILS"],
+      "description" : "API and utility classes for nativebridge.",
+      "allowsJavadocWarnings": True,
+    },
+    "NATIVEBRIDGE_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor"
+      ],
+      "distDependencies" : [],
+      "maven": False,
+    },
+    "NATIVEBRIDGE_PROCESSOR_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor.test"
+      ],
+      "requiresConcealed": {
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.services",
+        ],
+      },
+      "distDependencies" : ["NATIVEBRIDGE"],
+      "maven": False,
+      "testDistribution" : True,
+    },
     "LLVM_TOOLCHAIN": {
       "native": True,
       "description": "LLVM with general purpose patches used by Sulong and Native Image",
@@ -489,6 +593,7 @@ suite = {
             "exclude": [
               # filter out some things that we don't want to redistribute
               "bin/bugpoint*",
+              "bin/bbc",
               "bin/c-index-test*",
               "bin/clang-check*",
               "bin/clang-extdef-mapping*",
@@ -498,6 +603,7 @@ suite = {
               "bin/clang-rename*",
               "bin/clang-scan-deps*",
               "bin/diagtool*",
+              "bin/fir-opt",
               "bin/git-clang-format",
               "bin/hmaptool",
               "bin/llvm-addr2line*",
@@ -534,11 +640,13 @@ suite = {
               "bin/llvm-undname*",
               "bin/llvm-windres*", # symlink to llvm-rc
               "bin/llvm-xray*",
+              "bin/mlir-*",
               "bin/obj2yaml*",
               "bin/sancov*",
               "bin/sanstats*",
               "bin/scan-build*",
               "bin/scan-view*",
+              "bin/tco",
               "bin/verify-uselistorder*",
               "bin/yaml2obj*",
               "bin/set-xcode-analyzer",
@@ -557,7 +665,17 @@ suite = {
               "lib/libclang.dylib*",
               "lib/libclang*.a",
               "lib/liblld*.a",
+              "lib/libMLIR*",
+              "lib/libmlir*",
+              "lib/lib*FIR*.a",
+              "lib/libflang*.a",
+              "lib/libFortranEvaluate.a",
+              "lib/libFortranLower.a",
+              "lib/libFortranParser.a",
+              "lib/libFortranSemantics.a",
               "libexec",
+              "lib/objects-Release",
+              "include/mlir*",
               # Windows libarary excludes
               "lib/*.lib",
             ]

@@ -59,7 +59,10 @@ public interface ExperimentFiles {
     Iterable<FileView> getOptimizationLogs() throws IOException;
 
     /**
-     * Gets whether the experiment was compiled just-in-time or ahead-of-time.
+     * Gets whether the experiment was compiled just-in-time or ahead-of-time. Returns {@code null}
+     * if this information should be inferred during parsing.
+     *
+     * @return the expected compilation kind of this experiment or {@code null}
      */
     Experiment.CompilationKind getCompilationKind();
 }

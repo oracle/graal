@@ -47,8 +47,6 @@ import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 
-import com.oracle.truffle.api.TruffleSafepoint;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,8 +55,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Adds Truffle safepoints to loops and methods ends.
  *
- * Invocations of {@link TruffleSafepoint#poll(com.oracle.truffle.api.nodes.Node)} are removed
- * during PE. This phase ensures that they are efficiently added again at method and loop ends.
+ * Invocations of TruffleSafepoint.poll are removed during PE. This phase ensures that they are
+ * efficiently added again at method and loop ends.
  */
 public final class TruffleSafepointInsertionPhase extends Phase {
 

@@ -55,7 +55,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
+import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
 
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class TRegexVSJavaBenchmarks extends BenchmarkBase {
@@ -144,7 +144,7 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
             input = "_".repeat(200) + p.input;
         }
 
-        private int toJavaFlags(String flags) {
+        private static int toJavaFlags(String flags) {
             int javaFlags = 0;
             for (int i = 0; i < flags.length(); i++) {
                 javaFlags |= toJavaFlag(flags.charAt(i));

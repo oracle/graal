@@ -796,7 +796,12 @@ public final class Engine implements AutoCloseable {
                     synchronized (ENGINES) {
                         if (!shutdownHookInitialized) {
                             shutdownHookInitialized = true;
-                            Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+                            try {
+                                Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+                            } catch (IllegalStateException e) {
+                                // shutdown already in progress
+                                // catching the exception is the only way to detect this.
+                            }
                         }
                     }
                 }

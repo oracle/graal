@@ -150,7 +150,7 @@ public final class ClassRedefinition {
         redefineListener.collectExtraClassesToReload(redefineInfos, additional);
     }
 
-    public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
+    public void runPostRedefinitionListeners(ObjectKlass[] changedKlasses) {
         redefineListener.postRedefinition(changedKlasses, controller);
     }
 
@@ -186,13 +186,13 @@ public final class ClassRedefinition {
     public synchronized void clearDelegationFields() {
         if (currentDelegationFields != null) {
             for (Field field : currentDelegationFields) {
-                field.removeByRedefintion();
+                field.removeByRedefinition();
             }
             currentDelegationFields.clear();
         }
     }
 
-    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
+    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefinitionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         EconomicMap<ObjectKlass, ChangePacket> temp = EconomicMap.create(1);
         EconomicSet<ObjectKlass> superClassChanges = EconomicSet.create(1);
@@ -302,7 +302,7 @@ public final class ClassRedefinition {
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
     private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
-                    throws RedefintionNotSupportedException {
+                    throws RedefinitionNotSupportedException {
         if (oldKlass.getSuperKlass() == oldKlass.getMeta().java_lang_Enum) {
             detectInvalidEnumConstantChanges(newParserKlass, oldKlass);
         }
@@ -495,7 +495,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
         // detect invalid enum constant changes
         // currently, we only allow appending new enum constants
         Field[] oldEnumFields = oldKlass.getDeclaredFields();
@@ -514,18 +514,18 @@ public final class ClassRedefinition {
         }
         // we don't currently allow removing enum constants
         if (oldEnumConstants.size() > newEnumConstants.size()) {
-            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+            throw new RedefinitionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
         }
 
         // compare ordered lists, we don't allow reordering enum constants
         for (int i = 0; i < oldEnumConstants.size(); i++) {
             if (oldEnumConstants.get(i) != newEnumConstants.get(i)) {
-                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+                throw new RedefinitionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
             }
         }
     }
 
-    private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+    private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
         Klass klass;
         klass = oldKlass.getContext().getRegistries().findLoadedClass(klassType, oldKlass.getDefiningClassLoader());
         if (klass == null) {
@@ -535,7 +535,7 @@ public final class ClassRedefinition {
                 StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(oldKlass.getDefiningClassLoader(), resourceGuestString);
                 klass = loadedClass.getMirrorKlass();
             } catch (Throwable t) {
-                throw new RedefintionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
+                throw new RedefinitionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
             }
         }
         return klass;

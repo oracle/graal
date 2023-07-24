@@ -24,7 +24,7 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * Value-object that contains additional information when requesting references.

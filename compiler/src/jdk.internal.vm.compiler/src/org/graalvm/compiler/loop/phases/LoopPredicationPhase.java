@@ -208,8 +208,8 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
         final InductionVariable counter = loop.counted().getLimitCheckedIV();
         ValueNode rangeLong = IntegerConvertNode.convert(range, IntegerStamp.create(64), graph, NodeView.DEFAULT);
 
-        ValueNode extremumNode = counter.extremumNode(false, IntegerStamp.create(64));
         final GuardingNode overFlowGuard = loop.counted().createOverFlowGuard();
+        ValueNode extremumNode = counter.extremumNode(false, IntegerStamp.create(64));
         assert overFlowGuard != null || loop.counted().counterNeverOverflows();
         if (overFlowGuard != null) {
             extremumNode = graph.unique(new GuardedValueNode(extremumNode, overFlowGuard));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,114 +25,31 @@
 package org.graalvm.profdiff.core.inlining;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.profdiff.core.Writer;
 
 /**
  * Receiver-type profile information for a concrete inlining tree node.
+ *
+ * @param isMature {@code true} iff the profile is mature
+ * @param profiledTypes type names with probabilities
  */
-public class ReceiverTypeProfile {
-    /**
-     * A single profiled type of the receiver.
-     */
-    public static class ProfiledType {
-        /**
-         * The name of the receiver type.
-         */
-        private final String typeName;
-
-        /**
-         * The probability of the receiver being an instance of this type.
-         */
-        private final double probability;
-
-        /**
-         * The concrete method called when the receiver is an instance of this type.
-         */
-        private final String concreteMethodName;
-
-        public ProfiledType(String typeName, double probability, String concreteMethodName) {
-            this.typeName = typeName;
-            this.probability = probability;
-            this.concreteMethodName = concreteMethodName;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof ProfiledType)) {
-                return false;
-            }
-
-            ProfiledType that = (ProfiledType) o;
-            return Double.compare(that.probability, probability) == 0 && Objects.equals(typeName, that.typeName) &&
-                            Objects.equals(concreteMethodName, that.concreteMethodName);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = typeName != null ? typeName.hashCode() : 0;
-            long temp = Double.doubleToLongBits(probability);
-            result = 31 * result + (int) (temp ^ (temp >>> 32));
-            result = 31 * result + (concreteMethodName != null ? concreteMethodName.hashCode() : 0);
-            return result;
-        }
-
-        /**
-         * Gets the name of the receiver type.
-         */
-        public String getTypeName() {
-            return typeName;
-        }
-
-        /**
-         * Gets the probability of the receiver being an instance of this type.
-         */
-        public double getProbability() {
-            return probability;
-        }
-
-        /**
-         * Gets the concrete method called when the receiver is an instance of this type.
-         */
-        public String getConcreteMethodName() {
-            return concreteMethodName;
-        }
-    }
-
-    /**
-     * The maturity of the profile.
-     */
-    private final boolean isMature;
-
-    /**
-     * Type names with probabilities.
-     */
-    private final List<ProfiledType> profiledTypes;
+public record ReceiverTypeProfile(boolean isMature, List<ProfiledType> profiledTypes) {
 
     public ReceiverTypeProfile(boolean isMature, List<ProfiledType> profiledTypes) {
         this.isMature = isMature;
-        this.profiledTypes = profiledTypes;
+        this.profiledTypes = profiledTypes == null ? List.of() : profiledTypes;
     }
 
     /**
-     * Returns {@code true} iff the profile is mature.
+     * A single profiled type of the receiver.
+     *
+     * @param typeName the name of the receiver type
+     * @param probability the probability of the receiver being an instance of this type
+     * @param concreteMethodName the concrete method called when the receiver is an instance of this
+     *            type
      */
-    public boolean isMature() {
-        return isMature;
-    }
-
-    /**
-     * Gets the list of profiled types.
-     */
-    public List<ProfiledType> getProfiledTypes() {
-        if (profiledTypes == null) {
-            return List.of();
-        }
-        return profiledTypes;
+    public record ProfiledType(String typeName, double probability, String concreteMethodName) {
     }
 
     /**
@@ -143,33 +60,13 @@ public class ReceiverTypeProfile {
      * @param writer the destination writer
      */
     public void write(Writer writer) {
-        for (ProfiledType profiledType : getProfiledTypes()) {
-            writer.write(String.format("%5.2f%% %s", profiledType.getProbability() * 100, profiledType.getTypeName()));
+        for (ProfiledType profiledType : profiledTypes()) {
+            writer.write(String.format("%5.2f%% %s", profiledType.probability * 100, profiledType.typeName));
             if (profiledType.concreteMethodName != null) {
                 writer.writeln(" -> " + profiledType.concreteMethodName);
             } else {
                 writer.writeln();
             }
         }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof ReceiverTypeProfile)) {
-            return false;
-        }
-
-        ReceiverTypeProfile that = (ReceiverTypeProfile) o;
-        return isMature == that.isMature && Objects.equals(profiledTypes, that.profiledTypes);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = (isMature ? 1 : 0);
-        result = 31 * result + (profiledTypes != null ? profiledTypes.hashCode() : 0);
-        return result;
     }
 }

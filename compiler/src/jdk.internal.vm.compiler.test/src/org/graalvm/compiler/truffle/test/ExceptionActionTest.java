@@ -37,8 +37,9 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils.Subprocess;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
@@ -133,7 +134,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.CompilationFailureAction", "ExitVM",
                         "compiler.PerformanceWarningsAreFatal", "all");
     }
@@ -146,7 +147,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
@@ -172,7 +173,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                 } catch (RuntimeException e) {
                     OptimizationFailedException optFailedException = isOptimizationFailed(e);
                     if (optFailedException != null) {
-                        GraalTruffleRuntime.getRuntime().log(target, optFailedException.getClass().getName());
+                        OptimizedTruffleRuntime.getRuntime().log(target, optFailedException.getClass().getName());
                     }
                 }
             }, false, useVMOptions);

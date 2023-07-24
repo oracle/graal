@@ -717,26 +717,7 @@ final class BreakpointInterceptor {
         return classNames;
     }
 
-    private static boolean getBundleImplJDK8OrEarlier(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        /* actual caller of a getBundle method */
-        JNIObjectHandle callerClass = state.getCallerClass(2);
-        JNIObjectHandle baseName = getObjectArgument(thread, 0);
-        JNIObjectHandle locale = getObjectArgument(thread, 1);
-        JNIObjectHandle loader = getObjectArgument(thread, 2);
-        JNIObjectHandle control = getObjectArgument(thread, 3);
-        JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, baseName, locale, loader, control);
-        BundleInfo bundleInfo = BundleInfo.NONE;
-        if (clearException(jni)) {
-            result = nullHandle();
-        } else {
-            bundleInfo = extractBundleInfo(jni, result);
-        }
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames, bundleInfo.locales);
-        return true;
-    }
-
-    private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+    private static boolean getBundleImpl(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIMethodId intermediateMethod = state.getCallerMethod(2);
         JNIMethodId callerMethod; // caller of getBundle(), not immediate caller
         if (intermediateMethod.equal(agent.handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
@@ -758,7 +739,7 @@ final class BreakpointInterceptor {
         } else {
             bundleInfo = extractBundleInfo(jni, result);
         }
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImpl", result.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames,
                         bundleInfo.locales);
         return true;
@@ -1703,12 +1684,8 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::customTargetConstructorSerialization),
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",
-                                    "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/ClassLoader;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
-                                    BreakpointInterceptor::getBundleImplJDK8OrEarlier),
-                    optionalBrk("java/util/ResourceBundle",
-                                    "getBundleImpl",
                                     "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
-                                    BreakpointInterceptor::getBundleImplJDK11OrLater),
+                                    BreakpointInterceptor::getBundleImpl),
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),

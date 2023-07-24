@@ -37,11 +37,9 @@ import java.nio.file.Path;
  */
 public class DirEntry {
     private final Path path;
-    private final int idx;
 
-    public DirEntry(Path path, int idx) {
+    public DirEntry(Path path) {
         this.path = path;
-        this.idx = idx;
     }
 
     public Path getPath() {
@@ -51,14 +49,4 @@ public class DirEntry {
     public String getPathString() {
         return path.toString();
     }
-
-    /**
-     * Retrieve the index of the dir entry in the list of all known dirs.
-     *
-     * @return the index of the file entry.
-     */
-    public int getIdx() {
-        return idx;
-    }
-
 }

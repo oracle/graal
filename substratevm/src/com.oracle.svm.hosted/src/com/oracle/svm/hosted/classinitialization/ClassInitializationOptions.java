@@ -100,8 +100,9 @@ public final class ClassInitializationOptions {
     @Option(help = "Assert class initialization is specified for all classes.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AssertInitializationSpecifiedForAllClasses = new HostedOptionKey<>(false);
 
-    @Option(help = "Use new class initialization strategy that allows all classes to be used at image build time.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseNewExperimentalClassInitialization = new HostedOptionKey<>(false);
+    @Option(help = "Use the old class initialization strategy that does not allow all classes to be used at image build time.", type = OptionType.Expert, //
+                    deprecated = true, deprecationMessage = "Temporary flag to restore the class initialization behavior of older GraalVM versions. The old class initialization strategy will be removed in a future version of GraalVM.") //
+    public static final HostedOptionKey<Boolean> UseDeprecatedOldClassInitialization = new HostedOptionKey<>(false);
 
     @Option(help = "Simulate the effects of class initializer at image build time, to avoid class initialization at run time.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> SimulateClassInitializer = new HostedOptionKey<>(true);

@@ -37,6 +37,7 @@ import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -66,10 +67,11 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         convertSnippets = new AMD64ConvertSnippets.Templates(options, providers);
         mathSnippets = new AMD64X87MathSnippets.Templates(options, providers);
-        super.initialize(options, factories, providers, config, allocationSnippetTemplates);
+        super.initialize(options, factories, providers, config, arraycopySnippetTemplates, allocationSnippetTemplates);
     }
 
     @Override

@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +34,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
  * A simple test class verifying that a truffle-2-truffle call never results in the compilation of
@@ -43,7 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationTest {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
     private static final class Compilables {
 

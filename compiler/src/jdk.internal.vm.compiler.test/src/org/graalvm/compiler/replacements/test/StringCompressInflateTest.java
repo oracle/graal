@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import static org.junit.Assume.assumeTrue;
+
 import java.io.UnsupportedEncodingException;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -34,11 +36,15 @@ import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Test intrinsic/node substitutions for (innate) methods StringLatin1.inflate and
@@ -49,6 +55,23 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     static final int N = 1000;
+
+    @Before
+    public void checkCompactString() {
+        ResolvedJavaType stringType = getMetaAccess().lookupJavaType(String.class);
+        ResolvedJavaField compactStringsField = null;
+
+        for (ResolvedJavaField f : stringType.getStaticFields()) {
+            if (f.getName().equals("COMPACT_STRINGS")) {
+                compactStringsField = f;
+                break;
+            }
+        }
+
+        assertTrue("String.COMPACT_STRINGS must be present", compactStringsField != null);
+        JavaConstant compactStringsValue = getConstantReflection().readFieldValue(compactStringsField, null);
+        assumeTrue("Skip StringCompressInflateTest with -XX:-UseCompactString", compactStringsValue.asBoolean());
+    }
 
     @Test
     public void testStringLatin1Inflate() throws ClassNotFoundException, UnsupportedEncodingException {

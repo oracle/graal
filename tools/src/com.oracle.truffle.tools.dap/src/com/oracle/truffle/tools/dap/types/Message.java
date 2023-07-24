@@ -24,7 +24,8 @@
  */
 package com.oracle.truffle.tools.dap.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;

@@ -1979,7 +1979,11 @@ public final class JniEnv extends NativeEnv {
         Meta meta = getMeta();
         StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance(getContext());
         long address = NativeUtils.interopAsPointer(addressPtr);
-        meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
+        if (meta.getJavaVersion().java21OrLater()) {
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, capacity);
+        } else {
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
+        }
         return instance;
     }
 
@@ -2824,6 +2828,15 @@ public final class JniEnv extends NativeEnv {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid Class");
         }
         return clazz.getMirrorKlass(getMeta()).module().module();
+    }
+
+    @JniImpl
+    public boolean IsVirtualThread(@JavaType(Thread.class) StaticObject thread) {
+        Meta meta = getMeta();
+        if (StaticObject.isNull(thread)) {
+            return false;
+        }
+        return meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass());
     }
 
     // Checkstyle: resume method name check
