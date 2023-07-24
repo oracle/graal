@@ -178,6 +178,8 @@ def _unittest_config_participant(config):
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
