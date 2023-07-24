@@ -137,21 +137,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public boolean isAllowedUsageType(InputType type) {
-        if (!super.isAllowedUsageType(type)) {
-            if (!IS_IN_NATIVE_IMAGE) {
-                if (getStackKind() != JavaKind.Void) {
-                    if (callTarget instanceof MethodCallTargetNode && ((MethodCallTargetNode) callTarget).targetMethod().getAnnotation(NodeIntrinsic.class) != null) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        return true;
-    }
-
-    @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         if (callTarget != null) {
