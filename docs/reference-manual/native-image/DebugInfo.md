@@ -3,7 +3,7 @@ layout: docs
 toc_group: debugging-and-diagnostics
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/debugging-and-diagnostics/DebugInfo/
-redirect_from: /$version/reference-manual/native-image/DebugInfo/
+redirect_from: /reference-manual/native-image/DebugInfo/
 ---
 
 # Debug Info Feature
