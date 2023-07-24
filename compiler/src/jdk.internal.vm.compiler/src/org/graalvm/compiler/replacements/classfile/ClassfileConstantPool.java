@@ -225,6 +225,11 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Object lookupConstant(int index) {
+        return lookupConstant(index, true);
+    }
+
+    @Override
+    public Object lookupConstant(int index, boolean resolve) {
         ClassfileConstant c = entries[index];
         if (c instanceof Primitive) {
             Primitive p = (Primitive) c;

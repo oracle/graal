@@ -79,6 +79,11 @@
       mxgate_extra_args+: ["--extra-image-builder-arguments=-Ob"],
   }),
 
+  add_o3:: task_spec({
+      mxgate_config+::["O3"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-O3"],
+  }),
+
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],

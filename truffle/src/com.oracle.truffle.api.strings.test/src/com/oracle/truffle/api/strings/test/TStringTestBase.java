@@ -510,9 +510,9 @@ public class TStringTestBase {
         int lastCPI = codepoints.length - 1;
         int firstCodepoint = codepoints[0];
         int lastCodepoint = codepoints[lastCPI];
-        TruffleString first = TruffleString.fromCodePointUncached(firstCodepoint, encoding);
+        TruffleString first = TruffleString.fromCodePointUncached(firstCodepoint, encoding, false);
         TruffleString firstSubstring = a.substringByteIndexUncached(0, codepoints.length == 1 ? array.length : byteIndices[1], encoding, true);
-        TruffleString last = TruffleString.fromCodePointUncached(lastCodepoint, encoding);
+        TruffleString last = TruffleString.fromCodePointUncached(lastCodepoint, encoding, false);
         TruffleString lastSubstring = a.substringByteIndexUncached(byteIndices[lastCPI], array.length - byteIndices[lastCPI], encoding, true);
         int expectedFirst = lastIndex ? lastIndexOfCodePoint(codepoints, byteIndices, byteIndex, codepoints.length, 0, firstCodepoint) : 0;
         int expectedLast = lastIndex ? byteIndex ? byteIndices[lastCPI] : lastCPI : indexOfCodePoint(codepoints, byteIndices, byteIndex, 0, codepoints.length, lastCodepoint);

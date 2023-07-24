@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.TearDown;
@@ -43,6 +42,7 @@ import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibraryNod
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibrarySingleLimitNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class AOTSupportCompilationTest extends PartialEvaluationTest {
 

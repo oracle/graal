@@ -74,7 +74,7 @@ public class ReportCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
+        Experiment experiment = ExperimentParser.parseOrPanic(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
         experiment.writeExperimentSummary(writer);
 

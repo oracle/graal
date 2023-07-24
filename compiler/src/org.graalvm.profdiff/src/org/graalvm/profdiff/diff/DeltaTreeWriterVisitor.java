@@ -64,6 +64,11 @@ public class DeltaTreeWriterVisitor<T extends TreeNode<T>> implements DeltaTreeV
     }
 
     @Override
+    public void visitEmptyTree() {
+        writer.writeln("There are no differences");
+    }
+
+    @Override
     public void visitIdentity(DeltaTreeNode<T> node) {
         adjustIndentLevel(node);
         writer.write(EditScript.IDENTITY_PREFIX);

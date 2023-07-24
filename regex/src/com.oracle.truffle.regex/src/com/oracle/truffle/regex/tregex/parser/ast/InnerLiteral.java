@@ -89,7 +89,7 @@ public class InnerLiteral {
     /**
      * The maximum number of code points the regular expression may match before matching this
      * literal. Example: the inner literal of {@code /a?b/} is {@code "b"}, with a max prefix size
-     * of {@code 1}.
+     * of {@code 1}. If there are loops in the prefix, returns {@code -1}.
      */
     public int getMaxPrefixSize() {
         return maxPrefixSize;

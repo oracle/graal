@@ -107,6 +107,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
+import org.graalvm.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -489,10 +491,29 @@ public class InliningUtil extends ValueMergeUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
+        if (firstCFGNode instanceof MacroInvokable && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNode) {
+            // Replacing a method handle invoke with a MacroNode
+            MacroInvokable macroInvokable = (MacroInvokable) firstCFGNode;
+            ResolvedMethodHandleCallTargetNode methodHandle = (ResolvedMethodHandleCallTargetNode) invoke.callTarget();
+            if (methodHandle.targetMethod().equals(macroInvokable.getTargetMethod()) && getDepth(invoke.stateAfter()) == getDepth(macroInvokable.stateAfter())) {
+                macroInvokable.addMethodHandleInfo(methodHandle);
+            }
+        }
+
         finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph, returnAction);
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    static int getDepth(FrameState state) {
+        int depth = 0;
+        FrameState current = state;
+        while (current != null) {
+            depth++;
+            current = current.outerFrameState();
+        }
+        return depth;
     }
 
     /**

@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.GenerateInlineCompilationTestFactory.CustomNodeGen;
 import org.graalvm.compiler.truffle.test.GenerateInlineCompilationTestFactory.TestChildrenNodeGen;
 import org.graalvm.compiler.truffle.test.GenerateInlineCompilationTestFactory.TestDimensionsRootNodeGen;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class GenerateInlineCompilationTest extends PartialEvaluationTest {
 

@@ -1451,9 +1451,8 @@ JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
-  // TODO: proper arg handling of --enable-previw
   IMPLEMENTED(JVM_IsPreviewEnabled);
-  return JNI_FALSE;
+  return (*getEnv())->JVM_IsPreviewEnabled();
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {
@@ -1651,6 +1650,33 @@ JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
   return 0;
 }
 
+JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
+  IMPLEMENTED(JVM_IsForeignLinkerSupported);
+  return (*getEnv())->JVM_IsForeignLinkerSupported();
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadStart(JNIEnv* env, jobject vthread) {
+  UNIMPLEMENTED(JVM_VirtualThreadStart);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadEnd(JNIEnv* env, jobject vthread) {
+  UNIMPLEMENTED(JVM_VirtualThreadEnd);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadMount(JNIEnv* env, jobject vthread, jboolean hide) {
+  UNIMPLEMENTED(JVM_VirtualThreadMount);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadUnmount(JNIEnv* env, jobject vthread, jboolean hide) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmount);
+}
+
+JNIEXPORT jboolean JNICALL JVM_PrintWarningAtDynamicAgentLoad(void) {
+  UNIMPLEMENTED(JVM_PrintWarningAtDynamicAgentLoad);
+  return JNI_FALSE;
+}
+
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
@@ -1663,6 +1689,7 @@ jboolean is_supported_jni_version(jint version) {
         case JNI_VERSION_10:
         case JNI_VERSION_19:
         case JNI_VERSION_20:
+        case JNI_VERSION_21:
 		return JNI_TRUE;
     }
     return JNI_FALSE;

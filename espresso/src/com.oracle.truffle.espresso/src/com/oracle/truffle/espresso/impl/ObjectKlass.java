@@ -402,6 +402,7 @@ public final class ObjectKlass extends Klass {
                 return;
             }
             initState = INITIALIZING;
+            getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
             try {
                 if (!isInterface()) {
                     /*
@@ -417,7 +418,9 @@ public final class ObjectKlass extends Klass {
                     for (ObjectKlass interf : getSuperInterfaces()) {
                         // Initialize all super interfaces, direct and indirect, with default
                         // methods.
-                        interf.recursiveInitialize();
+                        if (interf.hasDefaultMethods()) {
+                            interf.recursiveInitialize();
+                        }
                     }
                 }
                 // Next, execute the class or interface initialization method of C.
@@ -469,7 +472,7 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getCurrentThread();
+                        prepareThread = getContext().getCurrentPlatformThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }
@@ -626,13 +629,13 @@ public final class ObjectKlass extends Klass {
     }
 
     private void recursiveInitialize() {
-        if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
-            for (ObjectKlass interf : getSuperInterfaces()) {
+        for (ObjectKlass interf : getSuperInterfaces()) {
+            if (interf.hasDefaultMethods()) {
                 interf.recursiveInitialize();
             }
-            if (hasDeclaredDefaultMethods()) {
-                initializeImpl(); // Does not recursively initialize interfaces
-            }
+        }
+        if (hasDeclaredDefaultMethods()) {
+            initializeImpl(); // Does not recursively initialize interfaces
         }
     }
 
@@ -1314,6 +1317,11 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().hasDeclaredDefaultMethods;
     }
 
+    private boolean hasDefaultMethods() {
+        assert !getKlassVersion().hasDeclaredDefaultMethods || isInterface();
+        return getKlassVersion().hasDefaultMethods;
+    }
+
     public void initSelfReferenceInPool() {
         getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
     }
@@ -1396,7 +1404,7 @@ public final class ObjectKlass extends Klass {
                 ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
                 for (Field declaredField : getDeclaredFields()) {
                     if (!declaredField.isStatic()) {
-                        declaredField.removeByRedefintion();
+                        declaredField.removeByRedefinition();
 
                         int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
                         LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
@@ -1447,7 +1455,7 @@ public final class ObjectKlass extends Klass {
         }
 
         for (Field removedField : change.getRemovedFields()) {
-            removedField.removeByRedefintion();
+            removedField.removeByRedefinition();
         }
 
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
@@ -1635,7 +1643,9 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal private int computedModifiers = -1;
 
         @CompilationFinal //
-        boolean hasDeclaredDefaultMethods = false;
+        boolean hasDeclaredDefaultMethods;
+        @CompilationFinal //
+        boolean hasDefaultMethods;
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 

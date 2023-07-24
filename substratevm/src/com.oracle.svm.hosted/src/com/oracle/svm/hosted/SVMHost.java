@@ -943,6 +943,16 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods which do not deoptimize.
+         * More work is needed to support it within deoptimization targets and runtime-compiled
+         * methods.
+         */
+        return method.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method);
+    }
+
+    @Override
     public FieldValueComputer createFieldValueComputer(AnalysisField field) {
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         if (unknownObjectField != null) {

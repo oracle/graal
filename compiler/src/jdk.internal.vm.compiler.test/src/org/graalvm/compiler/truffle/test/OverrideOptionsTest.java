@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class OverrideOptionsTest extends TruffleCompilerImplTest {
 

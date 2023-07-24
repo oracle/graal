@@ -24,9 +24,6 @@
  */
 package org.graalvm.component.installer.commands;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONTokener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -48,6 +45,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
 import org.junit.Rule;
 import org.junit.Test;
 

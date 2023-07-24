@@ -39,7 +39,9 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
 
 /*
  * Do not refer to any compiler classes here to guarantee lazy class loading.
@@ -316,9 +318,26 @@ public class TruffleCompilerOptions {
         List<TruffleCompilerOptionDescriptor> convertedDescriptors = new ArrayList<>();
 
         for (org.graalvm.compiler.options.OptionDescriptor descriptor : TruffleCompilerImpl.OPTION_DESCRIPTORS) {
-            convertedDescriptors.add(new TruffleCompilerOptionDescriptor(descriptor));
+            convertedDescriptors.add(createCompilerOptionDescriptor(descriptor));
         }
         return convertedDescriptors.toArray(new TruffleCompilerOptionDescriptor[convertedDescriptors.size()]);
+    }
+
+    private static TruffleCompilerOptionDescriptor createCompilerOptionDescriptor(OptionDescriptor d) {
+        return new TruffleCompilerOptionDescriptor(d.getName(), matchGraalOptionType(d), d.isDeprecated(), d.getHelp(), d.getDeprecationMessage());
+    }
+
+    private static Type matchGraalOptionType(OptionDescriptor d) {
+        switch (d.getOptionType()) {
+            case User:
+                return Type.USER;
+            case Expert:
+                return Type.EXPERT;
+            case Debug:
+                return Type.DEBUG;
+            default:
+                return Type.DEBUG;
+        }
     }
 
     static Object parseCustom(OptionDescriptor descriptor, String uncheckedValue) {

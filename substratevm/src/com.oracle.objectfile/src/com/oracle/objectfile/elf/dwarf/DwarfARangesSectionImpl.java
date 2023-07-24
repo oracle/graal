@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import java.util.Map;
 
+import com.oracle.objectfile.debugentry.ClassEntry;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
@@ -56,7 +57,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * We need a single entry for the Java compilation unit
+         * We need an entry for each compilation unit that has compiled methods
          *
          * <ul>
          *
@@ -92,8 +93,11 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * Where N is the number of compiled methods.
          */
         assert !contentByteArrayCreated();
-        int methodCount = compiledMethodsCount();
-        byte[] buffer = new byte[entrySize(methodCount)];
+        Cursor byteCount = new Cursor();
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+            byteCount.add(entrySize(classEntry.compiledEntryCount()));
+        });
+        byte[] buffer = new byte[byteCount.get()];
         super.setContent(buffer);
     }
 
@@ -137,15 +141,18 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         enableLog(context, cursor.get());
 
         log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
-        int lengthPos = cursor.get();
-        cursor.set(writeHeader(0, buffer, cursor.get()));
-        compiledMethodsStream().forEach(compiledMethodEntry -> {
-            cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+            int lengthPos = cursor.get();
+            log(context, "  [0x%08x] class %s CU 0x%x", lengthPos, classEntry.getTypeName(), getCUIndex(classEntry));
+            cursor.set(writeHeader(getCUIndex(classEntry), buffer, cursor.get()));
+            classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
+                cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
+            });
+            // write two terminating zeroes
+            cursor.set(writeLong(0, buffer, cursor.get()));
+            cursor.set(writeLong(0, buffer, cursor.get()));
+            patchLength(lengthPos, buffer, cursor.get());
         });
-        // write two terminating zeroes
-        cursor.set(writeLong(0, buffer, cursor.get()));
-        cursor.set(writeLong(0, buffer, cursor.get()));
-        patchLength(lengthPos, buffer, cursor.get());
         assert cursor.get() == size;
     }
 

@@ -80,15 +80,16 @@ public class AOTAOTCommand implements Command {
         ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true);
         explanationWriter.explain();
 
-        Experiment aot1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.AOT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
+        Experiment aot1 = ExperimentParser.parseOrPanic(ExperimentId.ONE, Experiment.CompilationKind.AOT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot1);
         aot1.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
+        Experiment aot2 = ExperimentParser.parseOrPanic(ExperimentId.TWO, Experiment.CompilationKind.AOT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot2);
         aot2.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(aot1, aot2));
     }

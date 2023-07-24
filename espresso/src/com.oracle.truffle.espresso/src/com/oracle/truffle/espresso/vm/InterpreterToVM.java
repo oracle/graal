@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
 import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -87,9 +88,13 @@ public final class InterpreterToVM extends ContextAccessImpl {
         self.signal();
     }
 
-    @TruffleBoundary(allowInlining = true)
     public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
-        return self.await(timeout);
+        return self.await(timeout, TimeUnit.MILLISECONDS, null, null);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static boolean monitorWait(EspressoLock self, long timeout, StaticObject thread, StaticObject obj) throws GuestInterruptedException {
+        return self.await(timeout, TimeUnit.MILLISECONDS, thread, obj);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -404,11 +409,11 @@ public final class InterpreterToVM extends ContextAccessImpl {
     @TruffleBoundary /*- Throwable.addSuppressed blocklisted by SVM (from try-with-resources) */
     @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
-        StaticObject thread = context.getCurrentThread();
+        StaticObject thread = context.getCurrentPlatformThread();
         try (Transition transition = Transition.transition(context, State.BLOCKED)) {
             if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
+                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
@@ -421,7 +426,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 context.reportOnContendedMonitorEntered(obj);
             }
             if (context.getEspressoEnv().EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
+                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, null);
             }
         }
     }
@@ -623,7 +628,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
 
     // Recursion depth = 4
     public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
-        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter());
+        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter(), EspressoContext.DEFAULT_STACK_SIZE);
         meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
@@ -632,16 +637,20 @@ public final class InterpreterToVM extends ContextAccessImpl {
         return throwable;
     }
 
-    public static VM.StackTrace getStackTrace(FrameFilter filter) {
-        // MaxJavaStackTraceDepth is 1024 by default
-        int size = EspressoContext.DEFAULT_STACK_SIZE;
+    public static final int MAX_STACK_DEPTH = Integer.MAX_VALUE;
+
+    public static VM.StackTrace getStackTrace(FrameFilter filter, int maxDepth) {
+        assert maxDepth >= 0;
         VM.StackTrace frames = new VM.StackTrace();
+        if (maxDepth == 0) {
+            return frames;
+        }
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             int count;
 
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
-                if (count >= size) {
+                if (count >= maxDepth) {
                     return this; // stop iteration
                 }
                 CallTarget callTarget = frameInstance.getCallTarget();

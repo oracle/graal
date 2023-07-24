@@ -120,6 +120,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
+
+        public String print() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Schedule for graph ").append(cfg.graph).append(System.lineSeparator());
+            for (HIRBlock b : cfg.reversePostOrder()) {
+                sb.append("Block=").append(b).append(" with beginNode=").append(b.getBeginNode());
+                sb.append(" endNode=").append(b.getEndNode()).append(System.lineSeparator());
+                for (var node : blockToNodesMap.get(b)) {
+                    sb.append("\t").append(node).append(System.lineSeparator());
+                }
+            }
+            return sb.toString();
+        }
     }
 
     /**

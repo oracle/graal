@@ -127,7 +127,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
             }
         }
 
-        /* Remember the types we have already linked. */
+        /* Remember the types we have already seen. */
         seenReceiverTypes = receiverState;
     }
 

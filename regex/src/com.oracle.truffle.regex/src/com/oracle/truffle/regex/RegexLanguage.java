@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex;
 
+import org.graalvm.polyglot.SandboxPolicy;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -116,7 +118,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
- * 
+ *
  * Debug loggers: {@link com.oracle.truffle.regex.tregex.util.Loggers}.
  *
  * @see RegexOptions
@@ -130,6 +132,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 internal = true, //
                 interactive = false, //
+                sandbox = SandboxPolicy.UNTRUSTED, //
                 website = "https://github.com/oracle/graal/tree/master/regex")
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {

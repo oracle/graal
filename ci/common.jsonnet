@@ -141,10 +141,10 @@ local common_json = import "../common.json";
         "*.log",
       ],
 
-      packages+: if self.os == "linux" && self.arch == "amd64" then {
+      packages+: if self.os == "linux" && self.arch == "amd64" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then {
         "00:devtoolset": "==7",
         "01:binutils": ">=2.34",
-      } else if self.os == "linux" && self.arch == "aarch64" then {
+      } else if self.os == "linux" && self.arch == "aarch64" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then {
         "00:devtoolset": "==7",
       } else {},
     },
@@ -165,6 +165,10 @@ local common_json = import "../common.json";
     post_merge: {
       targets+: ["post-merge"],
     },
+    opt_post_merge: {
+      targets+: ["opt-post-merge"],
+      tags+: []
+    },
     daily: {
       targets+: ["daily"],
     },
@@ -173,7 +177,7 @@ local common_json = import "../common.json";
     },
     monthly: {
       targets+: ["monthly"],
-    },
+    }
   },
 
   # Hardware definitions and common fields
@@ -235,6 +239,12 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ubuntu22 = {
+      docker: {
+        image: "buildslave_ubuntu22",
+        mount_modules: true,
+      },
+  },
   local deps_linux = {
   },
   local deps_darwin = {
@@ -251,6 +261,7 @@ local common_json = import "../common.json";
   local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
 
   linux_amd64: linux + amd64 + ol7,
+  linux_amd64_ubuntu: linux + amd64 + ubuntu22,
   linux_aarch64: linux + aarch64,
 
   darwin_amd64: darwin + amd64,

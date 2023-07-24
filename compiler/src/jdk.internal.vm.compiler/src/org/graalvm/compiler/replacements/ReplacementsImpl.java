@@ -64,7 +64,6 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -101,7 +100,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
+public abstract class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     public Providers getProviders() {
@@ -417,14 +416,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     /**
      * Can be overridden to return an object that specializes various parts of graph preprocessing.
      */
-    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
-        return new GraphMaker(this, substitute, original);
-    }
+    protected abstract GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original);
 
     /**
      * Creates and preprocesses a graph for a replacement.
      */
-    public static class GraphMaker {
+    public abstract static class GraphMaker {
 
         /** The replacements object that the graphs are created for. */
         protected final ReplacementsImpl replacements;
@@ -604,9 +601,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return graph;
         }
 
-        protected Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-            return new GraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
-        }
+        protected abstract Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                        IntrinsicContext initialIntrinsicContext);
     }
 
     @Override

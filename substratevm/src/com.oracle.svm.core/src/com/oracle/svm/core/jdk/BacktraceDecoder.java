@@ -116,7 +116,7 @@ public abstract class BacktraceDecoder {
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private int visitFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
-        frameInfoCursor.initialize(tetheredCodeInfo, ip);
+        frameInfoCursor.initialize(tetheredCodeInfo, ip, true);
         while (frameInfoCursor.advance()) {
             FrameInfoQueryResult frameInfo = frameInfoCursor.get();
             if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {

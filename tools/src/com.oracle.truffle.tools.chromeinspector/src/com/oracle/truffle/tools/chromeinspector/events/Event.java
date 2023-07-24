@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.tools.chromeinspector.events;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.commands.Result;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class Event {
 

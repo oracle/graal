@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debugentry.range.PrimaryRange;
@@ -77,31 +78,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * 3) by inlined method (sub range) within top level method, also ordered by ascending address
  *
  * Since clients may need to generate records for classes with no compiled methods, the second
- * traversal order is often employed. In rare cases clients need to sort the class list by address
- * before traversal to ensure the generated debug records are also sorted by address.
+ * traversal order is often employed.
  *
- * n.b. the above strategy relies on the details that methods of a given class always appear in a
- * single continuous address range with no intervening code from other methods or data values. This
- * means we can treat each class as a Compilation Unit, allowing data common to all methods of the
- * class to be referenced using CU-local offsets.
- *
- * Just as an aside, for full disclosure, this is not strictly the full story. Sometimes a class can
- * include speculatively optimized, compiled methods plus deopt fallback compiled variants of those
- * same methods. In such cases the normal and/or speculatively compiled methods occupy one
- * contiguous range and deopt methods occupy a separate higher range. The current compilation
- * strategy ensures that the union across all classes of the normal/speculative ranges and the union
- * across all classes of the deopt ranges lie in two distinct intervals where the highest address in
- * the first union is strictly less than the lowest address in the second union. The implication is
- * twofold. An address order traversal requires generating details for classes, methods and
- * non-deopt primary ranges before generating details for the deopt primary ranges. The former
- * details need to be generated in a distinct CU from deopt method details.
- *
- * A third option appears to be to traverse via files, then top level class within file etc.
- * Unfortunately, files cannot be treated as a compilation unit. A file F may contain multiple
- * classes, say C1 and C2. There is no guarantee that methods for some other class C' in file F'
- * will not be compiled into the address space interleaved between methods of C1 and C2. That is a
- * shame because generating debug info records one file at a time would allow more sharing e.g.
- * enabling all classes in a file to share a single copy of the file and dir tables.
+ * n.b. methods of a given class do not always appear in a single continuous address range. The
+ * compiler choose to interleave intervening code from other classes or data values in order to get
+ * better cache locality. It may also choose to generate deoptimized variants of methods in a
+ * separate range from normal, optimized compiled code. This out of (code addess) order sorting may
+ * make it difficult to use a class by class traversal to generate debug info in separate per-class
+ * units.
  */
 public abstract class DebugInfoBase {
     protected ByteOrder byteOrder;
@@ -364,6 +348,10 @@ public abstract class DebugInfoBase {
                 debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
             }
         }));
+        // populate a file and dir list and associated index for each class entry
+        getInstanceClasses().forEach(classEntry -> {
+            collectFilesAndDirs(classEntry);
+        });
     }
 
     private TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
@@ -581,7 +569,7 @@ public abstract class DebugInfoBase {
             /* Ensure file and cachepath are added to the debug_str section. */
             uniqueDebugString(fileName);
             uniqueDebugString(cachePath);
-            fileEntry = new FileEntry(fileName, dirEntry, files.size() + 1);
+            fileEntry = new FileEntry(fileName, dirEntry);
             files.add(fileEntry);
             /* Index the file entry by file path. */
             filesIndex.put(fileAsPath, fileEntry);
@@ -619,7 +607,7 @@ public abstract class DebugInfoBase {
         if (dirEntry == null) {
             /* Ensure dir path is entered into the debug_str section. */
             uniqueDebugString(filePath.toString());
-            dirEntry = new DirEntry(filePath, dirs.size());
+            dirEntry = new DirEntry(filePath);
             dirsIndex.put(filePath, dirEntry);
             dirs.add(dirEntry);
         }
@@ -691,7 +679,6 @@ public abstract class DebugInfoBase {
      * Indirects this call to the string table.
      *
      * @param string the string whose index is required.
-     *
      * @return the offset of the string in the .debug_str section.
      */
     public int debugStringIndex(String string) {
@@ -740,5 +727,62 @@ public abstract class DebugInfoBase {
 
     public ClassEntry getHubClassEntry() {
         return hubClassEntry;
+    }
+
+    private static void collectFilesAndDirs(ClassEntry classEntry) {
+        // track files and dirs we have already seen so that we only add them once
+        EconomicSet<FileEntry> visitedFiles = EconomicSet.create();
+        EconomicSet<DirEntry> visitedDirs = EconomicSet.create();
+        // add the class's file and dir
+        includeOnce(classEntry, classEntry.getFileEntry(), visitedFiles, visitedDirs);
+        // add files for fields (may differ from class file if we have a substitution)
+        for (FieldEntry fieldEntry : classEntry.fields) {
+            includeOnce(classEntry, fieldEntry.getFileEntry(), visitedFiles, visitedDirs);
+        }
+        // add files for declared methods (may differ from class file if we have a substitution)
+        for (MethodEntry methodEntry : classEntry.getMethods()) {
+            includeOnce(classEntry, methodEntry.getFileEntry(), visitedFiles, visitedDirs);
+        }
+        // add files for top level compiled and inline methods
+        classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
+            includeOnce(classEntry, compiledMethodEntry.getPrimary().getFileEntry(), visitedFiles, visitedDirs);
+            // we need files for leaf ranges and for inline caller ranges
+            //
+            // add leaf range files first because they get searched for linearly
+            // during line info processing
+            compiledMethodEntry.leafRangeIterator().forEachRemaining(subRange -> {
+                includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
+            });
+            // now the non-leaf range files
+            compiledMethodEntry.topDownRangeIterator().forEachRemaining(subRange -> {
+                if (!subRange.isLeaf()) {
+                    includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
+                }
+            });
+        });
+        // now all files and dirs are known build an index for them
+        classEntry.buildFileAndDirIndexes();
+    }
+
+    /**
+     * Ensure the supplied file entry and associated directory entry are included, but only once, in
+     * a class entry's file and dir list.
+     * 
+     * @param classEntry the class entry whose file and dir list may need to be updated
+     * @param fileEntry a file entry which may need to be added to the class entry's file list or
+     *            whose dir may need adding to the class entry's dir list
+     * @param visitedFiles a set tracking current file list entries, updated if a file is added
+     * @param visitedDirs a set tracking current dir list entries, updated if a dir is added
+     */
+    private static void includeOnce(ClassEntry classEntry, FileEntry fileEntry, EconomicSet<FileEntry> visitedFiles, EconomicSet<DirEntry> visitedDirs) {
+        if (fileEntry != null && !visitedFiles.contains(fileEntry)) {
+            visitedFiles.add(fileEntry);
+            classEntry.includeFile(fileEntry);
+            DirEntry dirEntry = fileEntry.getDirEntry();
+            if (dirEntry != null && !dirEntry.getPathString().isEmpty() && !visitedDirs.contains(dirEntry)) {
+                visitedDirs.add(dirEntry);
+                classEntry.includeDir(dirEntry);
+            }
+        }
     }
 }

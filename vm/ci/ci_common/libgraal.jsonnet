@@ -13,7 +13,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local t(limit) = {timelimit: limit},
 
   libgraal_build(build_args):: {
-    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
+    local usePGO = std.length(std.find('-Ob', build_args)) == 0,
+    local ee_build_version = if usePGO == false then 'build' else 'build-libgraal-pgo',
+    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else ee_build_version,
     run+: [
       ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + [build_command]
     ]
@@ -144,7 +146,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     for jdk in [
       "22"
     ]
-    for os_arch in ["linux-amd64"]
+    for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
     ]

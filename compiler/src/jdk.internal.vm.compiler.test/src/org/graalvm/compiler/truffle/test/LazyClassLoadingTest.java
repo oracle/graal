@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompileImmediately;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
-import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileImmediately;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,12 +49,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
