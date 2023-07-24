@@ -213,7 +213,7 @@ final class BundleSupport {
 
             if (!bundleSupport.useContainer && bundleSupport.bundleProperties.requireContainerBuild()) {
                 if (!OS.LINUX.isCurrent()) {
-                    LogUtils.warning(BUNDLE_INFO_MESSAGE_PREFIX, "Bundle was built in a container, but container builds are only supported for Linux.");
+                    LogUtils.warning(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle was built in a container, but container builds are only supported for Linux.");
                 } else {
                     bundleSupport.useContainer = true;
                     bundleSupport.containerSupport = new ContainerSupport(bundleSupport.stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
@@ -222,7 +222,7 @@ final class BundleSupport {
 
             if (bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
-                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Skipping containerized build, only supported for Linux.");
+                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping containerized build, only supported for Linux.");
                     bundleSupport.useContainer = false;
                 } else if (nativeImage.isDryRun()) {
                     nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
