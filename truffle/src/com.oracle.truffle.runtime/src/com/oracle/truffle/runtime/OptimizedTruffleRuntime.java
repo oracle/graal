@@ -203,6 +203,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     protected final TruffleCompilationSupport compilationSupport;
 
+    @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
         this.lookupTypes = initLookupTypes(extraLookupTypes);
