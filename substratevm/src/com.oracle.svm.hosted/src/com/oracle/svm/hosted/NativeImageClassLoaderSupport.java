@@ -560,27 +560,32 @@ public class NativeImageClassLoaderSupport {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
 
-        List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
+        List<String> targetModuleNamesList = new ArrayList<>();
+        for (String s : targetModuleNames.split(",")) {
+            if (!s.isEmpty()) {
+                targetModuleNamesList.add(s);
+            }
+        }
         if (targetModuleNamesList.isEmpty()) {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
 
-        /*
-         * No need to check for duplicates in the targetModuleNamesList as that check is not
-         * performed by j.i.m.ModuleBootstrap.decode() in case of --add-opens, --add-exports or
-         * --add-reads
-         */
+        String moduleName;
+        String packageName;
+        if (reads) {
+            moduleName = modulePackage;
+            packageName = null;
+        } else {
+            String[] moduleAndPackage = modulePackage.split("/");
+            if (moduleAndPackage.length != 2) {
+                throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+            }
 
-        String[] moduleAndPackage = modulePackage.split("/");
-        if (moduleAndPackage.length < 1 || moduleAndPackage.length > 1 + (reads ? 0 : 1)) {
-            throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
-        }
-
-        String moduleName = moduleAndPackage[0];
-        String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : null;
-        boolean isPackageNameMissing = packageName == null || packageName.isEmpty();
-        if (moduleName.isEmpty() || (!reads && isPackageNameMissing)) {
-            throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+            moduleName = moduleAndPackage[0];
+            packageName = moduleAndPackage[1];
+            if (moduleName.isEmpty() || packageName.isEmpty()) {
+                throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+            }
         }
 
         Module module = findModule(moduleName).orElseThrow(() -> {
