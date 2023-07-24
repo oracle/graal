@@ -237,18 +237,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             } else {
                 flags = 0;
             }
-            if (memoryIndex == 0) {
-                flags |= BytecodeBitEncoding.MEMORY_INDEX_ZERO;
-            } else if (fitsIntoUnsignedByte(memoryIndex)) {
-                flags |= BytecodeBitEncoding.MEMORY_INDEX_U8;
-                add1(memoryIndex);
-            } else if (fitsIntoUnsignedShort(memoryIndex)) {
-                flags |= BytecodeBitEncoding.MEMORY_INDEX_U16;
-                add2(memoryIndex);
-            } else {
-                flags |= BytecodeBitEncoding.MEMORY_INDEX_I32;
-                add4(memoryIndex);
-            }
+            add4(memoryIndex);
             if (fitsIntoUnsignedByte(offset)) {
                 flags |= BytecodeBitEncoding.MEMORY_OFFSET_U8;
                 add1(offset);

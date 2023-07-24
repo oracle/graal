@@ -398,7 +398,7 @@ public class BytecodeSuite {
 
     @Test
     public void testMemoryInstructionIndexType64() {
-        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 0, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x81, 0x00});
+        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 0, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x81, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
@@ -409,24 +409,24 @@ public class BytecodeSuite {
 
     @Test
     public void testMemoryInstructionIndexType64MaxU8Offset() {
-        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 255, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x81, (byte) 0xFF});
+        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 255, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x81, 0x00, 0x00, 0x00, 0x00, (byte) 0xFF});
     }
 
     @Test
     public void testMemoryInstructionIndexType64MinU32Offset() {
-        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 256, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x84, 0x00, 0x01, 0x00, 0x00});
+        test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 256, true), new byte[]{Bytecode.I32_LOAD, (byte) 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00});
     }
 
     @Test
     public void testMemoryInstructionIndexType64MaxU32Offset() {
         test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 4294967295L, true),
-                        new byte[]{Bytecode.I32_LOAD, (byte) 0x84, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+                        new byte[]{Bytecode.I32_LOAD, (byte) 0x84, 0x00, 0x00, 0x00, 0x00, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
     }
 
     @Test
     public void testMemoryInstructionIndexType64MinI64Offset() {
         test(b -> b.addMemoryInstruction(Bytecode.I32_LOAD, Bytecode.I32_LOAD_U8, Bytecode.I32_LOAD_I32, 0, 4294967296L, true),
-                        new byte[]{Bytecode.I32_LOAD, (byte) 0x88, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
+                        new byte[]{Bytecode.I32_LOAD, (byte) 0x88, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
     }
 
     @Test

@@ -822,27 +822,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset++;
                     final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
                     final int offsetLength = encoding & BytecodeBitEncoding.MEMORY_OFFSET_MASK;
-                    final int memoryIndexLength = encoding & BytecodeBitEncoding.MEMORY_INDEX_MASK;
-                    final int memoryIndex;
-                    switch (memoryIndexLength) {
-                        case BytecodeBitEncoding.MEMORY_INDEX_ZERO:
-                            memoryIndex = 0;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U8:
-                            memoryIndex = rawPeekU8(bytecode, offset);
-                            offset++;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U16:
-                            memoryIndex = rawPeekU16(bytecode, offset);
-                            offset += 2;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_I32:
-                            memoryIndex = rawPeekI32(bytecode, offset);
-                            offset += 4;
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
+                    final int memoryIndex = rawPeekI32(bytecode, offset);
+                    offset += 4;
                     final long memOffset;
                     switch (offsetLength) {
                         case BytecodeBitEncoding.MEMORY_OFFSET_U8:
@@ -950,27 +931,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset++;
                     final int indexType64 = flags & BytecodeBitEncoding.MEMORY_64_FLAG;
                     final int offsetEncoding = flags & BytecodeBitEncoding.MEMORY_OFFSET_MASK;
-                    final int memoryIndexEncoding = flags & BytecodeBitEncoding.MEMORY_INDEX_MASK;
-                    final int memoryIndex;
-                    switch (memoryIndexEncoding) {
-                        case BytecodeBitEncoding.MEMORY_INDEX_ZERO:
-                            memoryIndex = 0;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U8:
-                            memoryIndex = rawPeekU8(bytecode, offset);
-                            offset++;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U16:
-                            memoryIndex = rawPeekU16(bytecode, offset);
-                            offset += 2;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_I32:
-                            memoryIndex = rawPeekI32(bytecode, offset);
-                            offset += 4;
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
+                    final int memoryIndex = rawPeekI32(bytecode, offset);
+                    offset += 4;
                     final long memOffset;
                     switch (offsetEncoding) {
                         case BytecodeBitEncoding.MEMORY_OFFSET_U8:

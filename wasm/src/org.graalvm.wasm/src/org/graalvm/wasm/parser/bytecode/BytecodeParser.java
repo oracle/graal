@@ -743,22 +743,7 @@ public class BytecodeParser {
                     final int flags = rawPeekU8(bytecode, offset);
                     offset++;
                     final int offsetLength = flags & BytecodeBitEncoding.MEMORY_OFFSET_MASK;
-                    final int memoryIndexLength = flags & BytecodeBitEncoding.MEMORY_INDEX_MASK;
-                    switch (memoryIndexLength) {
-                        case BytecodeBitEncoding.MEMORY_INDEX_ZERO:
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U8:
-                            offset++;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_U16:
-                            offset += 2;
-                            break;
-                        case BytecodeBitEncoding.MEMORY_INDEX_I32:
-                            offset += 4;
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
+                    offset += 4;
                     switch (offsetLength) {
                         case BytecodeBitEncoding.MEMORY_OFFSET_U8:
                             offset++;
