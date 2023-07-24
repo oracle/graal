@@ -124,7 +124,10 @@ public interface InternalResource {
     /**
      * Returns the version hash to be used for this resource. It is the responsibility of the
      * implementer to ensure that this version hash is unique. For example, an SHA-256 could be a
-     * good version identifier for file based resources.
+     * good version identifier for file based resources. Since the version hash serves as a path
+     * component on the host filesystem, its length is restricted to a maximum of 128 bytes. If the
+     * version hash length exceeds this limit, an {@code IOException} will be thrown during
+     * unpacking.
      *
      * @since 23.1
      */

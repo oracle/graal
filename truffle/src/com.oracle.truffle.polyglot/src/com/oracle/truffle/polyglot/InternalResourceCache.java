@@ -139,7 +139,11 @@ final class InternalResourceCache {
                         } else {
                             InternalResource resource = resourceFactory.get();
                             InternalResource.Env env = createEnv.apply(resource);
-                            root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(resource.versionHash(env))));
+                            String versionHash = resource.versionHash(env);
+                            if (versionHash.getBytes().length > 128) {
+                                throw new IOException("The version hash length is restricted to a maximum of 128 bytes.");
+                            }
+                            root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
                             unpackResourceFiles(root, resource, env);
                         }
                     }
