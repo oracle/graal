@@ -1065,8 +1065,8 @@ public abstract class TruffleInstrument {
          * {@link InternalResource#unpackFiles(InternalResource.Env, Path)} unpacked} before this
          * method returns. When this method is called for the first time and the resource is not
          * cached than the resource will be unpacked. Unpacking an internal resource can be an
-         * expensive operation, but the implementation makes sure that unpacking internal resources
-         * is cached.
+         * expensive operation, but the implementation makes sure that unpacked internal resources
+         * are cached.
          * <p>
          * The returned {@link TruffleFile} will only grant read-only access to the target
          * directory, but access is provided even if IO access is disabled.

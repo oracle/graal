@@ -66,6 +66,36 @@ import java.util.function.BooleanSupplier;
 /**
  * Represents an internal resource of a language that can be lazily unpacked to a cache user
  * directory.
+ * <p>
+ * A typical implementation of an {@code InternalResource} for a platform-specific library stored in
+ * the {@code META-INF/resources/<os>/<arch>} looks like this:
+ *
+ * <pre>
+ * &#64;InternalResource.Id("resource-id")
+ * final class NativeLibResource implements InternalResource {
+ *
+ *     &#64;Override
+ *     public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+ *         Path base = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString());
+ *         env.unpackResourceFiles(base.resolve("file-list"), targetDirectory, base);
+ *     }
+ *
+ *     &#64;Override
+ *     public String versionHash(Env env) {
+ *         try {
+ *             Path hashResource = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
+ *             return env.readResourceLines(hashResource).get(0);
+ *         } catch (IOException ioe) {
+ *             throw CompilerDirectives.shouldNotReachHere(ioe);
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * The resource files are listed in the {@code META-INF/resources/<os>/<arch>/file-list} file. For
+ * the file list format, refer to {@link InternalResource.Env#unpackFiles(Env, Path)}. Additionally,
+ * the {@code META-INF/resources/<os>/<arch>/sha256} file contains an SHA-256 hash of the resource
+ * files.
  *
  * @since 23.1
  */
