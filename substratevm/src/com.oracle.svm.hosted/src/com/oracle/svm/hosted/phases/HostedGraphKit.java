@@ -55,6 +55,7 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -65,7 +66,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS);
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS,
+                        SubstrateCompilationDirectives.isRuntimeCompiledMethod(method));
     }
 
     @Override

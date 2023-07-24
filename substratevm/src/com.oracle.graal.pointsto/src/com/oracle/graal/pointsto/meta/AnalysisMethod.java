@@ -937,6 +937,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
 
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
+        // Note we never record inlined methods. This is correct even for runtime compiled methods
         StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
                         analyzedGraph.trackNodeSourcePosition()).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
@@ -958,6 +959,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
+    }
+
+    public EncodedGraph getAnalyzedGraph() {
+        return analyzedGraph;
     }
 
     @Override

@@ -134,6 +134,11 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
         }
 
         @Override
+        public boolean recordInlinedMethods(AnalysisMethod method) {
+            return false;
+        }
+
+        @Override
         public HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key) {
             /* The buildtime providers are always used. */
             return null;

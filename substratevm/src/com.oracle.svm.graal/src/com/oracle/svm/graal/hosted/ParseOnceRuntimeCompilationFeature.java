@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -214,9 +215,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     static final class RuntimeCompiledMethodImpl implements RuntimeCompiledMethod {
         final AnalysisMethod method;
+        final Collection<ResolvedJavaMethod> inlinedMethods;
 
-        private RuntimeCompiledMethodImpl(AnalysisMethod method) {
+        private RuntimeCompiledMethodImpl(AnalysisMethod method, Collection<ResolvedJavaMethod> inlinedMethods) {
             this.method = method;
+            this.inlinedMethods = inlinedMethods;
         }
 
         @Override
@@ -226,10 +229,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public Collection<ResolvedJavaMethod> getInlinedMethods() {
-            /*
-             * Currently no inlining is performed when ParseOnceJIT is enabled.
-             */
-            return List.of();
+            return inlinedMethods;
         }
 
         @Override
@@ -399,8 +399,15 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (var method : impl.getUniverse().getMethods()) {
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
-                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
-                assert !added || runtimeCompiledMethodCallTree.containsKey(method);
+                var runtimeInlinedMethods = rMethod.getAnalyzedGraph().getInlinedMethods();
+                var inlinedMethods = runtimeInlinedMethods.stream().map(inlinedMethod -> {
+                    ResolvedJavaMethod orig = ((AnalysisMethod) inlinedMethod).getMultiMethod(ORIGINAL_METHOD);
+                    assert orig != null;
+                    return orig;
+                }).collect(Collectors.toUnmodifiableSet());
+                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method, inlinedMethods));
+                assert added;
+                assert runtimeCompiledMethodCallTree.containsKey(method);
             }
         }
 
@@ -764,6 +771,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
+        public boolean recordInlinedMethods(AnalysisMethod method) {
+            return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        }
+
+        @Override
         public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
             // want to have a couple more checks here that are in DeoptimizationUtils
             if (method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD) {
@@ -811,9 +823,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 if (parsed) {
                     // enable this logging to get log output in compilation passes
                     try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
-                        RuntimeGraphBuilderPhase
-                                        .createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts)
-                                        .apply(graph);
+                        RuntimeGraphBuilderPhase.createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts).apply(graph);
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);

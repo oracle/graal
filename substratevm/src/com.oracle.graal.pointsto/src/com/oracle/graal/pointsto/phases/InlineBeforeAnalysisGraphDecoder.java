@@ -24,10 +24,13 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import static com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder.InlineBeforeAnalysisMethodScope.recordInlined;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -64,6 +67,12 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
         private boolean inliningAborted;
 
+        /*
+         * We temporarily track all graphs actually encoded (i.e., not aborted) so that all
+         * recording can be performed afterwards.
+         */
+        private final EconomicSet<EncodedGraph> encodedGraphs;
+
         InlineBeforeAnalysisMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method,
                         InvokeData invokeData, int inliningDepth, ValueNode[] arguments) {
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
@@ -83,6 +92,16 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             }
+            encodedGraphs = EconomicSet.create();
+        }
+
+        static void recordInlined(InlineBeforeAnalysisMethodScope callerScope, InlineBeforeAnalysisMethodScope calleeScope) {
+            /*
+             * Update caller's encoded graphs
+             */
+            var callerEncodedGraphs = callerScope.encodedGraphs;
+            callerEncodedGraphs.addAll(calleeScope.encodedGraphs);
+            callerEncodedGraphs.add(calleeScope.encodedGraph);
         }
     }
 
@@ -109,6 +128,18 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             return super.getInvocationPlugin(targetMethod);
         }
         return null;
+    }
+
+    @Override
+    protected void cleanupGraph(MethodScope ms) {
+        super.cleanupGraph(ms);
+
+        // at the very end we record all inlining
+        var methodScope = cast(ms);
+        methodScope.encodedGraphs.add(methodScope.encodedGraph);
+        for (var encodedGraph : methodScope.encodedGraphs) {
+            super.recordGraphElements(encodedGraph);
+        }
     }
 
     @Override
@@ -196,6 +227,14 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    protected void recordGraphElements(EncodedGraph encodedGraph) {
+        /*
+         * We temporarily delay recording graph elements, as at this point it is possible inlining
+         * will be aborted.
+         */
+    }
+
+    @Override
     protected void finishInlining(MethodScope is) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
         InlineBeforeAnalysisMethodScope callerScope = cast(inlineScope.caller);
@@ -234,6 +273,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         if (callerScope.policyScope != null) {
             callerScope.policyScope.commitCalleeScope(inlineScope.policyScope);
         }
+
+        recordInlined(callerScope, inlineScope);
 
         NodeSourcePosition callerBytecodePosition = callerScope.getCallerNodeSourcePosition();
         Object reason = callerBytecodePosition != null ? callerBytecodePosition : callerScope.method;
