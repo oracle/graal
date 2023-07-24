@@ -139,7 +139,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     /**
      * Tethers this object's speculation log with {@code nmethod} if the log has speculations and
      * manages its failed speculation list. This maintains the invariant described by
-     * {@link AbstractHotSpotTruffleRuntime#createSpeculationLog}.
+     * {@link HotSpotTruffleRuntime#createSpeculationLog}.
      */
     private void tetherSpeculationLog(HotSpotNmethod nmethod) throws Error, InternalError {
         if (setSpeculationLog != null) {
@@ -147,7 +147,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
                 HotSpotSpeculationLog log = (HotSpotSpeculationLog) speculationLog;
                 if (log.managesFailedSpeculations() && log.hasSpeculations()) {
                     try {
-                        // org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime.createSpeculationLog()
+                        // org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntime.createSpeculationLog()
                         setSpeculationLog.invoke(nmethod, log);
                     } catch (Error e) {
                         throw e;

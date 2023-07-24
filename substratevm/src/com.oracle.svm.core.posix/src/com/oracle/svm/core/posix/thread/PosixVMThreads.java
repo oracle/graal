@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.core.posix.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -51,6 +55,10 @@ import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
+    @Fold
+    public static PosixVMThreads singleton() {
+        return (PosixVMThreads) ImageSingletons.lookup(VMThreads.class);
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
@@ -125,5 +133,21 @@ public final class PosixVMThreads extends VMThreads {
         FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
         fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
         LibC.exit(code);
+    }
+
+    @AutomaticallyRegisteredImageSingleton(ThreadLookup.class)
+    public static class PosixThreadLookup extends ThreadLookup {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public ComparableWord getThreadIdentifier() {
+            /* Use pthread_self() instead of gettid() because it is faster. */
+            return PosixVMThreads.singleton().getCurrentOSThreadHandle();
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
+            return VMThreads.OSThreadHandleTL.get(thread).notEqual(identifier);
+        }
     }
 }

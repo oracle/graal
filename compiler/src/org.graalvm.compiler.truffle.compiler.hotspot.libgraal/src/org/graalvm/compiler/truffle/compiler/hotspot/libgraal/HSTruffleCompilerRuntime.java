@@ -50,15 +50,13 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilable;
 import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.jniutils.HSObject;
@@ -76,6 +74,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -86,21 +85,19 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
- * Proxy for a {@link HotSpotTruffleCompilerRuntime} object in the HotSpot heap.
+ * Proxy for a {@link TruffleCompilerRuntime} object in the HotSpot heap.
  */
 @FromLibGraalEntryPointsResolver(value = TruffleFromLibGraal.Id.class, entryPointsClassName = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints")
-final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleCompilerRuntime {
+final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
     private final ResolvedJavaType classLoaderDelegate;
-    private final OptionValues initialOptions;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate) {
         /*
          * Note global duplicates may happen if the compiler is initialized by a host compilation.
          */
         super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
-        this.initialOptions = options;
     }
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
@@ -144,7 +141,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
             return null;
         }
         JObject hsCompilable = JNIUtil.NewLocalRef(scope.getEnv(), LibGraal.getJObjectValue((HotSpotObjectConstant) constant));
-        return new HSCompilableTruffleAST(scope, hsCompilable);
+        return new HSTruffleCompilable(scope, hsCompilable);
     }
 
     @TruffleFromLibGraal(OnCodeInstallation)
@@ -152,7 +149,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         long installedCodeHandle = LibGraal.translate(installedCode);
         JNIEnv env = env();
-        callOnCodeInstallation(env, getHandle(), ((HSCompilableTruffleAST) compilable).getHandle(), installedCodeHandle);
+        callOnCodeInstallation(env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), installedCodeHandle);
     }
 
     @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)
@@ -232,15 +229,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         JNIEnv env = env();
         JString jniLoggerId = JNIUtil.createHSString(env, loggerId);
         JString jniMessage = JNIUtil.createHSString(env, message);
-        callLog(env, getHandle(), jniLoggerId, ((HSCompilableTruffleAST) compilable).getHandle(), jniMessage);
-    }
-
-    @Override
-    public <T> T getGraalOptions(Class<T> optionValuesType) {
-        if (optionValuesType == OptionValues.class) {
-            return optionValuesType.cast(initialOptions);
-        }
-        return HotSpotTruffleCompilerRuntime.super.getGraalOptions(optionValuesType);
+        callLog(env, getHandle(), jniLoggerId, ((HSTruffleCompilable) compilable).getHandle(), jniMessage);
     }
 
     @TruffleFromLibGraal(CreateStringSupplier)
@@ -252,7 +241,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         JNIEnv env = env();
         try {
             JObject instance = callCreateStringSupplier(env, serializedExceptionHandle);
-            boolean res = callIsSuppressedFailure(env, getHandle(), ((HSCompilableTruffleAST) compilable).getHandle(), instance);
+            boolean res = callIsSuppressedFailure(env, getHandle(), ((HSTruffleCompilable) compilable).getHandle(), instance);
             success = true;
             return res;
         } finally {
@@ -286,7 +275,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
                      */
                     compilable = WordFactory.nullPointer();
                 } else {
-                    compilable = ((HSCompilableTruffleAST) dependency.getCompilable()).getHandle();
+                    compilable = ((HSTruffleCompilable) dependency.getCompilable()).getHandle();
                 }
                 installedCode = LibGraal.translate(dependency.getInstalledCode());
             }

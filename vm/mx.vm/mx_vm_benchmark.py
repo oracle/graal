@@ -25,6 +25,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import datetime
 import os
 import re
 import shutil
@@ -134,7 +135,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -452,7 +453,11 @@ class NativeImageVM(GraalVm):
     def extract_benchmark_arguments(args):
         i = 0
         clean_args = args[:]
+        split_run = None
         while i < len(args):
+            if args[i].startswith('--split-run'):
+                split_run = clean_args.pop(i + 1)
+                clean_args.pop(i)
             if args[i].startswith('--jvmArgsPrepend'):
                 clean_args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
                 i += 2
@@ -485,7 +490,7 @@ class NativeImageVM(GraalVm):
                     image_vm_args.append(vm_arg)
                     i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args
+        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -520,7 +525,7 @@ class NativeImageVM(GraalVm):
             self.stderr_file = open(self.stderr_path, 'w')
 
             self.separator_line()
-            mx.log('Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
+            mx.log(self.get_timestamp() + 'Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
             self.separator_line()
 
             mx.log('Running: ')
@@ -538,17 +543,23 @@ class NativeImageVM(GraalVm):
             self.stderr_file.flush()
 
             if self.exit_code == 0 and (tb is None):
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': PASS\n')
                 self.successfully_finished_stages.append(self.current_stage)
                 if self.current_stage.startswith(self.config.last_stage):
-                    self.bench_out('Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
+                    self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
                 else:
-                    mx.log('Successfully finished stage:' + ' ' + self.current_stage)
+                    mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.current_stage)
 
                 self.separator_line()
             else:
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': FAILURE\n')
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
 
                 if self.stdout_path:
                     mx.log(mx.colorize('--------- Standard output:', 'blue'))
@@ -561,7 +572,7 @@ class NativeImageVM(GraalVm):
                         mx.log(stderr.read())
 
                 if tb:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' with ', 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' with ', 'red'))
                     print_tb(tb)
 
                 self.separator_line()
@@ -583,7 +594,7 @@ class NativeImageVM(GraalVm):
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
-                    mx.abort('Exiting the benchmark due to the failure.')
+                    mx.abort(self.get_timestamp() + 'Exiting the benchmark due to the failure.')
 
             self.stdout_file.close()
             self.stderr_file.close()
@@ -595,7 +606,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_out:
                     self.bench_out(s)
                 else:
-                    mx.logv(s, end='')
+                    mx.log(s, end='')
                 return v
             return writeFun
 
@@ -605,7 +616,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_err:
                     self.bench_err(s)
                 else:
-                    mx.logv(s, end='')
+                    mx.log(s, end='')
                 return v
             return writeFun
 
@@ -622,6 +633,10 @@ class NativeImageVM(GraalVm):
         @staticmethod
         def separator_line():
             mx.log(mx.colorize('-' * 120, 'green'))
+
+        @staticmethod
+        def get_timestamp():
+            return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] '
 
         def set_command(self, command):
             self.command = command
@@ -870,6 +885,13 @@ class NativeImageVM(GraalVm):
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 
+        path = os.path.join(config.config_dir, "config.zip")
+        with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(config.config_dir):
+                for file in files:
+                    if file.endswith(".json"):
+                        zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
+
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
@@ -889,6 +911,10 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
+        # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
+        # Override checkSamplesInPgo in your suite and have it return False.
+        if not self.bmSuite.checkSamplesInPgo():
+            return
         # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
         if not self.is_llvm and not self.jdk_profiles_collect:
             with open(profile_path) as profile_file:
@@ -927,8 +953,9 @@ class NativeImageVM(GraalVm):
             # choose appropriate profiles
             jdk_version = mx.get_jdk().javaCompliance
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
-            adopted_profiles_zip = mx.library(jdk_profiles).get_path(False)
-            if adopted_profiles_zip:
+            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
+            if adopted_profiles_lib:
+                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
                 adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
                 with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
                     zip_ref.extractall(adopted_profiles_dir)

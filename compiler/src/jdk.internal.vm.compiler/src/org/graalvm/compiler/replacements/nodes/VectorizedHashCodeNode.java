@@ -120,11 +120,11 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "vectorizedHashCodeBoolean", parameters = "Boolean")
-    @GenerateStub(name = "vectorizedHashCodeChar", parameters = "Char")
-    @GenerateStub(name = "vectorizedHashCodeByte", parameters = "Byte")
-    @GenerateStub(name = "vectorizedHashCodeShort", parameters = "Short")
-    @GenerateStub(name = "vectorizedHashCodeInt", parameters = "Int")
+    @GenerateStub(name = "vectorizedHashCodeBoolean", parameters = "Boolean", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeChar", parameters = "Char", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeByte", parameters = "Byte", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeShort", parameters = "Short", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeInt", parameters = "Int", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
     public static native int vectorizedHashCode(Pointer arrayStart, int length, int initialValue, @ConstantNodeParameter JavaKind arrayKind);
 
     @NodeIntrinsic

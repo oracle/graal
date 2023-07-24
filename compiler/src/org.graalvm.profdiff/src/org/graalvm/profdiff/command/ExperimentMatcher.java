@@ -27,6 +27,7 @@ package org.graalvm.profdiff.command;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
+import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
@@ -51,6 +52,12 @@ import org.graalvm.profdiff.core.Writer;
  * according to the given {@link org.graalvm.profdiff.core.OptionValues} to a {@link Writer}.
  */
 public class ExperimentMatcher {
+
+    /**
+     * Two trees whose product of sizes (number of nodes) exceeds this threshold cannot be compared.
+     */
+    private static final long TREE_COMPARISON_THRESHOLD = 100_000_000;
+
     /**
      * Matches optimization trees of two compilation units.
      */
@@ -126,12 +133,16 @@ public class ExperimentMatcher {
      * Matches the inlining trees of the compilation units and writes the result.
      */
     private void matchInliningTrees(InliningTree inliningTree1, InliningTree inliningTree2) {
-        InliningTreeNode inliningTreeRoot1 = inliningTree1.getRoot();
-        InliningTreeNode inliningTreeRoot2 = inliningTree2.getRoot();
-        writer.writeln("Inlining tree matching");
         inliningTree1.preprocess(writer.getOptionValues());
         inliningTree2.preprocess(writer.getOptionValues());
-        EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+        InliningTreeNode root1 = inliningTree1.getRoot();
+        InliningTreeNode root2 = inliningTree2.getRoot();
+        if (tooBigToCompare(root1, root2)) {
+            writer.writeln("The inlining trees are too big to compare");
+            return;
+        }
+        writer.writeln("Inlining tree matching");
+        EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(root1, root2);
         DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
         if (writer.getOptionValues().shouldPruneIdentities()) {
             inliningDeltaTree.pruneIdentities();
@@ -147,10 +158,16 @@ public class ExperimentMatcher {
      * Matches the optimization trees of the compilation units and writes the result.
      */
     private void matchOptimizationTrees(OptimizationTree optimizationTree1, OptimizationTree optimizationTree2) {
-        writer.writeln("Optimization tree matching");
         optimizationTree1.preprocess(writer.getOptionValues());
         optimizationTree2.preprocess(writer.getOptionValues());
-        EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(optimizationTree1.getRoot(), optimizationTree2.getRoot());
+        OptimizationTreeNode root1 = optimizationTree1.getRoot();
+        OptimizationTreeNode root2 = optimizationTree2.getRoot();
+        if (tooBigToCompare(root1, root2)) {
+            writer.writeln("The optimization trees are too big to compare");
+            return;
+        }
+        writer.writeln("Optimization tree matching");
+        EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(root1, root2);
         DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
         if (writer.getOptionValues().shouldPruneIdentities()) {
             optimizationDeltaTree.pruneIdentities();
@@ -176,7 +193,13 @@ public class ExperimentMatcher {
         treePair2.getOptimizationTree().preprocess(writer.getOptionValues());
         OptimizationContextTree optimizationContextTree1 = OptimizationContextTree.createFrom(treePair1.getInliningTree(), treePair1.getOptimizationTree());
         OptimizationContextTree optimizationContextTree2 = OptimizationContextTree.createFrom(treePair2.getInliningTree(), treePair2.getOptimizationTree());
-        EditScript<OptimizationContextTreeNode> optimizationContextTreeMatching = optimizationContextTreeMatcher.match(optimizationContextTree1.getRoot(), optimizationContextTree2.getRoot());
+        OptimizationContextTreeNode root1 = optimizationContextTree1.getRoot();
+        OptimizationContextTreeNode root2 = optimizationContextTree2.getRoot();
+        if (tooBigToCompare(root1, root2)) {
+            writer.writeln("The optimization-context trees are too big to compare");
+            return;
+        }
+        EditScript<OptimizationContextTreeNode> optimizationContextTreeMatching = optimizationContextTreeMatcher.match(root1, root2);
         DeltaTree<OptimizationContextTreeNode> deltaTree = DeltaTree.fromEditScript(optimizationContextTreeMatching);
         if (writer.getOptionValues().shouldPruneIdentities()) {
             deltaTree.pruneIdentities();
@@ -184,5 +207,19 @@ public class ExperimentMatcher {
         deltaTree.expand();
         OptimizationContextTreeWriterVisitor optimizationContextTreeWriterVisitor = new OptimizationContextTreeWriterVisitor(writer);
         deltaTree.accept(optimizationContextTreeWriterVisitor);
+    }
+
+    /**
+     * Returns whether the product of the sizes of the given trees exceeds the comparison threshold.
+     *
+     * @param root1 the root of the first tree
+     * @param root2 the root of the second tree
+     * @return {@code true} if the trees are too big to be compared
+     */
+    private static <T extends TreeNode<T>> boolean tooBigToCompare(TreeNode<T> root1, TreeNode<T> root2) {
+        long[] size = new long[2];
+        root1.forEach((node) -> ++size[0]);
+        root2.forEach((node) -> ++size[1]);
+        return size[0] * size[1] > TREE_COMPARISON_THRESHOLD;
     }
 }

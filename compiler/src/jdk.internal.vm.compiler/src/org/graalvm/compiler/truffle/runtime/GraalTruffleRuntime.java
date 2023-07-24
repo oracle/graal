@@ -59,6 +59,7 @@ import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilable;
+import org.graalvm.compiler.truffle.common.TruffleCompilationSupport;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -183,7 +184,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final OptionDescriptors[] runtimeOptionDescriptors;
     private volatile OptionDescriptors engineOptions;
 
-    public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
+    protected final TruffleCompilationSupport compilationSupport;
+
+    public GraalTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
+        this.compilationSupport = compilationSupport;
         this.lookupTypes = initLookupTypes(extraLookupTypes);
         List<OptionDescriptors> options = new ArrayList<>();
         this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
@@ -224,18 +228,25 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     /**
      * This method allows retrieval of the compiler configuration without requiring to initialize
      * the {@link TruffleCompiler} with {@link #getTruffleCompiler(TruffleCompilable)
-     * getTruffleCompiler}. The result of this method should always match
-     * {@link TruffleCompiler#getCompilerConfigurationName()}.
+     * getTruffleCompiler}.
      */
-    protected abstract String getCompilerConfigurationName();
+    protected final String getCompilerConfigurationName() {
+        return compilationSupport.getCompilerConfigurationName(this);
+    }
 
     public abstract TruffleCompiler getTruffleCompiler(TruffleCompilable compilable);
 
-    public abstract TruffleCompilerOptionDescriptor[] listCompilerOptions();
+    public final TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return compilationSupport.listCompilerOptions();
+    }
 
-    public abstract boolean existsCompilerOption(String key);
+    public final boolean existsCompilerOption(String key) {
+        return compilationSupport.compilerOptionExists(key);
+    }
 
-    public abstract String validateCompilerOption(String key, String value);
+    public final String validateCompilerOption(String key, String value) {
+        return compilationSupport.validateCompilerOption(key, value);
+    }
 
     protected GraalTVMCI getTvmci() {
         return tvmci;
@@ -267,7 +278,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected abstract <T> T asObject(Class<T> type, JavaConstant constant);
 
-    public abstract TruffleCompiler newTruffleCompiler();
+    public final TruffleCompiler newTruffleCompiler() {
+        return compilationSupport.createCompiler(this);
+    }
 
     private static <T> T loadServiceProvider(Class<T> clazz, boolean failIfNotFound) {
         Iterable<T> providers;
@@ -867,7 +880,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         } finally {
             Supplier<String> serializedException = () -> TruffleCompilable.serializeException(t);
-            callTarget.onCompilationFailed(serializedException, isSuppressedTruffleRuntimeException(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
+            callTarget.onCompilationFailed(serializedException, isSuppressedCompilationFailure(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
 
@@ -1057,8 +1070,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * to stringify the passed exception.
      */
     @SuppressWarnings("unused")
-    protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
-        return false;
+    final boolean isSuppressedCompilationFailure(Throwable throwable) {
+        return compilationSupport.isSuppressedCompilationFailure(throwable);
     }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
@@ -1096,8 +1109,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * If a non-null value is returned, its {@link AutoCloseable#close()} must not throw an
      * exception.
      */
-    protected AutoCloseable openCompilerThreadScope() {
-        return null;
+    protected final AutoCloseable openCompilerThreadScope() {
+        return compilationSupport.openCompilerThreadScope();
     }
 
     /**

@@ -42,7 +42,6 @@
 package org.graalvm.wasm.debugging.parser;
 
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.encoding.DataEncoding;
 
 /**
  * Representation of an entry in the abbreviation section as defined in the Dwarf Debug Information
@@ -55,7 +54,6 @@ public class AbbreviationDeclaration {
 
     private final IntArrayList attributes = new IntArrayList();
     private final IntArrayList forms = new IntArrayList();
-    private final IntArrayList dataTypes = new IntArrayList();
 
     public AbbreviationDeclaration(int index, int tag, boolean children) {
         this.index = index;
@@ -66,8 +64,6 @@ public class AbbreviationDeclaration {
     public void addAttribute(int name, int form) {
         attributes.add(name);
         forms.add(form);
-        int dataType = DataEncoding.fromForm(form);
-        dataTypes.add(dataType);
     }
 
     public int index() {

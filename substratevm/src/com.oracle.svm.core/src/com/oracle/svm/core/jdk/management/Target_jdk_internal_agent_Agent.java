@@ -25,26 +25,19 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import jdk.internal.agent.Agent;
-
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.FileInputStream;
-
 import java.util.Properties;
 
-import static jdk.internal.agent.AgentConfigurationError.CONFIG_FILE_NOT_FOUND;
-import static jdk.internal.agent.AgentConfigurationError.CONFIG_FILE_OPEN_FAILED;
-import static jdk.internal.agent.AgentConfigurationError.CONFIG_FILE_ACCESS_DENIED;
-import static jdk.internal.agent.AgentConfigurationError.CONFIG_FILE_CLOSE_FAILED;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(jdk.internal.agent.Agent.class)
-final class Target_jdk_internal_agent_Agent {
+@TargetClass(className = "jdk.internal.agent.Agent", onlyWith = ManagementAgentModule.IsPresent.class)
+public final class Target_jdk_internal_agent_Agent {
 
     /**
      * This method is substituted to avoid throwing an exception if java.home is null. If a config
@@ -64,7 +57,7 @@ final class Target_jdk_internal_agent_Agent {
         }
         final File configFile = new File(fname);
         if (!configFile.exists()) {
-            Agent.error(CONFIG_FILE_NOT_FOUND, fname);
+            ManagementAgentModule.agentError(ManagementAgentModule.CONFIG_FILE_NOT_FOUND, fname);
         }
 
         InputStream in = null;
@@ -72,17 +65,17 @@ final class Target_jdk_internal_agent_Agent {
             in = new FileInputStream(configFile);
             p.load(in);
         } catch (FileNotFoundException e) {
-            Agent.error(CONFIG_FILE_OPEN_FAILED, e.getMessage());
+            ManagementAgentModule.agentError(ManagementAgentModule.CONFIG_FILE_OPEN_FAILED, e.getMessage());
         } catch (IOException e) {
-            Agent.error(CONFIG_FILE_OPEN_FAILED, e.getMessage());
+            ManagementAgentModule.agentError(ManagementAgentModule.CONFIG_FILE_OPEN_FAILED, e.getMessage());
         } catch (SecurityException e) {
-            Agent.error(CONFIG_FILE_ACCESS_DENIED, fname);
+            ManagementAgentModule.agentError(ManagementAgentModule.CONFIG_FILE_ACCESS_DENIED, fname);
         } finally {
             if (in != null) {
                 try {
                     in.close();
                 } catch (IOException e) {
-                    Agent.error(CONFIG_FILE_CLOSE_FAILED, fname);
+                    ManagementAgentModule.agentError(ManagementAgentModule.CONFIG_FILE_CLOSE_FAILED, fname);
                 }
             }
         }

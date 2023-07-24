@@ -59,15 +59,21 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
 
     public static final NodeClass<AMD64AddressNode> TYPE = NodeClass.create(AMD64AddressNode.class);
 
-    @OptionalInput private ValueNode base;
+    @OptionalInput protected ValueNode base;
 
-    @OptionalInput private ValueNode index;
-    private Stride stride;
+    @OptionalInput protected ValueNode index;
+    protected Stride stride;
 
-    private int displacement;
+    protected int displacement;
 
     public AMD64AddressNode(ValueNode base) {
         this(base, null);
+    }
+    public AMD64AddressNode(NodeClass<? extends AMD64AddressNode> c, ValueNode base, ValueNode index){
+        super(c);
+        this.base = base;
+        this.index = index;
+        this.stride = Stride.S1;
     }
 
     public AMD64AddressNode(ValueNode base, ValueNode index) {
@@ -119,13 +125,6 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
                 indexReference = Value.ILLEGAL;
             }
         }
-//        // FIXME
-//        if (base instanceof AMD64CompressAddressLowering.HeapBaseNode && index != null){
-//            gen.getLIRGeneratorTool().emitSpeculationFence();
-//            int mask = (int) ((1L << 32) - 1); // TODO this can fit an int.
-//            Value maskValue = new ConstantValue(LIRKind.fromJavaKind(gen.getLIRGeneratorTool().target().arch, JavaKind.Int), JavaConstant.forInt(mask));
-//            indexValue = gen.getLIRGeneratorTool().asAllocatable(gen.getLIRGeneratorTool().getArithmetic().emitAnd(gen.operand(index), maskValue));
-//        }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
         gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));

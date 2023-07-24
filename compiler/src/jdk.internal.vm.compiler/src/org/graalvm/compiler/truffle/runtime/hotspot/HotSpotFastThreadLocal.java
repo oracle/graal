@@ -34,8 +34,8 @@ final class HotSpotFastThreadLocal extends GraalFastThreadLocal {
 
     static final HotSpotFastThreadLocal SINGLETON = new HotSpotFastThreadLocal();
 
-    static final MethodHandle FALLBACK_SET = AbstractHotSpotTruffleRuntime.getRuntime().getSetThreadLocalObject();
-    static final MethodHandle FALLBACK_GET = AbstractHotSpotTruffleRuntime.getRuntime().getGetThreadLocalObject();
+    static final MethodHandle FALLBACK_SET = HotSpotTruffleRuntime.getRuntime().getSetThreadLocalObject();
+    static final MethodHandle FALLBACK_GET = HotSpotTruffleRuntime.getRuntime().getGetThreadLocalObject();
 
     /*
      * This threshold determines how many recursive invocations of a no fallback method need to
@@ -78,12 +78,12 @@ final class HotSpotFastThreadLocal extends GraalFastThreadLocal {
      * thread local JVMCI reserved field directly. Breakpoints in this method may cause Truffle
      * compiler initialization failures.
      *
-     * See AbstractHotSpotTruffleRuntime.installReservedOopMethods
+     * See HotSpotTruffleRuntime.installReservedOopMethods
      */
     @SuppressWarnings("cast")
     static Object[] getJVMCIReservedReference() {
         boolean waitForInstall = FALLBACK_GET == null;
-        if (AbstractHotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
+        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
             if (waitForInstall) {
                 /*
                  * No JVMCI fallback: We waited for the stub installation therefore we should be
@@ -132,11 +132,11 @@ final class HotSpotFastThreadLocal extends GraalFastThreadLocal {
      * thread local JVMCI reserved field directly. Breakpoints in this method may cause Truffle
      * compiler initialization failures.
      *
-     * See AbstractHotSpotTruffleRuntime.installReservedOopMethods
+     * See HotSpotTruffleRuntime.installReservedOopMethods
      */
     static void setJVMCIReservedReference(Object[] v) {
         boolean waitForInstall = FALLBACK_SET == null;
-        if (AbstractHotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
+        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
             if (waitForInstall) {
                 /*
                  * No JVMCI fallback: We waited for the stub installation therefore we should be

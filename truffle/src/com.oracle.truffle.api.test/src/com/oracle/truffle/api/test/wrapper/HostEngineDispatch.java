@@ -87,7 +87,7 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler,
                     boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
-                    String currentWorkingDirectory, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
+                    String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
@@ -95,8 +95,8 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         Context localContext = dispatch.createContext(engineReceiver, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread,
                         allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler,
-                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, true, useSystemExit);
-        long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy);
+                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit);
+        long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy, tmpDir);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
         return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api);

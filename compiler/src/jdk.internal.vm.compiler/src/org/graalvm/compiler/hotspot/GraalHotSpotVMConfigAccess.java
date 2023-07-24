@@ -129,6 +129,7 @@ public class GraalHotSpotVMConfigAccess {
 
     protected static final Version JVMCI_23_1_b02 = new Version(23, 1, 2);
     protected static final Version JVMCI_23_1_b04 = new Version(23, 1, 4);
+    protected static final Version JVMCI_23_1_b07 = new Version(23, 1, 7);
 
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
@@ -349,6 +350,16 @@ public class GraalHotSpotVMConfigAccess {
             return access.getFieldAddress(name, cppType);
         }
         return 0L;
+    }
+
+    /**
+     * @see HotSpotVMConfigAccess#getFieldAddress(String, String)
+     */
+    public long getFieldAddress(String name, String cppType, long notPresent, boolean expectPresent) {
+        if (isPresent(name, vmFields, expectPresent)) {
+            return access.getFieldAddress(name, cppType);
+        }
+        return notPresent;
     }
 
     /**

@@ -120,7 +120,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        if (!SubstrateOptions.parseOnce() && classInitializationSupport.shouldInitializeAtRuntime(reflectionField.getDeclaringClass())) {
+        if (!SubstrateOptions.parseOnce() && !classInitializationSupport.maybeInitializeAtBuildTime(reflectionField.getDeclaringClass())) {
             String parseOnce = SubstrateOptions.ParseOnce.getName();
             String reason = "It was detected that " + parseOnce + " is disabled. " +
                             "Registering a field value transformer for a field whose declaring class is marked for run time initialization is not supported in this configuration. " +

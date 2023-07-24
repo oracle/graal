@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: metadata
 link_title: Compatibility Guide
 permalink: /reference-manual/native-image/metadata/Compatibility/
@@ -15,7 +15,7 @@ The builder then compiles these (and only these) methods into an executable bina
 Because of this different compilation model, a Java application can behave somewhat differently when compiled into a native image.
 
 Native Image provides an optimization to reduce the memory footprint and startup time of an application.
-This approach relies on a ["closed-world assumption"](NativeImageBasics.md#static-analysis-reachability-and-closed-world-assumption) in which all code is known at build time. That is, no new code is loaded at run time.
+This approach relies on a ["closed-world assumption"](NativeImageBasics.md#static-analysis) in which all code is known at build time. That is, no new code is loaded at run time.
 As with most optimizations, not all applications are amenable to this approach.
 If the `native-image` builder is unable to optimize an application at build time, it generates a so-called "fallback file" that requires a Java VM to run.
 We recommend to check [Native Image Basics](NativeImageBasics.md) for a detailed description what happens with your Java application at build and run times.

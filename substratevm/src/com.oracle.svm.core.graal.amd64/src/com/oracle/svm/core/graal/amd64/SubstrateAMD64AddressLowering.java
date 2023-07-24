@@ -24,26 +24,18 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.vm.ci.code.Register;
-import org.graalvm.compiler.nodes.calc.AndNode;
 
 public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering {
     private final long heapBase;
@@ -55,40 +47,31 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
     }
 
     @Override
-    protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
+    protected final AMD64AddressNode improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         assert SubstrateOptions.SpawnIsolates.getValue();
 
         CompressEncoding encoding = compression.getEncoding();
-        ValueNode idx = compression.getValue();
         if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
-            return false;
+            return null;
         }
 
         long encodingBase = encoding.getBase();
         ValueNode base = other;
         if (heapBaseRegister != null && encodingBase == heapBase) {
             if (other != null) {
-                return false;
+                return null;
             }
             base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
-
-            // FIXME
-            if (compression.getOp() == CompressionNode.CompressionOp.Uncompress) {
-                GetObjectAddressNode compressAsAddress = compression.graph().addOrUnique(new GetObjectAddressNode(compression.getValue()));
-                ConstantNode constantNode = compression.graph().addOrUnique(new ConstantNode(JavaConstant.forInt(0xdeafbeef), IntegerStamp.create(32)));
-                idx = compression.graph().addOrUnique(new AndNode(compressAsAddress, constantNode));
-            }
         } else if (encodingBase != 0) {
             if (!updateDisplacement(addr, encodingBase, false)) {
-                return false;
+                return null;
             }
         }
 
         Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setBase(base);
         addr.setScale(stride);
-//        addr.setIndex(compression.getValue());
-        addr.setIndex(idx);
-        return true;
+        addr.setIndex(compression.getValue());
+        return addr;
     }
 }

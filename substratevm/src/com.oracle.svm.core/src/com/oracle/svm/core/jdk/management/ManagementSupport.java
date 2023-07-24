@@ -34,6 +34,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import javax.management.DynamicMBean;
@@ -61,8 +62,6 @@ import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
-
-import jdk.management.jfr.FlightRecorderMXBean;
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
@@ -105,6 +104,23 @@ import jdk.management.jfr.FlightRecorderMXBean;
  */
 public final class ManagementSupport implements ThreadListener {
 
+    private static final boolean isJdkManagementJfrModulePresent;
+
+    static {
+        var loggingModule = ModuleLayer.boot().findModule("jdk.management.jfr");
+        if (loggingModule.isPresent()) {
+            ManagementSupport.class.getModule().addReads(loggingModule.get());
+        }
+        isJdkManagementJfrModulePresent = loggingModule.isPresent();
+    }
+
+    static class JdkManagementJfrModulePresent implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return isJdkManagementJfrModulePresent;
+        }
+    }
+
     /**
      * All {@link PlatformManagedObject} structured by their interface. The same object can be
      * contained multiple times under different keys. The value is either the
@@ -123,7 +139,7 @@ public final class ManagementSupport implements ThreadListener {
 
     /* Initialized lazily at run time. */
     private OperatingSystemMXBean osMXBean;
-    private FlightRecorderMXBean flightRecorderMXBean;
+    private PlatformManagedObject flightRecorderMXBean;
 
     /** The singleton MBean server for the platform, initialized lazily at run time. */
     MBeanServer platformMBeanServer;
@@ -150,7 +166,7 @@ public final class ManagementSupport implements ThreadListener {
          * run time.
          */
         doAddPlatformManagedObjectSingleton(getOsMXBeanInterface(), (PlatformManagedObjectSupplier) this::getOsMXBean);
-        doAddPlatformManagedObjectSingleton(FlightRecorderMXBean.class, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
+        doAddPlatformManagedObjectSingleton(PlatformManagedObject.class, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
     }
 
     private static Class<?> getOsMXBeanInterface() {
@@ -172,7 +188,7 @@ public final class ManagementSupport implements ThreadListener {
         return osMXBean;
     }
 
-    private synchronized FlightRecorderMXBean getFlightRecorderMXBean() {
+    private synchronized PlatformManagedObject getFlightRecorderMXBean() {
         /**
          * Requires JFR support and that JMX is user-enabled because
          * {@code jdk.management.jfr.FlightRecorderMXBeanImpl} makes
@@ -182,7 +198,7 @@ public final class ManagementSupport implements ThreadListener {
             return null;
         }
         if (flightRecorderMXBean == null) {
-            flightRecorderMXBean = SubstrateUtil.cast(new Target_jdk_management_jfr_FlightRecorderMXBeanImpl(), FlightRecorderMXBean.class);
+            flightRecorderMXBean = SubstrateUtil.cast(new Target_jdk_management_jfr_FlightRecorderMXBeanImpl(), PlatformManagedObject.class);
         }
         return flightRecorderMXBean;
     }
@@ -384,7 +400,7 @@ public final class ManagementSupport implements ThreadListener {
 }
 
 // This is required because FlightRecorderMXBeanImpl is only accessible within its package.
-@TargetClass(className = "jdk.management.jfr.FlightRecorderMXBeanImpl")
+@TargetClass(className = "jdk.management.jfr.FlightRecorderMXBeanImpl", onlyWith = ManagementSupport.JdkManagementJfrModulePresent.class)
 final class Target_jdk_management_jfr_FlightRecorderMXBeanImpl {
     @Alias
     Target_jdk_management_jfr_FlightRecorderMXBeanImpl() {

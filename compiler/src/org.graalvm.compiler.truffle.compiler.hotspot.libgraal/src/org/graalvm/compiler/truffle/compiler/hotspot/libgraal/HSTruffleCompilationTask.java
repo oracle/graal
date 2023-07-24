@@ -120,7 +120,7 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @TruffleFromLibGraal(AddTargetToDequeue)
     @Override
     public void addTargetToDequeue(TruffleCompilable target) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
         callAddTargetToDequeue(env(), getHandle(), hsCompilable);
     }
 
@@ -133,7 +133,7 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @TruffleFromLibGraal(AddInlinedTarget)
     @Override
     public void addInlinedTarget(TruffleCompilable target) {
-        JObject hsCompilable = ((HSCompilableTruffleAST) target).getHandle();
+        JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
         callAddInlinedTarget(env(), getHandle(), hsCompilable);
     }
 

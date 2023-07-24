@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,11 +63,11 @@ public final class ImageSingletonsTest {
 
     @Test
     public void checkAndUseWorksOnRegularJDK() throws Exception {
-        // @start region="ImageSingletonsTest"
+        /*- @start region="ImageSingletonsTest" */
         if (ImageSingletons.contains(MyService.class)) {
             MyService myService = ImageSingletons.lookup(MyService.class);
             myService.useMyService();
         }
-        // @end region="ImageSingletonsTest"
+        /*- @end region="ImageSingletonsTest" */
     }
 }

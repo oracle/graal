@@ -35,7 +35,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.jar.JarFile;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -277,7 +276,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     /**
      * This method is necessary for all custom system class loaders. It allows for the load of the
      * agent during startup. See
-     * {@link java.lang.instrument.Instrumentation#appendToSystemClassLoaderSearch(JarFile)} }
+     * {@code java.lang.instrument.Instrumentation#appendToSystemClassLoaderSearch(JarFile)} }
      *
      * @param classPathEntry the classpath entry that will be added to the class path
      */

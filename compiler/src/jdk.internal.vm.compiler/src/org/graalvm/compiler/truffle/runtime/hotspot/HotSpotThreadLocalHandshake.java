@@ -31,15 +31,15 @@ import com.oracle.truffle.api.nodes.Node;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
-    private static final sun.misc.Unsafe UNSAFE = AbstractHotSpotTruffleRuntime.UNSAFE;
+    private static final sun.misc.Unsafe UNSAFE = HotSpotTruffleRuntime.UNSAFE;
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
 
-    private static final int PENDING_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getJVMCIReservedLongOffset0();
+    private static final int PENDING_OFFSET = HotSpotTruffleRuntime.getRuntime().getJVMCIReservedLongOffset0();
     private static final long THREAD_EETOP_OFFSET;
     static {
         try {
-            THREAD_EETOP_OFFSET = AbstractHotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            THREAD_EETOP_OFFSET = HotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
         } catch (Exception e) {
             throw new InternalError(e);
         }

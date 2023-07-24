@@ -33,7 +33,7 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-20"],
+  latest_jdk:: common["labsjdk-ee-21"],
   bench_jdks:: [
     self.latest_jdk
   ],
@@ -169,6 +169,27 @@
     platform+:: "-zgc",
     environment+: {
       "JVM_CONFIG"+: "-zgc",
+    }
+  },
+
+  gen_zgc_mode:: {
+    platform+:: "-gen-zgc",
+    environment+: {
+      "JVM_CONFIG"+: "-gen-zgc",
+    }
+  },
+
+  serialgc_mode:: {
+    platform+:: "-serialgc",
+    environment+: {
+      "JVM_CONFIG"+: "-serialgc",
+    }
+  },
+
+  pargc_mode:: {
+    platform+:: "-pargc",
+    environment+: {
+      "JVM_CONFIG"+: "-pargc",
     }
   }
 }

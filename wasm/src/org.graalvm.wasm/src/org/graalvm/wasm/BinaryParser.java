@@ -257,40 +257,22 @@ public class BinaryParser extends BinaryStreamParser {
     private void readDebugSection(String name, int sectionOffset, int size, BytecodeGen customData) {
         switch (name) {
             case DebugUtil.ABBREV_NAME:
-                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.ARANGES_NAME:
-                DebugUtil.setArangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.FRAME_NAME:
-                DebugUtil.setFrameOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.INFO_NAME:
                 DebugUtil.setInfo(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.LINE_NAME:
-                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.LOC_NAME:
-                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.MAC_INFO_NAME:
-                DebugUtil.setMacInfoOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.PUBNAMES_NAME:
-                DebugUtil.setPubnamesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.PUBTYPES_NAME:
-                DebugUtil.setPubtypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.RANGES_NAME:
-                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.STR_NAME:
-                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.TYPES_NAME:
-                DebugUtil.setTypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
         }
     }
@@ -302,8 +284,11 @@ public class BinaryParser extends BinaryStreamParser {
         if (module.hasDebugInfo()) {
             return module.debugInfoOffset();
         }
-        module.setDebugInfoOffset(customData.location());
-        return customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
+        final int location = customData.location();
+        customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
+        DebugUtil.initializeData(customData, location);
+        module.setDebugInfoOffset(location);
+        return location;
     }
 
     /**

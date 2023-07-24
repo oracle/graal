@@ -96,9 +96,10 @@ public class DigestBaseSnippets implements Snippets {
             return HotSpotBackend.sha5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA3Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha3type, realReceiver)) {
             Object sha3obj = PiNode.piCast(realReceiver, sha3type, false, true, SnippetAnchorNode.anchor());
+            int blockSize = RawLoadNode.loadInt(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "blockSize"), JavaKind.Int, LocationIdentity.any());
             Object state = RawLoadNode.load(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
-            return HotSpotBackend.shaImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
+            return HotSpotBackend.sha3ImplCompressMBStub(bufAddr, stateAddr, blockSize, ofs, limit);
         } else {
             return FallbackInvokeWithExceptionNode.fallbackFunctionCallInt();
         }

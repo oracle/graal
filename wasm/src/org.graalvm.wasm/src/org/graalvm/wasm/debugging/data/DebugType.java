@@ -141,7 +141,7 @@ public abstract class DebugType {
      */
     @SuppressWarnings("unused")
     public int asInt(DebugContext context, DebugLocation location) {
-        return 0;
+        return DebugConstants.DEFAULT_I32;
     }
 
     /**
@@ -161,7 +161,7 @@ public abstract class DebugType {
      */
     @SuppressWarnings("unused")
     public long asLong(DebugContext context, DebugLocation location) {
-        return 0L;
+        return DebugConstants.DEFAULT_I64;
     }
 
     /**

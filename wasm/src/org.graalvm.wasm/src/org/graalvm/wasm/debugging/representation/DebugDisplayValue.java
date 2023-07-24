@@ -41,11 +41,11 @@
 
 package org.graalvm.wasm.debugging.representation;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public abstract class DebugDisplayValue {
     @TruffleBoundary
@@ -64,6 +64,6 @@ public abstract class DebugDisplayValue {
         if (object.hasArrayElements()) {
             return DebugArrayDisplayValue.fromDebugObject(object, ctx, loc);
         }
-        return WasmConstant.NULL;
+        return DebugConstantDisplayValue.UNSUPPORTED;
     }
 }

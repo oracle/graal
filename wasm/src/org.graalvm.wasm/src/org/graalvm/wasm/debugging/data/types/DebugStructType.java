@@ -56,6 +56,8 @@ public class DebugStructType extends DebugType {
     private final DebugType[] superTypes;
 
     public DebugStructType(String name, DebugObject[] members, DebugType[] superTypes) {
+        assert members != null : "the members of a debug struct type must not be null";
+        assert superTypes != null : "the super types of a debug struct type must not be null";
         this.name = name;
         this.members = members;
         this.superTypes = superTypes;

@@ -19,7 +19,7 @@ $JAVA_HOME/bin/node --experimental-options --lsp app.js
 [Graal LSP] Starting server and listening on localhost/127.0.0.1:8123
 Example app listening on port 3000!
 ```
-![](img/vscode_cc_1.png)
+![Code Completion](img/vscode_cc_1.png)
 _Oracle GraalVM-provided code completion for R script, part of the Node.js Polyglot application_
 
 The GraalVM Language Server itself does not provide the static data usually gathered by parsing the application sources (as these data are sometimes fuzzy in the cases of dynamic languages).

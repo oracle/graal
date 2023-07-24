@@ -801,7 +801,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      * <code>false</code>.
      */
     final boolean acceptForCompilation() {
-        return engine.acceptForCompilation(getRootNode());
+        // We use #toString here (rather than rootNode.getName) since that is what is printed in the
+        // compilation logs
+        return engine.acceptForCompilation(this);
     }
 
     final boolean isCompilationFailed() {
@@ -820,7 +822,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             return true;
         }
         if (!isSubmittedForCompilation()) {
-            if (!engine.acceptForCompilation(getRootNode())) {
+            if (!acceptForCompilation()) {
                 // do not try to compile again
                 compilationFailed = true;
                 return false;

@@ -43,6 +43,8 @@ public class HotSpotObjectSizeTest extends HotSpotGraalCompilerTest {
         return impl.getObjectSize(o);
     }
 
+    static final int LARGE_INT_ARRAY_SIZE = 1024 * 1024 * 1024 + 1024;
+
     @Test
     public void testNewInstance() throws InstantiationException, InvalidInstalledCodeException {
         List<Pair<Object, Long>> objects = new ArrayList<>();
@@ -51,6 +53,12 @@ public class HotSpotObjectSizeTest extends HotSpotGraalCompilerTest {
         objects.add(Pair.create(new byte[1], 24L));
         objects.add(Pair.create(new boolean[1][1], 24L));
         objects.add(Pair.create(new long[64], 528L));
+
+        try {
+            objects.add(Pair.create(new int[LARGE_INT_ARRAY_SIZE], 0x1_00001010L));
+        } catch (OutOfMemoryError e) {
+            // We don't have enough memory for such array. Skip this test.
+        }
 
         // We cannot pass the following uninitialized instance to interpreter. However, passing it
         // to a compiled method is fine as long as its content is never read.

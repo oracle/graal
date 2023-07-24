@@ -55,6 +55,7 @@ public class DebugLink extends DebugObject {
     private final DebugObject reference;
 
     public DebugLink(String typeName, DebugObject reference) {
+        assert reference != null : "the reference of a debug link (type reference) must not be null";
         this.typeName = typeName;
         this.reference = reference;
     }

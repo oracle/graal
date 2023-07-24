@@ -86,7 +86,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;

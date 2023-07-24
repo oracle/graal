@@ -811,6 +811,8 @@ public abstract class Accessor {
 
         public abstract void initializeMultiThreading(Env env);
 
+        public abstract void finalizeThread(Env env, Thread thread);
+
         public abstract void disposeThread(Env env, Thread thread);
 
         public abstract void finalizeContext(Env localEnv);
@@ -1178,8 +1180,6 @@ public abstract class Accessor {
 
         public abstract Assumption createAlwaysValidAssumption();
 
-        public abstract String getSavedProperty(String key);
-
         public abstract void reportPolymorphicSpecialize(Node source);
 
         public abstract Object callInlined(Node callNode, CallTarget target, Object... arguments);
@@ -1240,7 +1240,7 @@ public abstract class Accessor {
 
         public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
 
-        public abstract <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type);
+        public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
     }
 
@@ -1257,8 +1257,6 @@ public abstract class Accessor {
         public abstract Object create(Object truffleInstrumentProvider);
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
-
-        public abstract <T> Iterable<T> loadTruffleService(Object truffleInstrumentProvider, Class<T> type);
     }
 
     public abstract static class DynamicObjectSupport extends Support {

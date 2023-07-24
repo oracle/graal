@@ -191,7 +191,7 @@ insight.on('enter', function(ev) {
 });
 ```
 
-Run it on top of [sieve.js](../../../vm/benchmarks/agentscript/sieve.js).
+Run it on top of [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"}.
 It is a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers:
 
 ```bash
@@ -248,7 +248,7 @@ class Roots:
 
 insight.on("enter", onEnter, Roots())
 ```
-Apply this script to [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) using the following command:
+Apply this script to [agent-fib.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} using the following command:
 
 ```bash
 `js --polyglot --insight=agent.py agent-fib.js`
@@ -314,7 +314,7 @@ insight.on("enter", -> (ctx, frame) {
 })
 ```
 
-The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) program is called:
+The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [agent-fib.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} program is called:
 ```bash
 graalvm/bin/node --js.print --experimental-options --polyglot --insight=agent.rb agent-fib.js
 minusOne 4
@@ -695,7 +695,7 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpCount);
 ```
 
-Use the script on fifty iterations of the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
+Use the script on fifty iterations of the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
 Repeating the computation fifty times gives the runtime a chance to warm up and properly optimize.
 Here is the optimal run:
 
@@ -725,7 +725,7 @@ The `count++` invocation becomes a natural part of the application at all the pl
 GraalVM Insight is capable to access local variables, almost "for free".
 GraalVM Insight code, accessing local variables, blends with the actual function code defining them and there is no visible slowdown.
 
-This can be demonstrated with this [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
+This can be demonstrated with this [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} algorithm to compute hundred thousand of prime numbers.
 It keeps the found prime numbers in a linked list constructed via following function:
 
 ```js
@@ -844,7 +844,7 @@ insight.on('return', (ctx, frame) => {
 ```
 
 Save the code snippet as a `dump.js` file.
-Get the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
+Get the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} file and launch it as:
 
 ```bash
 graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
@@ -857,7 +857,7 @@ Inspect the generated `.hprof` file with regular tools like [VisualVM](https://w
 
 ![Heap Inspect](img/Insight-HeapInspect.png)
 
-The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) script.
+The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js) script.
 The function has just computed one hundred thousand (count available in variable `cnt`) prime numbers.
 The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
 The rest of the linked list is hidden (only references up to depth `10` were requested) behind `unreachable` object.

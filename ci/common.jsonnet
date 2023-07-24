@@ -23,6 +23,9 @@ local common_json = import "../common.json";
   } + {
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
+  } + {
+    [name]: common_json.jdks[name] + { jdk_version:: 22 }
+    for name in ["oraclejdk22"]
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
@@ -39,17 +42,15 @@ local common_json = import "../common.json";
     },
     for name in std.objectFields(jdks_data)
   } + {
-    local latestJDKCE = self["labsjdk-ce-20"],
-    local latestJDKEE = self["labsjdk-ee-20"],
     # Some convenient JDK aliases which don't require ["name"] for frequently-used JDKs
     labsjdk17ce: self["labsjdk-ce-17"],
     labsjdk17ee: self["labsjdk-ee-17"],
 
-    labsjdk20ce: latestJDKCE,
-    labsjdk20ee: latestJDKEE,
+    labsjdk20ce: self["labsjdk-ce-20"],
+    labsjdk20ee: self["labsjdk-ee-20"],
 
-    labsjdkLatestCE: latestJDKCE,
-    labsjdkLatestEE: latestJDKEE,
+    labsjdkLatestCE: self["labsjdk-ce-21"],
+    labsjdkLatestEE: self["labsjdk-ee-21"],
   },
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
@@ -58,9 +59,11 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
+    "windows-jdk22": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
   },
 
   # Dependencies

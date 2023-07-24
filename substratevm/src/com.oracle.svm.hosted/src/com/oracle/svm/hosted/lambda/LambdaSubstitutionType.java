@@ -297,11 +297,6 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
     }
 
     @Override
-    public String getUnqualifiedName() {
-        return original.getUnqualifiedName();
-    }
-
-    @Override
     public boolean isArray() {
         return original.isArray();
     }
@@ -314,21 +309,6 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return original.resolve(accessingClass);
-    }
-
-    @Override
-    public String toJavaName() {
-        return original.toJavaName();
-    }
-
-    @Override
-    public String toJavaName(boolean qualified) {
-        return original.toJavaName(qualified);
-    }
-
-    @Override
-    public String toClassName() {
-        return original.toClassName();
     }
 
     @Override

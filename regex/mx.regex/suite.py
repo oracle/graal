@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.27.1",
 
   "name" : "regex",
 
@@ -85,7 +85,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "truffle:ICU4J",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "requires" : [
         "java.logging",
@@ -132,9 +132,9 @@ suite = {
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "exclude" : [
-        "truffle:ICU4J",
       ],
       "maven" : {
         "artifactId" : "regex",

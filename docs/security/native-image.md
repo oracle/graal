@@ -84,7 +84,7 @@ You can then use this report to update any vulnerable dependencies found in your
 ## Java serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable.
-Unless picked up by native image analysis automatically, [these classes have to be pre-specified](https://www.graalvm.org/22.0/reference-manual/native-image/Reflection/#manual-configuration), as classes not contained in a native executable cannot be deserialized.
+Unless picked up by native image analysis automatically, [these classes have to be pre-specified](../reference-manual/native-image/Reflection.md#manual-configuration), as classes not contained in a native executable cannot be deserialized.
 Native Image cannot prevent exploitation of deserialization vulnerabilities in isolation.
 The [serialization and deserialization Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html#8) should be followed.
 

@@ -32,14 +32,13 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
@@ -136,9 +135,9 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     @SuppressWarnings("try")
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        DebugContext debug = new DebugContext.Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
+        TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
+        DebugContext debug = new DebugContext.Builder(compiler.getOrCreateCompilerOptions(target)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
-            TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
             TruffleCompilationTask task = newTask();
             try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
                 getTruffleCompilerFromRuntime(target).compileAST(debug, target, compilation.getCompilationId(), task, null);
