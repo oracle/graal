@@ -116,8 +116,6 @@ public class AddressLoweringByUsePhase extends AddressLoweringPhase {
             }
         }
 
-        // TODO: Probably this is a good point to mask for ARM.
-
         // now replace any remaining unlowered address nodes
         for (Node node : graph.getNodes()) {
             AddressNode lowered;
