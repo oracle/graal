@@ -1753,7 +1753,7 @@ suite = {
       },
       "maven" : False,
     },
-    
+
     "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
       "native" : True,
       "description" : "Truffle support distribution for SVM",

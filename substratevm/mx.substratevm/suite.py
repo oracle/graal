@@ -1022,7 +1022,7 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
-        
+
         "com.oracle.svm.truffle.nfi": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1373,7 +1373,7 @@ suite = {
             },
             "noMavenJavadoc": True,
         },
-        
+
         "SVM_LIBFFI": {
             "subDir": "src",
             "description" : "SubstrateVM support for Truffle NFI LibFFI backend",

@@ -173,7 +173,7 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-    
+
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
@@ -189,17 +189,17 @@ mx_unittest.add_config_participant(_unittest_config_participant)
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing = True)
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     java_path = os.path.join(graalvm_home, 'bin', 'java')
     mx.run([java_path] + vmArgs + mx.get_runtime_jvm_args(names=['TRUFFLE_SL', 'TRUFFLE_RUNTIME', 'TRUFFLE_SL_LAUNCHER'], exclude_names='GRAAL_SDK') + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
 
 def slimage(args):
     """build a native image of an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing = True)
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     native_image_path = os.path.join(graalvm_home, 'bin', 'native-image')
     mx.run([native_image_path] + vmArgs + mx.get_runtime_jvm_args(names=['TRUFFLE_SL', 'TRUFFLE_RUNTIME', 'TRUFFLE_SL_LAUNCHER'], exclude_names=['GRAAL_SDK', 'TRUFFLE_COMPILER', 'JNIUTILS', 'NATIVEBRIDGE']) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
-    
+
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     if jdk.javaCompliance < '9':
@@ -1169,7 +1169,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     jvmci_parent_jars=[
         'truffle:TRUFFLE_COMPILER',
     ],
-    # GR-44222 This is only a temporary solution until we can load the attach library 
+    # GR-44222 This is only a temporary solution until we can load the attach library
     # from the truffle-runtime module.
     support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
@@ -1205,7 +1205,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     license_files=[],
     third_party_license_files=[],
     dependencies=[],
-    priority = 0,
+    priority=0,
     support_distributions=['truffle:TRUFFLE_SVM_GRAALVM_SUPPORT'],
     stability="supported",
 ))

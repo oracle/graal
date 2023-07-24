@@ -1660,7 +1660,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
         if _jlink_libraries():
             use_upgrade_module_path = mx.get_env('MX_BUILD_EXPLODED') == 'true'
-            
+
             built = mx_sdk.jlink_new_jdk(_src_jdk,
                                  out_dir,
                                  self.subject.deps,
