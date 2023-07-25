@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -44,6 +45,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -1178,9 +1180,6 @@ public class NativeImage {
             return ExitStatus.FALLBACK_IMAGE.getValue();
         }
 
-        if (!addModules.isEmpty()) {
-            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
-        }
         if (!limitModules.isEmpty()) {
             imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES + "=" + String.join(",", limitModules));
         }
@@ -1425,17 +1424,49 @@ public class NativeImage {
         if (!cp.isEmpty()) {
             arguments.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
+
         if (!mp.isEmpty()) {
             List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
             arguments.addAll(strings);
         }
 
         String javaExecutable = canonicalize(config.getJavaExecutable()).toString();
+
+        if (useBundle()) {
+            LogUtils.warning("Native Image Bundles are an experimental feature.");
+        }
+
+        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
+        Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
+        List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
+        Function<Path, Path> substituteClassPath = useBundle() ? bundleSupport::substituteClassPath : Function.identity();
+        List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
+        Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
+        List<Path> substitutedModulePath = imagemp.stream().map(substituteModulePath).toList();
+
+        Map<String, Path> modules = listModulesFromPath(javaExecutable, Stream.concat(mp.stream(), imagemp.stream()).distinct().toList());
         if (!addModules.isEmpty()) {
-            var builderModules = getBuilderObservableModules(javaExecutable, arguments);
-            var addModulesForBuilderVM = addModules.stream().filter(builderModules::contains).toList();
+            List<String> addModulesForBuilderVM = new ArrayList<>();
+            List<String> addModulesForImage = new ArrayList<>();
+
+            for (String module : addModules) {
+                Path jarPath = modules.get(module);
+                if (jarPath == null) {
+                    // boot module
+                    addModulesForBuilderVM.add(module);
+                } else {
+                    // non boot module
+                    addModulesForImage.add(module);
+                }
+            }
+
             if (!addModulesForBuilderVM.isEmpty()) {
-                arguments.add(DefaultOptionHandler.addModulesOption + "=" + String.join(",", addModulesForBuilderVM));
+                arguments.add(DefaultOptionHandler.addModulesOption + "=" + String.join(",",
+                                addModulesForBuilderVM));
+            }
+            if (!addModulesForImage.isEmpty()) {
+                arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
+                                String.join(",", addModulesForImage));
             }
         }
 
@@ -1449,18 +1480,34 @@ public class NativeImage {
             arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
 
-        if (useBundle()) {
-            LogUtils.warning("Native Image Bundles are an experimental feature.");
-        }
+        /*
+         * Workaround for GR-47186: Native image cannot handle modules on the image module path,
+         * that are also already installed in the JDK as boot module. As a workaround we filter all
+         * modules from the module-path that are either already installed in the JDK as boot module,
+         * or were explicitly added to the builder module-path.
+         *
+         * First compute all jar paths that may remain on the module-path.
+         */
+        Set<Path> retainedModulePaths = modules.entrySet().stream()
+                        .filter((entry) -> entry.getValue() != null && !mp.contains(entry.getValue()))
+                        .map((entry) -> entry.getValue().toAbsolutePath().normalize())
+                        .collect(Collectors.toSet());
 
-        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
-        Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
-        List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
-        Function<Path, Path> substituteClassPath = useBundle() ? bundleSupport::substituteClassPath : Function.identity();
-        List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
-        Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
-        List<Path> finalImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
-        List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
+        /*
+         * Now we need to filter the substituted module path list for all the modules that may
+         * remain on the module-path.
+         *
+         * This should normally not be necessary, as the retainedModulePaths should already be the
+         * set of jar files for the image module path. Nevertheless, we use the original definition
+         * of the module path to preserve the order of the original module path and as a precaution
+         * to protect against --list-modules returning too many modules.
+         */
+        List<Path> finalModulePath = substitutedModulePath.stream()
+                        .map((path) -> path.toAbsolutePath().normalize())
+                        .filter((path) -> retainedModulePaths.contains(path))
+                        .toList();
+
+        List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalModulePath);
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
@@ -1528,9 +1575,26 @@ public class NativeImage {
         }
     }
 
-    private Set<String> getBuilderObservableModules(String javaExecutable, List<String> arguments) {
+    /**
+     * Resolves and lists all modules given a module path.
+     *
+     * @see #callListModules(String, List)
+     */
+    private static Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+        return callListModules(javaExecutable, List.of("-p", modulePath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+    }
+
+    /**
+     * Calls <code>java $arguments --list-modules</code> to list all modules and parse the output.
+     * The output consists of a map with module name as key and {@link Path} to jar file if the
+     * module is not installed as part of the JDK. If the module is installed as part of the
+     * jdk/boot-layer then a <code>null</code> path will be returned.
+     * <p>
+     * This is a much more robust solution then trying to parse the JDK file structure manually.
+     */
+    private static Map<String, Path> callListModules(String javaExecutable, List<String> arguments) {
         Process listModulesProcess = null;
-        Set<String> result = new HashSet<>();
+        Map<String, Path> result = new LinkedHashMap<>();
         try {
             var pb = new ProcessBuilder(javaExecutable);
             pb.command().addAll(arguments);
@@ -1543,9 +1607,17 @@ public class NativeImage {
                     if (line == null) {
                         break;
                     }
-                    var moduleNameColumn = StringUtil.split(line, " ", 2)[0];
-                    var versionStrippedModuleName = StringUtil.split(moduleNameColumn, "@", 2)[0];
-                    result.add(versionStrippedModuleName);
+                    String[] splitString = StringUtil.split(line, " ", 3);
+                    String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
+                    Path externalPath = null;
+                    if (splitString.length > 1) {
+                        String pathURI = splitString[1]; // url: file://path/to/file
+                        String path = URI.create(pathURI).getPath();
+                        if (path != null) {
+                            externalPath = Path.of(path);
+                        }
+                    }
+                    result.put(splitModuleNameAndVersion[0], externalPath);
                 }
             }
             int exitStatus = listModulesProcess.waitFor();
