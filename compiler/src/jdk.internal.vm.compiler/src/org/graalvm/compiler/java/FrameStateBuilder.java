@@ -812,7 +812,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         assert slotKind.getSlotCount() > 0;
 
         if (canVerifyKind) {
-            assert x.getStackKind() == slotKind.getStackKind();
+            GraalError.guarantee(x.getStackKind() == slotKind.getStackKind(), "x %s stack kind %s does not match slot kind %s", x, x.getStackKind(), slotKind);
         }
         return true;
     }

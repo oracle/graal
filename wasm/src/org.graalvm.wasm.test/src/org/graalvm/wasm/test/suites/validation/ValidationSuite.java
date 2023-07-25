@@ -207,7 +207,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.MALFORMED),
                         binaryCase(
                                         "Global - type mismatch",
-                                        "type mismatch: 0x7F should = 0x7E",
+                                        "Expected result types [i32], but got [i64].",
                                         "00 61 73 6D 01 00 00 00 06 06 01 7F 00 42 00 0B",
                                         Failure.Type.INVALID),
                         // ## Modules
@@ -301,7 +301,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: BinaryParser#readDataSection
                         binaryCase(
                                         "Data segment - invalid memory index",
-                                        "unknown memory: 5 should = 0",
+                                        "unknown memory: 5 should be < 1",
                                         // (memory 1) (data 5 (i32.const 0) "Hi")
                                         "0061 736d 0100 0000 0503 0100 010b 0801 0541 000b 0248 69",
                                         Failure.Type.INVALID),

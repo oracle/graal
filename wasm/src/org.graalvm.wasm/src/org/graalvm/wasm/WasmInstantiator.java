@@ -41,8 +41,11 @@
 
 package org.graalvm.wasm;
 
-import java.util.List;
-
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -60,11 +63,8 @@ import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -150,8 +150,8 @@ public class WasmInstantiator {
                 module.addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
             } else {
                 final boolean initialized = module.globalInitialized(globalIndex);
-                final boolean functionOrNull = module.globalFunctionOrNull(globalIndex);
-                final int existingIndex = module.globalExistingIndex(globalIndex);
+                final boolean isReference = module.globalIsReference(globalIndex);
+                final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
                 final long initialValue = module.globalInitialValue(globalIndex);
                 module.addLinkAction((context, instance) -> {
                     final GlobalRegistry registry = context.globals();
@@ -162,7 +162,7 @@ public class WasmInstantiator {
                     final GlobalRegistry registry = context.globals();
                     final int address = instance.globalAddress(globalIndex);
                     if (initialized) {
-                        if (functionOrNull) {
+                        if (isReference) {
                             // Only null is possible
                             registry.storeReference(address, WasmConstant.NULL);
                         } else {
@@ -170,11 +170,7 @@ public class WasmInstantiator {
                         }
                         context.linker().resolveGlobalInitialization(instance, globalIndex);
                     } else {
-                        if (functionOrNull) {
-                            context.linker().resolveGlobalFunctionInitialization(context, instance, globalIndex, (int) initialValue);
-                        } else {
-                            context.linker().resolveGlobalInitialization(context, instance, globalIndex, existingIndex);
-                        }
+                        context.linker().resolveGlobalInitialization(context, instance, globalIndex, initBytecode);
                     }
                 });
             }
@@ -213,27 +209,34 @@ public class WasmInstantiator {
             module.addLinkAction((context, instance) -> context.linker().resolveTableExport(instance.module(), tableIndex, tableName));
         }
 
-        if (module.memoryExists()) {
-            final long memoryMinSize = module.memoryInitialSize();
-            final long memoryMaxSize = module.memoryMaximumSize();
-            final boolean memoryIndexType64 = module.memoryHasIndexType64();
-            final ImportDescriptor memoryDescriptor = module.importedMemory();
+        for (int i = 0; i < module.memoryCount(); i++) {
+            final int memoryIndex = i;
+            final long memoryMinSize = module.memoryInitialSize(memoryIndex);
+            final long memoryMaxSize = module.memoryMaximumSize(memoryIndex);
+            final boolean memoryIndexType64 = module.memoryHasIndexType64(memoryIndex);
+            final boolean memoryShared = module.memoryIsShared(memoryIndex);
+            final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);
             if (memoryDescriptor != null) {
-                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryMinSize, memoryMaxSize, memoryIndexType64));
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64,
+                                memoryShared));
             } else {
                 module.addLinkAction((context, instance) -> {
                     final ModuleLimits limits = instance.module().limits();
                     final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
-                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, context.getContextOptions().useUnsafeMemory());
+                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, memoryShared,
+                                    context.getContextOptions().useUnsafeMemory());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);
-                    instance.setMemory(allocatedMemory);
+                    instance.setMemory(memoryIndex, allocatedMemory);
                 });
             }
         }
-        for (String memoryName : module.exportedMemoryNames()) {
-            module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryName));
+        final MapCursor<String, Integer> exportedMemories = module.exportedMemories().getEntries();
+        while (exportedMemories.advance()) {
+            final String memoryName = exportedMemories.getKey();
+            final int memoryIndex = exportedMemories.getValue();
+            module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryIndex, memoryName));
         }
 
         final byte[] bytecode = module.bytecode();
@@ -257,58 +260,77 @@ public class WasmInstantiator {
                     break;
                 case BytecodeBitEncoding.DATA_SEG_LENGTH_I32:
                     dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 3;
+                    effectiveOffset += 4;
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
             if (dataMode == SegmentMode.ACTIVE) {
-                final long dataOffsetAddress;
-                switch (encoding & BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        dataOffsetAddress = -1;
+                final long value;
+                switch (encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED:
+                        value = -1;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U8:
-                        dataOffsetAddress = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U8:
+                        value = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U16:
-                        dataOffsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U16:
+                        value = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U32:
-                        dataOffsetAddress = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
+                        value = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U64:
-                        dataOffsetAddress = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
+                        value = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
                         effectiveOffset += 8;
                         break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int dataGlobalIndex;
-                switch (encoding & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
-                        dataGlobalIndex = -1;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U8:
-                        dataGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U16:
-                        dataGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_I32:
-                        dataGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
+                final byte[] dataOffsetBytecode;
+                final long dataOffsetAddress;
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                    int dataOffsetBytecodeLength = (int) value;
+                    dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
+                    effectiveOffset += dataOffsetBytecodeLength;
+                    dataOffsetAddress = -1;
+                } else {
+                    dataOffsetBytecode = null;
+                    dataOffsetAddress = value;
                 }
+
+                final int memoryIndex;
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO) != 0) {
+                    memoryIndex = 0;
+                } else {
+                    final int memoryIndexEncoding = bytecode[effectiveOffset];
+                    effectiveOffset++;
+                    switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
+                            memoryIndex = encoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                            memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                            effectiveOffset++;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                            memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                            effectiveOffset += 2;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                            memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                            effectiveOffset += 4;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                }
+
                 final int dataBytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
+                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
                                 dataBytecodeOffset, instance.droppedDataInstanceOffset()));
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
@@ -363,23 +385,32 @@ public class WasmInstantiator {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetGlobalIndex;
-                switch (encoding & BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final byte[] offsetBytecode;
+                switch (encoding & BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_MASK) {
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_UNDEFINED:
+                        offsetBytecode = null;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
+                    }
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
@@ -404,7 +435,7 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int bytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetGlobalIndex, bytecodeOffset, elemCount));
+                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetBytecode, bytecodeOffset, elemCount));
             } else {
                 final int bytecodeOffset = effectiveOffset;
                 module.addLinkAction((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, bytecodeOffset, elemCount));

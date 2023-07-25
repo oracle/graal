@@ -40,6 +40,7 @@ import mx_benchmark
 from mx_benchmark import ParserEntry
 import mx_sdk_benchmark
 from mx_sdk_benchmark import NativeImageBenchmarkMixin, NativeImageBundleBasedBenchmarkMixin
+import mx_sdk_vm_impl
 
 _suite = mx.suite('java-benchmarks')
 
@@ -353,20 +354,12 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-J-Duser.language=en',
                 '-J-Duser.country=US',
                 '-J-Dfile.encoding=UTF-8',
-                '-H:-ParseOnce',
                 '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.text=ALL-UNNAMED',
-                '-H:+JNI',
-                '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
-                '-H:FallbackThreshold=0',
-                '-H:+ReportExceptionStackTraces',
-                '-H:+AddAllCharsets',
-                '-H:EnableURLProtocols=http',
-                '-H:NativeLinkerOption=-no-pie',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-                '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '--no-fallback',
+                '--enable-http',
+                '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
@@ -374,7 +367,15 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
                 '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
-                '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+                '-H:NativeLinkerOption=-no-pie',
+                '-H:+AddAllCharsets',
+        ] + mx_sdk_vm_impl.svm_experimental_options([
+                '-H:-ParseOnce',
+                '-H:+AllowFoldMethods',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
+        ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
@@ -527,23 +528,23 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
                 '-J--add-opens=java.base/java.io=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.util=ALL-UNNAMED',
-                '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
                 '--no-fallback',
-                '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
                 '--enable-url-protocols=http,https',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+StackTrace',
-                '-J--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
                 '--exclude-config' ,
                 'io\.netty\.netty-codec',
                 '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
                 '--exclude-config',
                 'io\.netty\.netty-handler',
-                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json'
-                ] + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
+                '-H:-AddAllCharsets',
+            ] + mx_sdk_vm_impl.svm_experimental_options([
+                '-H:+AllowFoldMethods',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-UseServiceLoaderFeature',
+            ]) + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 
 mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
 
@@ -578,7 +579,7 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
         return [
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-            '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED'
+            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED'
         ] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())

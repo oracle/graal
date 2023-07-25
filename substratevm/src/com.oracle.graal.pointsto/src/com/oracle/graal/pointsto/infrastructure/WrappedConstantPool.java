@@ -44,6 +44,7 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
@@ -164,7 +165,12 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object con = wrapped.lookupConstant(cpi);
+        return lookupConstant(cpi, true);
+    }
+
+    @Override
+    public Object lookupConstant(int cpi, boolean resolve) {
+        Object con = GraalServices.lookupConstant(wrapped, cpi, resolve);
         if (con instanceof JavaType) {
             if (con instanceof ResolvedJavaType) {
                 return universe.lookup((ResolvedJavaType) con);
@@ -174,6 +180,8 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
             }
         } else if (con instanceof JavaConstant) {
             return universe.lookup((JavaConstant) con);
+        } else if (con == null && resolve == false) {
+            return null;
         } else {
             throw unimplemented();
         }

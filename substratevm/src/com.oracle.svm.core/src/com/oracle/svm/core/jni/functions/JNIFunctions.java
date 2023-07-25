@@ -107,6 +107,7 @@ import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
 import com.oracle.svm.core.jni.headers.JNIVersionJDK20OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDK21OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -157,9 +158,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return (JavaVersionUtil.JAVA_SPEC >= 20) ? JNIVersionJDK20OrLater.JNI_VERSION_20()
-                        : ((JavaVersionUtil.JAVA_SPEC >= 19) ? JNIVersionJDK19OrLater.JNI_VERSION_19()
-                                        : JNIVersion.JNI_VERSION_10());
+        return JavaVersionUtil.JAVA_SPEC >= 21 ? JNIVersionJDK21OrLater.JNI_VERSION_21()
+                        : JavaVersionUtil.JAVA_SPEC >= 20 ? JNIVersionJDK20OrLater.JNI_VERSION_20()
+                                        : JavaVersionUtil.JAVA_SPEC >= 19 ? JNIVersionJDK19OrLater.JNI_VERSION_19()
+                                                        : JNIVersion.JNI_VERSION_10();
     }
 
     /*

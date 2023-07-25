@@ -12,6 +12,8 @@ The points-to analysis produces two kinds of reports: an analysis call tree and 
 This information is produced by an intermediate step in the building process and represents the static analysis view of the call graph and heap object graph. 
 These graphs are further transformed in the building process before they are compiled ahead-of-time into the binary and written into the binary heap, respectively.
 
+In addition to the comprehensive report of the whole analysis universe, the points-to analysis can also produce reachability reports on why certain type/method/field is reachable.
+
 ## Call tree
 The call tree is a a breadth-first tree reduction of the call graph as seen by the points-to analysis.
 The points-to analysis eliminates calls to methods that it determines cannot be reachable at runtime, based on the analyzed receiver types.
@@ -158,7 +160,46 @@ Roots suppression/expansion:
   - `-H:ImageObjectTreeSuppressRoots=java.util.* -H:ImageObjectTreeExpandRoots=java.util.Locale` - suppress the expansion of all roots that start with `java.util.` but not `java.util.Locale`
   - `-H:ImageObjectTreeExpandRoots=*` - force the expansion of all roots, including those suppressed by default
 
-### Report Files
+## Reachability Report
+
+In diagnosing code size or security problems, the developer often has the need to know why certain code element (type/method/field) is reachable.
+Reachability reports are designed for the purpose.
+There are three options for diagnosing the reachability reasons for types, methods, and fields respectively:
+
+- `-H:AbortOnTypeReachable=<pattern>`
+- `-H:AbortOnMethodReachable=<pattern>`
+- `-H:AbortOnFieldReachable=<pattern>`
+
+For each option, the right-hand side specifies the pattern of the code element to be diagnosed.
+
+- The syntax for specifying types and fields is the same as that of suppression/expansion (See documentation for `-H:ImageObjectTreeSuppressTypes` above).
+- The syntax for specifying methods is the same as that of method filters (See documentation for `-Dgraal.MethodFilter`).
+
+When one of the option is enabled and the corresponding code element is reachable, a reachability trace will be dumped to a TXT file and Native Image will abort.
+Here is an example of the reachability report for `-H:AbortOnTypeReachable=java.io.File`:
+
+```
+Type java.io.File is marked as allocated
+at virtual method com.oracle.svm.core.jdk.NativeLibrarySupport.loadLibraryRelative(NativeLibrarySupport.java:105), implementation invoked
+├── at virtual method com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport.loadJavaLibrary(JNIPlatformNativeLibrarySupport.java:44), implementation invoked
+│       ├── at virtual method com.oracle.svm.core.posix.PosixNativeLibrarySupport.loadJavaLibrary(PosixNativeLibraryFeature.java:117), implementation invoked
+│       │       ├── at virtual method com.oracle.svm.core.posix.PosixNativeLibrarySupport.initializeBuiltinLibraries(PosixNativeLibraryFeature.java:98), implementation invoked
+│       │       │       ├── at static method com.oracle.svm.core.graal.snippets.CEntryPointSnippets.initializeIsolate(CEntryPointSnippets.java:346), implementation invoked
+│       │       │       │       str: static root method
+│       │       │       └── type com.oracle.svm.core.posix.PosixNativeLibrarySupport is marked as in-heap
+│       │       │               scanning root com.oracle.svm.core.posix.PosixNativeLibrarySupport@4839bf0d: com.oracle.svm.core.posix.PosixNativeLibrarySupport@4839bf0d embedded in
+│       │       │                   org.graalvm.nativeimage.ImageSingletons.lookup(ImageSingletons.java)
+│       │       │                   at static method org.graalvm.nativeimage.ImageSingletons.lookup(Class), intrinsified
+│       │       │                       at static method com.oracle.svm.core.graal.snippets.CEntryPointSnippets.createIsolate(CEntryPointSnippets.java:209), implementation invoked
+│       │       └── type com.oracle.svm.core.posix.PosixNativeLibrarySupport is marked as in-heap
+│       └── type com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport is reachable
+└── type com.oracle.svm.core.jdk.NativeLibrarySupport is marked as in-heap
+        scanning root com.oracle.svm.core.jdk.NativeLibrarySupport@6e06bbea: com.oracle.svm.core.jdk.NativeLibrarySupport@6e06bbea embedded in
+            org.graalvm.nativeimage.ImageSingletons.lookup(ImageSingletons.java)
+            at static method org.graalvm.nativeimage.ImageSingletons.lookup(Class), intrinsified
+```
+
+## Report Files
 
 The reports are generated in the `reports` subdirectory, relative to the build directory.
 When executing the `native-image` executable the build directory defaults to the working directory and can be modified using the `-H:Path=<dir>` option.
@@ -169,6 +210,13 @@ The object tree report name has the structure: `object_tree_<binary_name>_<date_
 The binary name is the name of the generated binary, which can be set with the `-H:Name=<name>` option.
 The `<date_time>` is in the `yyyyMMdd_HHmmss` format.
 
-### Further Reading
+The reachability reports are also located in the reports directory.
+They follow the same naming convention:
+
+- Type reachability report: `trace_types_<binary_name>_<date_time>.txt`
+- Method reachability report: `trace_methods_<binary_name>_<date_time>.txt`
+- Field reachability report: `trace_fields_<binary_name>_<date_time>.txt`
+
+## Further Reading
 
 * [Hosted and Runtime Options](HostedvsRuntimeOptions.md)

@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
@@ -320,8 +319,9 @@ public class WebAssembly extends Dictionary {
             final WasmFunction f = module.exportedFunctions().get(name);
             final Integer globalIndex = module.exportedGlobals().get(name);
             final Integer tableIndex = module.exportedTables().get(name);
+            final Integer memoryIndex = module.exportedMemories().get(name);
 
-            if (module.exportedMemoryNames().contains(name)) {
+            if (memoryIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), null));
             } else if (tableIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
@@ -347,6 +347,7 @@ public class WebAssembly extends Dictionary {
         CompilerAsserts.neverPartOfCompilation();
         final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final EconomicMap<ImportDescriptor, Integer> importedTableDescriptors = module.importedTableDescriptors();
+        final EconomicMap<ImportDescriptor, Integer> importedMemoryDescriptors = module.importedMemoryDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
             switch (descriptor.identifier) {
@@ -363,7 +364,8 @@ public class WebAssembly extends Dictionary {
                     }
                     break;
                 case ImportIdentifier.MEMORY:
-                    if (Objects.equals(module.importedMemory(), descriptor)) {
+                    final Integer memoryIndex = importedMemoryDescriptors.get(descriptor);
+                    if (memoryIndex != null) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.memory.name(), null));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
@@ -665,7 +667,7 @@ public class WebAssembly extends Dictionary {
         }
         final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, false, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {
@@ -900,6 +902,7 @@ public class WebAssembly extends Dictionary {
         WasmFunction function = instance.module().exportedFunctions().get(name);
         Integer globalIndex = instance.module().exportedGlobals().get(name);
         Integer tableIndex = instance.module().exportedTables().get(name);
+        Integer memoryIndex = instance.module().exportedMemories().get(name);
 
         if (function != null) {
             return instance.functionInstance(function);
@@ -913,8 +916,8 @@ public class WebAssembly extends Dictionary {
                 final boolean mutable = instance.symbolTable().isGlobalMutable(index);
                 return new ExportedWasmGlobal(valueType, mutable, instance.context().globals(), address);
             }
-        } else if (instance.module().exportedMemoryNames().contains(name)) {
-            return instance.memory();
+        } else if (memoryIndex != null) {
+            return instance.memory(memoryIndex);
         } else if (tableIndex != null) {
             final int address = instance.tableAddress(tableIndex);
             return instance.context().tables().table(address);

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.util;
 
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -55,38 +56,40 @@ public final class TruffleSmallReadOnlyStringToIntMap extends AbstractRegexObjec
 
     public static final int MAX_SIZE = 8;
 
-    private final TruffleReadOnlyKeysArray keys;
+    private final TruffleOrderedReadOnlyKeysArray keys;
     @CompilationFinal(dimensions = 1) private final String[] map;
 
     private TruffleSmallReadOnlyStringToIntMap(String[] keys, String[] map) {
-        this.keys = new TruffleReadOnlyKeysArray(keys);
+        this.keys = new TruffleOrderedReadOnlyKeysArray(keys);
         this.map = map;
     }
 
     @TruffleBoundary
-    public static boolean canCreate(Map<String, Integer> map) {
+    public static boolean canCreate(Map<String, List<Integer>> map) {
         return maxValue(map) < MAX_SIZE;
     }
 
     @TruffleBoundary
-    public static TruffleSmallReadOnlyStringToIntMap create(Map<String, Integer> argMap) {
+    public static TruffleSmallReadOnlyStringToIntMap create(Map<String, List<Integer>> argMap) {
         String[] keys = new String[argMap.size()];
         String[] map = new String[maxValue(argMap) + 1];
         assert map.length <= MAX_SIZE;
         int i = 0;
-        for (Map.Entry<String, Integer> entry : argMap.entrySet()) {
+        for (Map.Entry<String, List<Integer>> entry : argMap.entrySet()) {
             keys[i++] = entry.getKey();
-            assert map[entry.getValue()] == null;
-            map[entry.getValue()] = entry.getKey();
+            assert entry.getValue().size() == 1;
+            assert map[entry.getValue().get(0)] == null;
+            map[entry.getValue().get(0)] = entry.getKey();
         }
         return new TruffleSmallReadOnlyStringToIntMap(keys, map);
     }
 
     @TruffleBoundary
-    private static int maxValue(Map<String, Integer> map) {
+    private static int maxValue(Map<String, List<Integer>> map) {
         int max = 0;
-        for (int i : map.values()) {
-            max = Math.max(max, i);
+        for (List<Integer> groups : map.values()) {
+            assert groups.size() == 1;
+            max = Math.max(max, groups.get(0));
         }
         return max;
     }

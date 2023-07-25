@@ -39,7 +39,6 @@ import org.graalvm.compiler.lir.ImplicitLIRFrameState;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
@@ -140,7 +138,7 @@ public class DebugInfoBuilder {
                             values[pos] = JavaConstant.defaultForKind(entryKind.getStackKind());
                             slotKinds[pos] = entryKind.getStackKind();
                             pos++;
-                        } else if (!value.isConstant() || value.asJavaConstant().getJavaKind() != JavaKind.Illegal) {
+                        } else if (!value.isJavaConstant() || (value.asJavaConstant().getJavaKind() != JavaKind.Illegal)) {
                             values[pos] = toJavaValue(value);
                             slotKinds[pos] = toSlotKind(value);
                             pos++;
@@ -356,7 +354,7 @@ public class DebugInfoBuilder {
                     VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
                         boolean isAutoBox = obj instanceof VirtualBoxingNode;
-                        vobject = GraalServices.createVirtualObject(obj.type(), virtualObjects.size(), isAutoBox);
+                        vobject = VirtualObject.get(obj.type(), virtualObjects.size(), isAutoBox);
                         virtualObjects.put(obj, vobject);
                         pendingVirtualObjects.add(obj);
                     }
@@ -366,10 +364,9 @@ public class DebugInfoBuilder {
             } else {
                 // Remove proxies from constants so the constant can be directly embedded.
                 ValueNode unproxied = GraphUtil.unproxify(value);
-                if (unproxied instanceof ConstantNode) {
+                if (unproxied != null && unproxied.isJavaConstant()) {
                     STATE_CONSTANTS.increment(debug);
                     return unproxied.asJavaConstant();
-
                 } else if (value != null) {
                     STATE_VARIABLES.increment(debug);
                     Value operand = nodeValueMap.operand(value);

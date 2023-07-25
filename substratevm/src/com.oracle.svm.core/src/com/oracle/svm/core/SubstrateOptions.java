@@ -31,11 +31,11 @@ import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.Spe
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -78,11 +78,14 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
                     "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
-    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
+    public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
 
     public static boolean parseOnce() {
         /*
@@ -166,6 +169,11 @@ public class SubstrateOptions {
     @Fold
     public static Predicate<String> getSourceLevelDebugFilter() {
         return makeFilter(SourceLevelDebugFilter.getValue().values());
+    }
+
+    @Fold
+    public static UUID getImageBuildID() {
+        return UUID.fromString(SubstrateOptions.ImageBuildID.getValue());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -306,7 +314,7 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
-    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
+    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
@@ -408,7 +416,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
-    @Option(help = "Prefix that is added to the names of API functions.")//
+    @Option(help = "Prefix that is added to the names of API functions.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
     @APIOption(name = "enable-http", fixedValue = "http", customHelp = "enable http support in the generated image")//
@@ -643,7 +651,7 @@ public class SubstrateOptions {
     @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
-    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
+    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Determines if a null region is present between the heap base and the image heap.", type = Expert)//
@@ -825,21 +833,16 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
+    @Option(help = "Dump heap to file (see HeapDumpPath) the first time the image throws java.lang.OutOfMemoryError because it ran out of Java heap.")//
+    public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Path of the file or directory in which heap dumps are created. An empty value means a default file " +
+                    "name will be used. An existing directory means the dump will be placed in the directory and have " +
+                    "the default file name.") //
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
-    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
-    public static String getHeapDumpPath(String defaultFilename) {
-        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
-        if (heapDumpFilenameOrDirectory.isEmpty()) {
-            return defaultFilename;
-        }
-        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
-        if (Files.isDirectory(targetPath)) {
-            targetPath = targetPath.resolve(defaultFilename);
-        }
-        return targetPath.toFile().getAbsolutePath();
-    }
+    @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
+    public static final HostedOptionKey<String> HeapDumpDefaultFilenamePrefix = new HostedOptionKey<>("svm-heapdump-");
 
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
@@ -938,6 +941,30 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    public enum ReportingMode {
+        Warn,
+        Throw,
+        ExitTest,
+        Exit
+    }
+
+    @Option(help = {"Select the mode in which the missing reflection registrations will be reported.",
+                    "Possible values are:",
+                    "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
+                    "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
+                    "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
+    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+                    ReportingMode.Throw);
+
+    @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
+    public static final HostedOptionKey<Boolean> ThrowLinkAtBuildTimeIOExceptions = new HostedOptionKey<>(false);
+
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
+
+    @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
+    public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 }

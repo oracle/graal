@@ -88,12 +88,11 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * @return true iff node was replaced
      */
     public boolean tryReplaceWithMulNode() {
-        if (this.getY().isConstant()) {
+        if (this.getY().isConstant() && stamp(NodeView.DEFAULT) instanceof IntegerStamp selfStamp) {
             Constant c = getY().asConstant();
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
                 IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
-                IntegerStamp selfStamp = (IntegerStamp) stamp(NodeView.DEFAULT);
                 if (xStamp.getBits() == yStamp.getBits() && xStamp.getBits() == selfStamp.getBits()) {
                     long i = ((PrimitiveConstant) c).asLong();
                     long multiplier = (long) Math.pow(2, i);

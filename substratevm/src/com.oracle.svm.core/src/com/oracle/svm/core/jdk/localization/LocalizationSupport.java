@@ -35,7 +35,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +43,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -113,6 +113,21 @@ public class LocalizationSupport {
         }
     }
 
+    public String getResultingPattern(String bundleName, Locale locale) {
+        String fixedBundleName = bundleName.replace("$", "\\$");
+        return getBundleName(fixedBundleName, locale);
+    }
+
+    private String getBundleName(String fixedBundleName, Locale locale) {
+        String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
+        if (bundleNameWithModule.length < 2) {
+            return control.toBundleName(fixedBundleName, locale).replace('.', '/');
+        } else {
+            String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+            return bundleNameWithModule[0] + ':' + patternWithLocale;
+        }
+    }
+
     /**
      * Template method for subclasses to perform additional tasks.
      */
@@ -134,7 +149,7 @@ public class LocalizationSupport {
     }
 
     @SuppressWarnings("unused")
-    public void prepareNonCompliant(Class<?> clazz) {
+    public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         /*- By default, there is nothing to do */
     }
 

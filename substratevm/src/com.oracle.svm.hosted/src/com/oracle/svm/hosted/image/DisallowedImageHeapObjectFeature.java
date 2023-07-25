@@ -41,12 +41,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -168,18 +168,11 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     }
 
     private RuntimeException error(String msg, Object obj, String initializerAction) {
-        String suffix = "";
-        if (!ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
-            suffix = System.lineSeparator() +
-                            "If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21." +
-                            " All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-built-time are allowed to be in the image heap." +
-                            " This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-built-time.";
-        }
-        throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, initializerAction) + " " +
+        throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, "", action -> initializerAction) +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image runtime by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
-                        "Or you can write your own initialization methods and call them explicitly from your main entry point." + suffix);
+                        "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 
     private static boolean search(byte[] haystack, byte[] needle) {

@@ -166,7 +166,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         AnalysisMetaAccess metaAccess = impl.getMetaAccess();
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : foreignCalls) {
             AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
-            impl.registerAsRoot(method, true);
+            impl.registerAsRoot(method, true, "Foreign call stubs, registered in " + StubForeignCallsFeatureBase.class);
         }
     }
 

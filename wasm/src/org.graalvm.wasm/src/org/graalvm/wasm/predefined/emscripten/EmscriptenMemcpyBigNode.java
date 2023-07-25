@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
         int src = (int) args[1];
         int num = (int) args[2];
 
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.memory(0);
         memory.copyFrom(memory, src, dest, num);
 
         return 0;

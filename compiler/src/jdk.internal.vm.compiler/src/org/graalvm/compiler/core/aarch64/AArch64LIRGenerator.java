@@ -78,14 +78,19 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CountPositivesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HaltOp;
-import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
+import org.graalvm.compiler.lir.aarch64.AArch64MD5Op;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA1Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA256Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA3Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA512Op;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
@@ -656,10 +661,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    protected abstract int getVMPageSize();
+
+    protected int getSoftwarePrefetchHintDistance() {
+        return -1;
+    }
+
     @Override
-    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+    public Variable emitCountPositives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
+        append(new AArch64CountPositivesOp(this, result, asAllocatable(array), asAllocatable(length), getVMPageSize(), getSoftwarePrefetchHintDistance()));
         return result;
     }
 
@@ -736,6 +747,31 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
         append(new AArch64BigIntegerSquareToLenOp(asAllocatable(x), asAllocatable(len), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public void emitSha1ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA1Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha256ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        append(new AArch64SHA3Op(this, asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
+    }
+
+    @Override
+    public void emitSha512ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA512Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitMD5ImplCompress(Value buf, Value state) {
+        append(new AArch64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
     }
 
     @Override

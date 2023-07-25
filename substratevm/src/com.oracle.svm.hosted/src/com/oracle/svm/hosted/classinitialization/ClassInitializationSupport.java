@@ -26,14 +26,18 @@ package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
+import java.lang.reflect.Proxy;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
@@ -196,8 +200,8 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     private static String instructionsToInitializeAtRuntime(Class<?> clazz) {
-        return "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, clazz.getTypeName(), "initialize-at-run-time") +
-                        " to explicitly request delayed initialization of this class.";
+        return "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, clazz.getTypeName(), "initialize-at-run-time", true, true) +
+                        " to explicitly request initialization of this class at run time.";
     }
 
     @Override
@@ -245,36 +249,41 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
         return TraceObjectInstantiation.hasBeenSet() && isClassListedInStringOption(TraceObjectInstantiation.getValue(), clazz);
     }
 
-    public String objectInstantiationTraceMessage(Object obj, String action) {
+    public String objectInstantiationTraceMessage(Object obj, String prefix, Function<String, String> action) {
         Map<Object, StackTraceElement[]> instantiatedObjects = ClassInitializationTracking.instantiatedObjects;
-
-        if (!isObjectInstantiationForClassTracked(obj.getClass())) {
-            return " To see how this object got instantiated use " + SubstrateOptionsParser.commandArgument(TraceObjectInstantiation, obj.getClass().getName()) + ".";
+        if (isProxyOrLambda(obj)) {
+            return prefix + "If these objects should not be stored in the image heap, please try to infer from the source code how the culprit object got instantiated." + System.lineSeparator();
+        } else if (!isObjectInstantiationForClassTracked(obj.getClass())) {
+            return prefix + "If these objects should not be stored in the image heap, you can use " +
+                            SubstrateOptionsParser.commandArgument(TraceObjectInstantiation, obj.getClass().getName(), true, true) +
+                            "to find classes that instantiate these objects. " +
+                            "Once you found such a class, you can mark it explicitly for run time initialization with " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time", true, true) +
+                            "to prevent the instantiation of the object." + System.lineSeparator();
         } else if (instantiatedObjects.containsKey(obj)) {
             String culprit = null;
             StackTraceElement[] trace = instantiatedObjects.get(obj);
-            boolean containsLambdaMetaFactory = false;
             for (StackTraceElement stackTraceElement : trace) {
                 if (stackTraceElement.getMethodName().equals("<clinit>")) {
                     culprit = stackTraceElement.getClassName();
                 }
-                if (stackTraceElement.getClassName().equals("java.lang.invoke.LambdaMetafactory")) {
-                    containsLambdaMetaFactory = true;
-                }
             }
-            if (containsLambdaMetaFactory) {
-                return " Object was instantiated through a lambda (https://github.com/oracle/graal/issues/1218). Try marking " + obj.getClass().getTypeName() +
-                                " for build-time initialization with " + SubstrateOptionsParser.commandArgument(
-                                                ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
-                                ".";
-            } else if (culprit != null) {
-                return " Object has been initialized by the " + culprit + " class initializer with a trace: \n " + getTraceString(instantiatedObjects.get(obj)) + ". " + action;
+            if (culprit != null) {
+                return prefix + action.apply(culprit) + System.lineSeparator() + "The culprit object has been instantiated by the '" + culprit + "' class initializer with the following trace:" +
+                                System.lineSeparator() + getTraceString(instantiatedObjects.get(obj));
             } else {
-                return " Object has been initialized through the following trace:\n" + getTraceString(instantiatedObjects.get(obj)) + ". " + action;
+                return prefix + action.apply(culprit) + System.lineSeparator() + "The culprit object has been instantiated with the following trace:" + System.lineSeparator() +
+                                getTraceString(instantiatedObjects.get(obj)) + action;
             }
         } else {
-            return " Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
+            return prefix + "Object has been initialized in a core JDK class that is not instrumented for class initialization tracking. Therefore, a stack trace cannot be provided." +
+                            System.lineSeparator() +
+                            "Please try to infer from the source code how the culprit object got instantiated." + System.lineSeparator();
         }
+    }
+
+    static boolean isProxyOrLambda(Object obj) {
+        return obj.getClass().getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) || Proxy.isProxyClass(obj.getClass());
     }
 
     static String getTraceString(StackTraceElement[] trace) {
@@ -305,4 +314,18 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     abstract boolean checkDelayedInitialization();
 
     abstract void doLateInitialization(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess);
+
+    public static EconomicSet<Class<?>> allInterfaces(Class<?> clazz) {
+        EconomicSet<Class<?>> result = EconomicSet.create();
+        addAllInterfaces(clazz, result);
+        return result;
+    }
+
+    private static void addAllInterfaces(Class<?> clazz, EconomicSet<Class<?>> result) {
+        for (var interf : clazz.getInterfaces()) {
+            if (result.add(interf)) {
+                addAllInterfaces(interf, result);
+            }
+        }
+    }
 }

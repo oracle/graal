@@ -1774,7 +1774,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface0 {
@@ -1784,7 +1784,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface1 {
@@ -1794,7 +1794,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface2 {
@@ -2036,7 +2036,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @Implementable
     public interface EmptyInterface {
@@ -2048,7 +2048,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface EmptyFunctionalInterface {
@@ -2599,6 +2599,42 @@ public class ValueAPITest {
             });
 
         }
+    }
+
+    @Test
+    public void testDisconnectedBigInteger() {
+        Value val = Value.asValue(BigInteger.ONE);
+        assertTrue(val.isNumber());
+        assertTrue(val.fitsInByte());
+        assertTrue(val.fitsInShort());
+        assertTrue(val.fitsInInt());
+        assertTrue(val.fitsInInt());
+        assertTrue(val.fitsInBigInteger());
+        assertTrue(val.fitsInFloat());
+        assertTrue(val.fitsInDouble());
+        assertEquals(1, val.asByte());
+        assertEquals(1, val.asShort());
+        assertEquals(1, val.asInt());
+        assertEquals(1, val.asLong());
+        assertEquals(BigInteger.ONE, val.asBigInteger());
+        assertEquals(1.0f, val.asFloat(), 0.0000001f);
+        assertEquals(1.0d, val.asDouble(), 0.000000000d);
+        assertEquals((Byte) (byte) 1, val.as(byte.class));
+        assertEquals((Byte) (byte) 1, val.as(Byte.class));
+        assertEquals((Short) (short) 1, val.as(short.class));
+        assertEquals((Short) (short) 1, val.as(Short.class));
+        assertEquals((Integer) 1, val.as(int.class));
+        assertEquals((Integer) 1, val.as(Integer.class));
+        assertEquals((Long) 1L, val.as(long.class));
+        assertEquals((Long) 1L, val.as(Long.class));
+        assertEquals((Float) 1.0f, val.as(float.class));
+        assertEquals((Float) 1.0f, val.as(Float.class));
+        assertEquals((Double) 1.0d, val.as(double.class));
+        assertEquals((Double) 1.0d, val.as(Double.class));
+        assertEquals(BigInteger.ONE, val.as(BigInteger.class));
+        assertEquals(BigInteger.ONE, val.as(Number.class));
+        assertEquals((Character) (char) 1, val.as(char.class));
+        assertEquals((Character) (char) 1, val.as(Character.class));
     }
 
 }

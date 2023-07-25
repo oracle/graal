@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.core.common.calc;
 
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 
 public enum FloatConvert {
@@ -79,5 +83,45 @@ public enum FloatConvert {
 
     public int getInputBits() {
         return inputBits;
+    }
+
+    /**
+     * Returns the conversion operation corresponding to a conversion from {@code from} to
+     * {@code to}. Returns {@code null} if the given stamps don't correspond to a conversion
+     * operation.
+     */
+    public static FloatConvert forStamps(Stamp from, Stamp to) {
+        int fromBits = PrimitiveStamp.getBits(from);
+        int toBits = PrimitiveStamp.getBits(to);
+        if (from instanceof FloatStamp) {
+            if (to instanceof FloatStamp) {
+                if (fromBits == 32 && toBits == 64) {
+                    return F2D;
+                } else if (fromBits == 64 && toBits == 32) {
+                    return D2F;
+                }
+            } else if (to instanceof IntegerStamp) {
+                if (fromBits == 32 && toBits == 32) {
+                    return F2I;
+                } else if (fromBits == 32 && toBits == 64) {
+                    return F2L;
+                } else if (fromBits == 64 && toBits == 32) {
+                    return D2I;
+                } else if (fromBits == 64 && toBits == 64) {
+                    return D2L;
+                }
+            }
+        } else if (from instanceof IntegerStamp && to instanceof FloatStamp) {
+            if (fromBits == 32 && toBits == 32) {
+                return I2F;
+            } else if (fromBits == 32 && toBits == 64) {
+                return I2D;
+            } else if (fromBits == 64 && toBits == 32) {
+                return L2F;
+            } else if (fromBits == 64 && toBits == 64) {
+                return L2D;
+            }
+        }
+        return null;
     }
 }

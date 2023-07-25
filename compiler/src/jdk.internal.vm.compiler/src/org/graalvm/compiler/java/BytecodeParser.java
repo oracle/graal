@@ -1208,10 +1208,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     /**
-     * @param type the unresolved type of the constant
+     * Handles loading of an unresolved constant.
+     *
+     * @param unresolvedType an unresolved type if a ClassConstant is being loaded. This will be
+     *            {@code null} in the case another type of resolvable constant being loaded (e.g.
+     *            DynamicConstant or MethodHandle) when the constant is unresolved.
      */
-    protected void handleUnresolvedLoadConstant(JavaType type) {
-        assert !graphBuilderConfig.unresolvedIsError();
+    protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
+        assert !graphBuilderConfig.unresolvedIsError() || unresolvedType == null;
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         /*
          * Track source position for deopt nodes even if
@@ -1689,7 +1693,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genInvokeInterface(int cpi, int opcode) {
         JavaMethod target = lookupMethod(cpi, opcode);
-        JavaType referencedType = lookupReferencedTypeInPool(cpi, opcode);
+        JavaType referencedType = constantPool.lookupReferencedType(cpi, opcode);
         genInvokeInterface(referencedType, target);
     }
 
@@ -2862,7 +2866,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     @Override
-    public <T extends ValueNode> T append(T v) {
+    public <T extends Node> T append(T v) {
         assert !graph.trackNodeSourcePosition() || graph.currentNodeSourcePosition() != null || currentBlock == blockMap.getUnwindBlock() || currentBlock instanceof ExceptionDispatchBlock;
         if (v.graph() != null) {
             return v;
@@ -2874,7 +2878,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return added;
     }
 
-    private <T extends ValueNode> void updateLastInstruction(T v) {
+    private <T extends Node> void updateLastInstruction(T v) {
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             if (lastInstr != null) {
@@ -3969,8 +3973,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        Object con = lookupConstant(cpi, opcode);
-        if (con instanceof JavaType) {
+        Object con = lookupConstant(cpi, opcode, false);
+        if (con == null) {
+            handleUnresolvedLoadConstant(null);
+        } else if (con instanceof JavaType) {
             // this is a load of class constant which might be unresolved
             JavaType type = (JavaType) con;
             if (typeIsResolved(type)) {
@@ -4258,16 +4264,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return constantPool.lookupMethod(cpi, opcode);
     }
 
-    protected JavaType lookupReferencedTypeInPool(int cpi, int opcode) {
-        if (GraalServices.hasLookupReferencedType()) {
-            return GraalServices.lookupReferencedType(constantPool, cpi, opcode);
-        }
-        // Returning null means that we should not attempt using CHA to devirtualize or inline
-        // interface calls. This is a normal behavior if the JVMCI doesn't support
-        // {@code ConstantPool.lookupReferencedType()}.
-        return null;
-    }
-
     protected JavaField lookupField(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaField result = constantPool.lookupField(cpi, method, opcode);
@@ -4292,14 +4288,19 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     /**
-     * This method may return a value of the type {@code Throwable} to indicate that an exceptional
-     * scenario has occurred and has been handled properly. The caller of this method may therefore
-     * ignore the exceptional return value.
+     * This method may return a {@code Throwable} to indicate that an exception occurred but has
+     * been handled. The caller can choose to ignore the exception in this case.
+     *
+     * @param allowBootstrapMethodInvocation specifies if lookup can resolve a constant that may
+     *            require execution of a bootstrap method. If {@code false} and the constant is not
+     *            resolved, {@code null} is returned.
      */
-    protected Object lookupConstant(int cpi, int opcode) {
+    protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
         maybeEagerlyResolve(cpi, opcode);
-        Object result = constantPool.lookupConstant(cpi);
-        assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
+        Object result = GraalServices.lookupConstant(constantPool, cpi, allowBootstrapMethodInvocation);
+        if (result != null) {
+            assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
+        }
         return result;
     }
 

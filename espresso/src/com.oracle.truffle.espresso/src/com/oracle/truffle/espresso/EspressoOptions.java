@@ -478,6 +478,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
 
+    @Option(help = "Enable built in polyglot collection support in Espresso.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> BuiltInPolyglotCollections = new OptionKey<>(false);
+
     @Option(help = "Enable hotspot extension API.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

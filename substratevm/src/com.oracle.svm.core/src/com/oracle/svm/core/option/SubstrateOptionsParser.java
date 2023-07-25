@@ -184,11 +184,6 @@ public class SubstrateOptionsParser {
 
         APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
 
-        for (APIOption apiOption : apiOptions) {
-            String selected = selectVariant(apiOption, apiOptionName);
-            assert selected == null || apiOption.deprecated().equals("") : "Using the deprecated option in a description: " + apiOption;
-        }
-
         if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
             for (APIOption apiOption : apiOptions) {
@@ -234,8 +229,32 @@ public class SubstrateOptionsParser {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String commandArgument(OptionKey<?> option, String value, String apiOptionName, boolean escape, boolean newLine) {
+        return formatCommandArgument(commandArgument(option, value, apiOptionName), escape, newLine);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String commandArgument(OptionKey<?> option, String value, boolean escape, boolean newLine) {
+        return formatCommandArgument(commandArgument(option, value), escape, newLine);
+    }
+
+    private static String formatCommandArgument(String optionMessage, boolean escape, boolean newLine) {
+        var message = optionMessage;
+        if (escape) {
+            message = "'" + message + "'";
+        }
+        if (newLine) {
+            message = System.lineSeparator() + System.lineSeparator() + "    " + message + System.lineSeparator() + System.lineSeparator();
+        }
+        return message;
+    }
+
     private static String selectVariant(APIOption apiOption, String apiOptionName) {
         VMError.guarantee(apiOption.name().length > 0, "APIOption requires at least one name");
+        if (!apiOption.deprecated().equals("")) {
+            return null; /* Never select deprecated API options. */
+        }
         if (apiOptionName == null) {
             return apiOption.name()[0];
         }

@@ -25,8 +25,8 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -43,7 +43,7 @@ public interface GraphBuilderTool extends CoreProviders {
      * @param value the node to be added to the graph
      * @return either the node added or an equivalent node
      */
-    <T extends ValueNode> T append(T value);
+    <T extends Node> T append(T value);
 
     default Assumptions getAssumptions() {
         return getGraph().getAssumptions();

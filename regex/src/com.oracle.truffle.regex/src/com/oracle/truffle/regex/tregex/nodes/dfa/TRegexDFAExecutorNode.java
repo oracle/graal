@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.SimpleSequentialMatchers;
@@ -80,7 +81,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     @Children private InputIndexOfNode[] indexOfNodes;
     @Child private InputIndexOfStringNode indexOfStringNode;
-    @Child private TRegexDFAExecutorNode innerLiteralPrefixMatcher;
+    /** A TRegexDFAExecutorNode, or TRegexExecutorBaseNodeWrapper when instrumented. */
+    @Child private TRegexExecutorBaseNode innerLiteralPrefixMatcher;
 
     public TRegexDFAExecutorNode(
                     RegexSource source,
@@ -125,7 +127,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexDFAExecutorNode shallowCopy() {
-        return new TRegexDFAExecutorNode(this, innerLiteralPrefixMatcher == null ? null : innerLiteralPrefixMatcher.shallowCopy());
+        return new TRegexDFAExecutorNode(this, innerLiteralPrefixMatcher == null ? null : (TRegexDFAExecutorNode) innerLiteralPrefixMatcher.shallowCopy());
     }
 
     private DFAInitialStateNode getInitialState() {
@@ -163,6 +165,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return props.isSearching();
     }
 
+    @Override
     public boolean isSimpleCG() {
         return props.isSimpleCG();
     }
@@ -714,7 +717,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return (long) locals.getResultInt();
     }
 
-    private static boolean prefixMatcherMatches(VirtualFrame frame, TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean canFindStart) {
+    private static boolean prefixMatcherMatches(VirtualFrame frame, TRegexExecutorBaseNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean canFindStart) {
         Object result = prefixMatcher.execute(frame, locals.toInnerLiteralBackwardLocals(), codeRange);
         if (prefixMatcher.isSimpleCG()) {
             return result != null;

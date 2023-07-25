@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,16 +43,16 @@ package org.graalvm.wasm.memory;
 import org.graalvm.wasm.constants.Sizes;
 
 public class WasmMemoryFactory {
-    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean unsafeMemory) {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared, boolean unsafeMemory) {
         if (unsafeMemory) {
             if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
-                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
             } else {
-                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
             }
         } else {
             assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
-            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
         }
     }
 }

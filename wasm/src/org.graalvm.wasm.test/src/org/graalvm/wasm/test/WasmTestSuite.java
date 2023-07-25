@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,8 @@ import org.graalvm.wasm.test.suites.debugging.DebugValidationSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.Memory64Suite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
+import org.graalvm.wasm.test.suites.memory.MultiMemorySuite;
+import org.graalvm.wasm.test.suites.memory.ThreadsSuite;
 import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
@@ -101,6 +103,8 @@ import org.junit.runners.Suite;
                 WasmImplementationLimitationsSuite.class,
                 BytecodeSuite.class,
                 MultiInstantiationSuite.class,
+                MultiMemorySuite.class,
+                ThreadsSuite.class,
                 DebugValidationSuite.class,
                 DebugObjectFactorySuite.class
 })

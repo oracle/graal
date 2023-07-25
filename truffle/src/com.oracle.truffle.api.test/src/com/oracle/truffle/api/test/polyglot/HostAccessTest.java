@@ -887,7 +887,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @Implementable
     public interface ConverterProxy {
@@ -931,7 +931,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface ConverterFunction {
@@ -1232,7 +1232,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @Implementable
     public interface TestInterface {
@@ -1871,7 +1871,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /**
-     * Referenced in {@code proxys.json}.
+     * Referenced in {@code proxy-config.json}.
      */
     public interface ProxiedPoint {
         /** Not exported. */
@@ -1894,7 +1894,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /**
-     * Referenced in {@code proxys.json}.
+     * Referenced in {@code proxy-config.json}.
      */
     public interface ProxiedPoint2 extends ProxiedPoint {
         @Export
@@ -2390,7 +2390,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     interface FuncInterface {
@@ -2398,7 +2398,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     interface HostMembers {
     }

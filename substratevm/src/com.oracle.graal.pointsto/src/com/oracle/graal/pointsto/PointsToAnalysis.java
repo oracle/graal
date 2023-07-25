@@ -290,13 +290,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, otherRoots);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @Override
     @SuppressWarnings("try")
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         AnalysisError.guarantee(aMethod.isOriginalMethod());
         AnalysisType declaringClass = aMethod.getDeclaringClass();
@@ -313,8 +313,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
                 postTask(() -> {
-                    pointsToMethod.registerAsDirectRootMethod();
-                    pointsToMethod.registerAsImplementationInvoked("root method");
+                    pointsToMethod.registerAsDirectRootMethod(reason);
+                    pointsToMethod.registerAsImplementationInvoked(reason.toString());
                     MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
                         AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
@@ -359,9 +359,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              */
             postTask(() -> {
                 if (invokeSpecial) {
-                    originalPTAMethod.registerAsDirectRootMethod();
+                    originalPTAMethod.registerAsDirectRootMethod(reason);
                 } else {
-                    originalPTAMethod.registerAsVirtualRootMethod();
+                    originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
                 InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, MultiMethod.ORIGINAL_METHOD);
                 /*
@@ -487,12 +487,14 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 PointsToStats.registerTypeFlowQueuedUpdate(PointsToAnalysis.this, operation);
 
                 operation.inQueue = false;
-                operation.update(PointsToAnalysis.this);
+                if (operation.isValid()) {
+                    operation.update(PointsToAnalysis.this);
+                }
             }
 
             @Override
             public String toString() {
-                return "Operation: " + operation.toString();
+                return "Operation: " + operation;
             }
 
             @Override

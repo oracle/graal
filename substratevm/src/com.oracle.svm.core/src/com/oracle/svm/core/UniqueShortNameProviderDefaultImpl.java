@@ -45,20 +45,7 @@ import jdk.vm.ci.meta.Signature;
 public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvider {
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        String loaderName = SubstrateUtil.classLoaderNameAndId(loader);
-        StringBuilder sb = new StringBuilder(loaderName);
-        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
-        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
-            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
-        }
-        sb.append(')');
-        if (!isConstructor) {
-            sb.append(methodSignature.getReturnType(null).toClassName());
-        }
-
-        return SubstrateUtil.stripPackage(declaringClass.toJavaName()) + "_" +
-                        (isConstructor ? "constructor" : methodName) + "_" +
-                        SubstrateUtil.digest(sb.toString());
+        return SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(loader), declaringClass, methodName, methodSignature, isConstructor);
     }
 
     @Override

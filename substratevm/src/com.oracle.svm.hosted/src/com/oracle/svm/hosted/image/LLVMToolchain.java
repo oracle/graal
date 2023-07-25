@@ -32,8 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.home.HomeFinder;
-
+import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -97,10 +96,9 @@ public class LLVMToolchain {
         if (property != null) {
             return Paths.get(property);
         }
-
-        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
+        Path runtimeDir = BuildDirectoryProvider.singleton().getHome();
         if (runtimeDir == null) {
-            throw new IllegalStateException("Could not find GraalVM home");
+            throw new IllegalStateException("Could not find java.home");
         }
         if (System.getProperty("java.specification.version").startsWith("1.")) {
             runtimeDir = runtimeDir.resolve("jre");

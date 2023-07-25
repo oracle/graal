@@ -74,10 +74,11 @@ public final class ResourceURLConnection extends URLConnection {
         String resourceName = urlPath.substring(1);
 
         Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        ResourceStorageEntry entry = Resources.get(module, resourceName);
+        Object entry = Resources.singleton().get(module, resourceName, true);
         if (entry != null) {
-            List<byte[]> bytes = entry.getData();
-            isDirectory = entry.isDirectory();
+            ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
+            List<byte[]> bytes = resourceStorageEntry.getData();
+            isDirectory = resourceStorageEntry.isDirectory();
             String urlRef = url.getRef();
             int index = 0;
             if (urlRef != null) {

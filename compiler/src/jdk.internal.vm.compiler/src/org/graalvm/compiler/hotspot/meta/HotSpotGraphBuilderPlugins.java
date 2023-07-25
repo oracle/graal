@@ -85,7 +85,7 @@ import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -113,6 +113,7 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
@@ -244,7 +245,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
-                registerMD5Plugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
@@ -572,15 +572,30 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode srcEnd, ValueNode dst,
                             ValueNode dstBegin) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
-                    ValueNode length = helper.sub(srcEnd, srcBegin);
-                    helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
-                    helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), length);
-                    helper.intrinsicRangeCheck(srcBegin, Condition.GT, srcLimit);
-                    ValueNode limit = helper.sub(helper.length(dst), length);
+                    // The required test is illustrated below. This is a flattened version of the
+                    // tests from the original sources
+                    //
+                    // @formatter:off
+                    // if (srcBegin >= srcEnd) {
+                    //   return;
+                    // }
+                    // int size = srcEnd - srcBegin;
+                    // int length = value.length >> 1;
+                    // if ((srcBegin | size) < 0 || size > length - srcBegin)
+                    //   throw exception
+                    // @formatter:on
+
+                    helper.emitReturnIf(srcBegin, Condition.GE, srcEnd, null, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                    ValueNode size = helper.sub(srcEnd, srcBegin);
+                    ValueNode or = helper.or(srcBegin, size);
+                    helper.intrinsicRangeCheck(or, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), srcBegin);
+                    helper.intrinsicRangeCheck(size, Condition.GT, srcLimit);
+                    ValueNode limit = helper.sub(helper.length(dst), size);
                     helper.intrinsicRangeCheck(dstBegin, Condition.GT, limit);
-                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
+                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, size, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
                                     vmConfig.heapWordSize));
+                    helper.emitFinalReturn(JavaKind.Void, null);
                 }
                 return true;
             }
@@ -658,11 +673,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-              lineStart = 2861,
-              lineEnd   = 2922,
-              commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-              sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/share/opto/library_call.cpp#L2861-L2922",
+              sha1 = "c2d981ab918e2ca607835df010221ba0503a0cb2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
                     ValueNode virtualThread, ValueNode hide) {
@@ -1026,7 +1038,6 @@ public class HotSpotGraphBuilderPlugins {
             }
             return true;
         }
-
     }
 
     private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
@@ -1058,23 +1069,6 @@ public class HotSpotGraphBuilderPlugins {
                 return templates.implCompressMultiBlock0;
             }
         });
-
-        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
-        rSha1.registerConditional(useSha1, new DigestInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));
-
-        Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        rSha256.registerConditional(useSha256, new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
-
-        Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-        rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
-
-        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA3_IMPL_COMPRESS));
-    }
-
-    private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        Registration r = new Registration(plugins, "sun.security.provider.MD5", replacements);
-        r.registerConditional(config.md5ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.MD5_IMPL_COMPRESS));
     }
 
     private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, Replacements replacements) {

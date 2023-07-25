@@ -28,7 +28,7 @@ package com.oracle.svm.core.jdk.resources;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ResourceStorageEntry {
+public final class ResourceStorageEntry extends ResourceStorageEntryBase {
 
     private final boolean isDirectory;
     private final boolean fromJar;
@@ -40,15 +40,28 @@ public final class ResourceStorageEntry {
         this.data = new ArrayList<>();
     }
 
+    @Override
     public boolean isDirectory() {
         return isDirectory;
     }
 
+    @Override
     public boolean isFromJar() {
         return fromJar;
     }
 
+    @Override
     public List<byte[]> getData() {
         return data;
+    }
+
+    @Override
+    public boolean isException() {
+        return false;
+    }
+
+    @Override
+    public boolean hasData() {
+        return true;
     }
 }

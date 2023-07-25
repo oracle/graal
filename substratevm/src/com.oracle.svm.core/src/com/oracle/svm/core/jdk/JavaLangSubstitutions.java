@@ -72,7 +72,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
@@ -358,16 +357,6 @@ final class Target_java_lang_Throwable {
          */
         backtrace = null;
 
-        if (DeoptimizationSupport.enabled()) {
-            /*
-             * Runtime compilation and deoptimized frames are not yet optimized (GR-45765). Eagerly
-             * construct a stack trace and store it in backtrace. We cannot directly use
-             * `stackTrace` because it is overwritten by the caller.
-             */
-            backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
-            return this;
-        }
-
         BacktraceVisitor visitor = new BacktraceVisitor();
         JavaThreads.visitCurrentStackFrames(visitor);
         backtrace = visitor.getArray();
@@ -400,11 +389,7 @@ final class Target_java_lang_StackTraceElement {
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     static StackTraceElement[] of(Object x, int depth) {
-        if (x instanceof StackTraceElement[] stackTrace) {
-            /* Stack trace eagerly created. */
-            return stackTrace;
-        }
-        return StackTraceBuilder.build(x);
+        return StackTraceBuilder.build((long[]) x);
     }
 
     /**
@@ -417,11 +402,7 @@ final class Target_java_lang_StackTraceElement {
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     static StackTraceElement[] of(Target_java_lang_Throwable t, int depth) {
         Object x = t.backtrace;
-        if (x instanceof StackTraceElement[] stackTrace) {
-            /* Stack trace eagerly created. */
-            return stackTrace;
-        }
-        return StackTraceBuilder.build(x);
+        return StackTraceBuilder.build((long[]) x);
     }
 }
 

@@ -111,7 +111,7 @@ import org.graalvm.compiler.hotspot.nodes.CurrentLockNode;
 import org.graalvm.compiler.hotspot.nodes.FastAcquireBiasedLockNode;
 import org.graalvm.compiler.hotspot.nodes.MonitorCounterNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -234,12 +234,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 474,
-          lineEnd   = 932,
-          ignore    = "GR-46070",
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "156f7ed664c43a213c5eb3c417c8c5c29432cd2e")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L474-L932",
+          ignore = "GR-46070",
+          sha1 = "156f7ed664c43a213c5eb3c417c8c5c29432cd2e")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 

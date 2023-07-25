@@ -24,23 +24,25 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ],
   },
 
-  linux_amd64: self.common + graal_common.linux_amd64 + {
+  linux: {
     packages+: {
-      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      '01:binutils': '==2.34',
       ruby: "==3.0.2",
+    },
+  },
+
+  linux_amd64: self.common + self.linux + graal_common.linux_amd64 + {
+    packages+: {
+      '00:devtoolset': '==11', # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
+    },
+  },
+  linux_aarch64: self.common + self.linux + graal_common.linux_aarch64 + {
+    packages+: {
+      '00:devtoolset': '==10', # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
     },
   },
 
   x52: {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
-  },
-
-  linux_aarch64: self.common + graal_common.linux_aarch64 + {
-    packages+: {
-      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      ruby: "==3.0.2",
-    },
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {

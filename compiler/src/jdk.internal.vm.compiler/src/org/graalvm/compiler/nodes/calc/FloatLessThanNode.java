@@ -53,8 +53,11 @@ public final class FloatLessThanNode extends CompareNode {
 
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(TYPE, CanonicalCondition.LT, unorderedIsTrue, x, y);
-        assert x.stamp(NodeView.DEFAULT) instanceof FloatStamp && y.stamp(NodeView.DEFAULT) instanceof FloatStamp;
-        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
+        Stamp xStamp = x.stamp(NodeView.DEFAULT);
+        Stamp yStamp = y.stamp(NodeView.DEFAULT);
+        assert xStamp.isFloatStamp() : "expected floating point x value: " + x;
+        assert yStamp.isFloatStamp() : "expected floating point y value: " + y;
+        assert xStamp.isCompatible(yStamp) : "expected compatible stamps: " + xStamp + " / " + yStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue, NodeView view) {

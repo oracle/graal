@@ -86,7 +86,7 @@
 
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:+UnlockExperimentalVMOptions -H:CompilerBackend=llvm -H:-UnlockExperimentalVMOptions"],
   }),
 
   use_ecj:: task_spec({
@@ -116,7 +116,7 @@
     downloads+: {
       QEMU_HOME          : {name : "qemu-riscv64", version : "1.0"},
       C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : "1.0"},
-      JAVA_HOME_RISCV    : {name : "labsjdk", version : "ce-20+24-jvmci-23.0-b02-linux-riscv64" }
+      JAVA_HOME_RISCV    : {name : "labsjdk", version : common.labsjdk21.downloads.JAVA_HOME.version + "-linux-riscv64" }
     },
   }),
 }

@@ -761,7 +761,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         return reg.encoding << Rs2Offset;
     }
 
-    private static int rs3(Register reg) {
+    static int rs3(Register reg) {
         return reg.encoding << Rs3Offset;
     }
 
@@ -1048,7 +1048,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         BRK(0x00200000),
 
         CLREX(0xD5033F5F),
-        HINT(0xD503201F),
+        HINT(0b1101010100_0_00_011_0010_0000000_11111),
         DMB(0x000000A0),
         DSB(0x00000080),
 
@@ -1056,6 +1056,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         MSR(0xD5100000),
         DC(0xD5087000),
         ISB(0x000000C0),
+
+        PACIA(0b00001 << 16 | 0b000000 << 10),
+        AUTIA(0b00001 << 16 | 0b000100 << 10),
 
         BLR_NATIVE(0xC0000000);
 
@@ -1493,6 +1496,56 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      */
     protected void b(int imm28, int pos) {
         unconditionalBranchImmInstruction(imm28, Instruction.B, pos, false);
+    }
+
+    /**
+     * C6.2.211 Pointer Authentication Code (PAC) for Instruction Address, using key A.
+     *
+     * @param addr address to authenticate
+     * @param mod modifier for address
+     */
+    public void pacia(Register addr, Register mod) {
+        dataProcessing1SourceOp(Instruction.PACIA, addr, mod, General64);
+    }
+
+    /**
+     * C6.2.211 Pointer Authentication Code (PAC) for Instruction Address, using key A.
+     *
+     * This variant will compute the pointer authentification code for lr using sp as the modifier.
+     * On machines where the instruction is not supported it will be a no-op.
+     */
+    public void paciasp() {
+        hint(SystemHint.PACIASP);
+    }
+
+    /**
+     * C6.2.22 Authenticate Instruction address, using key A.
+     *
+     * @param addr address to authenticate
+     * @param mod modifier for address
+     */
+    public void autia(Register addr, Register mod) {
+        dataProcessing1SourceOp(Instruction.AUTIA, addr, mod, General64);
+    }
+
+    /**
+     * C6.2.22 Authenticate Instruction address, using key A.
+     *
+     * This variant will authenticate lr using sp as the modifier. On machines where the instruction
+     * is not supported it will be a no-op.
+     */
+    public void autiasp() {
+        hint(SystemHint.AUTIASP);
+    }
+
+    /**
+     * C6.2.353 Strip Pointer Authentication Code.
+     *
+     * This variant will strip the pointer authentication code from lr. On machines where the
+     * instruction is not supported it will be a no-op.
+     */
+    public void xpaclri() {
+        hint(SystemHint.XPACLRI);
     }
 
     /**
@@ -3876,13 +3929,16 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     /* Architectural hints (5.9.4) */
     public enum SystemHint {
-        NOP(0x0),
-        YIELD(0x1),
-        WFE(0x2),
-        WFI(0x3),
-        SEV(0x4),
-        SEVL(0x5),
-        CSDB(0x14);
+        NOP(0b0000000),
+        YIELD(0b0000001),
+        WFE(0b0000010),
+        WFI(0b0000011),
+        SEV(0b0000100),
+        SEVL(0b0000101),
+        CSDB(0b0010100),
+        PACIASP(0b0011001),
+        XPACLRI(0b0000111),
+        AUTIASP(0b0011101);
 
         private final int encoding;
 

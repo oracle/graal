@@ -539,4 +539,11 @@ public final class LIRKind extends ValueKind<LIRKind> {
         return false;
     }
 
+    /**
+     * Determines if usages of this kind of value in virtual states must be moved to a variable. In
+     * particular, some kinds of non-Java constants cannot appear as constants in debug info.
+     */
+    public boolean needsVariableInState() {
+        return getPlatformKind().getVectorLength() > 1;
+    }
 }

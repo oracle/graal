@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,6 +93,8 @@ public enum Failure {
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
     MEMORY_64_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 976562500 pages"),
     ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
+    ATOMIC_ALIGNMENT_NOT_NATURAL(Type.INVALID, "atomic alignment must be natural"),
+    SHARED_MEMORY_MUST_HAVE_MAXIMUM(Type.INVALID, "shared memory must have maximum"),
     UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
     UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
     UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),
@@ -104,6 +106,7 @@ public enum Failure {
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
     TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
+    MEMORY_COUNT_LIMIT_EXCEEDED(Type.INVALID, "memory count exceeds limit"),
     IMPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "import count exceeds limit"),
     EXPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "export count exceeds limit"),
     GLOBAL_COUNT_LIMIT_EXCEEDED(Type.INVALID, "global count exceeds limit"),
@@ -129,6 +132,8 @@ public enum Failure {
     UNDEFINED_ELEMENT(Type.TRAP, "undefined element"),
     UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
     OUT_OF_BOUNDS_MEMORY_ACCESS(Type.TRAP, "out of bounds memory access"),
+    UNALIGNED_ATOMIC(Type.TRAP, "unaligned atomic"),
+    EXPECTED_SHARED_MEMORY(Type.TRAP, "expected shared memory"),
     INDIRECT_CALL_TYPE__MISMATCH(Type.TRAP, "indirect call type mismatch"),
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),

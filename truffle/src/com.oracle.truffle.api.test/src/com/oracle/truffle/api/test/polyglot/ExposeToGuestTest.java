@@ -504,13 +504,13 @@ public class ExposeToGuestTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     interface EmptyInterface {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     interface UnmarkedInterface {
 
@@ -519,7 +519,7 @@ public class ExposeToGuestTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @Implementable
     interface MarkedInterface {
@@ -529,7 +529,7 @@ public class ExposeToGuestTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     interface MarkedFunctional {
@@ -539,7 +539,7 @@ public class ExposeToGuestTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     interface UnmarkedFunctional {
 

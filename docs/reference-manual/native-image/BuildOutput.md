@@ -122,6 +122,12 @@ Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.
 
+#### <a name="glossary-experimental-options"></a>Experimental Options
+A list of all active experimental options, including their origin and possible API option alternatives if available.
+
+Using experimental options should be avoided in production and can change in any release.
+If you rely on experimental features and would like an option to be considered stable, please file an issue.
+
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 
@@ -151,6 +157,9 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
+
+#### <a name="glossary-foreign-downcall-registrations"></a>Foreign functions stubs
+The number of downcalls registered for [foreign](ForeignInterface.md) function access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -200,7 +209,8 @@ The total size of all `byte[]` objects that are neither used for `java.lang.Stri
 Therefore, this can also include `byte[]` objects from application code.
 
 ##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
-The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary. The number of resources is shown in the [Heap](#glossary-image-heap) section.
+The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary.
+The number of resources is shown in the [Heap](#glossary-image-heap) section.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
@@ -215,12 +225,34 @@ The total size of all `byte[]` objects used for graph encodings.
 These encodings are a result of [runtime compiled methods](#glossary-runtime-methods).
 Therefore, reducing the number of such methods also reduces the size of corresponding graph encodings.
 
+##### <a name="glossary-heap-alignment"></a>Heap Alignment
+Additional space reserved to align the heap for the [selected garbage collector](#glossary-gc).
+The heap alignment may also contain GC-specific data structures.
+Its size can therefore only be influenced by switching to a different garbage collector.
+
 #### <a name="glossary-debug-info"></a>Debug Info
 The total size of generated debug information (if enabled).
 
 #### <a name="glossary-other-data"></a>Other Data
 The amount of data in the binary that is neither in the [code area](#glossary-code-area), nor in the [heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
 This data typically contains internal information for Native Image and should not be dominating.
+
+## Security Report
+
+*This section is not available in GraalVM Community Edition.*
+
+#### <a name="glossary-deserialization"></a>Deserialization
+This shows whether Java deserialization is included in the native executable or not.
+If not included, the attack surface of the executable is reduced as the executable cannot be exploited with attacks based on Java deserialization.
+
+#### <a name="glossary-embedded-sbom"></a>Embedded SBOM
+Number of components and the size of the embedded Software Bill of Materials (SBOM).
+Use `--enable-sbom` to include an SBOM in the native executable.
+For more information, see [Inspection Tool](InspectTool.md)
+
+#### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
+Control-Flow Integrity (CFI) can be enforced with the experimental `-H:+EnableCFI` option.
+This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
 
 ## Recommendations
 

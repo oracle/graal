@@ -795,14 +795,14 @@ public final class SpecializationData extends TemplateMethod {
         return getMaximumNumberOfInstances() > 1;
     }
 
-    public boolean isGuardBindsCache() {
+    public boolean isGuardBindsExclusiveCache() {
         if (!getCaches().isEmpty() && !getGuards().isEmpty()) {
             for (GuardExpression guard : getGuards()) {
                 if (guard.hasErrors()) {
                     continue;
                 }
                 if (isDynamicParameterBound(guard.getExpression(), true)) {
-                    if (isCacheParameterBound(guard)) {
+                    if (isExclusiveCacheParameterBound(guard)) {
                         return true;
                     }
                 }
@@ -811,13 +811,15 @@ public final class SpecializationData extends TemplateMethod {
         return false;
     }
 
-    private boolean isCacheParameterBound(GuardExpression guard) {
+    private boolean isExclusiveCacheParameterBound(GuardExpression guard) {
         for (CacheExpression cache : getBoundCaches(guard.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {
                 continue;
             } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
                 continue;
             } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
+                continue;
+            } else if (cache.getSharedGroup() != null) {
                 continue;
             }
             return true;
@@ -826,7 +828,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isConstantLimit() {
-        if (isGuardBindsCache()) {
+        if (isGuardBindsExclusiveCache()) {
             DSLExpression expression = getLimitExpression();
             if (expression == null) {
                 return true;
@@ -843,7 +845,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public int getMaximumNumberOfInstances() {
-        if (isGuardBindsCache()) {
+        if (isGuardBindsExclusiveCache()) {
             DSLExpression expression = getLimitExpression();
             if (expression == null) {
                 return 3; // default limit
@@ -870,7 +872,7 @@ public final class SpecializationData extends TemplateMethod {
             return true;
         }
 
-        if (prev.isGuardBindsCache()) {
+        if (prev.isGuardBindsExclusiveCache()) {
             // may fallthrough due to limit
             return true;
         }

@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -166,7 +167,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         }
     }
 
-    private <T extends ValueNode> void updateLastInstruction(T v) {
+    private <T extends Node> void updateLastInstruction(T v) {
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             if (lastInstr != null) {
@@ -225,7 +226,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public <T extends ValueNode> T append(T v) {
+    public <T extends Node> T append(T v) {
         if (v.graph() != null) {
             return v;
         }

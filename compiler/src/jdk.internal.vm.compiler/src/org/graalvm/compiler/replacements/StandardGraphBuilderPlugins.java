@@ -32,6 +32,8 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.ACQUIRE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 import static org.graalvm.compiler.replacements.BoxingSnippets.Templates.getCacheClass;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
@@ -82,11 +84,13 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.SpinWaitNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
@@ -174,10 +178,17 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CountPositivesNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -201,6 +212,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -255,6 +267,8 @@ public class StandardGraphBuilderPlugins {
             registerAESPlugins(plugins, replacements, lowerer.getTarget().arch);
             registerGHASHPlugin(plugins, replacements, lowerer.getTarget().arch);
             registerBigIntegerPlugins(plugins, replacements);
+            registerMessageDigestPlugins(plugins, replacements, lowerer.getTarget().arch);
+            registerStringCodingPlugins(plugins, replacements);
         }
     }
 
@@ -2121,10 +2135,10 @@ public class StandardGraphBuilderPlugins {
         public static ValueNode readFieldArrayStart(GraphBuilderContext b,
                         InvocationPluginHelper helper,
                         ResolvedJavaType klass,
-                        String filed,
+                        String fieldName,
                         ValueNode receiver,
                         JavaKind arrayKind) {
-            ResolvedJavaField field = helper.getField(klass, filed);
+            ResolvedJavaField field = helper.getField(klass, fieldName);
             ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
             return helper.arrayStart(array, arrayKind);
         }
@@ -2346,6 +2360,13 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
+        r.register(new InvocationPlugin("onSpinWait") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.append(new SpinWaitNode());
+                return true;
+            }
+        });
         if (hasEnsureMaterializedForStackWalk()) {
             r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
                 @Override
@@ -2355,5 +2376,117 @@ public class StandardGraphBuilderPlugins {
                 }
             });
         }
+    }
+
+    public static class MessageDigestPlugin extends InvocationPlugin {
+
+        public interface MessageDigestSupplier {
+            MessageDigestNode create(ValueNode buf, ValueNode state);
+        }
+
+        private final MessageDigestSupplier supplier;
+
+        public MessageDigestPlugin(MessageDigestSupplier supplier) {
+            super("implCompress0", Receiver.class, byte[].class, int.class);
+            this.supplier = supplier;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                ResolvedJavaField stateField = helper.getField(receiverType, "state");
+
+                ValueNode nonNullReceiver = receiver.get();
+                ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
+                ValueNode state = helper.loadField(nonNullReceiver, stateField);
+                ValueNode stateStart = helper.arrayStart(state, getStateElementType());
+                b.add(supplier.create(bufStart, stateStart));
+                return true;
+            }
+        }
+
+        protected JavaKind getStateElementType() {
+            return JavaKind.Int;
+        }
+    }
+
+    private static void registerMessageDigestPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
+        rSha1.registerConditional(SHA1Node.isSupported(arch), new MessageDigestPlugin(SHA1Node::new));
+
+        Registration rSha2 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
+        rSha2.registerConditional(SHA256Node.isSupported(arch), new MessageDigestPlugin(SHA256Node::new));
+
+        Registration rSha5 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
+        rSha5.registerConditional(SHA512Node.isSupported(arch), new MessageDigestPlugin(SHA512Node::new) {
+            @Override
+            protected JavaKind getStateElementType() {
+                return JavaKind.Long;
+            }
+        });
+
+        Registration rMD5 = new Registration(plugins, "sun.security.provider.MD5", replacements);
+        rMD5.register(new MessageDigestPlugin(MD5Node::new));
+    }
+
+    private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.lang.StringCoding", replacements);
+        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    int charElementShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(JavaKind.Char));
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Byte, LeftShiftNode.create(sp, ConstantNode.forInt(charElementShift), NodeView.DEFAULT));
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1, JavaKind.Byte));
+                    return true;
+                }
+            }
+        });
+        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
+                    return true;
+                }
+            }
+        });
+        r.register(new InvocationPlugin("countPositives", byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
+                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
+                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+
+                    ValueNode array = helper.arrayElementPointer(ba, JavaKind.Byte, off);
+                    b.addPush(JavaKind.Int, new CountPositivesNode(array, len));
+                    return true;
+                }
+            }
+        });
+
+        r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder", replacements);
+        r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1, JavaKind.Char));
+                    return true;
+                }
+            }
+        });
     }
 }

@@ -379,7 +379,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     protected List<Path> modulepath() {
-        return Stream.concat(imagemp.stream(), buildmp.stream()).collect(Collectors.toUnmodifiableList());
+        return Stream.concat(imagemp.stream(), buildmp.stream()).toList();
     }
 
     protected List<Path> applicationModulePath() {
@@ -434,7 +434,7 @@ public class NativeImageClassLoaderSupport {
         for (ModuleLayer moduleLayer : allLayers(layer)) {
             List<ResolvedModule> resolvedModules = moduleLayer.configuration().modules().stream()
                             .sorted(Comparator.comparing(ResolvedModule::name))
-                            .collect(Collectors.toList());
+                            .toList();
             if (first) {
                 try {
                     initOutputMethod.invoke(null, false);
@@ -544,23 +544,48 @@ public class NativeImageClassLoaderSupport {
         String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
         String syntaxErrorMessage = " Allowed value format: " + format;
 
-        String[] modulePackageAndTargetModules = optionValue.split("=", 2);
-        if (modulePackageAndTargetModules.length != 2) {
+        /*
+         * Parsing logic mimics jdk.internal.module.ModuleBootstrap.decode(String)
+         */
+
+        int equalsPos = optionValue.indexOf("=");
+        if (equalsPos <= 0) {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
-        String modulePackage = modulePackageAndTargetModules[0];
-        String targetModuleNames = modulePackageAndTargetModules[1];
 
-        String[] moduleAndPackage = modulePackage.split("/");
-        if (moduleAndPackage.length > 1 + (reads ? 0 : 1)) {
+        String modulePackage = optionValue.substring(0, equalsPos);
+        String targetModuleNames = optionValue.substring(equalsPos + 1);
+
+        if (targetModuleNames.isEmpty()) {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
-        String moduleName = moduleAndPackage[0];
-        String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : null;
 
-        List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
+        List<String> targetModuleNamesList = new ArrayList<>();
+        for (String s : targetModuleNames.split(",")) {
+            if (!s.isEmpty()) {
+                targetModuleNamesList.add(s);
+            }
+        }
         if (targetModuleNamesList.isEmpty()) {
             throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+        }
+
+        String moduleName;
+        String packageName;
+        if (reads) {
+            moduleName = modulePackage;
+            packageName = null;
+        } else {
+            String[] moduleAndPackage = modulePackage.split("/");
+            if (moduleAndPackage.length != 2) {
+                throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+            }
+
+            moduleName = moduleAndPackage[0];
+            packageName = moduleAndPackage[1];
+            if (moduleName.isEmpty() || packageName.isEmpty()) {
+                throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
+            }
         }
 
         Module module = findModule(moduleName).orElseThrow(() -> {
@@ -636,7 +661,7 @@ public class NativeImageClassLoaderSupport {
 
                 List<String> requiresInit = Arrays.asList(
                                 "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
-                                "org.graalvm.sdk", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
+                                "org.graalvm.nativeimage", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
                                 "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
                                 "org.graalvm.nativebridge");
 

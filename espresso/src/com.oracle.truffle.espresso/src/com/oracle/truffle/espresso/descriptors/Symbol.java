@@ -271,6 +271,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> contextClassLoader = StaticSymbols.putName("contextClassLoader");
 
+        public static final Symbol<Name> EMPTY = StaticSymbols.putName("EMPTY");
+        public static final Symbol<Name> precision = StaticSymbols.putName("precision");
+
         // j.l.StackTraceElement
         public static final Symbol<Name> declaringClassObject = StaticSymbols.putName("declaringClassObject");
         public static final Symbol<Name> classLoaderName = StaticSymbols.putName("classLoaderName");
@@ -489,6 +492,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
+        public static final Symbol<Name> foreignObject = StaticSymbols.putName("foreignObject");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
@@ -891,6 +895,16 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_NoSuchElementException = StaticSymbols.putType("Ljava/util/NoSuchElementException;");
         public static final Symbol<Type> java_util_Map_Entry = StaticSymbols.putType("Ljava/util/Map$Entry;");
         public static final Symbol<Type> java_util_Set = StaticSymbols.putType("Ljava/util/Set;");
+        public static final Symbol<Type> java_util_Collection = StaticSymbols.putType("Ljava/util/Collection;");
+
+        // Optional
+        public static final Symbol<Type> java_util_Optional = StaticSymbols.putType("Ljava/util/Optional;");
+
+        // java math
+        public static final Symbol<Type> java_math_BigInteger = StaticSymbols.putType("Ljava/math/BigInteger;");
+        public static final Symbol<Type> java_math_BigDecimal = StaticSymbols.putType("Ljava/math/BigDecimal;");
+        public static final Symbol<Type> java_math_MathContext = StaticSymbols.putType("Ljava/math/MathContext;");
+        public static final Symbol<Type> java_math_RoundingMode = StaticSymbols.putType("Ljava/math/RoundingMode;");
 
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
@@ -907,6 +921,18 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_VMHelper = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/VMHelper;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterable;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignList;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignCollection;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignIterator;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignMap;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignSet;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
@@ -994,6 +1020,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_long_long = StaticSymbols.putSignature(Type._void, Type._long, Type._long);
         public static final Symbol<Signature> _int_int_int = StaticSymbols.putSignature(Type._int, Type._int, Type._int);
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
+        public static final Symbol<Signature> _void_byte_array = StaticSymbols.putSignature(Type._void, Type._byte_array);
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
         public static final Symbol<Signature> _boolean_boolean = StaticSymbols.putSignature(Type._boolean, Type._boolean);
@@ -1008,6 +1035,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _byte_array_ClassLoader_String_List_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_ClassLoader, Type.java_lang_String,
                         Type.java_util_List,
                         Type._int);
+
+        public static final Symbol<Signature> _void_BigInteger_int_MathContext = StaticSymbols.putSignature(Type._void, Type.java_math_BigInteger, Type._int, Type.java_math_MathContext);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

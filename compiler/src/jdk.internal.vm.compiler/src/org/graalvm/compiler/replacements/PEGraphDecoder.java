@@ -95,6 +95,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -425,7 +426,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public <T extends ValueNode> T append(T value) {
+        public <T extends Node> T append(T value) {
             throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
@@ -554,7 +555,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @SuppressWarnings("try")
         @Override
-        public <T extends ValueNode> T append(T v) {
+        public <T extends Node> T append(T v) {
             if (v.graph() != null) {
                 return v;
             }
@@ -567,6 +568,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
+        @Override
+        public Node canonicalizeAndAdd(Node node) {
+            Node canonicalized = node;
+            if (canonicalized instanceof FixedNode fixedNode) {
+                canonicalized = canonicalizeFixedNode(methodScope, null, fixedNode);
+            } else if (canonicalized instanceof FloatingNode floatingNode) {
+                canonicalized = handleFloatingNodeBeforeAdd(methodScope, null, floatingNode);
+            }
+
+            if (canonicalized == null) {
+                return null;
+            }
+            return super.canonicalizeAndAdd(canonicalized);
+        }
+
         private DebugCloseable withNodeSourcePosition() {
             if (getGraph().trackNodeSourcePosition()) {
                 NodeSourcePosition callerBytecodePosition = methodScope.getCallerNodeSourcePosition();
@@ -577,7 +593,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
 
-        private <T extends ValueNode> void updateLastInstruction(T v) {
+        private <T extends Node> void updateLastInstruction(T v) {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
                 if (lastInstr != null) {
@@ -725,7 +741,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @SuppressWarnings("try")
         @Override
-        public <T extends ValueNode> T append(T v) {
+        public <T extends Node> T append(T v) {
             if (v.graph() != null) {
                 return v;
             }
@@ -748,7 +764,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
 
-        private <T extends ValueNode> void updateLastInstruction(T value) {
+        private <T extends Node> void updateLastInstruction(T value) {
             if (value instanceof FixedWithNextNode) {
                 FixedWithNextNode fixed = (FixedWithNextNode) value;
                 graph.addBeforeFixed(insertBefore, fixed);

@@ -1181,6 +1181,9 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testGetCurrentContextNotEnteredRaceCondition() throws ExecutionException, InterruptedException {
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         for (int i = 0; i < 10000; i++) {
             AtomicBoolean checkCompleted = new AtomicBoolean();
             ExecutorService executorService = Executors.newFixedThreadPool(1);

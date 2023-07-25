@@ -43,7 +43,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
@@ -52,6 +51,7 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.ExceptionHandler;
+import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;
@@ -587,7 +587,7 @@ public class CompilationResult {
      * @param debugInfo the debug info for the infopoint
      */
     public void recordImplicitException(int codePos, int dispatchPos, DebugInfo debugInfo) {
-        addInfopoint(GraalServices.genImplicitException(codePos, dispatchPos, debugInfo));
+        addInfopoint(new ImplicitExceptionDispatch(codePos, dispatchPos, debugInfo));
     }
 
     /**

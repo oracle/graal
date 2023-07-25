@@ -47,6 +47,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
@@ -55,6 +56,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -248,6 +250,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getHostAccessImpl(HostAccess conf);
 
+        public abstract MethodHandles.Lookup getMethodLookup(HostAccess hostAccess);
+
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
 
         public abstract UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language);
@@ -382,6 +386,10 @@ public abstract class AbstractPolyglotImpl {
 
     public AbstractHostAccess createHostAccess() {
         return getNext().createHostAccess();
+    }
+
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return getNext().copyResources(targetFolder, components);
     }
 
     /**

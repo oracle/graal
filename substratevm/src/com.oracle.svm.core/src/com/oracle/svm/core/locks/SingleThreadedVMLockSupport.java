@@ -75,7 +75,7 @@ final class SingleThreadedVMLockFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
         @Override
         protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new SingleThreadedVMSemaphore();
+            return new SingleThreadedVMSemaphore(source.getName());
         }
     };
 
@@ -190,6 +190,11 @@ final class SingleThreadedVMCondition extends VMCondition {
 }
 
 final class SingleThreadedVMSemaphore extends VMSemaphore {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    SingleThreadedVMSemaphore(String name) {
+        super(name);
+    }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

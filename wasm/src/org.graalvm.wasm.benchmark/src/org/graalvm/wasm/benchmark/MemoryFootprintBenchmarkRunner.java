@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
@@ -49,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
@@ -131,7 +133,7 @@ public class MemoryFootprintBenchmarkRunner {
                 final double heapSizeBefore = getHeapSize();
 
                 // The code we want to profile:
-                benchmarkCase.getSources().forEach(context::eval);
+                benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class)).forEach(context::eval);
                 context.getBindings(WasmLanguage.ID).getMember("main").getMember("run");
 
                 final double heapSizeAfter = getHeapSize();
