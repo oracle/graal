@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
@@ -49,6 +48,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
@@ -435,21 +435,23 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = getAndCanonicalize("org.graalvm.language." + languageId + ".home");
+        String home = toRealStringPath("org.graalvm.language." + languageId + ".home");
         if (home == null) {
             // check legacy property
-            home = getAndCanonicalize(languageId + ".home");
+            home = toRealStringPath(languageId + ".home");
         }
         return home;
     }
 
-    private static String getAndCanonicalize(String propertyName) {
+    private static String toRealStringPath(String propertyName) {
         String path = System.getProperty(propertyName);
         if (path != null) {
             try {
-                path = new File(path).getCanonicalPath();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                path = Path.of(path).toRealPath().toString();
+            } catch (NoSuchFileException nsfe) {
+                return path;
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
             }
         }
         return path;
