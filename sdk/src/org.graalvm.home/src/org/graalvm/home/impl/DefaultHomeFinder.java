@@ -281,8 +281,10 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static Path toRealPath(Path p) {
         try {
             return p.toRealPath();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (NoSuchFileException nsfe) {
+            return p;
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
         }
     }
 
