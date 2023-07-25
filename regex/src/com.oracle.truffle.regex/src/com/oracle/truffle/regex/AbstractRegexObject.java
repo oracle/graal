@@ -51,7 +51,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -85,7 +85,7 @@ public abstract class AbstractRegexObject implements TruffleObject {
         if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
             return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
         } else {
-            Map<String, Integer> simpleNamedCaptureGroups = new HashMap<>(namedCaptureGroups.size());
+            Map<String, Integer> simpleNamedCaptureGroups = new LinkedHashMap<>(namedCaptureGroups.size());
             for (Map.Entry<String, List<Integer>> entry : namedCaptureGroups.entrySet()) {
                 assert entry.getValue().size() == 1;
                 simpleNamedCaptureGroups.put(entry.getKey(), entry.getValue().get(0));
@@ -99,7 +99,7 @@ public abstract class AbstractRegexObject implements TruffleObject {
         if (namedCaptureGroups == null) {
             return TruffleNull.INSTANCE;
         } else {
-            Map<String, TruffleReadOnlyIntArray> map = new HashMap<>(namedCaptureGroups.size());
+            Map<String, TruffleReadOnlyIntArray> map = new LinkedHashMap<>(namedCaptureGroups.size());
             for (Map.Entry<String, List<Integer>> entry : namedCaptureGroups.entrySet()) {
                 int[] array = new int[entry.getValue().size()];
                 for (int i = 0; i < array.length; i++) {

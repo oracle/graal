@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,88 +40,66 @@
  */
 package com.oracle.truffle.regex.util;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractRegexObject;
 
+/**
+ * Represents an array of keys (members) of a TRegex TruffleObject. This ordered variant respects
+ * the order of the keys as passed to the constructor. This order is then observable when using
+ * {@link InteropLibrary#getMembers(Object)}.
+ */
 @ExportLibrary(InteropLibrary.class)
-public final class TruffleSmallReadOnlyStringToIntMap extends AbstractRegexObject {
+public class TruffleOrderedReadOnlyKeysArray extends AbstractRegexObject {
 
-    public static final int MAX_SIZE = 8;
-
-    private final TruffleOrderedReadOnlyKeysArray keys;
-    @CompilationFinal(dimensions = 1) private final String[] map;
-
-    private TruffleSmallReadOnlyStringToIntMap(String[] keys, String[] map) {
-        this.keys = new TruffleOrderedReadOnlyKeysArray(keys);
-        this.map = map;
-    }
+    @CompilationFinal(dimensions = 1) private final String[] keys;
 
     @TruffleBoundary
-    public static boolean canCreate(Map<String, List<Integer>> map) {
-        return maxValue(map) < MAX_SIZE;
+    public TruffleOrderedReadOnlyKeysArray(String... keys) {
+        this.keys = keys;
     }
 
-    @TruffleBoundary
-    public static TruffleSmallReadOnlyStringToIntMap create(Map<String, List<Integer>> argMap) {
-        String[] keys = new String[argMap.size()];
-        String[] map = new String[maxValue(argMap) + 1];
-        assert map.length <= MAX_SIZE;
-        int i = 0;
-        for (Map.Entry<String, List<Integer>> entry : argMap.entrySet()) {
-            keys[i++] = entry.getKey();
-            assert entry.getValue().size() == 1;
-            assert map[entry.getValue().get(0)] == null;
-            map[entry.getValue().get(0)] = entry.getKey();
+    public boolean contains(String key) {
+        for (int i = 0; i < keys.length; i++) {
+            if (key.equals(keys[i])) {
+                return true;
+            }
         }
-        return new TruffleSmallReadOnlyStringToIntMap(keys, map);
+        return false;
     }
 
-    @TruffleBoundary
-    private static int maxValue(Map<String, List<Integer>> map) {
-        int max = 0;
-        for (List<Integer> groups : map.values()) {
-            assert groups.size() == 1;
-            max = Math.max(max, groups.get(0));
-        }
-        return max;
-    }
-
-    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasMembers() {
+    boolean hasArrayElements() {
         return true;
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return keys;
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < keys.length;
     }
 
     @ExportMessage
-    boolean isMemberReadable(String symbol) {
-        return keys.contains(symbol);
+    long getArraySize() {
+        return keys.length;
     }
 
     @ExportMessage
-    int readMember(String symbol) {
-        for (int i = 0; i < map.length; i++) {
-            if (map[i] != null && map[i].equals(symbol)) {
-                return i;
-            }
+    String readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
         }
-        throw CompilerDirectives.shouldNotReachHere();
+        return keys[(int) index];
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
-        return "TRegexReadOnlyMap";
+        return "TRegexOrderedReadOnlyArray{" + "keys=" + Arrays.toString(keys) + '}';
     }
 }

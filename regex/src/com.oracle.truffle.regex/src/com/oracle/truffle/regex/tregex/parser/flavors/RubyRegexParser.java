@@ -45,6 +45,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -689,7 +690,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                                 }
                                 String groupName = parseGroupName('>');
                                 if (namedCaptureGroups == null) {
-                                    namedCaptureGroups = new HashMap<>();
+                                    namedCaptureGroups = new LinkedHashMap<>();
                                     numberOfCaptureGroups = 0;
                                 }
                                 numberOfCaptureGroups++;

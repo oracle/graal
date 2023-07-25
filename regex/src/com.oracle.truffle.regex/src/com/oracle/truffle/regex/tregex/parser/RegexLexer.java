@@ -41,7 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -666,7 +666,8 @@ public abstract class RegexLexer {
     protected void registerNamedCaptureGroup(String name) {
         if (!identifiedAllGroups) {
             if (namedCaptureGroups == null) {
-                namedCaptureGroups = new HashMap<>();
+                // use a LinkedHashMap so that the order of capture groups is preserved
+                namedCaptureGroups = new LinkedHashMap<>();
             }
             List<Integer> groupsWithSameName = namedCaptureGroups.get(name);
             if (groupsWithSameName != null) {
