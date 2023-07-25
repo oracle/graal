@@ -893,7 +893,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
     def _add_dependencies(components, excluded_components=None):
         components_with_repetitions = components[:]
         components_with_dependencies = []
-        excluded_components=excluded_components or []
+        excluded_components = excluded_components or []
         while components_with_repetitions:
             component = components_with_repetitions.pop(0)
             if component not in components_with_dependencies and component not in excluded_components:
@@ -2946,16 +2946,16 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     })
 
             # Add Tool components that have not yet been added in the previous steps.
-            for component in registered_graalvm_components(stage1=True):
-                if isinstance(component, mx_sdk_vm.GraalVmTool):
-                    if component not in added_components:
+            for tool in registered_graalvm_components(stage1=True):
+                if isinstance(tool, mx_sdk_vm.GraalVmTool):
+                    if tool not in added_components:
                         # Compute the dependencies of the tool component.
                         #
                         # Every component that we included so far should already contain all its dependencies.
                         # Therefore, both `added_components` and `excluded_components` are excluded by the (poorly
                         # named) `_add_dependency()` function that computes the transitive dependencies of the main
                         # component.
-                        tool_component_dependencies = GraalVmLayoutDistribution._add_dependencies([component], excluded_components + added_components)
+                        tool_component_dependencies = GraalVmLayoutDistribution._add_dependencies([tool], excluded_components + added_components)
                         for tool_component_dependency in tool_component_dependencies:
                             add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
@@ -2963,8 +2963,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
             # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
             # Example: `TRUFFLE_RUNTIME_ATTACH_SUPPORT`, a support_libraries_distributions` of `Truffle API`
-            for component in GraalVmStandaloneComponent.jdk_components():
-                for lib_dist in component.support_libraries_distributions:
+            for jdk_component in GraalVmStandaloneComponent.jdk_components():
+                for lib_dist in jdk_component.support_libraries_distributions:
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
@@ -3174,8 +3174,20 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         else:
             self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
         toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
-        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None), 'src', [],
-            _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True, toolchain=toolchain, **kwargs)
+        super(NativeLibraryLauncherProject, self).__init__(
+            _suite,
+            NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None),
+            'src',
+            [],
+            _dependencies,
+            None,
+            _dir,
+            'executable',
+            deliverable=self.language_library_config.language,
+            use_jdk_headers=True,
+            toolchain=toolchain,
+            **kwargs
+        )
 
     @staticmethod
     def library_launcher_project_name(language_library_config, for_jvm_standalone=False):

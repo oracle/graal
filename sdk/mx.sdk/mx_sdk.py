@@ -107,6 +107,7 @@ def upx(args):
     upx_cmd = [upx_path] + args
     mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
+
 # SDK modules included if truffle, compiler and native-image is included
 graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
