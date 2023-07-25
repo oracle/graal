@@ -655,7 +655,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ObjectState exitObjState = exitState.getObjectStateOptional(i);
                 if (exitObjState != null) {
                     ObjectState initialObjState = initialState.getObjectStateOptional(i);
-
                     if (exitObjState.isVirtual()) {
                         processVirtualAtLoopExit(exitNode, effects, i, exitObjState, initialObjState, exitState);
                     } else {
@@ -668,7 +667,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private static void processMaterializedAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, EconomicMap<Integer, ProxyNode> proxies, int object, ObjectState exitObjState,
                     ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
-        if (initialObjState == null || initialObjState.isVirtual()) {
+        if (initialObjState == null || initialObjState.isVirtual() || initialObjState.getMaterializedValue() != exitObjState.getMaterializedValue()) {
             ProxyNode proxy = proxies.get(object);
             if (proxy == null) {
                 proxy = new ValueProxyNode(exitObjState.getMaterializedValue(), exitNode);
@@ -678,10 +677,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 // nothing to do - will be handled in processNode
             }
             exitState.updateMaterializedValue(object, proxy);
-        } else {
-            if (initialObjState.getMaterializedValue() != exitObjState.getMaterializedValue()) {
-                exitNode.getDebug().log("materialized value changes within loop: %s vs. %s at %s", initialObjState.getMaterializedValue(), exitObjState.getMaterializedValue(), exitNode);
-            }
         }
     }
 
