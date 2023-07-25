@@ -1838,6 +1838,10 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     boolean bigIntegerFitsInFloat() {
         BigInteger b = (BigInteger) obj;
+        return bigIntegerFitsInFloat(b);
+    }
+
+    static boolean bigIntegerFitsInFloat(BigInteger b) {
         if (b.bitLength() <= 24) { // 24 = size of float mantissa + 1
             return true;
         } else {
@@ -1892,6 +1896,10 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     boolean bigIntegerFitsInDouble() {
         BigInteger b = (BigInteger) obj;
+        return bigIntegerFitsInDouble(b);
+    }
+
+    static boolean bigIntegerFitsInDouble(BigInteger b) {
         if (b.bitLength() <= 53) { // 53 = size of double mantissa + 1
             return true;
         } else {
