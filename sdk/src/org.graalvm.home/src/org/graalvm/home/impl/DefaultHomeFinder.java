@@ -251,7 +251,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                     if (enforcedHome == null) {
                         res.put(languageId, languagesFolder.resolve(languageId));
                     } else {
-                        res.put(languageId, Path.of(canonicalize(enforcedHome)));
+                        res.put(languageId, toRealPath(Path.of(enforcedHome)));
                     }
                 }
             } else {
@@ -264,7 +264,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                             if (after.length() > ".home".length()) {
                                 String languageId = after.substring(0, after.length() - ".home".length());
                                 if (!languageId.contains(".")) {
-                                    res.put(languageId, Paths.get(canonicalize(System.getProperty(name))));
+                                    res.put(languageId, toRealPath(Paths.get(System.getProperty(name))));
                                 }
                             }
                         }
@@ -279,9 +279,9 @@ public final class DefaultHomeFinder extends HomeFinder {
         return res;
     }
 
-    private static String canonicalize(String path) {
+    private static Path toRealPath(Path p) {
         try {
-            return new File(path).getCanonicalPath();
+            return p.toRealPath();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
