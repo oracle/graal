@@ -159,7 +159,6 @@ suite = {
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
-      "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
       "digest" : "sha512:6d93cde728f5db242d2ab55090e5b2952e873625e542043d16d859e1486433c91efcf3c713d7255697951ee745cd5f66276b78f38c62c422cd7b1000291612ad",
       "sourceDigest" : "sha512:81377da5f52fae2e412ea084cb6e6e82d37beb96e8d624e47b6e7a2e70f61e237485239dd4b64934bf4758857d0582dc11acdeadc930bccb02a471df4b7e83b2",
       "maven" : {
