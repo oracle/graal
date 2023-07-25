@@ -1313,7 +1313,8 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
-        boolean useInlineBeforeAnalysisMethodHandleSupport = SubstrateOptions.parseOnce() &&
+        boolean useInlineBeforeAnalysisMethodHandleSupport = !SubstrateOptions.UseOldMethodHandleIntrinsics.getValue() &&
+                        SubstrateOptions.parseOnce() &&
                         InlineBeforeAnalysis.Options.InlineBeforeAnalysis.getValue(aUniverse.getBigbang().getOptions()) &&
                         !DeoptimizationSupport.enabled();
         if (useInlineBeforeAnalysisMethodHandleSupport) {

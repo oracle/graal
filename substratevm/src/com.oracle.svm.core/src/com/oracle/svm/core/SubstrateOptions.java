@@ -967,4 +967,7 @@ public class SubstrateOptions {
 
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
+
+    @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
+    public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 }
