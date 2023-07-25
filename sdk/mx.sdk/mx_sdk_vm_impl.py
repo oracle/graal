@@ -3200,7 +3200,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if self.jvm_standalone is not None:
             _exe_dirs = [join(self.jre_base, '..', 'bin')]
         else:
-            _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None))
+            _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, for_jvm_standalone=False))
             _exe_dirs = set([dirname(p) for p in _exe_paths])
         if len(_exe_dirs) > 1:
             mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
