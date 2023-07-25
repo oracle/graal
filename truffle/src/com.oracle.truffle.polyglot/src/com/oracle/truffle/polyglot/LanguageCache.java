@@ -447,11 +447,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         String path = System.getProperty(propertyName);
         if (path != null) {
             try {
-                String canonicalizedPath = new File(path).getCanonicalPath();
-                if (!path.equals(canonicalizedPath)) {
-                    System.setProperty(propertyName, canonicalizedPath);
-                }
-                path = canonicalizedPath;
+                path = new File(path).getCanonicalPath();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
