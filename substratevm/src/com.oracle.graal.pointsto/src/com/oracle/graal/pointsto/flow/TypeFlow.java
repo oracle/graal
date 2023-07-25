@@ -644,11 +644,11 @@ public abstract class TypeFlow<T> {
     /*** Notify the uses and observers that this flow is saturated and unlink them. */
     private void notifySaturated(PointsToAnalysis bb) {
         for (TypeFlow<?> use : getUses()) {
-            use.onInputSaturated(bb, this);
+            notifyUseOfSaturation(bb, use);
             removeUse(use);
         }
         for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedSaturated(bb, this);
+            notifyObserverOfSaturation(bb, observer);
             removeObserver(observer);
         }
     }
