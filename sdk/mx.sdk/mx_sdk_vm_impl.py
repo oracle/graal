@@ -2960,6 +2960,19 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                             add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
 
+            # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
+            # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
+            # Example: `TRUFFLE_RUNTIME_ATTACH_SUPPORT`, a support_libraries_distributions` of `Truffle API`
+            for component in GraalVmStandaloneComponent.jdk_components():
+                for lib_dist in component.support_libraries_distributions:
+                    layout.setdefault(default_jvm_libs_dir, []).append({
+                        'source_type': 'extracted-dependency',
+                        'dependency': lib_dist,
+                        'exclude': excluded_paths,
+                        'path': None,
+                    })
+                    self.jvm_libs.append(lib_dist)
+
         mx.logvv("{} standalone '{}' has layout:\n{}".format('Java' if self.is_jvm else 'Native', name, pprint.pformat(layout)))
 
         self.maven = _graalvm_maven_attributes(tag='standalone')
