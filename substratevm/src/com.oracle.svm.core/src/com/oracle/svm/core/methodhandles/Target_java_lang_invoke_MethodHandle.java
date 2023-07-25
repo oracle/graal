@@ -126,7 +126,7 @@ final class Target_java_lang_invoke_MethodHandle {
         if (LinkToNativeSupport.isAvailable()) {
             return LinkToNativeSupport.singleton().linkToNative(args);
         } else {
-            throw unsupportedFeature("Foreign downcalls feature is not enabled. Make sure you are using a JDK >= 21 and that preview features are enabled.");
+            throw unsupportedFeature("The foreign downcalls feature is not available. Please make sure that preview features are enabled with '--enable-preview'.");
         }
     }
 }

@@ -44,7 +44,7 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
 
         for (int i = 0; i < optionsO.length; ++i) {
             if (!(optionsO[i] instanceof Linker.Option)) {
-                throw new IllegalArgumentException(i + "th option must be an instance of " + Linker.Option.class);
+                throw new IllegalArgumentException("Option at position " + i + " must be an instance of " + Linker.Option.class);
             }
             options[i] = (Linker.Option) optionsO[i];
         }

@@ -153,7 +153,7 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
 #### <a name="glossary-foreign-downcall-registrations"></a>Foreign functions stubs
-The number of downcalls registered for [foreign](Foreign.md) function access.
+The number of downcalls registered for [foreign](ForeignInterface.md) function access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.

@@ -2,7 +2,7 @@
 layout: docs
 toc_group: dynamic-features
 link_title: Foreign Interface
-permalink: /reference-manual/native-image/dynamic-features/foreign/
+permalink: /reference-manual/native-image/dynamic-features/foreign-interface/
 ---
 
 # Foreign Interface in Native Image
@@ -15,16 +15,14 @@ This page gives an overview of its support in Native Image.
 Shared arenas are not supported.
 
 ## Foreign functions
-The Foreign Functions Interface (FFI) support is disabled by default.
-It can be enabled on the latest JDK by passing the `-H:+ForeignFunctions` flag to the `native-image` builder.
-
-FFI allows Java code to call native functions, and conversely allows native code to invoke Java method handles.
+The Foreign Functions Interface (FFI) allows Java code to call native functions, and conversely allows native code to invoke Java method handles.
 These two kind of calls are referred to as "downcalls" and "upcalls" respectively and are collectively referred to as "foreign calls".
+
+This feature is currently only supported on the AMD64 platform.
 
 ### Looking up native functions
 FFI provides the `SymbolLookup` interface which allows to search native libraries for functions by name.
 `loaderLookup` is currently the only supported `SymbolLookup`.
-
 
 ### Registering foreign calls
 In order to perform a call to native, some glue code is required and thus must be generated at build time.

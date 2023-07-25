@@ -57,14 +57,8 @@ public final class RuntimeForeignAccess {
      * Since the foreign functions feature is currently a preview of the Java platform (as part of
      * <a href="https://openjdk.org/projects/panama/">Project Panama</a>), this API is itself a
      * preview subject to changes following changes in the feature itself. This also means that this
-     * feature must be manually enabled, using (on a JDK greater or equal to 21)
-     * 
-     * <pre>
-     * {@code
-     *          --enable-preview -H:+ForeignFunctions
-     * }
-     * </pre>
-     * 
+     * feature must be manually enabled, using '--enable-preview'.
+     *
      * Even though this method is weakly typed for compatibility reasons, runtime checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.

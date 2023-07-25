@@ -238,7 +238,7 @@
             "foreign_downcalls": {
               "type": "integer",
               "default": -1,
-              "title": "The number stubs registered for foreign downcalls (or -1 if unset)"
+              "title": "The number of registered foreign downcalls (or -1 if unset)"
             }
           }
         }

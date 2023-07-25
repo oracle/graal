@@ -96,7 +96,7 @@ public final class NativeEntryPointInfo {
 
     public int captureAddressIndex() {
         if (!capturesCallState()) {
-            throw new IllegalArgumentException(this + " doesn't have a capture state argument");
+            throw new IllegalArgumentException(this + " does not have a capture state argument");
         }
         return callAddressIndex() + 1;
     }

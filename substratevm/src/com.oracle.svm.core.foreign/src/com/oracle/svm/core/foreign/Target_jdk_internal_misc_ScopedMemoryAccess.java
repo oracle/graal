@@ -66,6 +66,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      */
     @Substitute
     boolean closeScope0(MemorySessionImpl session) {
-        throw unsupportedFeature("Arena.ofShared is not supported.");
+        throw unsupportedFeature("Arena.ofShared is not yet supported.");
     }
 }

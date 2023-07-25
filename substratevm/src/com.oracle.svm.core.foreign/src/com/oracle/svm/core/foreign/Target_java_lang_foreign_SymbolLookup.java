@@ -54,6 +54,6 @@ public final class Target_java_lang_foreign_SymbolLookup {
 
     @Substitute
     private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, Arena libArena) {
-        throw unsupportedFeature("Library/system lookups are not supported.");
+        throw unsupportedFeature("Library symbol lookups are not yet supported.");
     }
 }

@@ -48,7 +48,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 public final class Target_jdk_internal_foreign_SystemLookup {
     @Substitute
     public static Target_jdk_internal_foreign_SystemLookup getInstance() {
-        throw unsupportedFeature("Default lookup is not supported.");
+        throw unsupportedFeature("Default lookup is not yet supported.");
     }
 }
 

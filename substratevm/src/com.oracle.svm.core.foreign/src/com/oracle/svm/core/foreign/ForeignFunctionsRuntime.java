@@ -58,7 +58,7 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        VMError.guarantee(!stubs.containsKey(nepi), "Seems like multiple stubs were generated for " + nepi);
+        VMError.guarantee(!stubs.containsKey(nepi), "Multiple stubs generated for " + nepi);
         stubs.put(nepi, new FunctionPointerHolder(ptr));
     }
 

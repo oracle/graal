@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
@@ -116,11 +117,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
     }
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.ForeignFunctions.getValue();
-    }
-
     ForeignFunctionsFeature() {
         /*
          * We add these exports systematically in the constructor, as to avoid access errors from
@@ -132,29 +128,27 @@ public class ForeignFunctionsFeature implements InternalFeature {
     }
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateUtil.getArchitectureName().contains("amd64");
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess a) {
         assert (JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_PREVIEW && isPreviewEnabled()) ||
                         JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
 
-        boolean supportForeignFunctions = !SubstrateOptions.useLLVMBackend();
+        UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Foreign functions interface is in use, but is not supported together with the LLVM backend.");
 
-        if (supportForeignFunctions) {
-            ImageSingletons.add(AbiUtils.class, AbiUtils.create());
-            ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
-            ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-            ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
+        ImageSingletons.add(AbiUtils.class, AbiUtils.create());
+        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
+        ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
+        ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
 
-            var access = (FeatureImpl.DuringSetupAccessImpl) a;
-            ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
-            ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
-                            ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
-        } else {
-            if (SubstrateOptions.useLLVMBackend()) {
-                throw UserError.abort("Foreign functions interface is in use, but is not supported together with the LLVM backend.");
-            } else {
-                throw UserError.abort("Foreign functions interface is in use, but is not supported for an unspecified reason.");
-            }
-        }
+        var access = (FeatureImpl.DuringSetupAccessImpl) a;
+        ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
+                        ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
+
     }
 
     @Override
