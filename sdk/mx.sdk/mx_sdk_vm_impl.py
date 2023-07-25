@@ -3842,13 +3842,11 @@ def print_graalvm_home(args):
 
 def print_standalone_home(args):
     """print the GraalVM standalone home dir"""
-    parser = ArgumentParser(prog='mx standalone-home', description='Print the standalone home directory')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--jvm', action='store_true', dest='is_jvm', help='select the JVM Standalone')
-    group.add_argument('--native', action='store_false', dest='is_jvm', help='select the Native Standalone (default)')
+    parser = ArgumentParser(prog='mx standalone-home', description='Print the Standalone home directory')
+    parser.add_argument('--type', default='native', choices=['jvm', 'native'], help='Select the JVM or the Native Standalone')
     parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
     args = parser.parse_args(args)
-    print(standalone_home(args.comp_dir_name, is_jvm=args.is_jvm))
+    print(standalone_home(args.comp_dir_name, is_jvm=(args.type == 'jvm')))
 
 
 def _infer_env(graalvm_dist):
