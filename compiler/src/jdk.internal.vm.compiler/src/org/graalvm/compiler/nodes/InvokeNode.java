@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
@@ -44,12 +43,10 @@ import java.util.Map;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -58,7 +55,6 @@ import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
