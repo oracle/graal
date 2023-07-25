@@ -69,6 +69,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -451,7 +452,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             } catch (NoSuchFileException nsfe) {
                 return path;
             } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
+                throw CompilerDirectives.shouldNotReachHere(ioe);
             }
         }
         return path;
