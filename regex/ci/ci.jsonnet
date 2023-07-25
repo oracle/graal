@@ -35,7 +35,7 @@
   builds: std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate,
-      # common.linux_amd64  + jdk + regex_downstream_js, # GR-47516
+      common.linux_amd64  + jdk + regex_downstream_js,
       common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
       common.labsjdk21,
