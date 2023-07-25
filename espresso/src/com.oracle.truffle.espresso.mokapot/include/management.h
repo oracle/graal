@@ -23,7 +23,6 @@
 #ifndef _MANAGEMENT_H
 #define _MANAGEMENT_H
 
-#include <trufflenfi.h>
 #include <jni.h>
 
 JNIEXPORT void* JNICALL initializeManagementContext(void* (*fetch_by_name)(const char *), const int version);

@@ -191,7 +191,6 @@ suite = {
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
-                "truffle:TRUFFLE_NFI_NATIVE",
                 "com.oracle.truffle.espresso.mokapot",
             ],
             "os_arch": {
@@ -252,9 +251,6 @@ suite = {
             "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
-            "buildDependencies": [
-                "truffle:TRUFFLE_NFI_NATIVE",
-            ],
             "os_arch": {
                 "darwin": {
                     "<others>": {

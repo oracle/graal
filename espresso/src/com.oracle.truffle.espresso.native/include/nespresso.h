@@ -24,7 +24,6 @@
 #define _NESPRESSO_H
 
 #include <jni.h>
-#include <trufflenfi.h>
 
 struct Varargs {
     const struct VarargsInterface* functions;

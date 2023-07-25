@@ -29,7 +29,6 @@
 
 #include "libjavavm_dynamic.h"
 
-#include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>
 
