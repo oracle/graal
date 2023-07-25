@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.test.suites.memory;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
-public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
-    public EmscriptenMemcpyBigNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+import java.io.IOException;
+
+public class MultiMemorySuite extends WasmFileSuite {
+    @Override
+    protected String testResource() {
+        return "multi-memory";
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 3;
-
-        int dest = (int) args[0];
-        int src = (int) args[1];
-        int num = (int) args[2];
-
-        WasmMemory memory = instance.memory(0);
-        memory.copyFrom(memory, src, dest, num);
-
-        return 0;
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "_emscripten_memcpy_big";
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }
