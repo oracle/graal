@@ -1490,7 +1490,7 @@ public class NativeImage {
          */
         Set<Path> retainedModulePaths = modules.entrySet().stream()
                         .filter((entry) -> entry.getValue() != null && !mp.contains(entry.getValue()))
-                        .map((entry) -> entry.getValue().toAbsolutePath().normalize())
+                        .map((entry) -> entry.getValue().toAbsolutePath())
                         .collect(Collectors.toSet());
 
         /*
@@ -1503,7 +1503,7 @@ public class NativeImage {
          * to protect against --list-modules returning too many modules.
          */
         List<Path> finalModulePath = substitutedModulePath.stream()
-                        .map((path) -> path.toAbsolutePath().normalize())
+                        .map((path) -> path.toAbsolutePath())
                         .filter((path) -> retainedModulePaths.contains(path))
                         .toList();
 
@@ -1581,6 +1581,9 @@ public class NativeImage {
      * @see #callListModules(String, List)
      */
     private static Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+        if (modulePath.isEmpty()) {
+            return Map.of();
+        }
         return callListModules(javaExecutable, List.of("-p", modulePath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
     }
 
@@ -1612,10 +1615,7 @@ public class NativeImage {
                     Path externalPath = null;
                     if (splitString.length > 1) {
                         String pathURI = splitString[1]; // url: file://path/to/file
-                        String path = URI.create(pathURI).getPath();
-                        if (path != null) {
-                            externalPath = Path.of(path);
-                        }
+                        externalPath = Path.of(URI.create(pathURI));
                     }
                     result.put(splitModuleNameAndVersion[0], externalPath);
                 }
