@@ -1,7 +1,6 @@
 package com.oracle.truffle.api.operation.test;
 
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -25,13 +24,13 @@ import com.oracle.truffle.api.operation.GenerateOperations;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface GenerateOperationsTestVariants {
-    public Variant[] value();
+    Variant[] value();
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
-    public @interface Variant {
-        public String suffix();
+    @interface Variant {
+        String suffix();
 
-        public GenerateOperations configuration();
+        GenerateOperations configuration();
     }
 }

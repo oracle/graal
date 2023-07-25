@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation.test;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -54,7 +55,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
@@ -241,17 +244,43 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         }
     }
 
+    @SuppressWarnings("unused")
     @Operation
     public static final class Invoke {
-        @Specialization
-        public static Object doInvoke(TestOperations root, @Variadic Object[] args) {
-            return root.getCallTarget().call(args);
+        @Specialization(guards = {"callTargetMatches(root.getCallTarget(), callNode.getCallTarget())"}, limit = "1")
+        public static Object doRootNode(TestOperations root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(args);
         }
 
-        @Specialization
-        public static Object doInvoke(TestClosure root, @Variadic Object[] args) {
+        @Specialization(replaces = {"doRootNode"})
+        public static Object doRootNodeUncached(TestOperations root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+            return callNode.call(root.getCallTarget(), args);
+        }
+
+        @Specialization(guards = {"callTargetMatches(root.getCallTarget(), callNode.getCallTarget())"}, limit = "1")
+        public static Object doClosure(TestClosure root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
             assert args.length == 0 : "not implemented";
-            return root.call();
+            return callNode.call(root.getFrame());
+        }
+
+        @Specialization(replaces = {"doClosure"})
+        public static Object doClosureUncached(TestClosure root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+            assert args.length == 0 : "not implemented";
+            return callNode.call(root.getCallTarget(), root.getFrame());
+        }
+
+        @Specialization(guards = {"callTargetMatches(callTarget, callNode.getCallTarget())"}, limit = "1")
+        public static Object doCallTarget(CallTarget callTarget, @Variadic Object[] args, @Cached("create(callTarget)") DirectCallNode callNode) {
+            return callNode.call(args);
+        }
+
+        @Specialization(replaces = {"doCallTarget"})
+        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+            return callNode.call(callTarget, args);
+        }
+
+        protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
+            return left == right;
         }
     }
 
@@ -312,6 +341,14 @@ class TestClosure {
     TestClosure(MaterializedFrame frame, TestOperations root) {
         this.frame = frame;
         this.root = root.getCallTarget();
+    }
+
+    public RootCallTarget getCallTarget() {
+        return root;
+    }
+
+    public MaterializedFrame getFrame() {
+        return frame;
     }
 
     public Object call() {

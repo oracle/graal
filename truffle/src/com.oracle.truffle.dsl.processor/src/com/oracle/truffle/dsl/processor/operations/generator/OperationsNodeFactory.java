@@ -297,6 +297,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
 
+        // Define helpers for bci lookups.
+        operationNodeGen.add(createFindBci());
+        operationNodeGen.add(createFindOperationBci());
+
         // Define helpers for boxing-eliminated accesses.
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(createDoPopObject());
@@ -410,10 +414,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(operationNodeGen.asType(), "clone");
-        b.startAssign("clone");
-        b.cast(operationNodeGen.asType(), "this.copy()");
-        b.end();
+        b.declaration(operationNodeGen.asType(), "clone", castNodeGen("this.copy()"));
 
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
@@ -452,7 +453,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         final boolean isUncached;
         final boolean isInstrumented;
 
-        private InterpreterTier(String friendlyName, boolean isUncached, boolean isInstrumented) {
+        InterpreterTier(String friendlyName, boolean isUncached, boolean isInstrumented) {
             this.friendlyName = friendlyName;
             this.isUncached = isUncached;
             this.isInstrumented = isInstrumented;
@@ -653,14 +654,14 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeVariableElement param = new CodeVariableElement(throwable, "e");
         ex.addParameter(param);
 
-        CodeTypeParameterElement E = new CodeTypeParameterElement(CodeNames.of("E"), throwable);
-        ex.getTypeParameters().add(E);
-        ex.addThrownType(E.asType());
+        CodeTypeParameterElement tpE = new CodeTypeParameterElement(CodeNames.of("E"), throwable);
+        ex.getTypeParameters().add(tpE);
+        ex.addThrownType(tpE.asType());
 
         mergeSuppressWarnings(ex, "unchecked");
         CodeTreeBuilder b = ex.createBuilder();
         b.startThrow();
-        b.cast(E.asType()).variable(param);
+        b.cast(tpE.asType()).variable(param);
         b.end();
 
         return ex;
@@ -910,20 +911,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeExecutableElement createMergeVariadic() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object[].class), "mergeVariadic");
 
-// ex.addParameter(new CodeVariableElement(type(Object[].class), "array0"));
-// ex.addParameter(new CodeVariableElement(type(Object[].class), "array1"));
-//
-// CodeTreeBuilder b = ex.createBuilder();
-// b.startAssert().string("array0.length >= ").string(model.popVariadicInstruction.length -
-// 1).end();
-// b.startAssert().string("array1.length > 0").end();
-//
-// b.statement("Object[] newArray = new Object[array0.length + array1.length]");
-// b.statement("System.arraycopy(array0, 0, newArray, 0, array0.length)");
-// b.statement("System.arraycopy(array1, 0, newArray, array0.length, array1.length)");
-//
-// b.startReturn().string("newArray").end();
-//
         ex.addParameter(new CodeVariableElement(type(Object[].class), "array"));
 
         CodeTreeBuilder b = ex.createBuilder();
@@ -948,6 +935,100 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end().startDoWhile().string("current != null").end();
 
         b.startReturn().string("newArray").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createFindBci() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(int.class), "findBci");
+
+        ex.addParameter(new CodeVariableElement(types.Node, "callNode"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        // Find the operation node, whose immediate parent will be the root node.
+        b.declaration(types.Node, "current", "callNode");
+        b.startWhile().startGroup().string("current != null && !(current.getParent() instanceof ").type(model.getTemplateType().asType()).string(")").end(2).startBlock();
+        b.statement("current = current.getParent()");
+        b.end();
+
+        b.startIf().string("current == null").end().startBlock();
+        b.startReturn().string("-1").end();
+        b.end();
+
+        b.declaration(operationNodeGen.asType(), "rootNode", castNodeGen("current.getParent()"));
+        b.startReturn().string("rootNode.findOperationBci(current)").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createFindOperationBci() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "findOperationBci");
+
+        ex.addParameter(new CodeVariableElement(types.Node, "operationNode"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.tree(createNeverPartOfCompilation());
+        b.declaration(arrayOf(types.Node), "nodes", "cachedNodes");
+
+        b.startIf().string("nodes == null").end().startBlock();
+        b.startReturn().string("-1").end();
+        b.end();
+
+        b.statement("int bci = 0");
+        b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
+        b.declaration(context.getType(int.class), "currentBci", "bci");
+        b.declaration(context.getType(int.class), "nodeIndex");
+        b.startSwitch().string(readBc("bci")).end().startBlock();
+
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
+        Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
+        Map<Integer, List<InstructionModel>> customsGroupedByLength = instructionsGroupedByIsCustom.get(true).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
+
+        // Skip the builtins. We group them by size to simplify the generated code.
+        for (Map.Entry<Integer, List<InstructionModel>> entry : builtinsGroupedByLength.entrySet()) {
+            for (InstructionModel instr : entry.getValue()) {
+                b.startCase().tree(createInstructionConstant(instr)).end();
+            }
+            b.startBlock();
+            b.statement("bci += " + entry.getKey());
+            b.statement("continue loop");
+            b.end();
+        }
+
+        // For each custom instruction, read its node index and continue after the switch.
+        // We group them by size to simplify the generated code.
+        for (Map.Entry<Integer, List<InstructionModel>> entry : customsGroupedByLength.entrySet()) {
+            for (InstructionModel instr : entry.getValue()) {
+                b.startCase().tree(createInstructionConstant(instr)).end();
+            }
+            // NB: this relies on the node being the last immediate in the instruction
+            InstructionModel representativeInstruction = entry.getValue().get(0);
+            InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE);
+            b.startBlock();
+            b.statement("nodeIndex = " + readBc("bci + " + imm.offset));
+            b.statement("bci += " + representativeInstruction.getInstructionLength());
+            b.statement("break");
+            b.end();
+        }
+
+        b.caseDefault().startBlock();
+        buildThrow(b, AssertionError.class, "\"Should not reach here\"");
+        b.end();
+
+        b.end(); // } switch
+
+        // nodeIndex is guaranteed to be set, since we continue to the top of the loop when there's
+        // no node.
+        b.startIf().string("nodes[nodeIndex] == operationNode").end().startBlock();
+        b.startReturn().string("currentBci").end();
+        b.end();
+
+        b.end(); // } while
+
+        // Fallback: the node wasn't found.
+        b.startReturn().string("-1").end();
 
         return ex;
     }
@@ -1087,6 +1168,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
         Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
 
+        // Skip the builtins. We group them by size to simplify the generated code.
         for (Map.Entry<Integer, List<InstructionModel>> entry : builtinsGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
                 b.startCase().tree(createInstructionConstant(instr)).end();
@@ -4116,7 +4198,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     class OSRMembersFactory {
-        final String METADATA_FIELD_NAME = "osrMetadata_";
+        static final String METADATA_FIELD_NAME = "osrMetadata_";
 
         private List<CodeElement<Element>> create() {
             List<CodeElement<Element>> result = new ArrayList<>();
@@ -4521,6 +4603,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.string(parser);
         b.end();
         mergeSuppressWarnings(ex, "unchecked");
+        return b.build();
+    }
+
+    private CodeTree castNodeGen(String value) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.cast(operationNodeGen.asType());
+        b.string(value);
         return b.build();
     }
 

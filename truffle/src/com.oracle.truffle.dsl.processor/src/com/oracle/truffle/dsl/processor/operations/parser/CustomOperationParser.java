@@ -91,7 +91,7 @@ import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
-public class CustomOperationParser extends AbstractParser<OperationModel> {
+public final class CustomOperationParser extends AbstractParser<OperationModel> {
 
     private enum ParseMode {
         OPERATION,
@@ -478,6 +478,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
                 instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
             }
+            // NB: Node-to-bci lookups rely on the node being the last immediate.
             instr.addImmediate(ImmediateKind.NODE, "node");
         }
 

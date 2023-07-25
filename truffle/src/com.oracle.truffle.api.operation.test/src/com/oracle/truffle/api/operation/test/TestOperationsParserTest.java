@@ -42,34 +42,19 @@ package com.oracle.truffle.api.operation.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.Assert;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.operation.OperationParser;
 
 import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNode;
-import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNodeWithSource;
 
 @RunWith(Parameterized.class)
 public class TestOperationsParserTest extends AbstractTestOperationsTest {
