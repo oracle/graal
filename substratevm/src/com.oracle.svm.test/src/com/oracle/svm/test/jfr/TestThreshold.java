@@ -33,10 +33,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
-import com.oracle.svm.test.jfr.events.StringEvent;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
@@ -44,17 +44,16 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
 public class TestThreshold extends JfrRecordingTest {
-
-    private static final long SHORT_MILLIS = 10;
-    private static final long THRESHOLD = 20;
-    private static final long LONG_MILLIS = 30;
+    private static final long SHORT_MILLIS = 1;
+    private static final long THRESHOLD = 10;
+    private static final long LONG_MILLIS = 50;
 
     private final Helper helper = new Helper();
 
     @Test
     public void test() throws Throwable {
+        /* Set thresholds before recording is started to avoid recording shorter events. */
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName(), JfrEvent.ThreadPark.getName(), "com.jfr.String", "jdk.ThreadSleep"};
-        // Cannot start recording until thresholds are set
         Recording recording = prepareRecording(events, getDefaultConfiguration(), null, createTempJfrFile());
         recording.enable(JfrEvent.JavaMonitorWait.getName()).withThreshold(Duration.ofMillis(THRESHOLD));
         recording.enable(JfrEvent.ThreadPark.getName()).withThreshold(Duration.ofMillis(THRESHOLD));
@@ -65,6 +64,7 @@ public class TestThreshold extends JfrRecordingTest {
         StringEvent shortStringEvent = new StringEvent();
         shortStringEvent.begin();
         shortStringEvent.commit();
+
         StringEvent longStringEvent = new StringEvent();
         longStringEvent.begin();
         Thread.sleep(SHORT_MILLIS);
@@ -77,10 +77,14 @@ public class TestThreshold extends JfrRecordingTest {
         helper.simpleWait(SHORT_MILLIS);
         helper.simpleWait(LONG_MILLIS);
 
-        stopRecording(recording, this::validateEvents);
+        stopRecording(recording, TestThreshold::validateEvents);
     }
 
-    private void validateEvents(List<RecordedEvent> events) {
+    private static void validateEvents(List<RecordedEvent> events) {
+        /*
+         * We can't validate the number of events because short events can always take longer than
+         * the threshold. However, we can validate that no short events were recorded.
+         */
         boolean foundWaitEvent = false;
         boolean foundJavaEvent = false;
         boolean foundParkEvent = false;
@@ -88,9 +92,6 @@ public class TestThreshold extends JfrRecordingTest {
         for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             assertNotNull("No event thread", eventThread);
-
-            // Even unintentional events emitted by SVM should not have durations over the
-            // threshold.
             assertTrue(event.getDuration().toMillis() >= LONG_MILLIS);
 
             if (event.getEventType().getName().equals("com.jfr.String")) {

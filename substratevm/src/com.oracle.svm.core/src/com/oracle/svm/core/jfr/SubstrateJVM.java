@@ -659,7 +659,7 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    long getThreshold(JfrEvent event) {
+    long getThresholdTicks(JfrEvent event) {
         return eventSettings[(int) event.getId()].getThresholdTicks();
     }
 
