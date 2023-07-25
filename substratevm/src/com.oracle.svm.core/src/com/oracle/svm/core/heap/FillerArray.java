@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import com.oracle.svm.core.hub.Hybrid;
 
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
-
-@DuplicatedInNativeCode
-public enum ReferenceType {
-    None(0),     // non-reference class
-    Soft(1),     // Subclass of SoftReference
-    Weak(2),     // Subclass of WeakReference
-    Reserved(3),
-    Phantom(4);  // Subclass of PhantomReference
-
-    private final byte value;
-
-    ReferenceType(int value) {
-        this.value = NumUtil.safeToByte(value);
-    }
-
-    public byte getValue() {
-        return value;
-    }
+/** A filler object with a variable size, for filling gaps in the heap. */
+@Hybrid(componentType = int.class)
+public final class FillerArray {
 }
