@@ -3528,7 +3528,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         standalone_deps_names.append(java_standalone_jimage.name)
         register_project(java_standalone_jimage)
 
-    # Trivial suite to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
+    # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
     register_distribution(mx.LayoutDirDistribution(
         suite=_suite,
         name="GRAALVM_STANDALONES",
