@@ -41,6 +41,7 @@
 package org.graalvm.home.impl;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryStream;
@@ -250,7 +251,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                     if (enforcedHome == null) {
                         res.put(languageId, languagesFolder.resolve(languageId));
                     } else {
-                        res.put(languageId, Path.of(enforcedHome));
+                        res.put(languageId, Path.of(canonicalize(enforcedHome)));
                     }
                 }
             } else {
@@ -263,7 +264,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                             if (after.length() > ".home".length()) {
                                 String languageId = after.substring(0, after.length() - ".home".length());
                                 if (!languageId.contains(".")) {
-                                    res.put(languageId, Paths.get(System.getProperty(name)));
+                                    res.put(languageId, Paths.get(canonicalize(System.getProperty(name))));
                                 }
                             }
                         }
@@ -276,6 +277,14 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         return res;
+    }
+
+    private static String canonicalize(String path) {
+        try {
+            return new File(path).getCanonicalPath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
