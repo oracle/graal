@@ -3004,7 +3004,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     @staticmethod
     def thin_launcher_components():
         """
-        Components that define jars that must be in the class path for thin modules to work.
+        Components that define jars that must be in the class path for thin launchers to work.
         @rtype list[mx_sdk_vm.GraalVmComponent]
         """
         return [mx_sdk.graalvm_launcher_common_component]
