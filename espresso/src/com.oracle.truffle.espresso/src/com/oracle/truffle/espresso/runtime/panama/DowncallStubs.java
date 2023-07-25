@@ -23,11 +23,13 @@
 package com.oracle.truffle.espresso.runtime.panama;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -38,6 +40,7 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.OS;
 
 public final class DowncallStubs {
     public static final int MAX_STUB_COUNT = Integer.MAX_VALUE - 8;
@@ -80,10 +83,13 @@ public final class DowncallStubs {
                     boolean needsReturnBuffer, int capturedStateMask, @SuppressWarnings("unused") boolean needsTransition) {
         assert pTypes.length == inputRegs.length;
         EspressoError.guarantee(!needsReturnBuffer, "unimplemented");
-        EspressoError.guarantee(capturedStateMask == 0, "unimplemented");
+
+        EnumSet<CapturableState> capturedStates = CapturableState.fromMask(capturedStateMask);
+        assert validCapturableState(capturedStates, OS.getCurrent());
 
         ArgumentsCalculator argsCalc = platform.getArgumentsCalculator();
         int targetIndex = -1;
+        int captureIndex = -1;
         int[] shuffle = new int[pTypes.length];
         NativeType[] nativeParamTypes = new NativeType[pTypes.length];
         int nativeIndex = 0;
@@ -94,6 +100,7 @@ public final class DowncallStubs {
             if (regType.isPlaceholder()) {
                 switch (inputReg.getStubLocation(platform)) {
                     case TARGET_ADDRESS -> targetIndex = i;
+                    case CAPTURED_STATE_BUFFER -> captureIndex = i;
                     default -> throw EspressoError.unimplemented(inputReg.getStubLocation(platform).toString());
                 }
             } else {
@@ -119,8 +126,18 @@ public final class DowncallStubs {
         if (targetIndex < 0) {
             throw EspressoError.shouldNotReachHere("Didn't find the target index in downcall arguments");
         }
+        if (!capturedStates.isEmpty() && captureIndex < 0) {
+            throw EspressoError.shouldNotReachHere("Didn't find the capture index in downcall arguments");
+        }
         NativeSignature nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
-        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature);
+        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature, captureIndex, capturedStates);
+    }
+
+    private static boolean validCapturableState(EnumSet<CapturableState> states, OS os) {
+        for (CapturableState state : states) {
+            assert state.isSupported(os);
+        }
+        return true;
     }
 
     public boolean freeStub(long downcallStub) {
@@ -142,16 +159,25 @@ public final class DowncallStubs {
         private final int targetIndex;
         @CompilationFinal(dimensions = 1) private final int[] shuffle;
         final NativeSignature signature;
+        private final int captureIndex;
+        private final int captureMask;
         @CompilationFinal private Object callableSignature;
 
-        public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature) {
+        public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature, int captureIndex, EnumSet<CapturableState> capturedStates) {
             this.targetIndex = targetIndex;
             this.shuffle = shuffle;
             this.signature = signature;
+            this.captureIndex = captureIndex;
+            this.captureMask = CapturableState.toMask(capturedStates);
+            assert captureMask == 0 || captureIndex >= 0;
         }
 
         public long getTargetHandle(Object[] args) {
             return (long) args[targetIndex];
+        }
+
+        public long getCaptureAddress(Object[] args) {
+            return (long) args[captureIndex];
         }
 
         @ExplodeLoop
@@ -183,11 +209,28 @@ public final class DowncallStubs {
             return callableSignature;
         }
 
+        public void captureState(Object[] args, InteropLibrary interop, EspressoContext context) {
+            try {
+                interop.execute(context.getVM().getMokapotCaptureState(), getCaptureAddress(args), captureMask);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        public boolean hasCapture() {
+            return captureIndex >= 0;
+        }
+
         public Object uncachedCall(Object[] args, EspressoContext context) {
             TruffleObject target = getTarget(args, context);
             NativeAccess access = context.getNativeAccess();
             try {
-                return access.callSignature(getCallableSignature(access), target, processArgs(args));
+                Object result = access.callSignature(getCallableSignature(access), target, processArgs(args));
+                if (hasCapture()) {
+                    captureState(args, InteropLibrary.getUncached(), context);
+                }
+                return result;
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
