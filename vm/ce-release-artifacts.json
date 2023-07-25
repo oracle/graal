@@ -27,7 +27,7 @@
         ]
     },
     {
-        "name": "js-standalone-svm-java21",
+        "name": "js-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"graaljs",
@@ -60,7 +60,7 @@
         ]
     },
     {
-        "name": "ruby-standalone-svm-java21",
+        "name": "ruby-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"truffleruby",
@@ -88,7 +88,7 @@
         ]
     },
     {
-        "name": "python-standalone-svm-java21",
+        "name": "python-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"graalpy",
