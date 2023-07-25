@@ -17,7 +17,7 @@ public class TestVariantErrorTests {
                     @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
                     @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))})
     @OperationProxy(ConstantOperation.class)
-    public static abstract class SameName extends RootNode implements OperationRootNode {
+    public abstract static class SameName extends RootNode implements OperationRootNode {
         protected SameName(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -29,7 +29,7 @@ public class TestVariantErrorTests {
                     @Variant(suffix = "B", configuration = @GenerateOperations(languageClass = AnotherErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
-    public static abstract class DifferentLanguage extends RootNode implements OperationRootNode {
+    public abstract static class DifferentLanguage extends RootNode implements OperationRootNode {
         protected DifferentLanguage(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -41,7 +41,7 @@ public class TestVariantErrorTests {
                     @Variant(suffix = "B", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
-    public static abstract class DifferentYield extends RootNode implements OperationRootNode {
+    public abstract static class DifferentYield extends RootNode implements OperationRootNode {
         protected DifferentYield(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -53,7 +53,7 @@ public class TestVariantErrorTests {
                     @Variant(suffix = "Tier0", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true))
     })
     @OperationProxy(ConstantOperation.class)
-    public static abstract class DifferentBaselineInterpreters extends RootNode implements OperationRootNode {
+    public abstract static class DifferentBaselineInterpreters extends RootNode implements OperationRootNode {
         protected DifferentBaselineInterpreters(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }

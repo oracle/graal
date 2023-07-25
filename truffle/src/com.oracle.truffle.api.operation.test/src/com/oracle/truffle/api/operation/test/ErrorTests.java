@@ -151,7 +151,8 @@ public class ErrorTests {
             super(language, frameDescriptor);
         }
 
-        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed. Override executeProlog and executeEpilog to perform actions before and after execution.")
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed." +
+                        " Override executeProlog and executeEpilog to perform actions before and after execution.")
         @Override
         public final Object execute(VirtualFrame frame) {
             return null;
@@ -214,7 +215,8 @@ public class ErrorTests {
     }
 
     @GenerateOperations(languageClass = ErrorLanguage.class)
-    @ExpectError("Class com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
+    @ExpectError("Class com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy." +
+                    " Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
     @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
     public abstract class NoCachedProxyType extends RootNode implements OperationRootNode {
         protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -442,7 +444,7 @@ public class ErrorTests {
 
     // These specializations should not be a problem. See {@link
     // OperationErrorTests.PackagePrivateSpecializationOperation}
-    public static abstract class PackagePrivateSpecializationOperationProxy extends Node {
+    public abstract static class PackagePrivateSpecializationOperationProxy extends Node {
         public abstract Object execute(Object x, Object y);
 
         @Specialization

@@ -90,7 +90,7 @@ public class InstructionModel implements InfoDumpable {
 
         final String shortName;
 
-        private ImmediateKind(String shortName) {
+        ImmediateKind(String shortName) {
             this.shortName = shortName;
         }
     }
