@@ -245,7 +245,8 @@ public final class UnimplementedGraalIntrinsics {
         if (!AESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
         }
 
         if (!CounterModeAESNode.isSupported(arch)) {
@@ -398,6 +399,8 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
                             // @formatter:on
             );
+            add(ignore,
+                            "jdk/internal/misc/Unsafe.storeStoreFence()V");
         }
 
         if (arch instanceof AArch64) {

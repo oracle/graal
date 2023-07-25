@@ -43,10 +43,9 @@ For the demo, you will use a simple HelloWorld Java module gathered with Maven:
     > }
 ```    
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ``` 
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Download or clone the demos repository and navigate to the directory `native-hello-module`:
     ```bash

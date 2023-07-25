@@ -18,10 +18,10 @@ The following platforms are certified for Oracle GraalVM:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
-| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey), 13.2 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
-| Microsoft Windows 	| Server 2016, 2019	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
+| Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
+| Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
+| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
+| Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
 
 ## Features Support
 
