@@ -2749,7 +2749,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
                         'dependency': jar_dist,
-                        'exclude': excluded_paths,
+                        'exclude': [],
                         'path': None,
                     })
                     (self.jvm_jars if force_modules_as_jars else self.jvm_modules).append(jar_dist)
@@ -2758,7 +2758,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
-                        'exclude': excluded_paths,
+                        'exclude': [],
                         'path': None,
                     })
                     self.jvm_libs.append(lib_dist)
@@ -2825,7 +2825,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         layout.setdefault(library_dest, []).append({
                             'source_type': 'dependency',
                             'dependency': dependency,
-                            'exclude': excluded_paths,
+                            'exclude': [],
                             'path': None,
                         })
                         # additional JDK libraries need to be in the library's directory
@@ -2849,7 +2849,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                                 layout.setdefault(default_jvm_jars_dir, []).append({
                                     'source_type': 'dependency',
                                     'dependency': jar_distribution,
-                                    'exclude': excluded_paths,
+                                    'exclude': [],
                                     'path': None,
                                 })
                                 self.jvm_jars.append(jar_distribution)
