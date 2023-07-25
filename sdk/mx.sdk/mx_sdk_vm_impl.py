@@ -2962,7 +2962,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
             # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
-            # Example: `TRUFFLE_RUNTIME_ATTACH_SUPPORT`, a support_libraries_distributions` of `Truffle API`
+            # Example: `TRUFFLE_RUNTIME_ATTACH_SUPPORT`, a support_libraries_distributions` of `Truffle API`.
+            # For the other component dependencies, this is done as part of `add_files_from_component()`.
             for jdk_component in GraalVmStandaloneComponent.jdk_components():
                 for lib_dist in jdk_component.support_libraries_distributions:
                     layout.setdefault(default_jvm_libs_dir, []).append({
