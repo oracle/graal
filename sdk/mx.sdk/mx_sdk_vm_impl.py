@@ -2994,6 +2994,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
         _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
+            '-stdlib=libc++',
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
         ]
@@ -3066,7 +3067,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
     @property
     def ldlibs(self):
-        _dynamic_ldlibs = []
+        _dynamic_ldlibs = [
+            '-stdlib=libc++',
+            '-static-libstdc++', # it looks weird but this does link libc++ statically
+            '-l:libc++abi.a',
+        ]
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
         if mx.is_darwin():
