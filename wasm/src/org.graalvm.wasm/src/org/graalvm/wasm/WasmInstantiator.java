@@ -220,7 +220,8 @@ public class WasmInstantiator {
             final boolean memoryShared = module.memoryIsShared(memoryIndex);
             final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);
             if (memoryDescriptor != null) {
-                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64, memoryShared));
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64,
+                                memoryShared));
             } else {
                 module.addLinkAction((context, instance) -> {
                     final ModuleLimits limits = instance.module().limits();

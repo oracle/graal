@@ -92,7 +92,7 @@ public class WasmOptions {
     public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
 
     @Option(help = "Enable support for multiple memories within a single module", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MultiMemory = new OptionKey<>(false);
 
     @Option(help = "Enable support for threads and atomics", //

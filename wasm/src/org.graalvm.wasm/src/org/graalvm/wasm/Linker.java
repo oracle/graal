@@ -356,7 +356,8 @@ public class Linker {
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64, boolean shared) {
+    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
+                    boolean shared) {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {

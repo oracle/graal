@@ -147,9 +147,9 @@ public abstract class BuiltinModule {
     }
 
     protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
-        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
         int index = instance.symbolTable().memoryCount();
-        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, multiMemory);
+        // set multiMemory flag to true, since spectest module has multiple memories
+        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true);
         instance.symbolTable().exportMemory(index, memoryName);
     }
 

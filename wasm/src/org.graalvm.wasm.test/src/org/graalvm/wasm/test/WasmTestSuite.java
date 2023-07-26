@@ -87,7 +87,6 @@ import org.junit.runners.Suite;
                 IfThenElseSuite.class,
                 MemorySuite.class,
                 Memory64Suite.class,
-                ThreadsSuite.class,
                 TableSuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
@@ -105,6 +104,7 @@ import org.junit.runners.Suite;
                 BytecodeSuite.class,
                 MultiInstantiationSuite.class,
                 MultiMemorySuite.class,
+                ThreadsSuite.class,
                 DebugValidationSuite.class,
                 DebugObjectFactorySuite.class
 })
