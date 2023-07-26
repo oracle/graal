@@ -44,9 +44,11 @@ public class GCCause {
     @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCCause> HostedGCCauseList = new ArrayList<>();
 
     @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
-    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
-    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
-    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
+    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("Forced GC in unit test", 1);
+    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("Test GC in deoptimizer", 2);
+    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3);
+    @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
+    @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC ", 5);
 
     @UnknownObjectField(availability = ReadyForCompilation.class) protected static GCCause[] GCCauses;
 

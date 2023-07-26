@@ -191,7 +191,7 @@ mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
-mx_sdk_vm.register_vm_config('libgraal', ['lg'], _suite)
+mx_sdk_vm.register_vm_config('libgraal', ['cmp', 'lg', 'sdk', 'tfla'], _suite)
 mx_sdk_vm.register_vm_config('toolchain-only', ['antlr4', 'sdk', 'sdkl', 'tfl', 'tfla', 'tflm', 'nfi-libffi', 'nfi', 'cmp', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'sdk', 'sdkl', 'tfl', 'tfla', 'tflm', 'bpolyglot'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('toolchain-only-bash', llvm_components + ['antlr4', 'bgu', 'tfl', 'tfla', 'tflm', 'gu', 'gvm', 'polynative', 'llp', 'nfi-libffi', 'nfi', 'svml', 'bgu', 'sdk', 'sdkl', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)

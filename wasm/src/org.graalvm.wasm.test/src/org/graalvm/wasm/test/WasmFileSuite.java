@@ -55,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -69,6 +70,8 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.MemoryRegistry;
+import org.graalvm.wasm.RuntimeState;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
@@ -227,7 +230,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                             wasmContext.tables().table(j).reset();
                         }
                     }
-                    for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+                    List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
+                    instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
+                    for (WasmInstance instance : instanceList) {
                         if (!instance.isBuiltin()) {
                             wasmContext.reinitInstance(instance, reinitMemory);
                         }
@@ -342,6 +347,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             String threadsOption = testCase.options().getProperty("wasm.Threads");
             if (threadsOption != null && threadsOption.equals("true")) {
                 options.add(WasmBinaryTools.WabtOption.THREADS);
+            }
+            String multiMemoryOption = testCase.options().getProperty("wasm.MultiMemory");
+            if (multiMemoryOption != null && multiMemoryOption.equals("true")) {
+                options.add(WasmBinaryTools.WabtOption.MULTI_MEMORY);
             }
             ArrayList<Source> sources = testCase.getSources(options);
 
@@ -517,25 +526,29 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static ContextState saveContext(WasmContext context) {
-        Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
-        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
+        final MemoryRegistry memories = context.memories().duplicate();
         final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
-        return new ContextState(currentMemory, globals, context.fdManager().size());
+        return new ContextState(memories, globals, context.fdManager().size());
     }
 
     private static void assertContextEqual(ContextState expectedState, ContextState actualState) {
         // Compare memories
-        final WasmMemory expectedMemory = expectedState.memory();
-        final WasmMemory actualMemory = actualState.memory();
-        if (expectedMemory == null) {
-            Assert.assertNull("Memory should be null", actualMemory);
-        } else {
-            Assert.assertNotNull("Memory should not be null", actualMemory);
-            Assert.assertEquals("Mismatch in memory lengths", expectedMemory.byteSize(), actualMemory.byteSize());
-            for (int ptr = 0; ptr < expectedMemory.byteSize(); ptr++) {
-                byte expectedByte = (byte) expectedMemory.load_i32_8s(null, ptr);
-                byte actualByte = (byte) actualMemory.load_i32_8s(null, ptr);
-                Assert.assertEquals("Memory mismatch at offset " + ptr + ",", expectedByte, actualByte);
+        final MemoryRegistry expectedMemories = expectedState.memories();
+        final MemoryRegistry actualMemories = actualState.memories();
+        Assert.assertEquals("Mismatch in memory counts.", expectedMemories.count(), actualMemories.count());
+        for (int i = 0; i < expectedMemories.count(); i++) {
+            final WasmMemory expectedMemory = expectedMemories.memory(i);
+            final WasmMemory actualMemory = actualMemories.memory(i);
+            if (expectedMemory == null) {
+                Assert.assertNull("Memory should be null", actualMemory);
+            } else {
+                Assert.assertNotNull("Memory should not be null", actualMemory);
+                Assert.assertEquals("Mismatch in memory lengths", expectedMemory.byteSize(), actualMemory.byteSize());
+                for (int ptr = 0; ptr < expectedMemory.byteSize(); ptr++) {
+                    byte expectedByte = (byte) expectedMemory.load_i32_8s(null, ptr);
+                    byte actualByte = (byte) actualMemory.load_i32_8s(null, ptr);
+                    Assert.assertEquals("Memory mismatch at offset " + ptr + ",", expectedByte, actualByte);
+                }
             }
         }
 
@@ -554,18 +567,18 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static final class ContextState {
-        private final WasmMemory memory;
+        private final MemoryRegistry memories;
         private final GlobalRegistry globals;
         private final int openedFdCount;
 
-        private ContextState(WasmMemory memory, GlobalRegistry globals, int openedFdCount) {
-            this.memory = memory;
+        private ContextState(MemoryRegistry memories, GlobalRegistry globals, int openedFdCount) {
+            this.memories = memories;
             this.globals = globals;
             this.openedFdCount = openedFdCount;
         }
 
-        public WasmMemory memory() {
-            return memory;
+        public MemoryRegistry memories() {
+            return memories;
         }
 
         public GlobalRegistry globals() {

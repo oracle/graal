@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ public class GetTimeOfDayNode extends WasmBuiltinRootNode {
         int ptr = (int) args[0];
 
         long now = getCurrentTime();
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.memory(0);
         memory.store_i32(this, ptr, (int) (now / 1000));
         memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
 

@@ -140,13 +140,17 @@ public abstract class BuiltinModule {
     }
 
     protected void defineExternalMemory(WasmInstance instance, String memoryName, WasmMemory externalMemory) {
-        instance.symbolTable().allocateExternalMemory(externalMemory);
-        instance.symbolTable().exportMemory(memoryName);
+        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+        int index = instance.symbolTable().memoryCount();
+        instance.symbolTable().allocateExternalMemory(index, externalMemory, multiMemory);
+        instance.symbolTable().exportMemory(index, memoryName);
     }
 
     protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
-        instance.symbolTable().allocateMemory(initSize, maxSize, is64Bit, isShared);
-        instance.symbolTable().exportMemory(memoryName);
+        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+        int index = instance.symbolTable().memoryCount();
+        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, multiMemory);
+        instance.symbolTable().exportMemory(index, memoryName);
     }
 
     protected void importFunction(WasmInstance instance, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
@@ -156,7 +160,9 @@ public abstract class BuiltinModule {
     }
 
     protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit, boolean isShared) {
-        instance.symbolTable().importMemory(importModuleName, memoryName, initSize, maxSize, is64Bit, isShared);
+        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+        int index = instance.symbolTable().memoryCount();
+        instance.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory);
     }
 
     protected byte[] types(byte... args) {

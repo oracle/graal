@@ -1244,8 +1244,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     third_party_license_files=[],
     dependencies=['Truffle'],
     truffle_jars=[
-        'truffle:ICU4J',
-        'truffle:ICU4J-CHARSET',
         'truffle:TRUFFLE_ICU4J',
     ],
     support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],

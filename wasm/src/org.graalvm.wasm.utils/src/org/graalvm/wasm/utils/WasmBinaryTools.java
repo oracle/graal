@@ -56,6 +56,7 @@ import java.util.stream.Collectors;
 
 public class WasmBinaryTools {
     public enum WabtOption {
+        MULTI_MEMORY,
         THREADS
     }
 
@@ -108,6 +109,9 @@ public class WasmBinaryTools {
         commandLine.add("--no-check");
         for (WabtOption option : options) {
             switch (option) {
+                case MULTI_MEMORY:
+                    commandLine.add("--enable-multi-memory");
+                    break;
                 case THREADS:
                     commandLine.add("--enable-threads");
                     break;
