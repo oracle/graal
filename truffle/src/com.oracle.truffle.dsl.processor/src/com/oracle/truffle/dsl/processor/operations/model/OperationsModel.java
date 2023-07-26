@@ -94,8 +94,13 @@ public class OperationsModel extends Template implements InfoDumpable {
     public boolean enableSerialization = true;
     public boolean allowUnsafe;
     public DeclaredType languageClass;
+
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
+    public ExecutableElement executeProlog;
+    public ExecutableElement executeEpilog;
+    public ExecutableElement handleStackOverflow;
+
     public boolean enableBaselineInterpreter;
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;

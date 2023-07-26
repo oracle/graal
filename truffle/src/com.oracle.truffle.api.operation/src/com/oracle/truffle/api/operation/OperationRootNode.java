@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -81,6 +82,11 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
 
     @SuppressWarnings("unused")
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
+    }
+
+    @SuppressWarnings("unused")
+    default AbstractTruffleException handleStackOverflow(StackOverflowError error) {
+        return null;
     }
 
     // Sets an invocation threshold that must be reached before the baseline interpreter switches to

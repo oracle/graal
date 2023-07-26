@@ -581,14 +581,16 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        // todo: only generate executeProlog/Epilog calls and the try/finally if they are overridden
-
-        b.statement("Throwable throwable = null");
-        b.statement("Object returnValue = null");
         String localFrame = localFrame();
 
-        b.statement("this.executeProlog(" + localFrame + ")");
+        if (model.executeEpilog != null) {
+            b.statement("Throwable throwable = null");
+            b.statement("Object returnValue = null");
+        }
+
+        if (model.executeProlog != null) {
+            b.statement("this.executeProlog(" + localFrame + ")");
+        }
 
         b.startTryBlock();
 
@@ -635,13 +637,22 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end();
         b.end();
 
-        b.startAssign("returnValue").string(getFrameObject("(state >> 16) & 0xffff")).end();
-        b.statement("return returnValue");
+        String returnValue = getFrameObject("(state >> 16) & 0xffff");
+        if (model.executeEpilog != null) {
+            b.startAssign("returnValue").string(returnValue).end();
+            b.statement("return returnValue");
+        } else {
+            b.startReturn().string(returnValue).end();
+        }
 
         b.end().startCatchBlock(context.getType(Throwable.class), "th");
-        b.statement("throw sneakyThrow(throwable = th)");
-        b.end().startFinallyBlock();
-        b.statement("this.executeEpilog(" + localFrame + ", returnValue, throwable)");
+        if (model.executeEpilog != null) {
+            b.statement("throw sneakyThrow(throwable = th)");
+            b.end().startFinallyBlock();
+            b.statement("this.executeEpilog(" + localFrame + ", returnValue, throwable)");
+        } else {
+            b.statement("throw sneakyThrow(th)");
+        }
         b.end();
 
         return ex;
@@ -3983,7 +3994,23 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end(); // switch
 
-            b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
+            b.end(); // try
+            DeclaredType abstractTruffleException = context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException");
+            boolean handlesStackOverflow = model.handleStackOverflow != null;
+
+            if (handlesStackOverflow) {
+                b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
+                b.declaration(abstractTruffleException, "ex");
+                b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
+                b.startAssign("ex").string("ate").end();
+                b.end().startElseIf().string("throwable instanceof java.lang.StackOverflowError soe").end().startBlock();
+                b.startAssign("ex").startCall("$this." + model.handleStackOverflow.getSimpleName().toString()).string("soe").end(2);
+                b.end().startElseBlock();
+                b.statement("throw throwable");
+                b.end();
+            } else {
+                b.startCatchBlock(abstractTruffleException, "ex");
+            }
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
