@@ -899,7 +899,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             var cc = (SubstrateCallingConventionType) callTarget.callType();
-            if (cc.returnSaving != null) {
+            if (cc.usesReturnBuffer()) {
                 // The pointer to the return buffer is passed as first argument
                 Value baseSaveLocation = parameters[0];
                 // Could be any x86 scratch register
@@ -1367,7 +1367,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
-        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.getCallingConventionKind().toType(false), method, this);
+        SubstrateCallingConventionKind ccKind = method.getCallingConventionKind();
+        SubstrateCallingConventionType ccType = ccKind.isCustom() ? method.getCustomCallingConventionType() : ccKind.toType(false);
+        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), ccType, method, this);
         return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), callingConvention, registerAllocationConfig, method);
     }
 

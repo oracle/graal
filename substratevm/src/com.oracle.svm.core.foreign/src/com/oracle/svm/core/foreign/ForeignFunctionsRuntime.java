@@ -56,9 +56,9 @@ public class ForeignFunctionsRuntime {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDowncallStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        VMError.guarantee(!downcallStubs.containsKey(nepi), "Seems like multiple stubs were generated for " + nepi);
-        downcallStubs.put(nepi, new FunctionPointerHolder(ptr));
+    public void addDowncallStubPointer(NativeEntryPointInfo nep, CFunctionPointer ptr) {
+        VMError.guarantee(!downcallStubs.containsKey(nep), "Seems like multiple stubs were generated for " + nep);
+        VMError.guarantee(downcallStubs.put(nep, new FunctionPointerHolder(ptr)) == null);
     }
 
     /**
@@ -135,6 +135,7 @@ public class ForeignFunctionsRuntime {
         ++i;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class) public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
                     "captureCallState", false, LocationIdentity.any());
 }

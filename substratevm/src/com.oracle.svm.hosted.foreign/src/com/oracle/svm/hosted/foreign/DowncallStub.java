@@ -44,7 +44,6 @@ import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
@@ -147,10 +146,7 @@ class DowncallStub extends NonBytecodeMethod {
         assert callType.parameterCount() == arguments.size();
 
         state.clearLocals();
-        SubstrateCallingConventionType cc = SubstrateCallingConventionKind.Native.toType(true)
-                        .withParametersAssigned(nep.parametersAssignment())
-                        /* Assignment might be null, in which case this is a no-op */
-                        .withReturnSaving(nep.returnsAssignment());
+        SubstrateCallingConventionType cc = SubstrateCallingConventionType.makeCustom(true, nep.parametersAssignment(), nep.returnsAssignment());
 
         CFunction.Transition transition = nep.skipsTransition() ? CFunction.Transition.NO_TRANSITION : CFunction.Transition.TO_NATIVE;
 

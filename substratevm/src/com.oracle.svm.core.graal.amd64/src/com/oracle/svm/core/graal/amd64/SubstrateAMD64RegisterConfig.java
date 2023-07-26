@@ -260,14 +260,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
          * We have to reserve a slot between return address and outgoing parameters for the deopt
          * frame handle. Exception: calls to native methods.
          */
-        int currentStackOffset = (type.nativeABI() ? nativeParamsStackOffset : target.wordSize);
+        int currentStackOffset = type.nativeABI() ? nativeParamsStackOffset : target.wordSize;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
         int firstActualArgument = 0;
 
         JavaKind[] kinds = new JavaKind[locations.length];
 
-        if (type.returnSaving != null) {
+        if (type.usesReturnBuffer()) {
             /*
              * returnSaving implies an additional (prefix) parameter pointing to the buffer to use
              * for saving. We pretend it is the first stack argument to the function: this means the
@@ -362,11 +362,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
                     Register reg = storage.register();
-                    VMError.guarantee(target.arch.canStoreValue(reg.getRegisterCategory(),
-                                    paramValueKind.getPlatformKind()), "Cannot assign value to register.");
+                    VMError.guarantee(target.arch.canStoreValue(reg.getRegisterCategory(), paramValueKind.getPlatformKind()), "Cannot assign value to register.");
                     locations[i] = reg.asValue(paramValueKind);
-                    VMError.guarantee(!usedRegisters.contains(reg),
-                                    "Register was already used.");
+                    VMError.guarantee(!usedRegisters.contains(reg), "Register was already used.");
                     usedRegisters.add(reg);
                 } else {
                     /*
@@ -375,15 +373,15 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                      * "in order". This assumption might not be necessary, but simplifies the check
                      * tremendously.
                      */
-                    VMError.guarantee(currentStackOffset == baseStackOffset + storage.stackOffset(),
-                                    "Potential stack ``completeness'' violation.");
+                    VMError.guarantee(currentStackOffset == baseStackOffset + storage.stackOffset(), "Potential stack ``completeness'' violation.");
                     locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
                     currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
                 }
             }
         }
 
-        if (type.returnSaving != null) {
+        if (type.usesReturnBuffer()) {
+            // TODO change assertion
             assert type.fixedParameterAssignment == null || type.fixedParameterAssignment.length + 1 == locations.length;
             assert parameterTypes[0].getJavaKind() == JavaKind.Long;
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);

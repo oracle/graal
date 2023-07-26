@@ -74,7 +74,7 @@ public final class NativeEntryPointInfo {
         }
 
         AssignedLocation[] parametersAssignment = AbiUtils.singleton().toMemoryAssignment(argMoves, false);
-        AssignedLocation[] returnBuffering = needsReturnBuffer ? AbiUtils.singleton().toMemoryAssignment(returnMoves, true) : null;
+        AssignedLocation[] returnBuffering = AbiUtils.singleton().toMemoryAssignment(returnMoves, true);
         return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask != 0, needsTransition);
     }
 
@@ -120,7 +120,7 @@ public final class NativeEntryPointInfo {
     }
 
     public boolean needsReturnBuffer() {
-        return this.returnBuffering != null;
+        return this.returnBuffering.length >= 2;
     }
 
     public boolean capturesCallState() {
