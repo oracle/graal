@@ -1752,7 +1752,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
                     final int memoryIndex = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    final WasmMemory memory = instance.memory(memoryIndex);
                     final long memOffset;
                     if (indexType64 == 0) {
                         memOffset = rawPeekU32(bytecode, offset);
@@ -1762,116 +1761,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         offset += 8;
                     }
 
-                    switch (atomicOpcode) {
-                        case Bytecode.ATOMIC_I32_LOAD:
-                        case Bytecode.ATOMIC_I64_LOAD:
-                        case Bytecode.ATOMIC_I32_LOAD8_U:
-                        case Bytecode.ATOMIC_I32_LOAD16_U:
-                        case Bytecode.ATOMIC_I64_LOAD8_U:
-                        case Bytecode.ATOMIC_I64_LOAD16_U:
-                        case Bytecode.ATOMIC_I64_LOAD32_U: {
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = popInt(frame, stackPointer - 1);
-                            } else {
-                                baseAddress = popLong(frame, stackPointer - 1);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            atomic(memory, frame, stackPointer - 1, atomicOpcode, address);
-                            break;
-                        }
-                        case Bytecode.ATOMIC_I32_STORE:
-                        case Bytecode.ATOMIC_I64_STORE:
-                        case Bytecode.ATOMIC_I32_STORE8:
-                        case Bytecode.ATOMIC_I32_STORE16:
-                        case Bytecode.ATOMIC_I64_STORE8:
-                        case Bytecode.ATOMIC_I64_STORE16:
-                        case Bytecode.ATOMIC_I64_STORE32: {
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = popInt(frame, stackPointer - 2);
-                            } else {
-                                baseAddress = popLong(frame, stackPointer - 2);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            atomic(memory, frame, stackPointer - 1, atomicOpcode, address);
-                            stackPointer -= 2;
-                            break;
-                        }
-                        case Bytecode.ATOMIC_I32_RMW_ADD:
-                        case Bytecode.ATOMIC_I64_RMW_ADD:
-                        case Bytecode.ATOMIC_I32_RMW8_U_ADD:
-                        case Bytecode.ATOMIC_I32_RMW16_U_ADD:
-                        case Bytecode.ATOMIC_I64_RMW8_U_ADD:
-                        case Bytecode.ATOMIC_I64_RMW16_U_ADD:
-                        case Bytecode.ATOMIC_I64_RMW32_U_ADD:
-                        case Bytecode.ATOMIC_I32_RMW_SUB:
-                        case Bytecode.ATOMIC_I64_RMW_SUB:
-                        case Bytecode.ATOMIC_I32_RMW8_U_SUB:
-                        case Bytecode.ATOMIC_I32_RMW16_U_SUB:
-                        case Bytecode.ATOMIC_I64_RMW8_U_SUB:
-                        case Bytecode.ATOMIC_I64_RMW16_U_SUB:
-                        case Bytecode.ATOMIC_I64_RMW32_U_SUB:
-                        case Bytecode.ATOMIC_I32_RMW_AND:
-                        case Bytecode.ATOMIC_I64_RMW_AND:
-                        case Bytecode.ATOMIC_I32_RMW8_U_AND:
-                        case Bytecode.ATOMIC_I32_RMW16_U_AND:
-                        case Bytecode.ATOMIC_I64_RMW8_U_AND:
-                        case Bytecode.ATOMIC_I64_RMW16_U_AND:
-                        case Bytecode.ATOMIC_I64_RMW32_U_AND:
-                        case Bytecode.ATOMIC_I32_RMW_OR:
-                        case Bytecode.ATOMIC_I64_RMW_OR:
-                        case Bytecode.ATOMIC_I32_RMW8_U_OR:
-                        case Bytecode.ATOMIC_I32_RMW16_U_OR:
-                        case Bytecode.ATOMIC_I64_RMW8_U_OR:
-                        case Bytecode.ATOMIC_I64_RMW16_U_OR:
-                        case Bytecode.ATOMIC_I64_RMW32_U_OR:
-                        case Bytecode.ATOMIC_I32_RMW_XOR:
-                        case Bytecode.ATOMIC_I64_RMW_XOR:
-                        case Bytecode.ATOMIC_I32_RMW8_U_XOR:
-                        case Bytecode.ATOMIC_I32_RMW16_U_XOR:
-                        case Bytecode.ATOMIC_I64_RMW8_U_XOR:
-                        case Bytecode.ATOMIC_I64_RMW16_U_XOR:
-                        case Bytecode.ATOMIC_I64_RMW32_U_XOR:
-                        case Bytecode.ATOMIC_I32_RMW_XCHG:
-                        case Bytecode.ATOMIC_I64_RMW_XCHG:
-                        case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
-                        case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
-                        case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
-                        case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
-                        case Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = popInt(frame, stackPointer - 2);
-                            } else {
-                                baseAddress = popLong(frame, stackPointer - 2);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            atomic(memory, frame, stackPointer - 1, atomicOpcode, address);
-                            stackPointer--;
-                            break;
-                        }
-                        case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
-                        case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
-                        case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
-                        case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
-                        case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
-                        case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
-                        case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = popInt(frame, stackPointer - 3);
-                            } else {
-                                baseAddress = popLong(frame, stackPointer - 3);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            atomic(memory, frame, stackPointer - 1, atomicOpcode, address);
-                            stackPointer -= 2;
-                            break;
-                        }
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
+                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final int stackPointerDecrement = executeAtomic(frame, stackPointer, atomicOpcode, memory, memOffset, indexType64);
+                    stackPointer -= stackPointerDecrement;
                     break;
                 }
                 case Bytecode.NOTIFY: {
@@ -2610,6 +2502,116 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 throw CompilerDirectives.shouldNotReachHere();
         }
         memory_fill(n, val, dst, memoryIndex);
+    }
+
+    private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
+        switch (opcode) {
+            case Bytecode.ATOMIC_I32_LOAD:
+            case Bytecode.ATOMIC_I64_LOAD:
+            case Bytecode.ATOMIC_I32_LOAD8_U:
+            case Bytecode.ATOMIC_I32_LOAD16_U:
+            case Bytecode.ATOMIC_I64_LOAD8_U:
+            case Bytecode.ATOMIC_I64_LOAD16_U:
+            case Bytecode.ATOMIC_I64_LOAD32_U: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 1);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 1);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                atomic(memory, frame, stackPointer - 1, opcode, address);
+                return 0;
+            }
+            case Bytecode.ATOMIC_I32_STORE:
+            case Bytecode.ATOMIC_I64_STORE:
+            case Bytecode.ATOMIC_I32_STORE8:
+            case Bytecode.ATOMIC_I32_STORE16:
+            case Bytecode.ATOMIC_I64_STORE8:
+            case Bytecode.ATOMIC_I64_STORE16:
+            case Bytecode.ATOMIC_I64_STORE32: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 2);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 2);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                atomic(memory, frame, stackPointer - 1, opcode, address);
+                return 2;
+            }
+            case Bytecode.ATOMIC_I32_RMW_ADD:
+            case Bytecode.ATOMIC_I64_RMW_ADD:
+            case Bytecode.ATOMIC_I32_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW32_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW_SUB:
+            case Bytecode.ATOMIC_I64_RMW_SUB:
+            case Bytecode.ATOMIC_I32_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW32_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW_AND:
+            case Bytecode.ATOMIC_I64_RMW_AND:
+            case Bytecode.ATOMIC_I32_RMW8_U_AND:
+            case Bytecode.ATOMIC_I32_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW8_U_AND:
+            case Bytecode.ATOMIC_I64_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW32_U_AND:
+            case Bytecode.ATOMIC_I32_RMW_OR:
+            case Bytecode.ATOMIC_I64_RMW_OR:
+            case Bytecode.ATOMIC_I32_RMW8_U_OR:
+            case Bytecode.ATOMIC_I32_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW8_U_OR:
+            case Bytecode.ATOMIC_I64_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW32_U_OR:
+            case Bytecode.ATOMIC_I32_RMW_XOR:
+            case Bytecode.ATOMIC_I64_RMW_XOR:
+            case Bytecode.ATOMIC_I32_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW32_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW_XCHG:
+            case Bytecode.ATOMIC_I64_RMW_XCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 2);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 2);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                atomic(memory, frame, stackPointer - 1, opcode, address);
+                return 1;
+            }
+            case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 3);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 3);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                atomic(memory, frame, stackPointer - 1, opcode, address);
+                return 2;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     // Checkstyle: stop method name check
