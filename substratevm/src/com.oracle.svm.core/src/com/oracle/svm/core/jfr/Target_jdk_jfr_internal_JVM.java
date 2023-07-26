@@ -361,7 +361,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#commit}. */
     @Substitute
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK21OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
     @Uninterruptible(reason = "Must not allow safepointing to interrupt event commit.")
     public static long commit(long nextPosition) {
         return SubstrateJVM.get().commit(nextPosition);
