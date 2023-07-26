@@ -47,97 +47,19 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * Line header section always contains fixed number of bytes.
      */
-    private static final int DW_LN_HEADER_SIZE = 28;
+    private static final int LN_HEADER_SIZE = 28;
     /**
      * Current generator follows C++ with line base -5.
      */
-    private static final int DW_LN_LINE_BASE = -5;
+    private static final int LN_LINE_BASE = -5;
     /**
      * Current generator follows C++ with line range 14 giving full range -5 to 8.
      */
-    private static final int DW_LN_LINE_RANGE = 14;
+    private static final int LN_LINE_RANGE = 14;
     /**
      * Current generator uses opcode base of 13 which must equal DW_LNS_set_isa + 1.
      */
-    private static final int DW_LN_OPCODE_BASE = 13;
-
-    /*
-     * Standard opcodes defined by Dwarf 2
-     */
-    /*
-     * 0 can be returned to indicate an invalid opcode.
-     */
-    private static final byte DW_LNS_undefined = 0;
-    /*
-     * 0 can be inserted as a prefix for extended opcodes.
-     */
-    private static final byte DW_LNS_extended_prefix = 0;
-    /*
-     * Append current state as matrix row 0 args.
-     */
-    private static final byte DW_LNS_copy = 1;
-    /*
-     * Increment address 1 uleb arg.
-     */
-    private static final byte DW_LNS_advance_pc = 2;
-    /*
-     * Increment line 1 sleb arg.
-     */
-    private static final byte DW_LNS_advance_line = 3;
-    /*
-     * Set file 1 uleb arg.
-     */
-    private static final byte DW_LNS_set_file = 4;
-    /*
-     * sSet column 1 uleb arg.
-     */
-    private static final byte DW_LNS_set_column = 5;
-    /*
-     * Flip is_stmt 0 args.
-     */
-    private static final byte DW_LNS_negate_stmt = 6;
-    /*
-     * Set end sequence and copy row 0 args.
-     */
-    private static final byte DW_LNS_set_basic_block = 7;
-    /*
-     * Increment address as per opcode 255 0 args.
-     */
-    private static final byte DW_LNS_const_add_pc = 8;
-    /*
-     * Increment address 1 ushort arg.
-     */
-    private static final byte DW_LNS_fixed_advance_pc = 9;
-
-    /*
-     * Increment address 1 ushort arg.
-     */
-    @SuppressWarnings("unused") private static final byte DW_LNS_set_prologue_end = 10;
-
-    /*
-     * Increment address 1 ushort arg.
-     */
-    @SuppressWarnings("unused") private static final byte DW_LNS_set_epilogue_begin = 11;
-
-    /*
-     * Extended opcodes defined by DWARF 2.
-     */
-    /*
-     * There is no extended opcode 0.
-     */
-    @SuppressWarnings("unused") private static final byte DW_LNE_undefined = 0;
-    /*
-     * End sequence of addresses.
-     */
-    private static final byte DW_LNE_end_sequence = 1;
-    /*
-     * Set address as explicit long argument.
-     */
-    private static final byte DW_LNE_set_address = 2;
-    /*
-     * Set file as explicit string argument.
-     */
-    private static final byte DW_LNE_define_file = 3;
+    private static final int LN_OPCODE_BASE = 13;
 
     DwarfLineSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
@@ -145,7 +67,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DwarfDebugInfo.DW_LINE_SECTION_NAME;
+        return DW_LINE_SECTION_NAME;
     }
 
     @Override
@@ -203,7 +125,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * </ul>
          */
 
-        return DW_LN_HEADER_SIZE;
+        return LN_HEADER_SIZE;
     }
 
     private int computeDirTableSize(ClassEntry classEntry) {
@@ -318,7 +240,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 2 ubyte version is always 2.
          */
-        pos = writeShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
+        pos = writeShort(DW_VERSION_4, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
@@ -339,15 +261,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 1 byte line base is always -5.
          */
-        pos = writeByte((byte) DW_LN_LINE_BASE, buffer, pos);
+        pos = writeByte((byte) LN_LINE_BASE, buffer, pos);
         /*
          * 1 ubyte line range is always 14 giving range -5 to 8.
          */
-        pos = writeByte((byte) DW_LN_LINE_RANGE, buffer, pos);
+        pos = writeByte((byte) LN_LINE_RANGE, buffer, pos);
         /*
          * 1 ubyte opcode base is always 13.
          */
-        pos = writeByte((byte) DW_LN_OPCODE_BASE, buffer, pos);
+        pos = writeByte((byte) LN_OPCODE_BASE, buffer, pos);
         /*
          * specify opcode arg sizes for the standard opcodes.
          */
@@ -785,17 +707,17 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static int opcodeId(byte opcode) {
         int iopcode = opcode & 0xff;
-        return iopcode - DW_LN_OPCODE_BASE;
+        return iopcode - LN_OPCODE_BASE;
     }
 
     private static int opcodeAddress(byte opcode) {
         int iopcode = opcode & 0xff;
-        return (iopcode - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;
+        return (iopcode - LN_OPCODE_BASE) / LN_LINE_RANGE;
     }
 
     private static int opcodeLine(byte opcode) {
         int iopcode = opcode & 0xff;
-        return ((iopcode - DW_LN_OPCODE_BASE) % DW_LN_LINE_RANGE) + DW_LN_LINE_BASE;
+        return ((iopcode - LN_OPCODE_BASE) % LN_LINE_RANGE) + LN_LINE_BASE;
     }
 
     private int writeSpecialOpcode(DebugContext context, byte opcode, byte[] buffer, int p) {
@@ -810,21 +732,21 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return writeByte(opcode, buffer, pos);
     }
 
-    private static final int MAX_ADDRESS_ONLY_DELTA = (0xff - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;
+    private static final int MAX_ADDRESS_ONLY_DELTA = (0xff - LN_OPCODE_BASE) / LN_LINE_RANGE;
     private static final int MAX_ADDPC_DELTA = MAX_ADDRESS_ONLY_DELTA + (MAX_ADDRESS_ONLY_DELTA - 1);
 
     private static byte isSpecialOpcode(long addressDelta, long lineDelta) {
         if (addressDelta < 0) {
             return DW_LNS_undefined;
         }
-        if (lineDelta >= DW_LN_LINE_BASE) {
-            long offsetLineDelta = lineDelta - DW_LN_LINE_BASE;
-            if (offsetLineDelta < DW_LN_LINE_RANGE) {
+        if (lineDelta >= LN_LINE_BASE) {
+            long offsetLineDelta = lineDelta - LN_LINE_BASE;
+            if (offsetLineDelta < LN_LINE_RANGE) {
                 /*
                  * The line delta can be encoded. Check if address is ok.
                  */
                 if (addressDelta <= MAX_ADDRESS_ONLY_DELTA) {
-                    long opcode = DW_LN_OPCODE_BASE + (addressDelta * DW_LN_LINE_RANGE) + offsetLineDelta;
+                    long opcode = LN_OPCODE_BASE + (addressDelta * LN_LINE_RANGE) + offsetLineDelta;
                     if (opcode <= 255) {
                         return (byte) opcode;
                     }
@@ -856,7 +778,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_line section depends on debug_str section.
      */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_STR_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,7 +77,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DwarfDebugInfo.DW_LOC_SECTION_NAME;
+        return DW_LOC_SECTION_NAME;
     }
 
     @Override
@@ -247,7 +245,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         if (targetIdx < 32) {
             // can write using DW_OP_reg<n>
             short byteCount = 1;
-            byte regOp = (byte) (DwarfDebugInfo.DW_OP_reg0 + targetIdx);
+            byte regOp = (byte) (DW_OP_reg0 + targetIdx);
             pos = writeShort(byteCount, buffer, pos);
             pos = writeByte(regOp, buffer, pos);
             verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, regOp);
@@ -255,7 +253,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             // have to write using DW_OP_regx + LEB operand
             assert targetIdx < 128 : "unexpectedly high reg index!";
             short byteCount = 2;
-            byte regOp = DwarfDebugInfo.DW_OP_regx;
+            byte regOp = DW_OP_regx;
             pos = writeShort(byteCount, buffer, pos);
             pos = writeByte(regOp, buffer, pos);
             pos = writeULEB(targetIdx, buffer, pos);
@@ -273,17 +271,17 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         byte stackOp;
         if (sp < 32) {
             // fold the base reg index into the op
-            stackOp = DwarfDebugInfo.DW_OP_breg0;
+            stackOp = DW_OP_breg0;
             stackOp += (byte) sp;
         } else {
             // pass base reg index as a ULEB operand
-            stackOp = DwarfDebugInfo.DW_OP_bregx;
+            stackOp = DW_OP_bregx;
         }
         int patchPos = pos;
         pos = writeShort(byteCount, buffer, pos);
         int zeroPos = pos;
         pos = writeByte(stackOp, buffer, pos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
+        if (stackOp == DW_OP_bregx) {
             // need to pass base reg index as a ULEB operand
             pos = writeULEB(sp, buffer, pos);
         }
@@ -291,7 +289,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         // now backpatch the byte count
         byteCount = (byte) (pos - zeroPos);
         writeShort(byteCount, buffer, patchPos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
+        if (stackOp == DW_OP_bregx) {
             verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, stackOp, 0 - offset);
         } else {
             verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
@@ -419,7 +417,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_loc section depends on text section.
      */
-    protected static final String TARGET_SECTION_NAME = DwarfDebugInfo.TEXT_SECTION_NAME;
+    protected static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

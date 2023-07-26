@@ -55,12 +55,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_stack_value;
-
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
-public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
+public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl implements DwarfConstants {
     // auxiliary class used to track byte array positions
     protected class Cursor {
         private int pos;
@@ -248,7 +246,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, l);
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, TEXT_SECTION_NAME, l);
         pos = writeLong(0, buffer, pos);
         return pos;
     }
@@ -459,19 +457,19 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeInfoSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_INFO_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_INFO_SECTION_NAME, pos);
     }
 
     protected int writeLineSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_LINE_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_LINE_SECTION_NAME, pos);
     }
 
     protected int writeRangesSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_RANGES_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_RANGES_SECTION_NAME, pos);
     }
 
     protected int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_ABBREV_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_ABBREV_SECTION_NAME, pos);
     }
 
     protected int writeStrSectionOffset(String value, byte[] buffer, int p) {
@@ -481,11 +479,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     private int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_STR_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_STR_SECTION_NAME, pos);
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_LOC_SECTION_NAME, pos);
+        return writeDwarfSectionOffset(offset, buffer, DW_LOC_SECTION_NAME, pos);
     }
 
     protected int writeDwarfSectionOffset(int offset, byte[] buffer, String sectionName, int pos) {
@@ -571,7 +569,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     private int writeHeapLocationBaseRelative(long offset, byte[] buffer, int p) {
         int pos = p;
         /* Write a location rebasing the offset relative to the heapbase register. */
-        byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
+        byte regOp = (byte) (DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
         /* Write the size and expression into the output buffer. */
         pos = writeByte(regOp, buffer, pos);
         return writeSLEB(offset, buffer, pos);
@@ -580,7 +578,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     private int writeHeapLocationRelocatable(long offset, byte[] buffer, int p) {
         int pos = p;
         /* Write a relocatable address relative to the heap section start. */
-        byte regOp = DwarfDebugInfo.DW_OP_addr;
+        byte regOp = DW_OP_addr;
         pos = writeByte(regOp, buffer, pos);
         return writeRelocatableHeapOffset(offset, buffer, pos);
     }

@@ -40,7 +40,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DwarfDebugInfo.DW_STR_SECTION_NAME;
+        return DW_STR_SECTION_NAME;
     }
 
     @Override
@@ -84,7 +84,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_str section depends on info section.
      */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_INFO_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

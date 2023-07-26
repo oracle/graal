@@ -42,8 +42,8 @@ import com.oracle.objectfile.debugentry.range.Range;
  */
 public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     /* Headers have a fixed size but must align up to 2 * address size. */
-    private static final int DW_AR_HEADER_SIZE = 12;
-    private static final int DW_AR_HEADER_PAD_SIZE = 4;
+    private static final int AR_HEADER_SIZE = 12;
+    private static final int AR_HEADER_PAD_SIZE = 4;
 
     public DwarfARangesSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
@@ -51,7 +51,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
+        return DW_ARANGES_SECTION_NAME;
     }
 
     @Override
@@ -104,9 +104,9 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     private static int entrySize(int methodCount) {
         int size = 0;
         // allow for header data
-        size += DW_AR_HEADER_SIZE;
+        size += AR_HEADER_SIZE;
         // align to 2 * address size.
-        size += DW_AR_HEADER_PAD_SIZE;
+        size += AR_HEADER_PAD_SIZE;
         // count 16 bytes for each deopt compiled method
         size += methodCount * (2 * 8);
         // allow for two trailing zeroes to terminate
@@ -161,17 +161,17 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         // write dummy length for now
         pos = writeInt(0, buffer, pos);
         /* DWARF version is always 2. */
-        pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+        pos = writeShort(DW_VERSION_2, buffer, pos);
         pos = writeInfoSectionOffset(cuIndex, buffer, pos);
         /* Address size is always 8. */
         pos = writeByte((byte) 8, buffer, pos);
         /* Segment size is always 0. */
         pos = writeByte((byte) 0, buffer, pos);
-        assert (pos - p) == DW_AR_HEADER_SIZE;
+        assert (pos - p) == AR_HEADER_SIZE;
         /*
          * Align to 2 * address size.
          */
-        for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
+        for (int i = 0; i < AR_HEADER_PAD_SIZE; i++) {
             pos = writeByte((byte) 0, buffer, pos);
         }
         return pos;
@@ -189,7 +189,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     /*
      * The debug_aranges section depends on debug_frame section.
      */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_FRAME_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

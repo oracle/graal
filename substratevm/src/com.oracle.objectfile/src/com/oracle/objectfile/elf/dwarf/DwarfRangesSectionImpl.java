@@ -41,7 +41,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DwarfDebugInfo.DW_RANGES_SECTION_NAME;
+        return DW_RANGES_SECTION_NAME;
     }
 
     @Override
@@ -120,7 +120,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     /*
      * The debug_ranges section depends on debug_aranges section.
      */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_ARANGES_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
