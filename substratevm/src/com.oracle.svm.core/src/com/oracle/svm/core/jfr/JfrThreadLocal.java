@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -89,6 +91,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalLong missedSamples = FastThreadLocalFactory.createLong("JfrThreadLocal.missedSamples");
     private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("JfrThreadLocal.unparseableStacks");
     private static final FastThreadLocalWord<SamplerSampleWriterData> samplerWriterData = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerWriterData");
+    private static final FastThreadLocalInt notified = FastThreadLocalFactory.createInt("JfrThreadLocal.notified");
 
     /* Non-thread-local fields. */
     private static final JfrBufferList javaBufferList = new JfrBufferList();
@@ -344,9 +347,29 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            notified.set(1);
+            return;
+        }
         if (javaEventWriter.get(thread) != null) {
             javaEventWriter.get(thread).notified = true;
         }
+    }
+
+    @Uninterruptible(reason = "Must not allow safepointing to interrupt event commit..")
+    public static long commitJavaEvent(long nextPosition) {
+        JfrBuffer buffer = javaBuffer.get();
+
+        // Check notification here in uninterruptible code so that it is atomic with the commit.
+        if (notified.get() > 0) {
+            // Clear notification and signal retry
+            notified.set(0);
+            return buffer.getCommittedPos().rawValue();
+        }
+
+        assert buffer.isNonNull();
+        buffer.setCommittedPos(WordFactory.pointer(nextPosition));
+        return nextPosition;
     }
 
     /**

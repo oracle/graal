@@ -506,6 +506,13 @@ public class SubstrateJVM {
         return false;
     }
 
+    /** Commit the event to the java buffer (by advancing the pointer). */
+    @Uninterruptible(reason = "Must not allow safepointing to interrupt event commit.")
+    public long commit(long nextPosition) {
+        return JfrThreadLocal.commitJavaEvent(nextPosition);
+
+    }
+
     public void flush() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {

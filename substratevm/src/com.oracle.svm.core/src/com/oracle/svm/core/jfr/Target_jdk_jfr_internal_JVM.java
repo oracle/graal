@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -346,8 +348,23 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#flush}. */
     @Substitute
-    public static boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    @TargetElement(name = "flush", onlyWith = JDK20OrEarlier.class)
+    public static boolean flush20(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
+    }
+
+    @Substitute
+    @TargetElement(name = "flush", onlyWith = JDK21OrLater.class)
+    public static void flush21(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+        SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
+    }
+
+    /** See {@link JVM#commit}. */
+    @Substitute
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK21OrLater.class)
+    @Uninterruptible(reason = "Must not allow safepointing to interrupt event commit.")
+    public static long commit(long nextPosition) {
+        return SubstrateJVM.get().commit(nextPosition);
     }
 
     @Substitute
