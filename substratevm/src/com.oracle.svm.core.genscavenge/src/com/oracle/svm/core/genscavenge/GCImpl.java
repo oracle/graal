@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicBoolean;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -117,6 +118,8 @@ public final class GCImpl implements GC {
     private UnsignedWord collectionEpoch = WordFactory.zero();
     private long lastWholeHeapExaminedTimeMillis = -1;
 
+    private final AtomicBoolean outOfMemoryReported = new AtomicBoolean(false);
+
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
         this.policy = CollectionPolicy.getInitialPolicy();
@@ -151,15 +154,15 @@ public final class GCImpl implements GC {
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
-            heapSizeExceeded();
+            reportJavaOutOfMemory();
+            throw OutOfMemoryUtil.heapSizeExceeded();
         }
     }
 
-    private static void heapSizeExceeded() {
-        if (SubstrateOptions.isHeapDumpOnOutOfMemoryError()) {
+    private void reportJavaOutOfMemory() {
+        if (SubstrateOptions.isHeapDumpOnOutOfMemoryError() && outOfMemoryReported.compareAndSet(false, true)) {
             VMRuntime.dumpHeapOnOutOfMemoryError();
         }
-        throw OutOfMemoryUtil.heapSizeExceeded();
     }
 
     @Override
@@ -173,7 +176,8 @@ public final class GCImpl implements GC {
         if (!hasNeverCollectPolicy()) {
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                heapSizeExceeded();
+                reportJavaOutOfMemory();
+                throw OutOfMemoryUtil.heapSizeExceeded();
             }
         }
     }
