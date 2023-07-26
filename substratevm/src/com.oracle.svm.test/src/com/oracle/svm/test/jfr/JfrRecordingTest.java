@@ -26,7 +26,9 @@
 
 package com.oracle.svm.test.jfr;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -60,6 +62,12 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
     }
 
     protected Recording startRecording(String[] events, Configuration config, Map<String, String> settings, Path path) throws Throwable {
+        Recording recording = prepareRecording(events, config, settings, path);
+        recording.start();
+        return recording;
+    }
+
+    protected Recording prepareRecording(String[] events, Configuration config, Map<String, String> settings, Path path) throws IOException {
         Recording recording = createRecording(config);
         recordingStates.put(recording, new JfrRecordingState(events));
 
@@ -67,9 +75,7 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
         if (settings != null) {
             recording.setSettings(settings);
         }
-
         enableEvents(recording, events);
-        recording.start();
         return recording;
     }
 
@@ -84,7 +90,7 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
     private static void enableEvents(Recording recording, String[] events) {
         /* Additionally, enable all events that the test case wants to test explicitly. */
         for (String event : events) {
-            recording.enable(event);
+            recording.enable(event).withThreshold(Duration.ZERO);
         }
     }
 

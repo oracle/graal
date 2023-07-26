@@ -36,7 +36,6 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.JavaThreads;
 
 public class ThreadStartEvent {
-
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(Thread thread) {
         if (JfrEvent.ThreadStart.shouldEmit()) {
