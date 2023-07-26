@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,24 +36,10 @@ import java.lang.annotation.Target;
 @Repeatable(StubPorts.class)
 public @interface StubPort {
     /**
-     * Relevant path of source code file containing the ported stub.
+     * From where this stub is ported. Should be in the format of
+     * ^https://github.com/openjdk/jdk/blob/[0-9a-fA-F]{40}/[-_./A-Za-z0-9]+#L[0-9]+-L[0-9]+$
      */
-    String path();
-
-    /**
-     * Starting line of the ported stub.
-     */
-    int lineStart();
-
-    /**
-     * Ending line of the ported stub.
-     */
-    int lineEnd();
-
-    /**
-     * Version of the original source code when the port was created or last updated.
-     */
-    String commit();
+    String from() default "";
 
     /**
      * Digest of the source code that was ported.

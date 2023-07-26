@@ -57,11 +57,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6083,
-          lineEnd   = 6241,
-          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-          sha1      = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6083-L6241",
+          sha1 = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
 public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {

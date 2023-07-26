@@ -204,11 +204,8 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_sin.cpp",
-          lineStart = 31,
-          lineEnd   = 649,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "976a0928381ae184c439bf155d9641315c58ec1e")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_sin.cpp#L31-L649",
+          sha1 = "976a0928381ae184c439bf155d9641315c58ec1e")
 // @formatter:on
 public final class AMD64MathSinOp extends AMD64MathIntrinsicUnaryOp {
 

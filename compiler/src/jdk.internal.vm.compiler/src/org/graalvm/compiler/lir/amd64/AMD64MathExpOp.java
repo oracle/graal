@@ -87,11 +87,8 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_exp.cpp",
-          lineStart = 32,
-          lineEnd   = 385,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "219106b137bac6345b31ef2e2d45eb6b15bfc2f3")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_exp.cpp#L32-L385",
+          sha1 = "219106b137bac6345b31ef2e2d45eb6b15bfc2f3")
 // @formatter:on
 public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
 

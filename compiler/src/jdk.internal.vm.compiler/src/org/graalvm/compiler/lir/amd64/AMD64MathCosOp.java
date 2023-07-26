@@ -201,16 +201,10 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_cos.cpp",
-          lineStart = 31,
-          lineEnd   = 623,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "0de5f00f2586d20205fefb3f198dc10e23e0fd07")
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_constants.cpp",
-          lineStart = 30,
-          lineEnd   = 235,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "ce403a1b9833df093021585f62da6b58fd24cb4e")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_cos.cpp#L31-L623",
+          sha1 = "0de5f00f2586d20205fefb3f198dc10e23e0fd07")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_constants.cpp#L30-L235",
+          sha1 = "ce403a1b9833df093021585f62da6b58fd24cb4e")
 // @formatter:on
 public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 

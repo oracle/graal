@@ -54,11 +54,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4665,
-          lineEnd   = 4699,
-          commit    = "d7b941640638b35f9ac1ef11cd6bf6ccb795c29a",
-          sha1      = "0ad03e74934e230a64b9eb107a413248daa5be88")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4665-L4699",
+          sha1 = "0ad03e74934e230a64b9eb107a413248daa5be88")
 // @formatter:on
 public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction {
 

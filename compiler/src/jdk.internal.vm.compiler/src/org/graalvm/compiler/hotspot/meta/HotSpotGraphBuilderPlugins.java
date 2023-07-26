@@ -659,11 +659,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-              lineStart = 2861,
-              lineEnd   = 2922,
-              commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-              sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
+    @StubPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/share/opto/library_call.cpp#L2861-L2922",
+              sha1 = "c2d981ab918e2ca607835df010221ba0503a0cb2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
                     ValueNode virtualThread, ValueNode hide) {

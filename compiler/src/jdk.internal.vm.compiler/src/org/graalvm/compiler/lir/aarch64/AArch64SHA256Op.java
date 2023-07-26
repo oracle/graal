@@ -77,11 +77,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 3683,
-          lineEnd   = 3795,
-          commit    = "d7b941640638b35f9ac1ef11cd6bf6ccb795c29a",
-          sha1      = "f226b109da456148c11f83d1bcd78d14aac862cf")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3683-L3795",
+          sha1 = "f226b109da456148c11f83d1bcd78d14aac862cf")
 // @formatter:on
 public final class AArch64SHA256Op extends AArch64LIRInstruction {
 

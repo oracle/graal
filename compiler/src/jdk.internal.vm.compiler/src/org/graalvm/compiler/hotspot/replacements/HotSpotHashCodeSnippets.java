@@ -42,11 +42,8 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-          lineStart = 4455,
-          lineEnd   = 4579,
-          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-          sha1      = "34281fb78c4f0657a704dbda3e3cc85ed56dd2ad")
+@StubPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/share/opto/library_call.cpp#L4455-L4579",
+          sha1 = "34281fb78c4f0657a704dbda3e3cc85ed56dd2ad")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
