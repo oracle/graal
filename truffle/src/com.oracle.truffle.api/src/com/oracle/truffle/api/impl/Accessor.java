@@ -62,6 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -69,6 +70,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -573,6 +575,8 @@ public abstract class Accessor {
 
         public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
+        public abstract TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile);
+
         public abstract void onSourceCreated(Source source);
 
         public abstract void registerOnDispose(Object engineObject, Closeable closeable);
@@ -753,6 +757,10 @@ public abstract class Accessor {
         public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
 
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
+
+        public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
+
+        public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -857,11 +865,11 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
+        public abstract TruffleFile getTruffleFile(Path path, Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
+
         public abstract boolean isSocketIOAllowed(Object fileSystemContext);
-
-        public abstract TruffleFile getTruffleFile(Object context, String path);
-
-        public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
@@ -890,6 +898,8 @@ public abstract class Accessor {
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
+
+        public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
 
     }
 
@@ -1231,6 +1241,8 @@ public abstract class Accessor {
 
         public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
 
+        public abstract Collection<InternalResource> getInternalResources();
+
     }
 
     public abstract static class LanguageProviderSupport extends Support {
@@ -1249,6 +1261,10 @@ public abstract class Accessor {
 
         public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
+        public abstract List<String> getInternalResourceIds(TruffleLanguageProvider provider);
+
+        public abstract InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId);
+
     }
 
     public abstract static class InstrumentProviderSupport extends Support {
@@ -1264,6 +1280,10 @@ public abstract class Accessor {
         public abstract Object create(Object truffleInstrumentProvider);
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
+
+        public abstract List<String> getInternalResourceIds(Object truffleInstrumentProvider);
+
+        public abstract InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId);
     }
 
     public abstract static class DynamicObjectSupport extends Support {

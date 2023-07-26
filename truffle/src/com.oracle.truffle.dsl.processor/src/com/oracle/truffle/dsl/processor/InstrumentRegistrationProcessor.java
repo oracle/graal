@@ -85,6 +85,9 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             emitError("Registered instrument class must subclass TruffleInstrument.", annotatedElement);
             return false;
         }
+        if (!validateInternalResources(annotatedElement, registrationMirror, context)) {
+            return false;
+        }
         assertNoErrorExpected(annotatedElement);
         return processingTruffleInstrument;
     }
@@ -122,6 +125,18 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleInstrument_Registration);
                 generateGetServicesClassNames(registration, builder, context);
+                break;
+            }
+            case "getInternalResourceIds": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleInstrument_Registration);
+                generateGetInternalResourceIds(registration, builder, context);
+                break;
+            }
+            case "createInternalResource": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleInstrument_Registration);
+                generateCreateInternalResource(registration, methodToImplement.getParameters().get(0), builder, context);
                 break;
             }
             default:

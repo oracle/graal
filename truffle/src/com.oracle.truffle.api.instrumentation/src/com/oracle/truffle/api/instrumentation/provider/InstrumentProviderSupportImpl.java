@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.instrumentation.provider;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.impl.Accessor;
 
 import java.util.Collection;
+import java.util.List;
 
 final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSupport {
 
@@ -59,5 +61,15 @@ final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSup
     @Override
     public Collection<String> getServicesClassNames(Object truffleInstrumentProvider) {
         return ((TruffleInstrumentProvider) truffleInstrumentProvider).getServicesClassNames();
+    }
+
+    @Override
+    public List<String> getInternalResourceIds(Object truffleInstrumentProvider) {
+        return ((TruffleInstrumentProvider) truffleInstrumentProvider).getInternalResourceIds();
+    }
+
+    @Override
+    public InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId) {
+        return (InternalResource) ((TruffleInstrumentProvider) truffleInstrumentProvider).createInternalResource(resourceId);
     }
 }

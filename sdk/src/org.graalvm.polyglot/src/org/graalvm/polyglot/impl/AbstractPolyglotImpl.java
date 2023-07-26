@@ -55,6 +55,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -382,6 +383,10 @@ public abstract class AbstractPolyglotImpl {
 
     public AbstractHostAccess createHostAccess() {
         return getNext().createHostAccess();
+    }
+
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return getNext().copyResources(targetFolder, components);
     }
 
     /**

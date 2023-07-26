@@ -38,45 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.provider;
+package com.oracle.truffle.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.api.impl.Accessor;
 
-import java.util.Collection;
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.Path;
 
-final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport {
+@InternalResource.Id("LibTruffleAttach")
+final class LibTruffleAttachResource implements InternalResource {
 
-    @Override
-    public String getLanguageClassName(TruffleLanguageProvider provider) {
-        return provider.getLanguageClassName();
+    static final LibTruffleAttachResource INSTANCE = new LibTruffleAttachResource();
+
+    private LibTruffleAttachResource() {
     }
 
     @Override
-    public Object create(TruffleLanguageProvider provider) {
-        return provider.create();
+    public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        if (env.inNativeImageBuild() && !env.inContextPreinitialization()) {
+            // The truffleattach library is not needed in native-image.
+            return;
+        }
+        Path base = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString());
+        env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
     }
 
     @Override
-    public Collection<String> getServicesClassNames(TruffleLanguageProvider provider) {
-        return provider.getServicesClassNames();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider) {
-        return (List<FileTypeDetector>) provider.createFileTypeDetectors();
-    }
-
-    @Override
-    public List<String> getInternalResourceIds(TruffleLanguageProvider provider) {
-        return provider.getInternalResourceIds();
-    }
-
-    @Override
-    public InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId) {
-        return (InternalResource) provider.createInternalResource(resourceId);
+    public String versionHash(Env env) {
+        try {
+            Path hashResource = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
+            return env.readResourceLines(hashResource).get(0);
+        } catch (IOException ioe) {
+            throw CompilerDirectives.shouldNotReachHere(ioe);
+        }
     }
 }

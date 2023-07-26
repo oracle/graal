@@ -419,6 +419,8 @@ meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.In
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.TruffleContext getEnteredContext()
+meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.Class<? extends com.oracle.truffle.api.InternalResource>) throws java.io.IOException
+meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.String) throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
@@ -465,6 +467,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean internal()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.InternalResource>[] internalResources()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
@@ -477,6 +480,8 @@ cons protected init()
 meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getInstrumentClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node

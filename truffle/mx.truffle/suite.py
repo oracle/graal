@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.34.0",
   "name" : "truffle",
   "version" : "23.1.0",
   "release" : False,
@@ -159,7 +159,6 @@ suite = {
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
-      "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
       "digest" : "sha512:6d93cde728f5db242d2ab55090e5b2952e873625e542043d16d859e1486433c91efcf3c713d7255697951ee745cd5f66276b78f38c62c422cd7b1000291612ad",
       "sourceDigest" : "sha512:81377da5f52fae2e412ea084cb6e6e82d37beb96e8d624e47b6e7a2e70f61e237485239dd4b64934bf4758857d0582dc11acdeadc930bccb02a471df4b7e83b2",
       "maven" : {
@@ -1275,6 +1274,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.runtime",
+        "TRUFFLE_RUNTIME_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
@@ -1323,6 +1323,9 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+        ],
+        "opens" : [
+          "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1380,21 +1383,24 @@ suite = {
       }
     },
 
-    "TRUFFLE_RUNTIME_ATTACH" : {
-      "native" : True,
+    "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
+      "type" : "dir",
       "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
           "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
+          "windows-aarch64",
       ],
       "layout" : {
-        "bin/" : "dependency:com.oracle.truffle.runtime.attach",
+        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
-      "maven": True,
+      "maven": False,
     },
 
     "TRUFFLE_RUNTIME_ATTACH_SUPPORT" : {
@@ -1440,6 +1446,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.libffi",
+        "TRUFFLE_NFI_RESOURCES",
       ],
       "distDependencies" : [
         "TRUFFLE_NFI",
@@ -1468,6 +1475,26 @@ suite = {
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
       "maven": True,
+    },
+
+    "TRUFFLE_NFI_RESOURCES" : {
+      "type" : "dir",
+      "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+          "windows-aarch64",
+      ],
+      "layout" : {
+        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+      },
+      "description" : "Contains the native library needed by the libffi NFI backend.",
+      "maven": False,
     },
 
     "TRUFFLE_TCK" : {

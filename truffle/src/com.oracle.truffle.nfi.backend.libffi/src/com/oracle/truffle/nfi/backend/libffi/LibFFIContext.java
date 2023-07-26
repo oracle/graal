@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
@@ -266,13 +269,18 @@ class LibFFIContext {
 
     private static native long initializeNativeEnv(long context);
 
-    private static void loadNFILib() {
+    private void loadNFILib() {
         String nfiLib = System.getProperty("truffle.nfi.library");
         if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-        } else {
-            System.load(nfiLib);
+            try {
+                TruffleFile libNFIResources = env.getInternalResource(LibNFIResource.class);
+                TruffleFile libNFI = libNFIResources.resolve("bin").resolve(System.mapLibraryName("trufflenfi"));
+                nfiLib = libNFI.getAbsoluteFile().getPath();
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
         }
+        System.load(nfiLib);
     }
 
     ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {

@@ -43,8 +43,11 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
@@ -62,6 +65,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     final PolyglotEngineImpl engine;
 
     private final Object instrumentLock = new Object();
+    final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
     private volatile OptionDescriptors engineOptions;
     private volatile OptionDescriptors contextOptions;
     private volatile OptionDescriptors allOptions;

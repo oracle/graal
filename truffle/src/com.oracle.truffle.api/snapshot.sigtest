@@ -161,6 +161,55 @@ meth public java.lang.String toString()
 supr java.lang.Object
 hfds id,name,polyglotInstrument,version
 
+CLSS public abstract interface com.oracle.truffle.api.InternalResource
+innr public abstract interface static !annotation Id
+innr public final static !enum CPUArchitecture
+innr public final static !enum OS
+innr public final static Env
+meth public abstract java.lang.String versionHash(com.oracle.truffle.api.InternalResource$Env)
+meth public abstract void unpackFiles(com.oracle.truffle.api.InternalResource$Env,java.nio.file.Path) throws java.io.IOException
+
+CLSS public final static !enum com.oracle.truffle.api.InternalResource$CPUArchitecture
+ outer com.oracle.truffle.api.InternalResource
+fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AARCH64
+fld public final static com.oracle.truffle.api.InternalResource$CPUArchitecture AMD64
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture getCurrent()
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.InternalResource$CPUArchitecture[] values()
+supr java.lang.Enum<com.oracle.truffle.api.InternalResource$CPUArchitecture>
+hfds id
+
+CLSS public final static com.oracle.truffle.api.InternalResource$Env
+ outer com.oracle.truffle.api.InternalResource
+meth public boolean inContextPreinitialization()
+meth public boolean inNativeImageBuild()
+meth public com.oracle.truffle.api.InternalResource$CPUArchitecture getCPUArchitecture()
+meth public com.oracle.truffle.api.InternalResource$OS getOS()
+meth public java.util.List<java.lang.String> readResourceLines(java.nio.file.Path) throws java.io.IOException
+meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
+supr java.lang.Object
+hfds contextPreinitializationCheck,owner
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.InternalResource$Id
+ outer com.oracle.truffle.api.InternalResource
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
+
+CLSS public final static !enum com.oracle.truffle.api.InternalResource$OS
+ outer com.oracle.truffle.api.InternalResource
+fld public final static com.oracle.truffle.api.InternalResource$OS DARWIN
+fld public final static com.oracle.truffle.api.InternalResource$OS LINUX
+fld public final static com.oracle.truffle.api.InternalResource$OS WINDOWS
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.InternalResource$OS getCurrent()
+meth public static com.oracle.truffle.api.InternalResource$OS valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.InternalResource$OS[] values()
+supr java.lang.Enum<com.oracle.truffle.api.InternalResource$OS>
+hfds id
+
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)
 meth public com.oracle.truffle.api.RootCallTarget getCallTarget()
@@ -496,6 +545,8 @@ meth public com.oracle.truffle.api.TruffleContext getContext()
 meth public com.oracle.truffle.api.TruffleContext$Builder newContextBuilder()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.TruffleFile getCurrentWorkingDirectory()
+meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.Class<? extends com.oracle.truffle.api.InternalResource>) throws java.io.IOException
+meth public com.oracle.truffle.api.TruffleFile getInternalResource(java.lang.String) throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.lang.String)
@@ -601,6 +652,7 @@ meth public abstract !hasdefault boolean interactive()
 meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.InternalResource>[] internalResources()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
@@ -1303,6 +1355,8 @@ meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getLanguageClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
 meth protected abstract java.util.List<?> createFileTypeDetectors()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.source.Source

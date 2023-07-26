@@ -57,6 +57,7 @@ meth public abstract !hasdefault boolean interactive()
 meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.InternalResource>[] internalResources()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
@@ -83,6 +84,8 @@ meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getLanguageClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
 meth protected abstract java.util.List<?> createFileTypeDetectors()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.tck.DebuggerTester
@@ -169,9 +172,11 @@ meth public abstract int value()
 CLSS public final com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
 cons public init()
 meth protected java.lang.Object create()
+meth protected java.lang.Object createInternalResource(java.lang.String)
 meth protected java.lang.String getLanguageClassName()
 meth protected java.util.Collection<java.lang.String> getServicesClassNames()
 meth protected java.util.List<?> createFileTypeDetectors()
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
 supr com.oracle.truffle.api.provider.TruffleLanguageProvider
 
 CLSS public abstract interface java.lang.AutoCloseable

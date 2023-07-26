@@ -74,7 +74,7 @@ final class SourceAccessor extends Accessor {
     }
 
     static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
-        return ACCESSOR.languageSupport().getTruffleFile(fileSystemContext, uri);
+        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
     }
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {

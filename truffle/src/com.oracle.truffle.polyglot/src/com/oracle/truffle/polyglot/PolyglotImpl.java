@@ -55,6 +55,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -529,6 +530,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public AbstractHostAccess createHostAccess() {
         return new PolyglotHostAccess(this);
+    }
+
+    @Override
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
     }
 
     @Override

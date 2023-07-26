@@ -197,6 +197,7 @@ hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOption
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public !varargs static boolean copyResources(java.nio.file.Path,java.lang.String[]) throws java.io.IOException
 meth public !varargs static org.graalvm.polyglot.Engine create(java.lang.String[])
 meth public !varargs static org.graalvm.polyglot.Engine$Builder newBuilder(java.lang.String[])
 meth public java.lang.String getImplementationName()

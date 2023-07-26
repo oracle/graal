@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,6 +56,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -76,6 +78,7 @@ final class InstrumentCache {
     private final Set<String> services;
     private final ProviderAdapter providerAdapter;
     private final SandboxPolicy sandboxPolicy;
+    private final Map<String, InternalResourceCache> internalResources;
 
     /**
      * Initializes state for native image generation.
@@ -126,6 +129,11 @@ final class InstrumentCache {
         this.services = services;
         this.providerAdapter = providerAdapter;
         this.sandboxPolicy = sandboxPolicy;
+        Map<String, InternalResourceCache> map = new HashMap<>();
+        for (String resourceId : providerAdapter.getInternalResourceIds()) {
+            map.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
+        }
+        internalResources = Collections.unmodifiableMap(map);
     }
 
     boolean isInternal() {
@@ -145,6 +153,16 @@ final class InstrumentCache {
             }
             return cache;
         }
+    }
+
+    static Collection<InstrumentCache> internalInstruments() {
+        Set<InstrumentCache> result = new HashSet<>();
+        for (InstrumentCache i : load()) {
+            if (i.isInternal()) {
+                result.add(i);
+            }
+        }
+        return result;
     }
 
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
@@ -258,6 +276,20 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
+    InternalResourceCache getResourceCache(String resourceId) {
+        InternalResourceCache cache = internalResources.get(resourceId);
+        if (cache == null) {
+            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
+                            resourceId, id, String.join(", ", internalResources.keySet())));
+        } else {
+            return cache;
+        }
+    }
+
+    Collection<String> getResourceIds() {
+        return internalResources.keySet();
+    }
+
     String getWebsite() {
         return website;
     }
@@ -279,6 +311,10 @@ final class InstrumentCache {
         String getInstrumentClassName();
 
         Collection<String> getServicesClassNames();
+
+        List<String> getInternalResourceIds();
+
+        InternalResource createInternalResource(String resourceId);
     }
 
     /**
@@ -315,6 +351,16 @@ final class InstrumentCache {
         public Collection<String> getServicesClassNames() {
             return provider.getServicesClassNames();
         }
+
+        @Override
+        public List<String> getInternalResourceIds() {
+            return List.of();
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /**
@@ -348,6 +394,16 @@ final class InstrumentCache {
         @Override
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
+        }
+
+        @Override
+        public List<String> getInternalResourceIds() {
+            return EngineAccessor.INSTRUMENT_PROVIDER.getInternalResourceIds(provider);
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            return EngineAccessor.INSTRUMENT_PROVIDER.createInternalResource(provider, resourceId);
         }
     }
 }

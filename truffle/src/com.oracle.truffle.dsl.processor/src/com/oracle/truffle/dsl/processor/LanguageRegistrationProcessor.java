@@ -75,7 +75,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
 
-    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "fileTypeDetectors");
+    private static final Set<String> IGNORED_ATTRIBUTES = Set.of("services", "fileTypeDetectors", "internalResources");
 
     static String resolveLanguageId(Element annotatedElement, AnnotationMirror registration) {
         String id = ElementUtils.getAnnotationValue(String.class, registration, "id");
@@ -201,6 +201,10 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
+        if (!validateInternalResources(annotatedElement, registrationMirror, context)) {
+            return false;
+        }
+
         if (valid) {
             assertNoErrorExpected(annotatedElement);
         }
@@ -255,6 +259,18 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
                 generateGetServicesClassNames(registration, builder, context);
+                break;
+            }
+            case "getInternalResourceIds": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleLanguage_Registration);
+                generateGetInternalResourceIds(registration, builder, context);
+                break;
+            }
+            case "createInternalResource": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleLanguage_Registration);
+                generateCreateInternalResource(registration, methodToImplement.getParameters().get(0), builder, context);
                 break;
             }
             case "createFileTypeDetectors": {
