@@ -251,6 +251,11 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             model.fdConstructor = ctors.get(0);
         }
 
+        // Extract hook implementations.
+        model.executeProlog = ElementUtils.findMethod(typeElement, "executeProlog");
+        model.executeEpilog = ElementUtils.findMethod(typeElement, "executeEpilog");
+        model.handleStackOverflow = ElementUtils.findMethod(typeElement, "handleStackOverflow");
+
         // Detect method implementations that will be overridden by the generated class.
         List<ExecutableElement> overrides = List.of(
                         ElementUtils.findMethod(types.RootNode, "execute"),
