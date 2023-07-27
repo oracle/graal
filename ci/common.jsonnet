@@ -231,16 +231,18 @@ local common_json = import "../common.json";
   },
 
   local ol7 = {
+    os_distro:: "ol",
     docker+: {
       image: "buildslave_ol7",
       mount_modules: true,
     },
   },
   local ubuntu22 = {
-      docker: {
-        image: "buildslave_ubuntu22",
-        mount_modules: true,
-      },
+    os_distro:: "ubuntu",
+    docker+: {
+      image: "buildslave_ubuntu22",
+      mount_modules: true,
+    },
   },
   local deps_linux = {
   },
