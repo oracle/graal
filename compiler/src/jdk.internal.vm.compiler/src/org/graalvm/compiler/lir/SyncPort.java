@@ -29,17 +29,17 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Target;
 
 /**
- * Denotes port of a HotSpot stub. This information will be parsed by
- * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
+ * Denotes port of a HotSpot code snippet. This information will be parsed by
+ * {@code org.graalvm.compiler.lir.processor.SyncPortProcessor}.
  */
 @Target({ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.METHOD})
-@Repeatable(StubPorts.class)
-public @interface StubPort {
+@Repeatable(SyncPorts.class)
+public @interface SyncPort {
     /**
-     * From where this stub is ported. Should be in the format of
+     * From where this code snippet is ported. Should be in the format of
      * ^https://github.com/openjdk/jdk/blob/[0-9a-fA-F]{40}/[-_./A-Za-z0-9]+#L[0-9]+-L[0-9]+$
      */
-    String from() default "";
+    String from();
 
     /**
      * Digest of the source code that was ported.
@@ -47,7 +47,7 @@ public @interface StubPort {
     String sha1();
 
     /**
-     * Reason for ignoring this StubPort.
+     * Reason for ignoring this SyncPort.
      */
     String ignore() default "";
 }

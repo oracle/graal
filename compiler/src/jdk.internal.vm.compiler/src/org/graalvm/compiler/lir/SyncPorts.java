@@ -28,9 +28,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
 /**
- * Containing type for {@link StubPort}.
+ * Containing type for {@link SyncPort}.
  */
 @Target(ElementType.TYPE)
-public @interface StubPorts {
-    StubPort[] value();
+public @interface SyncPorts {
+    SyncPort[] value();
 }

@@ -57,11 +57,11 @@ import javax.tools.Diagnostic;
 import org.graalvm.compiler.processor.AbstractProcessor;
 
 /**
- * Processor for the {@code org.graalvm.compiler.lir.StubPort} annotation. It verifies whether the
+ * Processor for the {@code org.graalvm.compiler.lir.SyncPort} annotation. It verifies whether the
  * digest of the latest source code from the OpenJDK repository matches the one specified in the
- * {@code StubPort}.
+ * {@code SyncPort}.
  */
-public class StubPortProcessor extends AbstractProcessor {
+public class SyncPortProcessor extends AbstractProcessor {
 
     // Enables digest verification. E.g., HOTSPOT_PORT_SYNC_CHECK=true mx build
     static final String SYNC_CHECK_ENV_VAR = "HOTSPOT_PORT_SYNC_CHECK";
@@ -74,8 +74,8 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
     static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
 
-    static final String STUB_PORT_CLASS_NAME = "org.graalvm.compiler.lir.StubPort";
-    static final String STUB_PORTS_CLASS_NAME = "org.graalvm.compiler.lir.StubPorts";
+    static final String SYNC_PORT_CLASS_NAME = "org.graalvm.compiler.lir.SyncPort";
+    static final String SYNC_PORTS_CLASS_NAME = "org.graalvm.compiler.lir.SyncPorts";
 
     static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/openjdk/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
 
@@ -83,7 +83,7 @@ public class StubPortProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(STUB_PORT_CLASS_NAME, STUB_PORTS_CLASS_NAME);
+        return Set.of(SYNC_PORT_CLASS_NAME, SYNC_PORTS_CLASS_NAME);
     }
 
     private void compareDigest(MessageDigest md, AnnotationMirror annotationMirror, Element element, Proxy proxy) throws IOException, URISyntaxException {
@@ -128,7 +128,7 @@ public class StubPortProcessor extends AbstractProcessor {
                         kind = NOTE;
                         extraMessage = String.format("""
                                          The original code snippet is shifted. Update with:
-                                        @StubPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
+                                        @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
                                                   sha1 = "%s")
                                         """,
                                         latestCommit,
@@ -153,8 +153,8 @@ public class StubPortProcessor extends AbstractProcessor {
                     }
                 } else {
                     extraMessage = String.format("""
-                                     New StubPort? Then:
-                                    @StubPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
+                                     New SyncPort? Then:
+                                    @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
                                               sha1 = "%s")
                                     """,
                                     getLatestCommit(proxy),
@@ -270,7 +270,7 @@ public class StubPortProcessor extends AbstractProcessor {
                 try {
                     // Set https.protocols explicitly to avoid handshake failure
                     System.setProperty("https.protocols", "TLSv1.2");
-                    TypeElement tStubPort = getTypeElement(STUB_PORT_CLASS_NAME);
+                    TypeElement tSyncPort = getTypeElement(SYNC_PORT_CLASS_NAME);
                     MessageDigest md = MessageDigest.getInstance("SHA-1");
 
                     Proxy proxy = Proxy.NO_PROXY;
@@ -281,16 +281,16 @@ public class StubPortProcessor extends AbstractProcessor {
                         proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyURI.getHost(), proxyURI.getPort()));
                     }
 
-                    for (Element element : roundEnv.getElementsAnnotatedWith(tStubPort)) {
-                        compareDigest(md, getAnnotation(element, tStubPort.asType()), element, proxy);
+                    for (Element element : roundEnv.getElementsAnnotatedWith(tSyncPort)) {
+                        compareDigest(md, getAnnotation(element, tSyncPort.asType()), element, proxy);
                     }
 
-                    TypeElement tStubPorts = getTypeElement(STUB_PORTS_CLASS_NAME);
+                    TypeElement tSyncPorts = getTypeElement(SYNC_PORTS_CLASS_NAME);
 
-                    for (Element element : roundEnv.getElementsAnnotatedWith(tStubPorts)) {
-                        AnnotationMirror stubPorts = getAnnotation(element, tStubPorts.asType());
-                        for (AnnotationMirror stubPort : getAnnotationValueList(stubPorts, "value", AnnotationMirror.class)) {
-                            compareDigest(md, stubPort, element, proxy);
+                    for (Element element : roundEnv.getElementsAnnotatedWith(tSyncPorts)) {
+                        AnnotationMirror syncPorts = getAnnotation(element, tSyncPorts.asType());
+                        for (AnnotationMirror syncPort : getAnnotationValueList(syncPorts, "value", AnnotationMirror.class)) {
+                            compareDigest(md, syncPort, element, proxy);
                         }
                     }
                 } catch (NoSuchAlgorithmException | IOException | URISyntaxException e) {

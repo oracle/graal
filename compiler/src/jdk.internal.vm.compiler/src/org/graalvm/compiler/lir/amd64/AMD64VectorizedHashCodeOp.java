@@ -64,7 +64,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -75,11 +75,11 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1697-L1796",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1697-L1796",
           sha1 = "a93850c44f7e34fcec05226bae95fd695b2ea2f7")
-@StubPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1918-L1964",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1918-L1964",
           sha1 = "9cbba8bd6c4037427fa46f067abb722b15aca90c")
-@StubPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3236-L3423",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3236-L3423",
           sha1 = "2457cf3f9d3ff89c1515fa5d95cc7c8437a5318b")
 // @formatter:on
 @Opcode("VECTORIZED_HASHCODE")
