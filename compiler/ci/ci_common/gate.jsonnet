@@ -185,6 +185,11 @@
 
   manifest_match(manifest, name):: [key for key in std.objectFields(manifest) if key_matches_value(key, name)] != [],
 
+  # Request nodes with at least 16GB of RAM
+  ram16gb:: {
+    capabilities+: ["ram16gb"],
+  },
+
   # This map defines the builders that run as gates. Each key in this map
   # must correspond to the name of a build created by `make_build`.
   # Each value in this map is an object that overrides or extends the
@@ -192,11 +197,11 @@
   local gates = {
     "gate-compiler-test-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test_zgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test_zgc-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
 
     "gate-compiler-style-labsjdk-20-linux-amd64": t("45:00"),
