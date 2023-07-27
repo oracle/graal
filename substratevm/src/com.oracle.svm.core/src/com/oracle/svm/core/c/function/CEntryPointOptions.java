@@ -30,15 +30,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointSetup.EnterByIsolatePrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;
 
@@ -74,8 +71,7 @@ public @interface CEntryPointOptions {
 
     /**
      * Special placeholder class for {@link #prologue()} for examining the entry point method's
-     * signature and, in the case of an {@link IsolateThread} parameter, using {@link EnterPrologue}
-     * or, in the case of an {@link Isolate} parameter, using {@link EnterByIsolatePrologue}.
+     * signature using {@link EnterPrologue}.
      */
     final class AutomaticPrologue implements Prologue {
     }

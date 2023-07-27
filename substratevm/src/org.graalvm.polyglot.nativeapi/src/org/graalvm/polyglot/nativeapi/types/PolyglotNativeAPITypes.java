@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.polyglot.nativeapi.PolyglotNativeAPICContext;
@@ -232,5 +233,23 @@ public class PolyglotNativeAPITypes {
     public interface PolyglotOutputHandler extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke(CCharPointer bytes, UnsignedWord length, VoidPointer data);
+    }
+
+    @CTypedef(name = "poly_log_callback")
+    public interface PolyglotLogCallback extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(@CConst CCharPointer bytes, UnsignedWord length, VoidPointer data);
+    }
+
+    @CTypedef(name = "poly_flush_callback")
+    public interface PolyglotFlushCallback extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(VoidPointer data);
+    }
+
+    @CTypedef(name = "poly_fatal_error_callback")
+    public interface PolyglotFatalErrorCallback extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(VoidPointer data);
     }
 }
