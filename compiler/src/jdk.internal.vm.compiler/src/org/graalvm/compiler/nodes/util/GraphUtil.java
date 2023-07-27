@@ -688,6 +688,22 @@ public class GraphUtil {
         }
     }
 
+    /**
+     * Gets the original value by iterating through all {@link ValueProxy value proxies}, except
+     * {@link ProxyNode ProxyNodes}. That is, this method looks through pi nodes, value anchors,
+     * etc., but it does not enter loops.
+     *
+     * @param original the start value
+     * @return the first non-proxy or loop proxy value encountered
+     */
+    public static ValueNode unproxifyExceptLoopProxies(ValueNode original) {
+        ValueNode node = original;
+        while (node instanceof ValueProxy proxy && !(node instanceof ProxyNode)) {
+            node = proxy.getOriginalNode();
+        }
+        return node;
+    }
+
     public static ValueNode skipPi(ValueNode node) {
         ValueNode n = node;
         while (n instanceof PiNode) {
