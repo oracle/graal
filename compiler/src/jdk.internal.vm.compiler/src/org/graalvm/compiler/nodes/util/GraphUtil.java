@@ -371,7 +371,7 @@ public class GraphUtil {
         LinkedStack<Node> stack = null;
         Node cur = node;
         do {
-            CompilationAlarm.check(node.graph());
+            CompilationAlarm.checkProgress(node.graph());
             assert checkKill(cur, mayKillGuard);
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
@@ -749,7 +749,7 @@ public class GraphUtil {
         ValueNode current = value;
         StructuredGraph graph = value.graph();
         do {
-            CompilationAlarm.check(graph);
+            CompilationAlarm.checkProgress(graph);
             /*
              * PiArrayNode implements ArrayLengthProvider and ValueProxy. We want to treat it as an
              * ArrayLengthProvider, therefore we check this case first.
@@ -1190,7 +1190,7 @@ public class GraphUtil {
         }
         FixedNode node = start;
         while (true) { // TERMINATION ARGUMENT: following next nodes or returning
-            CompilationAlarm.check(start.graph());
+            CompilationAlarm.checkProgress(start.graph());
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
@@ -1323,7 +1323,7 @@ public class GraphUtil {
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
         while (true) { // TERMINATION ARGUMENT: following prev nodes
-            CompilationAlarm.check(start.graph());
+            CompilationAlarm.checkProgress(start.graph());
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;

@@ -191,7 +191,7 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
             long word = getPartOfWord(bits[wordIndex], fromNodeId);
             while (true) { // TERMINATION ARGUMENT: process all nodes until highest node id created
                            // so far
-                CompilationAlarm.check(graph);
+                CompilationAlarm.checkProgress(graph);
                 while (word != 0) {
                     int bitIndex = Long.numberOfTrailingZeros(word);
                     int nodeId = wordIndex * Long.SIZE + bitIndex;

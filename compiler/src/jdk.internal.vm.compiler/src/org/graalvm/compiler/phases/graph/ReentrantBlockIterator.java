@@ -141,7 +141,7 @@ public final class ReentrantBlockIterator {
 
         while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
                        // of cfg or
-            CompilationAlarm.check(start.getCfg().graph);
+            CompilationAlarm.checkProgress(start.getCfg().graph);
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
                 throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);

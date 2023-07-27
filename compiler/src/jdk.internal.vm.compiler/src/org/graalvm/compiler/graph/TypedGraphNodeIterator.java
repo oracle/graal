@@ -68,7 +68,7 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
         needsForward = false;
         int startIdx = currentIdIndex;
         while (true) { // TERMINATION ARGUMENT: processing nodes of a defined type in a graph
-            CompilationAlarm.check(graph);
+            CompilationAlarm.checkProgress(graph);
             Node next;
             if (current() == null) {
                 next = graph.getIterableNodeStart(ids[currentIdIndex]);

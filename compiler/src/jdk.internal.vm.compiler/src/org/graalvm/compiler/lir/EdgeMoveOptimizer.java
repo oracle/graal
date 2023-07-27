@@ -163,7 +163,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             // process lir-instructions while all predecessors end with the same instruction
             while (true) { // TERMINATION ARGUMENT: processing edge instructions of a fixed set of
                            // predecessor blocks
-                CompilationAlarm.check(lir.getOptions(), lir);
+                CompilationAlarm.checkProgress(lir.getOptions(), lir);
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;
@@ -244,7 +244,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             // process LIR instructions while all successors begin with the same instruction
             while (true) { // TERMINATION ARGUMENT: processing edge instructions for a fixed set of
                            // predecessor blocks
-                CompilationAlarm.check(lir.getOptions(), lir);
+                CompilationAlarm.checkProgress(lir.getOptions(), lir);
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;

@@ -1049,7 +1049,7 @@ public class Graph implements EventCounter {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        CompilationAlarm.check(this);
+        CompilationAlarm.checkProgress(this);
         return new NodeIterable<>() {
 
             @Override

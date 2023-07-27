@@ -86,7 +86,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         if (this.hasUsages()) {
             outer: while (true) { // TERMINATION ARGUMENT: performing outer iteration only when
                                   // guard proxy is encountered - break cycles.
-                CompilationAlarm.check(graph());
+                CompilationAlarm.checkProgress(graph());
                 for (ProxyNode vpn : proxies().snapshot()) {
                     ValueNode value = vpn.value();
                     vpn.replaceAtUsagesAndDelete(value);

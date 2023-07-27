@@ -131,7 +131,7 @@ public class ReversePostOrder {
          */
         while (true) { // TERMINATION ARGUMENT: traversing fixed nodes in the graph start to all
                        // sinks
-            CompilationAlarm.check(cfg.graph);
+            CompilationAlarm.checkProgress(cfg.graph);
             /*
              * Select the next node to process, either a regular node from the toProcess nodes
              * (branches, merges, etc.) or the next nodes after loop exits if an (inner) loop was
@@ -218,7 +218,7 @@ public class ReversePostOrder {
             }
 
             while (true) { // TERMINATION ARGUMENT: iterating over a graph
-                CompilationAlarm.check(cfg.graph);
+                CompilationAlarm.checkProgress(cfg.graph);
                 visitedNodes.mark(cur);
                 /*
                  * Depending on the block end nodes we have different actions for the different

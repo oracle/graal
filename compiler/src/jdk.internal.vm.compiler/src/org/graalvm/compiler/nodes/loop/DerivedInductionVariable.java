@@ -46,7 +46,7 @@ public abstract class DerivedInductionVariable extends InductionVariable {
     }
 
     public InductionVariable getBase() {
-        CompilationAlarm.check(base.graph());
+        CompilationAlarm.checkProgress(base.graph());
         return base;
     }
 

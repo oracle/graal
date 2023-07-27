@@ -153,7 +153,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
         FixedWithNextNode cur = start;
         while (true) { // TERMINATION ARGUMENT: processing fixed nodes of a block until exit
                        // condition is met (unknown or known node encountered)
-            CompilationAlarm.check(start.graph());
+            CompilationAlarm.checkProgress(start.graph());
             // Check the memory usages of the current access
             for (Node usage : cur.usages()) {
                 if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {

@@ -152,7 +152,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
     private static FixedNode findBegin(FixedNode node) {
         FixedNode current = node;
         while (true) { // TERMINATION ARGUMENT: processing predecessor nodes in a graph
-            CompilationAlarm.check(node.graph());
+            CompilationAlarm.checkProgress(node.graph());
             assert current != null;
             Node predecessor = current.predecessor();
             if (current instanceof AbstractBeginNode) {

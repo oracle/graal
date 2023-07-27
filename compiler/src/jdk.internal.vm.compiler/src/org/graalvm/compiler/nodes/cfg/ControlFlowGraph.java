@@ -507,7 +507,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
             FixedNode f = b.getBeginNode();
             while (true) { // TERMINATION ARGUMENT: processing loop exit node predecessors
-                CompilationAlarm.check(graph);
+                CompilationAlarm.checkProgress(graph);
                 if (f instanceof LoopExitNode) {
                     LoopBeginNode closedLoop = ((LoopExitNode) f).loopBegin();
                     RPOLoopVerification lv = openLoops[tos - 1];
@@ -592,7 +592,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             HIRBlock pred = cur.getPredecessorAt(0);
             FixedNode f = pred.getBeginNode();
             while (true) { // TERMINATION ARGUMENT: process loop exit predecessor nodes
-                CompilationAlarm.check(b.getCfg().graph);
+                CompilationAlarm.checkProgress(b.getCfg().graph);
                 if (f instanceof LoopExitNode) {
                     return true;
                 }
@@ -741,7 +741,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         FixedWithNextNode cur = block.getBeginNode();
         while (true) { // TERMINATION ARGUMENT: processing fixed nodes of a basic block, bound if
                        // the graph is valid
-            CompilationAlarm.check(graph);
+            CompilationAlarm.checkProgress(graph);
             assert cur.isAlive() : cur;
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);

@@ -397,7 +397,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
             LoopInfo<State> info;
             while (true) { // TERMINATION ARGUMENT: Loops are processed iteratively until the merged
                            // state is the same as the initial state.
-                CompilationAlarm.check(loop.graph());
+                CompilationAlarm.checkProgress(loop.graph());
                 int sizeBeforeLoop = effects.size();
                 info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
                 ArrayList<State> states = new ArrayList<>();

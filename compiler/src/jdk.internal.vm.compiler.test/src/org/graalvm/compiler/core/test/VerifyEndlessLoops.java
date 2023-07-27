@@ -42,6 +42,12 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.VerifyPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
+/**
+ * Verify that no loop in Graal contains endless paths - endless paths are paths from a loop end
+ * (backedge) to the loop header that makes zero progress. Progress in a loop is defined as any
+ * side-effect or a backedge phi values changes. This ensures that at least statically every loop
+ * should at least "advance any state" - that can be global state (side effect) or a phi itself.
+ */
 public class VerifyEndlessLoops extends VerifyPhase<CoreProviders> {
 
     @Override

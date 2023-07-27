@@ -80,7 +80,7 @@ public final class Range {
         assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
 
         do {
-            CompilationAlarm.check(lir.getOptions(), lir);
+            CompilationAlarm.checkProgress(lir.getOptions(), lir);
             if (r1.from < r2.from) {
                 if (r1.to <= r2.from) {
                     r1 = r1.next;

@@ -66,7 +66,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             IntegerDivRemNode divRem = (IntegerDivRemNode) valueNode;
             FixedNode node = divRem.next();
             while (true) { // TERMINATION ARGUMENT: iterating next nodes
-                CompilationAlarm.check(valueNode.graph());
+                CompilationAlarm.checkProgress(valueNode.graph());
                 if (node instanceof IfNode) {
                     IfNode ifNode = (IfNode) node;
                     double probability = ifNode.getTrueSuccessorProbability();

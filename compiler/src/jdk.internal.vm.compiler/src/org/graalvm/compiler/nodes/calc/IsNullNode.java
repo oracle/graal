@@ -119,7 +119,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
 
         while (true) { // TERMINATION ARGUMENT: unwrapping compression nodes until exit condition is
                        // met.
-            CompilationAlarm.check(graph);
+            CompilationAlarm.checkProgress(graph);
             if (value != null) {
                 if (StampTool.isPointerAlwaysNull(value)) {
                     return LogicConstantNode.tautology();

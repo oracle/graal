@@ -125,7 +125,7 @@ public class ComputeInliningRelevance {
             FixedNode current = loopBegin.forwardEnd();
             while (true) { // TERMINATION ARGUMENT: process predecessor nodes until another is found
                            // or start is found
-                CompilationAlarm.check(graph);
+                CompilationAlarm.checkProgress(graph);
                 if (current.predecessor() == null) {
                     if (current instanceof LoopBeginNode) {
                         // if we reach a LoopBeginNode then we're within this loop

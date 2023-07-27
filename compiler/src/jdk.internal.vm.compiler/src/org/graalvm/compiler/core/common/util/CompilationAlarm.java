@@ -133,13 +133,13 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public static final int CHECK_BAILOUT_COUNTER = 1024 * 16;
 
-    public static void check(Graph graph) {
+    public static void checkProgress(Graph graph) {
         if (graph != null && graph.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
             overflowAction(graph.getOptions());
         }
     }
 
-    public static boolean check(OptionValues opt, EventCounter eventCounter) {
+    public static boolean checkProgress(OptionValues opt, EventCounter eventCounter) {
         if (opt != null && eventCounter.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
             overflowAction(opt);
             return true;

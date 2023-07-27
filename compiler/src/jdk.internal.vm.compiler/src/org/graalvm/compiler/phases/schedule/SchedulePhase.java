@@ -669,7 +669,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
             while (true) { // TERMINATION ARGUMENT: unproxifying inputs
-                CompilationAlarm.check(node.graph());
+                CompilationAlarm.checkProgress(node.graph());
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -1001,7 +1001,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             stack.push(first);
             Node current = first;
             while (true) { // TERMINATION ARGUMENT: processing stack until empty
-                CompilationAlarm.check(first.graph());
+                CompilationAlarm.checkProgress(first.graph());
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {

@@ -425,7 +425,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
         while (true) { // // TERMINATION ARGUMENT: bound by number of basic blocks and iterative
                        // loop traversal
-            CompilationAlarm.check(cfg.graph);
+            CompilationAlarm.checkProgress(cfg.graph);
             try {
                 BlockT loopEntryState = initialStateRemovedKilledLocations;
                 BlockT lastMergedState = cloneState(initialStateRemovedKilledLocations);
