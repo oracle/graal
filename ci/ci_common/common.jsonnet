@@ -89,6 +89,8 @@ common + common.frequencies + {
   windows_amd64: common.windows_amd64 + graal_common_extras,
   windows_server_2016_amd64: common.windows_server_2016_amd64 + graal_common_extras,
 
+  linux_ol9_mixin: common.linux_amd64_ol9_mixin,
+
   // See GR-31169 for description of the mach5 target
   mach5_target:: {targets+: ["mach5"]},
 }

@@ -237,6 +237,13 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ol9 = {
+    os_distro:: "ol",
+    docker+: {
+      image: "buildslave_ol9",
+      mount_modules: true,
+    },
+  },
   local ubuntu22 = {
     os_distro:: "ubuntu",
     docker+: {
@@ -268,6 +275,8 @@ local common_json = import "../common.json";
 
   windows_amd64: windows + amd64,
   windows_server_2016_amd64: windows_server_2016 + amd64,
+
+  linux_amd64_ol9_mixin: ol9,
 
   # Utils
   disable_proxies: {
