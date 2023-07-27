@@ -1602,25 +1602,29 @@ public class NativeImage {
             pb.command().add("--list-modules");
             pb.environment().clear();
             listModulesProcess = pb.start();
+
+            List<String> lines = new ArrayList<>();
             try (var br = new BufferedReader(new InputStreamReader(listModulesProcess.getInputStream()))) {
-                while (true) {
-                    var line = br.readLine();
-                    if (line == null) {
-                        break;
-                    }
-                    String[] splitString = StringUtil.split(line, " ", 3);
-                    String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
-                    Path externalPath = null;
-                    if (splitString.length > 1) {
-                        String pathURI = splitString[1]; // url: file://path/to/file
-                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
-                    }
-                    result.put(splitModuleNameAndVersion[0], externalPath);
+                String line;
+                while ((line = br.readLine()) != null) {
+                    lines.add(line);
                 }
             }
             int exitStatus = listModulesProcess.waitFor();
             if (exitStatus != 0) {
-                throw showError("Determining image-builder observable modules failed (Exit status %d).".formatted(exitStatus));
+                throw showError("Determining image-builder observable modules failed (Exit status %d). Process output: %n%s".formatted(exitStatus, String.join(System.lineSeparator(), lines)));
+            }
+            for (String line : lines) {
+                String[] splitString = StringUtil.split(line, " ", 3);
+                String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
+                Path externalPath = null;
+                if (splitString.length > 1) {
+                    String pathURI = splitString[1]; // url: file://path/to/file
+                    if (pathURI.startsWith("file://")) {
+                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
+                    }
+                }
+                result.put(splitModuleNameAndVersion[0], externalPath);
             }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
