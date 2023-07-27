@@ -138,7 +138,7 @@ public class FallbackFeature implements InternalFeature {
                 return;
             }
             /* Collect reflection use in application classes. */
-            checker.checkProgress(this, invokeLocation);
+            checker.check(this, invokeLocation);
         }
 
         String locationString(BytecodePosition invokeLocation) {
