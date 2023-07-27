@@ -237,10 +237,10 @@ public class StubPortProcessor extends AbstractProcessor {
         }
     }
 
-    private String latestCommit = null;
+    private String cachedLatestCommit = null;
 
     private String getLatestCommit(Proxy proxy) throws IOException, URISyntaxException {
-        if (latestCommit == null) {
+        if (cachedLatestCommit == null) {
             String result = null;
 
             URLConnection connection = new URI(JDK_LATEST_INFO).toURL().openConnection(proxy);
@@ -255,12 +255,12 @@ public class StubPortProcessor extends AbstractProcessor {
                 result = "UNKNOWN";
             }
             synchronized (this) {
-                if (latestCommit == null) {
-                    latestCommit = result;
+                if (cachedLatestCommit == null) {
+                    cachedLatestCommit = result;
                 }
             }
         }
-        return latestCommit;
+        return cachedLatestCommit;
     }
 
     @Override
