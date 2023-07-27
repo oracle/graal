@@ -95,7 +95,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
             }
             current = alternative;
 
-        } while (true); // TERMINATION ARGUMENT: test
+        } while (true);
     }
 
     public static int testRedundantComparesSnippet(int[] array) {

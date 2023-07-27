@@ -34,7 +34,7 @@ public class DeadCode02 extends JTTTest {
 
     public static int test() {
         int i = 0;
-        while (true) { // TERMINATION ARGUMENT: test
+        while (true) {
             i++;
             if (test2()) {
                 break;

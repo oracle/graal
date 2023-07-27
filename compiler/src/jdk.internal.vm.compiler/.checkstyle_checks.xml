@@ -10,6 +10,18 @@
 -->
 <module name="Checker">
   <property name="severity" value="error"/>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*Test.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*test.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*jtt.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
   <module name="TreeWalker">
     <module name="AvoidStarImport"/>
     <module name="JavadocStyle">

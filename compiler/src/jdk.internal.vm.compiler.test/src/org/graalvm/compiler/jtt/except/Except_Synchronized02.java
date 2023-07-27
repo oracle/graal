@@ -38,7 +38,7 @@ public class Except_Synchronized02 extends JTTTest {
 
         @SuppressWarnings("all")
         public synchronized int test2(int i) throws Exception {
-            while (true) { // TERMINATION ARGUMENT: test
+            while (true) {
                 try {
                     TestClass object = null;
                     return object.x;

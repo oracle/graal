@@ -57,7 +57,7 @@ public class LoopLastIndexOf extends JTTTest {
         int min = sourceOffset + targetCount - 1;
         int i = min + fromIndex;
 
-        startSearchForLastChar: while (true) { // TERMINATION ARGUMENT: test
+        startSearchForLastChar: while (true) {
             while (i >= min && source[i] != strLastChar) {
                 i--;
             }

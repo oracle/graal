@@ -238,7 +238,7 @@ public class UnrollingTestNode {
              * outer loop.
              */
             int i = 0;
-            while (true) { // TERMINATION ARGUMENT: test
+            while (true) {
                 if (i >= count) {
                     break;
                 }
@@ -246,7 +246,7 @@ public class UnrollingTestNode {
                 CompilerAsserts.partialEvaluationConstant(i);
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 int j = 0;
-                inner: while (true) { // TERMINATION ARGUMENT: test
+                inner: while (true) {
                     if (j >= count) {
                         break;
                     }
@@ -275,7 +275,7 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             int i = 0;
-            outer: while (true) { // TERMINATION ARGUMENT: test
+            outer: while (true) {
                 if (i >= count) {
                     break;
                 }
@@ -283,7 +283,7 @@ public class UnrollingTestNode {
                 CompilerAsserts.partialEvaluationConstant(i);
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 int j = 0;
-                while (true) { // TERMINATION ARGUMENT: test
+                while (true) {
                     if (j >= count) {
                         break;
                     }
@@ -580,7 +580,7 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             int i = 0;
-            while (true) { // TERMINATION ARGUMENT: test
+            while (true) {
                 if (i >= count) {
                     // LEX 1 -> constant number of loop iterations
                     break;
@@ -622,7 +622,7 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             int i = 0;
-            while (true) { // TERMINATION ARGUMENT: test
+            while (true) {
                 if (i >= count) {
                     // LEX 1 -> constant number of loop iterations
                     break;
@@ -669,7 +669,7 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             int i = 0;
-            while (true) { // TERMINATION ARGUMENT: test
+            while (true) {
                 if (i >= count) {
                     // LEX 1 -> constant number of loop iterations
                     break;

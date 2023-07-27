@@ -242,7 +242,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
             int ip = entry;
             int successor = -1;
             DFAStateNode curState = null;
-            outer: while (true) { // TERMINATION ARGUMENT: test
+            outer: while (true) {
                 CompilerAsserts.partialEvaluationConstant(ip);
                 CompilerAsserts.partialEvaluationConstant(states[ip]);
                 curState = states[ip];

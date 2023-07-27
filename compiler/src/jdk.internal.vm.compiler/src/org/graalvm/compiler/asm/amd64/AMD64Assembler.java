@@ -1181,7 +1181,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public boolean check(EnumSet<CPUFeature> features, int l, Register r, Register v, Register m, Register imm8) {
             if (isAVX512Register(r) || isAVX512Register(v) || isAVX512Register(m) || l == L512) {
-                GraalError.guarantee(l512features != null && l512features.checkProgress(features, l), "emitting illegal 512 bit instruction, required features: %s", l512features);
+                GraalError.guarantee(l512features != null && l512features.check(features, l), "emitting illegal 512 bit instruction, required features: %s", l512features);
             } else if (l == L128) {
                 GraalError.guarantee(l128feature != null && features.contains(l128feature), "emitting illegal 128 bit instruction, required feature: %s", l128feature);
             } else if (l == L256) {

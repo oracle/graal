@@ -74,7 +74,7 @@ public class TimerKeyTest {
             if (durationMS >= ms) {
                 return durationMS;
             }
-        } while (true); // TERMINATION ARGUMENT: test
+        } while (true);
     }
 
     /**
