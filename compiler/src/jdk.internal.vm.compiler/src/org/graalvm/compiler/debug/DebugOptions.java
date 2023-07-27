@@ -34,8 +34,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
@@ -49,96 +47,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
  * Options that configure a {@link DebugContext} and related functionality.
  */
 public class DebugOptions {
-
-    /**
-     * Defensive programming facility for the Graal compiler. For every endless {@code while(true)}
-     * loop in the compiler we apply checkstyle rules to ensure developers think about endless loops
-     * they write. We never want to hang the compiler.
-     *
-     * For loops where one can easily abort in event of an unintended iteration number that
-     * indicates an endless loop developers can use {@link #looksInfinite()} and abort their loop.
-     *
-     * For loops where we are in the middle of a transform but the iteration number indicates an
-     * endless loop developers can use {@link #checkAndFailIfExceeded()} and abort the current
-     * compile.
-     */
-    public static final class FiniteLoopCheck {
-
-        private final int maxIterations;
-        private int iterations;
-
-        private FiniteLoopCheck(int maxIterations) {
-            this.maxIterations = maxIterations;
-        }
-
-        public boolean looksInfinite() {
-            return iterations++ >= maxIterations;
-        }
-
-        public void checkAndFailIfExceeded() {
-            if (iterations++ >= maxIterations) {
-                throw GraalError.shouldNotReachHere(String.format("Potential endless loop detected, max iterations %s exceeded", maxIterations));
-            }
-        }
-
-        private static int maxOnOverflow(int i) {
-            return i < 0 ? Integer.MAX_VALUE : i;
-        }
-
-        /**
-         * Quadratic, in terms of node count, iteration over the graph.
-         */
-        public static FiniteLoopCheck n2GraphIterationOutOfBounds(Graph graph) {
-            return new FiniteLoopCheck(maxOnOverflow(graph.getNodeCount() * graph.getNodeCount()));
-        }
-
-        /**
-         * Linear, in terms of node count, iteration over the graph.
-         */
-        public static FiniteLoopCheck graphIterationOutOfBounds(Graph graph) {
-            return new FiniteLoopCheck(maxOnOverflow(graph.getNodeCount() + 2));
-        }
-
-        /**
-         * Linear, in terms of node count, iteration over a graph. Number of nodes n is scaled with
-         * a given constant (by the caller).
-         */
-        public static FiniteLoopCheck nGraphIterationOutOfBounds(int nrOfIterationsExpected) {
-            return new FiniteLoopCheck(maxOnOverflow(nrOfIterationsExpected + 2));
-        }
-
-        public static FiniteLoopCheck graphEdgeIterationOutOfBounds(int nrOfEdgesExpected) {
-            return new FiniteLoopCheck(maxOnOverflow(nrOfEdgesExpected + 2));
-        }
-
-        public static FiniteLoopCheck cfgIterationOutOfBounds(ControlFlowGraph cfg) {
-            return new FiniteLoopCheck(maxOnOverflow(cfg.getBlocks().length + 2));
-        }
-
-        public static FiniteLoopCheck cfgIterationOutOfBounds(int nrOfBlocks) {
-            return new FiniteLoopCheck(maxOnOverflow(nrOfBlocks + 2));
-        }
-
-        public static FiniteLoopCheck largeLoop() {
-            return new FiniteLoopCheck(LARGE_LOOP);
-        }
-
-        public static FiniteLoopCheck smallLoop() {
-            return new FiniteLoopCheck(SMALL_LOOP);
-        }
-
-        /**
-         * Number of nodes of a humongous graph times 10 - a graph size we have never seen so far in
-         * real life - so something in this loop really goes out of bounds.
-         */
-        public static final int LARGE_LOOP = 1_000_000 * 10;
-
-        /**
-         * Small sized loop that finishes quickly on modern day hardware.
-         */
-        public static final int SMALL_LOOP = 1024 * 4;
-
-    }
 
     /**
      * Values for the {@link DebugOptions#PrintGraph} option denoting where graphs dumped as a

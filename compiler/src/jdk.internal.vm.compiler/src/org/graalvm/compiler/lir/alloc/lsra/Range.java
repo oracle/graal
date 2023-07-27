@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.lir.LIR;
 
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
@@ -46,6 +47,8 @@ public final class Range {
      */
     public Range next;
 
+    public LIR lir;
+
     boolean intersects(Range r) {
         return intersectsAt(r) != -1;
     }
@@ -57,10 +60,11 @@ public final class Range {
      * @param to the end of the range, exclusive
      * @param next link to the next range in a linked list
      */
-    Range(int from, int to, Range next) {
+    Range(int from, int to, Range next, LIR lir) {
         this.from = from;
         this.to = to;
         this.next = next;
+        this.lir = lir;
     }
 
     public boolean isEndMarker() {
@@ -75,9 +79,8 @@ public final class Range {
         assert r2 != null : "null ranges not allowed";
         assert !r1.isEndMarker() && !r2.isEndMarker() : "empty ranges not allowed";
 
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.largeLoop();
         do {
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(lir.getOptions(), lir);
             if (r1.from < r2.from) {
                 if (r1.to <= r2.from) {
                     r1 = r1.next;
@@ -115,7 +118,8 @@ public final class Range {
                     }
                 }
             }
-        } while (true);  // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
+        } while (true);  // TERMINATION ARGUMENT: guarded by processes all ranges reachable from
+                         // this and other
     }
 
     @Override

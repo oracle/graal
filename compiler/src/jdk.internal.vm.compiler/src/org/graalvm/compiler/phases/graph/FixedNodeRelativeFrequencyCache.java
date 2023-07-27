@@ -30,9 +30,9 @@ import java.util.function.ToDoubleFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -151,9 +151,8 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
 
     private static FixedNode findBegin(FixedNode node) {
         FixedNode current = node;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
         while (true) { // TERMINATION ARGUMENT: processing predecessor nodes in a graph
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(node.graph());
             assert current != null;
             Node predecessor = current.predecessor();
             if (current instanceof AbstractBeginNode) {

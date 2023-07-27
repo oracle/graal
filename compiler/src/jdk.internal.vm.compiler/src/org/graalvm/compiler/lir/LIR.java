@@ -31,6 +31,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.util.EventCounter;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
@@ -45,7 +46,7 @@ import org.graalvm.compiler.options.OptionValues;
  * In order to reduce memory usage LIR keeps arrays of block ids instead of direct pointer arrays to
  * {@link BasicBlock} from a {@link AbstractControlFlowGraph} reverse post order list.
  */
-public final class LIR extends LIRGenerator.VariableProvider {
+public final class LIR extends LIRGenerator.VariableProvider implements EventCounter {
 
     private final AbstractControlFlowGraph<?> cfg;
 
@@ -76,6 +77,11 @@ public final class LIR extends LIRGenerator.VariableProvider {
     private final OptionValues options;
 
     private final DebugContext debug;
+    /**
+     * Counter to associate "events" with this LIR, i.e., have a counter per graph that can be used
+     * to trigger certain operations.
+     */
+    private int eventCounter;
 
     /**
      * Creates a new LIR instance for the specified compilation.
@@ -90,6 +96,15 @@ public final class LIR extends LIRGenerator.VariableProvider {
         this.lirInstructions = new BlockMap<>(cfg);
         this.options = options;
         this.debug = debug;
+    }
+
+    @Override
+    public boolean eventCounterOverflows(int max) {
+        if (eventCounter++ > max) {
+            eventCounter = 0;
+            return true;
+        }
+        return false;
     }
 
     public AbstractControlFlowGraph<?> getControlFlowGraph() {

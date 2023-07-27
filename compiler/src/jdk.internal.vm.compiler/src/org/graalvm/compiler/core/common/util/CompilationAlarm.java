@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.core.common.util;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.graph.Graph;
@@ -43,6 +47,10 @@ public final class CompilationAlarm implements AutoCloseable {
                        "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true.",
                 type = OptionType.Debug)
         public static final OptionKey<Double> CompilationExpirationPeriod = new OptionKey<>(300d);
+        @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit) because no progress was"
+                        + "made in the compiler.",
+                 type = OptionType.Debug)
+         public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
         // @formatter:on
     }
 
@@ -76,19 +84,6 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public boolean hasExpired() {
         return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
-    }
-
-    /**
-     * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
-     * compilation alarm.
-     */
-    public static final int GRAPH_CHECK_BAILOUT_COUNTER = 1024 * 4;
-
-    public static void bailoutIfExpired(Graph graph) {
-        if (graph != null && graph.eventCounterOverflows(GRAPH_CHECK_BAILOUT_COUNTER) && CompilationAlarm.current().hasExpired()) {
-            double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
-            throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
-        }
     }
 
     @Override
@@ -132,4 +127,79 @@ public final class CompilationAlarm implements AutoCloseable {
         return null;
     }
 
+    /**
+     * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
+     * compilation alarm.
+     */
+    public static final int CHECK_BAILOUT_COUNTER = 1024 * 16;
+
+    public static void check(Graph graph) {
+        if (graph != null && graph.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
+            overflowAction(graph.getOptions());
+        }
+    }
+
+    public static boolean check(OptionValues opt, EventCounter eventCounter) {
+        if (opt != null && eventCounter.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
+            overflowAction(opt);
+            return true;
+        }
+        return false;
+    }
+
+    private static void overflowAction(OptionValues opt) {
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Do not run progress detection in compiler loops when we are building a native image.
+             */
+            return;
+        }
+        if (CompilationAlarm.current().hasExpired()) {
+            compilationAlarmExpired(opt);
+        }
+        assertProgress(opt);
+    }
+
+    /**
+     * Assert that there is progress made since the last time the event counter overflow - if there
+     * is no progress made within a certain time frame - abort compilation under the assumption of a
+     * hang and throw a bailout.
+     */
+    private static void assertProgress(OptionValues opt) {
+        StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
+        StackTraceElement[] currentStackTrace = Thread.currentThread().getStackTrace();
+        if (lastStackTrace == null || !Arrays.equals(lastStackTrace, currentStackTrace)) {
+            lastStackTraceForThread.set(currentStackTrace);
+            lastUniqueStackTraceForThread.set(System.currentTimeMillis());
+            return;
+        } else {
+            assert Arrays.equals(lastStackTrace, currentStackTrace) : "Must only enter this branch if no progress was made";
+            /*
+             * We have a similar stack trace - fail once the period is longer than the no progress
+             * period.
+             */
+            final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
+            final long currentTimeStamp = System.currentTimeMillis();
+            final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
+
+            boolean noProgressForPeriod = timeDiff > (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+
+            if (noProgressForPeriod) {
+                throw new PermanentBailoutException("Observed identical stack traces for %d seconds, indicating a stuck compilation, stack is %n%s", timeDiff / 1000, Util.toString(lastStackTrace));
+            }
+
+        }
+    }
+
+    public static void compilationAlarmExpired(Graph graph) {
+        compilationAlarmExpired(graph.getOptions());
+    }
+
+    public static void compilationAlarmExpired(OptionValues options) {
+        double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(options);
+        throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
+    }
+
+    private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
+    private static final ThreadLocal<Long> lastUniqueStackTraceForThread = new ThreadLocal<>();
 }

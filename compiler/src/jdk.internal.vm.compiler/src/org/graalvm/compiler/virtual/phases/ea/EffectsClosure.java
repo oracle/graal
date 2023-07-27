@@ -34,10 +34,10 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
@@ -57,8 +57,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -423,10 +423,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCacheCopy.putAll(loopLocationKillCache);
             }
         }
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.cfgIterationOutOfBounds(cfg);
         while (true) { // // TERMINATION ARGUMENT: bound by number of basic blocks and iterative
                        // loop traversal
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(cfg.graph);
             try {
                 BlockT loopEntryState = initialStateRemovedKilledLocations;
                 BlockT lastMergedState = cloneState(initialStateRemovedKilledLocations);

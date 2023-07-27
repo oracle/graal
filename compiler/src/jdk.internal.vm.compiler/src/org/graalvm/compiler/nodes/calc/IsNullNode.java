@@ -27,17 +27,18 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
@@ -108,16 +109,17 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
     private static LogicNode canonicalized(IsNullNode node, ValueNode forValue, JavaConstant forNullConstant) {
         JavaConstant nullConstant = forNullConstant;
         ValueNode value = forValue;
-        FiniteLoopCheck finiteLoop = null;
+
+        StructuredGraph graph = null;
         if (node != null && node.graph() != null) {
-            finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
+            graph = node.graph();
         } else if (value != null && value.graph() != null) {
-            finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(value.graph());
-        } else {
-            finiteLoop = FiniteLoopCheck.largeLoop();
+            graph = value.graph();
         }
-        while (true) { // TERMINATION ARGUMENT: guarded by FiniteLoopCheck
-            finiteLoop.checkAndFailIfExceeded();
+
+        while (true) { // TERMINATION ARGUMENT: unwrapping compression nodes until exit condition is
+                       // met.
+            CompilationAlarm.check(graph);
             if (value != null) {
                 if (StampTool.isPointerAlwaysNull(value)) {
                     return LogicConstantNode.tautology();

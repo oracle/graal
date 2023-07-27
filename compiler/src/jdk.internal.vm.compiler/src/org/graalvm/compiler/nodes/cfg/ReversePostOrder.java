@@ -26,8 +26,8 @@ package org.graalvm.compiler.nodes.cfg;
 
 import java.util.List;
 
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -129,10 +129,9 @@ public class ReversePostOrder {
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
          * nodes.
          */
-        FiniteLoopCheck finiteLoopCheck = FiniteLoopCheck.graphIterationOutOfBounds(cfg.graph);
         while (true) { // TERMINATION ARGUMENT: traversing fixed nodes in the graph start to all
                        // sinks
-            finiteLoopCheck.checkAndFailIfExceeded();
+            CompilationAlarm.check(cfg.graph);
             /*
              * Select the next node to process, either a regular node from the toProcess nodes
              * (branches, merges, etc.) or the next nodes after loop exits if an (inner) loop was
@@ -218,9 +217,8 @@ public class ReversePostOrder {
                 enqueueBlockInRPO(curBlock, rpoBlocks, currentIndex++);
             }
 
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(cfg.graph);
             while (true) { // TERMINATION ARGUMENT: iterating over a graph
-                finiteLoop.checkAndFailIfExceeded();
+                CompilationAlarm.check(cfg.graph);
                 visitedNodes.mark(cur);
                 /*
                  * Depending on the block end nodes we have different actions for the different

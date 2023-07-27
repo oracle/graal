@@ -359,7 +359,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeIterable iterable} for all non-null input edges.
      */
     public NodeIterable<Node> inputs() {
-        CompilationAlarm.bailoutIfExpired(this.graph);
+        CompilationAlarm.check(this.graph);
         return nodeClass.getInputIterable(this);
     }
 
@@ -435,7 +435,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Gets the list of nodes that use {@code this} (i.e., as an input).
      */
     public final NodeIterable<Node> usages() {
-        CompilationAlarm.bailoutIfExpired(this.graph);
+        CompilationAlarm.check(this.graph);
         return new NodeUsageIterable(this);
     }
 

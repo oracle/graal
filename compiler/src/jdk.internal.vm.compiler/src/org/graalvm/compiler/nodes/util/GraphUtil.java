@@ -40,8 +40,8 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.LinkedStack;
@@ -370,9 +370,8 @@ public class GraphUtil {
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
         LinkedStack<Node> stack = null;
         Node cur = node;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
         do {
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(node.graph());
             assert checkKill(cur, mayKillGuard);
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
@@ -748,9 +747,9 @@ public class GraphUtil {
 
         EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
-        FiniteLoopCheck finiteLoop = value.graph() == null ? FiniteLoopCheck.largeLoop() : FiniteLoopCheck.graphIterationOutOfBounds(value.graph());
+        StructuredGraph graph = value.graph();
         do {
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(graph);
             /*
              * PiArrayNode implements ArrayLengthProvider and ValueProxy. We want to treat it as an
              * ArrayLengthProvider, therefore we check this case first.
@@ -1190,9 +1189,8 @@ public class GraphUtil {
             return false;
         }
         FixedNode node = start;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
         while (true) { // TERMINATION ARGUMENT: following next nodes or returning
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(start.graph());
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
@@ -1324,9 +1322,8 @@ public class GraphUtil {
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
-        FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(start.graph());
         while (true) { // TERMINATION ARGUMENT: following prev nodes
-            finiteLoop.checkAndFailIfExceeded();
+            CompilationAlarm.check(start.graph());
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;

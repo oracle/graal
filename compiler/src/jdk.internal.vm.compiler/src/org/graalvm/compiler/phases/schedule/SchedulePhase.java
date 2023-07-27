@@ -44,9 +44,9 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.DebugOptions.FiniteLoopCheck;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -80,8 +80,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -668,9 +668,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.graphIterationOutOfBounds(node.graph());
             while (true) { // TERMINATION ARGUMENT: unproxifying inputs
-                finiteLoop.checkAndFailIfExceeded();
+                CompilationAlarm.check(node.graph());
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -1001,9 +1000,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
-            FiniteLoopCheck finiteLoop = FiniteLoopCheck.n2GraphIterationOutOfBounds(first.graph());
             while (true) { // TERMINATION ARGUMENT: processing stack until empty
-                finiteLoop.checkAndFailIfExceeded();
+                CompilationAlarm.check(first.graph());
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {
