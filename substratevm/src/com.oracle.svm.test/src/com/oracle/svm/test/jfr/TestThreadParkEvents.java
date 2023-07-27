@@ -31,23 +31,24 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import jdk.jfr.consumer.RecordedClass;
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.JfrEvent;
+
 import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 
 public class TestThreadParkEvents extends JfrRecordingTest {
-    private static final long MILLIS = 500;
-    private static final long NANOS = MILLIS * 1000000;
-    static volatile boolean passedCheckpoint = false;
-    final Blocker blocker = new Blocker();
+    private static final long MILLIS = 100;
+    private static final long NANOS = MILLIS * 1_000_000;
+
+    private final Blocker blocker = new Blocker();
+    private volatile boolean passedCheckpoint = false;
 
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.ThreadPark.getName()};
-
         Recording recording = startRecording(events);
 
         LockSupport.parkNanos(NANOS);
@@ -61,39 +62,48 @@ public class TestThreadParkEvents extends JfrRecordingTest {
 
         Thread waiterThread = new Thread(waiter);
         waiterThread.start();
-        while (!waiterThread.getState().equals(Thread.State.WAITING) || !passedCheckpoint) {
-            Thread.sleep(10);
+        while (!passedCheckpoint || !waiterThread.getState().equals(Thread.State.WAITING)) {
+            Thread.yield();
         }
+
         LockSupport.unpark(waiterThread);
         waiterThread.join();
 
-        stopRecording(recording, this::validateEvents);
+        stopRecording(recording, TestThreadParkEvents::validateEvents);
     }
 
-    private void validateEvents(List<RecordedEvent> events) {
+    private static void validateEvents(List<RecordedEvent> events) {
         boolean parkNanosFound = false;
         boolean parkNanosFoundBlocker = false;
         boolean parkUntilFound = false;
         boolean parkUnparkFound = false;
+
         for (RecordedEvent event : events) {
-            if (event.<Long> getValue("timeout") < 0 && event.<Long> getValue("until") < 0) {
-                parkUnparkFound = true;
-            } else {
-                if ((event.<Long> getValue("timeout").longValue() == (NANOS))) {
-                    if (event.getValue("parkedClass") == null) {
-                        parkNanosFound = true;
-                    } else if (event.<RecordedClass> getValue("parkedClass").getName().equals(Blocker.class.getName())) {
-                        parkNanosFoundBlocker = true;
-                    }
-                } else if (event.<Long> getValue("timeout") < 0 && event.<Long> getValue("until") > 0) {
+            long timeout = event.<Long> getValue("timeout");
+            long until = event.<Long> getValue("until");
+
+            if (timeout == NANOS) {
+                RecordedClass parkedClass = event.getValue("parkedClass");
+                if (parkedClass == null) {
+                    parkNanosFound = true;
+                } else if (parkedClass.getName().equals(Blocker.class.getName())) {
+                    parkNanosFoundBlocker = true;
+                }
+            } else if (timeout < 0) {
+                if (until < 0) {
+                    parkUnparkFound = true;
+                } else if (until > 0) {
                     parkUntilFound = true;
                 }
             }
-
         }
-        assertTrue(parkNanosFound && parkNanosFoundBlocker && parkUntilFound && parkUnparkFound);
+
+        assertTrue(parkNanosFound);
+        assertTrue(parkNanosFoundBlocker);
+        assertTrue(parkUntilFound);
+        assertTrue(parkUnparkFound);
     }
 
-    class Blocker {
+    private static class Blocker {
     }
 }

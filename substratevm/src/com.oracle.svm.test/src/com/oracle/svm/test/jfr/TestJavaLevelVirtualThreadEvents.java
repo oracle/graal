@@ -26,6 +26,8 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -34,38 +36,38 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.test.jfr.events.StringEvent;
 import org.junit.Test;
+
+import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
-import com.oracle.svm.core.thread.VirtualThreads;
 
 /**
- * This test ensures that java level events emittred by virtual threads have the correct java thread
- * ID information, associated with them. In particular this should help catch out of date
- * substitutions related to the Java level JFR EventWriter.
+ * This test ensures that Java level events emitted by virtual threads have the correct thread ID
+ * associated with them.
  */
-
 public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
-    private static final int MILLIS = 50;
-    private static final int THREADS = 5;
-    private static final String[] TESTED_EVENTS = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
-    private static final Map<Long, List<String>> seenThreads = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Long, List<String>> remainingThreadEvents = Collections.synchronizedMap(new HashMap<>());
 
     @Test
     public void test() throws Throwable {
-        Recording recording = startRecording(TESTED_EVENTS);
+        String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
+        Recording recording = startRecording(events);
         Runnable r = () -> {
             try {
-                seenThreads.put(Thread.currentThread().threadId(), new ArrayList<>(List.of(TESTED_EVENTS)));
+                var oldValue = this.remainingThreadEvents.put(getCurrentThreadId(), new ArrayList<>(List.of(events)));
+                assertNull(oldValue);
+
                 /*
-                 * Pinning the current thread here will result in a VirtualThreadPinned event
-                 * emitted when it attempts to yield at the subsequent Thread.sleep() call
+                 * Pinning the current thread will result in a VirtualThreadPinned event when it
+                 * attempts to yield at the subsequent Thread.sleep() call.
                  */
                 VirtualThreads.singleton().pinCurrent();
-                Thread.sleep(MILLIS);
+                Thread.sleep(50);
+
                 com.oracle.svm.test.jfr.events.StringEvent stringEvent = new StringEvent();
                 stringEvent.begin();
                 stringEvent.message = "some message body";
@@ -74,8 +76,8 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
                 throw new RuntimeException(e);
             }
         };
-        VirtualStressor.execute(THREADS, r);
 
+        VirtualStressor.execute(5, r);
         stopRecording(recording, this::validateEvents);
     }
 
@@ -83,20 +85,23 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
         for (RecordedEvent event : events) {
             String eventName = event.getEventType().getName();
             RecordedThread eventThread = event.getThread("eventThread");
-            if (eventThread == null) {
-                continue;
-            }
-            long tid = eventThread.getJavaThreadId();
-            List<String> remainingEvents = seenThreads.get(tid);
-            if (remainingEvents == null) {
-                continue;
-            }
-            remainingEvents.remove(eventName);
-            if (remainingEvents.isEmpty()) {
-                seenThreads.remove(tid);
-            }
+            assertNotNull(eventThread);
 
+            long threadId = eventThread.getId();
+            List<String> remainingEvents = remainingThreadEvents.get(threadId);
+            if (remainingEvents != null) {
+                remainingEvents.remove(eventName);
+                if (remainingEvents.isEmpty()) {
+                    remainingThreadEvents.remove(threadId);
+                }
+            }
         }
-        assertTrue(seenThreads.isEmpty());
+
+        assertTrue(this.remainingThreadEvents.isEmpty());
+    }
+
+    @SuppressWarnings("deprecation")
+    private static long getCurrentThreadId() {
+        return Thread.currentThread().getId();
     }
 }

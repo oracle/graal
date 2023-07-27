@@ -88,17 +88,13 @@ public abstract class AbstractJfrTest {
     }
 
     protected static void checkRecording(EventValidator validator, Path path, JfrRecordingState state) throws Throwable {
-        try {
-            JfrFileParser parser = new JfrFileParser(path);
-            parser.verify();
+        JfrFileParser parser = new JfrFileParser(path);
+        parser.verify();
 
-            List<RecordedEvent> events = getEvents(path, state.testedEvents);
-            checkEvents(events, state.testedEvents);
-            if (validator != null) {
-                validator.validate(events);
-            }
-        } catch (Exception e) {
-            Assert.fail("Failed to parse recording: " + e.getMessage());
+        List<RecordedEvent> events = getEvents(path, state.testedEvents);
+        checkEvents(events, state.testedEvents);
+        if (validator != null) {
+            validator.validate(events);
         }
     }
 
