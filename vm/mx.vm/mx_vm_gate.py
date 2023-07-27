@@ -269,6 +269,36 @@ def _test_libgraal_fatal_error_handling():
     mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
     mx.rmtree(scratch_dir)
 
+def _test_libgraal_oome_dumping():
+    """
+    Tests the HeapDumpOnOutOfMemoryError libgraal option.
+    """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    scratch_dir = mkdtemp(prefix='oome_heap_dumps', dir='.')
+    os.mkdir(join(scratch_dir, 'subdir'))
+    inputs = {
+        '': join(scratch_dir, 'libgraal_pid*.hprof'),
+        'custom.hprof': join(scratch_dir, 'custom.hprof'),
+        'subdir': join(scratch_dir, 'subdir', 'libgraal_pid*.hprof'),
+    }
+    for n, v in inputs.items():
+        vmargs = ['-Dlibgraal.CrashAt=*',
+                  '-Dlibgraal.CrashAtThrowsOOME=true',
+                  f'-Dgraal.HeapDumpOnOutOfMemoryError={n}']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        mx.run(cmd, cwd=scratch_dir)
+        heap_dumps = glob.glob(v)
+        if not heap_dumps:
+            mx.abort(f'No heap dumps found (glob: {v})')
+        if len(heap_dumps) != 1:
+            mx.abort(f'More than 1 heap dump found (glob: {v}): {heap_dumps}')
+        hd = heap_dumps[0]
+        mx.log(f'Heap dump: {hd} ({getsize(hd):,} bytes)')
+        os.remove(hd)
+
+    # Only clean up scratch dir on success
+    mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+    mx.rmtree(scratch_dir)
 
 def _test_libgraal_systemic_failure_detection():
     """
@@ -484,6 +514,8 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:OOMEDumping', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_oome_dumping()
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_systemic_failure_detection()
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
