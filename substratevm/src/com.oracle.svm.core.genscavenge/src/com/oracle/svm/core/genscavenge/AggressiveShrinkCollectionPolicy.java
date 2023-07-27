@@ -29,7 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -41,14 +41,16 @@ class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
     public static final class Options {
         @Option(help = "Ratio of used bytes to total allocated bytes for eden space. Setting it to a smaller value " +
                         "will trade more triggered hinted GCs for less resident set size.") //
-        public static final HostedOptionKey<Double> UsedEdenProportionThreshold = new HostedOptionKey<>(0.75D);
+        public static final RuntimeOptionKey<Double> UsedEdenProportionThreshold = new RuntimeOptionKey<>(0.75D);
         @Option(help = "Soft upper limit for used eden size. The hinted GC will be performed if the used eden size " +
                         "exceeds this value.") //
-        public static final HostedOptionKey<Integer> ExpectedEdenSize = new HostedOptionKey<>(32 * 1024 * 1024);
+        public static final RuntimeOptionKey<Long> ExpectedEdenSize = new RuntimeOptionKey<>(32L * 1024L * 1024L);
     }
 
-    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(64 * 1024 * 1024);
-    protected static final UnsignedWord FULL_GC_BONUS = WordFactory.unsigned(2 * 1024 * 1024);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(64L * 1024L * 1024L);
+    protected static final UnsignedWord FULL_GC_BONUS = WordFactory.unsigned(2L * 1024L * 1024L);
+
+    protected static final UnsignedWord MAXIMUM_HEAP_SIZE = WordFactory.unsigned(16L * 1024L * 1024L * 1024L);
 
     private UnsignedWord sizeBefore = WordFactory.zero();
     private GCCause lastGCCause = null;
@@ -73,7 +75,7 @@ class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
                 // memory usage point.
                 edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
             }
-            return edenUsedBytes.aboveOrEqual(Options.ExpectedEdenSize.getValue()) ||
+            return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||
                             (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
         }
         return super.shouldCollectOnRequest(cause, fullGC);
@@ -82,6 +84,15 @@ class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
     @Override
     protected UnsignedWord getInitialHeapSize() {
         return INITIAL_HEAP_SIZE;
+    }
+
+    @Override
+    public UnsignedWord getMaximumHeapSize() {
+        UnsignedWord initialSetup = super.getMaximumHeapSize();
+        if (initialSetup.aboveThan(MAXIMUM_HEAP_SIZE)) {
+            return MAXIMUM_HEAP_SIZE;
+        }
+        return initialSetup;
     }
 
     @Override
@@ -125,7 +136,10 @@ class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
         } else {
             UnsignedWord sizeAfter = GCImpl.getChunkBytes();
             if (sizeBefore.notEqual(0) && sizeBefore.belowThan(sizeAfter.multiply(2))) {
-                edenSize = alignUp(edenSize.multiply(2));
+                UnsignedWord newEdenSize = UnsignedUtils.min(getMaximumEdenSize(), alignUp(edenSize.multiply(2)));
+                if (edenSize.belowThan(newEdenSize)) {
+                    edenSize = newEdenSize;
+                }
             } else {
                 super.computeEdenSpaceSize(completeCollection, cause);
             }
