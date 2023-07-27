@@ -403,7 +403,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v + value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v + value)) != v);
         return 0x0000_00ff & v;
     }
 
@@ -414,7 +414,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v + value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v + value)) != v);
         return 0x0000_ffff & v;
     }
 
@@ -422,11 +422,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public int atomic_rmw_add_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v + value) != v);
-        return v;
+        return unsafe.getAndAddInt(null, startAddress + address, value);
     }
 
     @Override
@@ -436,7 +432,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v + value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v + value)) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -447,7 +443,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v + value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v + value)) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -455,10 +451,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_add_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v + value) != v);
+        int v = unsafe.getAndAddInt(null, startAddress + address, value);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -466,11 +459,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_add_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
-        long v;
-        do {
-            v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, v + value) != v);
-        return v;
+        return unsafe.getAndAddLong(null, startAddress + address, value);
     }
 
     @Override
@@ -480,7 +469,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v - value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v - value)) != v);
         return 0x0000_00ff & v;
     }
 
@@ -491,7 +480,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v - value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v - value)) != v);
         return 0x0000_ffff & v;
     }
 
@@ -499,11 +488,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public int atomic_rmw_sub_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v - value) != v);
-        return v;
+        return unsafe.getAndAddInt(null, startAddress + address, -value);
     }
 
     @Override
@@ -513,7 +498,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v - value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v - value)) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -524,7 +509,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v - value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v - value)) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -532,10 +517,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_sub_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v - value) != v);
+        int v = unsafe.getAndAddInt(null, startAddress + address, -value);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -543,11 +525,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_sub_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
-        long v;
-        do {
-            v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, v - value) != v);
-        return v;
+        return unsafe.getAndAddLong(null, startAddress + address, -value);
     }
 
     @Override
@@ -557,7 +535,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v & value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v & value)) != v);
         return 0x0000_00ff & v;
     }
 
@@ -568,7 +546,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v & value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v & value)) != v);
         return 0x0000_ffff & v;
     }
 
@@ -579,7 +557,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v & value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v & value) != v);
         return v;
     }
 
@@ -590,7 +568,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v & value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v & value)) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -601,7 +579,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v & value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v & value)) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -612,7 +590,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v & value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v & value) != v);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -623,7 +601,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         long v;
         do {
             v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, v & value) != v);
+        } while (UnsafeUtilities.compareAndExchangeLong(startAddress, address, v, v & value) != v);
         return v;
     }
 
@@ -634,7 +612,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v | value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v | value)) != v);
         return 0x0000_00ff & v;
     }
 
@@ -645,7 +623,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v | value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v | value)) != v);
         return 0x0000_ffff & v;
     }
 
@@ -656,7 +634,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v | value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v | value) != v);
         return v;
     }
 
@@ -667,7 +645,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v | value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v | value)) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -678,7 +656,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v | value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v | value)) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -689,7 +667,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v | value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v | value) != v);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -700,7 +678,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         long v;
         do {
             v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, v | value) != v);
+        } while (UnsafeUtilities.compareAndExchangeLong(startAddress, address, v, v | value) != v);
         return v;
     }
 
@@ -711,7 +689,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v ^ value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v ^ value)) != v);
         return 0x0000_00ff & v;
     }
 
@@ -722,7 +700,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v ^ value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v ^ value)) != v);
         return 0x0000_ffff & v;
     }
 
@@ -733,7 +711,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v ^ value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v ^ value) != v);
         return v;
     }
 
@@ -744,7 +722,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, (byte) (v ^ value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, (byte) (v ^ value)) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -755,7 +733,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, (short) (v ^ value)) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, (short) (v ^ value)) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -766,7 +744,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         int v;
         do {
             v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, v ^ value) != v);
+        } while (UnsafeUtilities.compareAndExchangeInt(startAddress, address, v, v ^ value) != v);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -777,7 +755,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         long v;
         do {
             v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, v ^ value) != v);
+        } while (UnsafeUtilities.compareAndExchangeLong(startAddress, address, v, v ^ value) != v);
         return v;
     }
 
@@ -788,7 +766,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, value) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, value) != v);
         return 0x0000_00ff & v;
     }
 
@@ -799,7 +777,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, value) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, value) != v);
         return 0x0000_ffff & v;
     }
 
@@ -807,11 +785,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public int atomic_rmw_xchg_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, value) != v);
-        return v;
+        return unsafe.getAndSetInt(null, startAddress + address, value);
     }
 
     @Override
@@ -821,7 +795,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         byte v;
         do {
             v = unsafe.getByteVolatile(null, startAddress + address);
-        } while (compareAndExchangeByte(address, v, value) != v);
+        } while (UnsafeUtilities.compareAndExchangeByte(startAddress, address, v, value) != v);
         return 0x0000_0000_0000_00ffL & v;
     }
 
@@ -832,7 +806,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         short v;
         do {
             v = unsafe.getShortVolatile(null, startAddress + address);
-        } while (compareAndExchangeShort(address, v, value) != v);
+        } while (UnsafeUtilities.compareAndExchangeShort(startAddress, address, v, value) != v);
         return 0x0000_0000_0000_ffffL & v;
     }
 
@@ -840,10 +814,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_xchg_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        int v;
-        do {
-            v = unsafe.getIntVolatile(null, startAddress + address);
-        } while (compareAndExchangeInt(address, v, value) != v);
+        int v = unsafe.getAndSetInt(null, startAddress + address, value);
         return 0x0000_0000_ffff_ffffL & v;
     }
 
@@ -851,60 +822,61 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long atomic_rmw_xchg_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
-        long v;
-        do {
-            v = unsafe.getLongVolatile(null, startAddress + address);
-        } while (compareAndExchangeLong(address, v, value) != v);
-        return v;
+        return unsafe.getAndSetLong(null, startAddress + address, value);
     }
 
     @Override
     public int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
-        return 0x0000_00ff & compareAndExchangeByte(address, expected, replacement);
+        byte v = UnsafeUtilities.compareAndExchangeByte(startAddress, address, expected, replacement);
+        return 0x0000_00ff & v;
     }
 
     @Override
     public int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
-        return 0x0000_ffff & compareAndExchangeShort(address, expected, replacement);
+        short v = UnsafeUtilities.compareAndExchangeShort(startAddress, address, expected, replacement);
+        return 0x0000_ffff & v;
     }
 
     @Override
     public int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        return compareAndExchangeInt(address, expected, replacement);
+        return UnsafeUtilities.compareAndExchangeInt(startAddress, address, expected, replacement);
     }
 
     @Override
     public long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
-        return 0x0000_0000_0000_00ffL & compareAndExchangeByte(address, expected, replacement);
+        byte v = UnsafeUtilities.compareAndExchangeByte(startAddress, address, expected, replacement);
+        return 0x0000_0000_0000_00ffL & v;
     }
 
     @Override
     public long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
-        return 0x0000_0000_0000_ffffL & compareAndExchangeShort(address, expected, replacement);
+        short v = UnsafeUtilities.compareAndExchangeShort(startAddress, address, expected, replacement);
+        return 0x0000_0000_0000_ffffL & v;
     }
 
     @Override
     public long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        return 0x0000_0000_ffff_ffffL & compareAndExchangeInt(address, expected, replacement);
+        int v = UnsafeUtilities.compareAndExchangeInt(startAddress, address, expected, replacement);
+        return 0x0000_0000_ffff_ffffL & v;
     }
 
     @Override
     public long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
-        return compareAndExchangeLong(address, expected, replacement);
+        return UnsafeUtilities.compareAndExchangeLong(startAddress, address, expected, replacement);
     }
 
     @Override
@@ -995,81 +967,6 @@ public final class UnsafeWasmMemory extends WasmMemory {
             byte b = unsafe.getByte(startAddress + offset + i);
             stream.write(b & 0x0000_00ff);
         }
-    }
-
-    private byte compareAndExchangeByte(long byteOffset, byte expected, byte x) {
-        long wordOffset = byteOffset & ~3;
-        int shift = (int) (byteOffset & 3) << 3;
-        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
-            shift = 24 - shift;
-        }
-        int mask = 0xFF << shift;
-        int maskedExpected = (expected & 0xFF) << shift;
-        int maskedX = (x & 0xFF) << shift;
-        int fullWord;
-        do {
-            fullWord = unsafe.getIntVolatile(null, startAddress + wordOffset);
-            if ((fullWord & mask) != maskedExpected) {
-                return (byte) ((fullWord & mask) >> shift);
-            }
-        } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                        fullWord, (fullWord & ~mask) | maskedX));
-        return expected;
-    }
-
-    public short compareAndExchangeShort(long byteOffset, short expected, short x) {
-        if ((byteOffset & 3) == 3) {
-            throw new IllegalArgumentException("Update spans the word, not supported");
-        }
-        long wordOffset = byteOffset & ~3;
-        int shift = (int) (byteOffset & 3) << 3;
-        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
-            shift = 16 - shift;
-        }
-        int mask = 0xFFFF << shift;
-        int maskedExpected = (expected & 0xFFFF) << shift;
-        int maskedX = (x & 0xFFFF) << shift;
-        int fullWord;
-        do {
-            fullWord = unsafe.getIntVolatile(null, startAddress + wordOffset);
-            if ((fullWord & mask) != maskedExpected) {
-                return (short) ((fullWord & mask) >> shift);
-            }
-        } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                        fullWord, (fullWord & ~mask) | maskedX));
-        return expected;
-    }
-
-    public int compareAndExchangeInt(long byteOffset, int expected, int x) throws IndexOutOfBoundsException {
-        if ((byteOffset & 3) != 0) {
-            throw new IllegalArgumentException("Update spans the word, not supported");
-        }
-        long wordOffset = byteOffset & ~3;
-        int fullWord;
-        do {
-            fullWord = unsafe.getIntVolatile(null, startAddress + wordOffset);
-            if (fullWord != expected) {
-                return fullWord;
-            }
-        } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                        fullWord, x));
-        return expected;
-    }
-
-    public long compareAndExchangeLong(long byteOffset, long expected, long x) throws IndexOutOfBoundsException {
-        if ((byteOffset & 7) != 0) {
-            throw new IllegalArgumentException("Update spans the word, not supported");
-        }
-        long wordOffset = byteOffset & ~7;
-        long fullWord;
-        do {
-            fullWord = unsafe.getLongVolatile(null, startAddress + wordOffset);
-            if (fullWord != expected) {
-                return fullWord;
-            }
-        } while (!unsafe.compareAndSwapLong(null, startAddress + wordOffset,
-                        fullWord, x));
-        return expected;
     }
 
     @SuppressWarnings("deprecation"/* JDK-8277863 */)
