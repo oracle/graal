@@ -217,7 +217,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         @Override
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                if (toProcess == null || toProcess.contains(guard)) {
+                if (toProcess == null || (!toProcess.isNew(guard) && toProcess.contains(guard))) {
                     HIRBlock anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
                     if (exitsLoop(anchorBlock, earliestBlock(guard))) {
                         iterate = true;
@@ -638,7 +638,17 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 }
             }
             if (fitsInInt) {
-                OptimizedCompareTests tests = computeNewCompareGuards(compare, iv, bound, mirrored, iv.getLoop().counted().getOverFlowGuard());
+                CountedLoopInfo countedLoopInfo = iv.getLoop().counted();
+                GuardingNode overflowGuard = countedLoopInfo.getOverFlowGuard();
+                if (overflowGuard == null && !countedLoopInfo.counterNeverOverflows()) {
+                    if (graph.getGuardsStage().allowsFloatingGuards()) {
+                        overflowGuard = iv.getLoop().counted().createOverFlowGuard();
+                    } else {
+                        debug.log("shouldOptimizeCompare(%s): abort, cannot create overflow guard", compare);
+                        return null;
+                    }
+                }
+                OptimizedCompareTests tests = computeNewCompareGuards(compare, iv, bound, mirrored, overflowGuard);
                 /**
                  * Determine if, based on loop bounds and guard bounds the moved guard is always
                  * false, i.e., deopts unconditionally. In such cases, avoid optimizing the compare.

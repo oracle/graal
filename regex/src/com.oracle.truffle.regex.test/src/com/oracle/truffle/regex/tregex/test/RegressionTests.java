@@ -123,6 +123,6 @@ public class RegressionTests extends RegexTestBase {
     @Test
     public void regress409298Reduced() {
         test("(?=.*?\\bb).*", "", "f b", 0, true, 0, 3);
-    };
+    }
 
 }

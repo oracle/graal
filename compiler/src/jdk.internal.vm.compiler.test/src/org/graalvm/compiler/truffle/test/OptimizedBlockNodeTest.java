@@ -39,9 +39,6 @@ import java.util.concurrent.Callable;
 
 import com.oracle.truffle.sl.runtime.SLStrings;
 import org.graalvm.compiler.test.SubprocessUtil;
-import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode.PartialBlocks;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
@@ -64,6 +61,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.runtime.OptimizedBlockNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedBlockNode.PartialBlocks;
 import com.oracle.truffle.sl.runtime.SLContext;
 
 public class OptimizedBlockNodeTest {

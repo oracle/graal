@@ -115,10 +115,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK'],
+    boot_jars=['sdk:GRAAL_SDK', 'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE'],
     stability="supported",
 ))
-
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -128,11 +127,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    jar_distributions=['sdk:LAUNCHER_COMMON', 'sdk:JLINE3'],
     boot_jars=[],
     stability="supported",
 ))
-
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -147,7 +145,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['LLVM_TOOLCHAIN'],
     stability="supported",
 ))
-
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
@@ -205,10 +202,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   missing_export_target_action='create',
                   with_source=lambda x: True,
                   vendor_info=None,
-                  use_upgrade_module_path=False):
+                  use_upgrade_module_path=False,
+                  default_to_jvmci=False):
     return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,
                                    vendor_info=vendor_info,
-                                   use_upgrade_module_path=use_upgrade_module_path)
+                                   use_upgrade_module_path=use_upgrade_module_path,
+                                   default_to_jvmci=default_to_jvmci)

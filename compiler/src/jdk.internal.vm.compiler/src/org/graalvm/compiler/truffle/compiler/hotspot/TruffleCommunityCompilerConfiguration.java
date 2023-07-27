@@ -29,10 +29,11 @@ import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.code.Architecture;
 

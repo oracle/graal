@@ -121,7 +121,7 @@ public class ObjectScanner {
         }
     }
 
-    private void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+    protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
@@ -147,7 +147,7 @@ public class ObjectScanner {
      * @param field the scanned field
      * @param receiver the receiver object
      */
-    protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
+    protected void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
             if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
@@ -235,7 +235,7 @@ public class ObjectScanner {
         scanConstant(elementConstant, reason);
     }
 
-    public final void scanConstant(JavaConstant value, ScanReason reason) {
+    public void scanConstant(JavaConstant value, ScanReason reason) {
         if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }

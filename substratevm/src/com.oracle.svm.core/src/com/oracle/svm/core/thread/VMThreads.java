@@ -127,8 +127,13 @@ public abstract class VMThreads {
      */
     protected static final VMCondition THREAD_LIST_CONDITION = new VMCondition(THREAD_MUTEX);
 
-    /** The first element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The first element in the linked list of {@link IsolateThread}s. Protected by
+     * {@link #THREAD_MUTEX}.
+     */
     private static IsolateThread head;
+    /** The number of attached threads. Protected by {@link #THREAD_MUTEX}. */
+    private static int numAttachedThreads = 0;
     /**
      * This field is used to guarantee that all isolate threads that were started by SVM have exited
      * on the operating system level before tearing down an isolate. This is necessary to prevent
@@ -321,6 +326,9 @@ public abstract class VMThreads {
         try {
             nextTL.set(thread, head);
             head = thread;
+            numAttachedThreads++;
+            assert numAttachedThreads > 0;
+
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             /* On the initial transition to java code this thread should be synchronized. */
             ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
@@ -460,6 +468,8 @@ public abstract class VMThreads {
                 }
                 // Set to the sentinel value denoting the thread is detached
                 nextTL.set(thread, thread);
+                numAttachedThreads--;
+                assert numAttachedThreads >= 0;
                 break;
             } else {
                 previous = current;

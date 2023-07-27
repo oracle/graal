@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNativeNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
@@ -71,20 +72,13 @@ public final class MethodHandleIntrinsics {
 
     public static MethodHandleIntrinsicNode createIntrinsicNode(EspressoLanguage language, Meta meta, Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
         PolySigIntrinsics id = getId(method);
-        switch (id) {
-            case InvokeBasic:
-                return MHInvokeBasicNodeGen.create(method);
-            case InvokeGeneric:
-                return MHInvokeGenericNode.create(language, meta, accessingKlass, method, methodName, signature);
-            case LinkToVirtual:
-            case LinkToStatic:
-            case LinkToSpecial:
-            case LinkToInterface:
-                return MHLinkToNodeGen.create(method, id);
-            default:
-                throw EspressoError.shouldNotReachHere("unrecognized intrinsic polymorphic method: " + method);
-
-        }
+        return switch (id) {
+            case InvokeBasic -> MHInvokeBasicNodeGen.create(method);
+            case InvokeGeneric -> MHInvokeGenericNode.create(language, meta, accessingKlass, method, methodName, signature);
+            case LinkToVirtual, LinkToStatic, LinkToSpecial, LinkToInterface -> MHLinkToNodeGen.create(method, id);
+            case LinkToNative -> MHLinkToNativeNode.create(method, meta);
+            case None -> throw EspressoError.shouldNotReachHere();
+        };
     }
 
     public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature) {
@@ -123,6 +117,9 @@ public final class MethodHandleIntrinsics {
             }
             if (name == Name.linkToInterface) {
                 return PolySigIntrinsics.LinkToInterface;
+            }
+            if (name == Name.linkToNative) {
+                return PolySigIntrinsics.LinkToNative;
             }
             if (name == Name.invokeBasic) {
                 return PolySigIntrinsics.InvokeBasic;
@@ -203,7 +200,8 @@ public final class MethodHandleIntrinsics {
         LinkToVirtual(true, true),
         LinkToStatic(true, true),
         LinkToSpecial(true, true),
-        LinkToInterface(true, true);
+        LinkToInterface(true, true),
+        LinkToNative(true, true);
 
         public final boolean isSignaturePolymorphicIntrinsic;
         public final boolean isStatic;

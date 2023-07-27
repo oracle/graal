@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import java.util.concurrent.TimeUnit;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class Profile {
 

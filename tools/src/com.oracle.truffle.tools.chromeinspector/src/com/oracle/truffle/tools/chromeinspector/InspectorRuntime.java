@@ -37,9 +37,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -68,6 +65,8 @@ import com.oracle.truffle.tools.chromeinspector.types.RemoteObject.TypeMark;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class InspectorRuntime extends RuntimeDomain {
 

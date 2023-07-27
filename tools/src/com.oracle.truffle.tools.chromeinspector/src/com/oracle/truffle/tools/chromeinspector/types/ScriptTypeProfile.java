@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class ScriptTypeProfile {
 

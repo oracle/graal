@@ -29,7 +29,6 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -508,14 +507,15 @@ public class SVMHost extends HostVM {
 
     private static ReferenceType computeReferenceType(AnalysisType type) {
         Class<?> clazz = type.getJavaClass();
-        if (PhantomReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Phantom;
-        } else if (WeakReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Weak;
-        } else if (SoftReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Soft;
-        } else if (Reference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Other;
+        if (Reference.class.isAssignableFrom(clazz)) {
+            if (PhantomReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Phantom;
+            } else if (SoftReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Soft;
+            } else {
+                /* Treat all other java.lang.Reference subclasses as weak references. */
+                return ReferenceType.Weak;
+            }
         }
         return ReferenceType.None;
     }
@@ -940,6 +940,16 @@ public class SVMHost extends HostVM {
             }
         }
         return super.getStrengthenGraphsToTargetFunction(key);
+    }
+
+    @Override
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods which do not deoptimize.
+         * More work is needed to support it within deoptimization targets and runtime-compiled
+         * methods.
+         */
+        return method.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method);
     }
 
     @Override

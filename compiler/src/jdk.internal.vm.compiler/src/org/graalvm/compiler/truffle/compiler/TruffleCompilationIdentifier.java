@@ -25,8 +25,9 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 public interface TruffleCompilationIdentifier extends CompilationIdentifier {
 

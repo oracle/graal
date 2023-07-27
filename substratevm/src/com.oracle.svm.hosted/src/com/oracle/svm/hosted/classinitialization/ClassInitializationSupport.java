@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -83,15 +82,14 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      * Non-null while the static analysis is running to allow reporting of class initialization
      * errors without immediately aborting image building.
      */
-    UnsupportedFeatures unsupportedFeatures;
     final MetaAccessProvider metaAccess;
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
-        if (ClassInitializationOptions.UseNewExperimentalClassInitialization.getValue()) {
-            LogUtils.warning("Using new experimental class initialization strategy. Image size and peak performance are not optimized yet!");
-            return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
+        if (ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
+            LogUtils.warning("Using old deprecated class initialization strategy. Only classes that are marked explicitly as '--initialize-at-build-time' can be used during image generation.");
+            return new ProvenSafeClassInitializationSupport(metaAccess, loader);
         }
-        return new ProvenSafeClassInitializationSupport(metaAccess, loader);
+        return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
     }
 
     public static ClassInitializationSupport singleton() {
@@ -116,10 +114,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
                 }
             });
         }
-    }
-
-    void setUnsupportedFeatures(UnsupportedFeatures unsupportedFeatures) {
-        this.unsupportedFeatures = unsupportedFeatures;
     }
 
     /**
@@ -185,32 +179,19 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
             if (allowErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
                 return InitKind.RUN_TIME;
             } else {
-                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
+                String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
                                 LinkAtBuildTimeSupport.singleton().errorMessageFor(clazz) + " " +
-                                instructionsToInitializeAtRuntime(clazz), clazz, ex);
+                                instructionsToInitializeAtRuntime(clazz);
+                throw UserError.abort(ex, "%s", msg);
             }
         } catch (Throwable t) {
             if (allowErrors) {
                 return InitKind.RUN_TIME;
             } else {
-                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
-                                instructionsToInitializeAtRuntime(clazz), clazz, t);
+                String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
+                                instructionsToInitializeAtRuntime(clazz);
+                throw UserError.abort(t, "%s", msg);
             }
-        }
-    }
-
-    private InitKind reportInitializationError(String msg, Class<?> clazz, Throwable t) {
-        if (unsupportedFeatures != null) {
-            /*
-             * Report an unsupported feature during static analysis, so that we can collect multiple
-             * error messages without aborting analysis immediately. Returning InitKind.RUN_TIME
-             * ensures that analysis can continue, even though eventually an error is reported (so
-             * no image will be created).
-             */
-            unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
-            return InitKind.RUN_TIME;
-        } else {
-            throw UserError.abort(t, "%s", msg);
         }
     }
 

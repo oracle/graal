@@ -50,6 +50,7 @@ public final class TRegexDFAExecutorProperties {
     private final boolean allowSimpleCG;
     @CompilationFinal private boolean simpleCG;
     @CompilationFinal private boolean simpleCGMustCopy;
+    @CompilationFinal private boolean canFindStart;
     private final boolean regressionTestMode;
     private final boolean trackLastGroup;
     private final int minResultLength;
@@ -116,6 +117,14 @@ public final class TRegexDFAExecutorProperties {
 
     public void setSimpleCGMustCopy(boolean simpleCGMustCopy) {
         this.simpleCGMustCopy = simpleCGMustCopy;
+    }
+
+    public boolean canFindStart() {
+        return canFindStart;
+    }
+
+    public void setCanFindStart(boolean canFindStart) {
+        this.canFindStart = canFindStart;
     }
 
     public boolean isRegressionTestMode() {

@@ -354,18 +354,20 @@ public class Bytecode {
     public static final int DATA_DROP = 0x0C;
     public static final int DATA_DROP_UNSAFE = 0x0D;
     public static final int MEMORY_COPY = 0x0E;
-    public static final int MEMORY64_COPY = 0x0F;
-    public static final int MEMORY_FILL = 0x10;
-    public static final int MEMORY64_FILL = 0x11;
+    public static final int MEMORY64_COPY_D32_S64 = 0x0F;
+    public static final int MEMORY64_COPY_D64_S32 = 0x10;
+    public static final int MEMORY64_COPY_D64_S64 = 0x11;
+    public static final int MEMORY_FILL = 0x12;
+    public static final int MEMORY64_FILL = 0x13;
 
-    public static final int MEMORY64_SIZE = 0x12;
-    public static final int MEMORY64_GROW = 0x13;
-    public static final int TABLE_INIT = 0x14;
-    public static final int ELEM_DROP = 0x15;
-    public static final int TABLE_COPY = 0x16;
-    public static final int TABLE_GROW = 0x17;
-    public static final int TABLE_SIZE = 0x18;
-    public static final int TABLE_FILL = 0x19;
+    public static final int MEMORY64_SIZE = 0x14;
+    public static final int MEMORY64_GROW = 0x15;
+    public static final int TABLE_INIT = 0x16;
+    public static final int ELEM_DROP = 0x17;
+    public static final int TABLE_COPY = 0x18;
+    public static final int TABLE_GROW = 0x19;
+    public static final int TABLE_SIZE = 0x1A;
+    public static final int TABLE_FILL = 0x1B;
 
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;

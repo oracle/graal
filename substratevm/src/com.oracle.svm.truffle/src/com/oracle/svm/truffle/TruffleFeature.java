@@ -125,7 +125,6 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -175,6 +174,7 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.runtime.TruffleCallBoundary;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -436,7 +436,7 @@ public class TruffleFeature implements InternalFeature {
             DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
             /* Pass known reachable classes to the initializer: it will decide there what to do. */
             Boolean modified = TruffleBaseFeature.invokeStaticMethod(
-                            "org.graalvm.compiler.truffle.runtime.BytecodeOSRRootNode",
+                            "com.oracle.truffle.runtime.BytecodeOSRRootNode",
                             "initializeClassUsingDeprecatedFrameTransfer",
                             Collections.singleton(Class.class),
                             klass);
@@ -1024,8 +1024,8 @@ public class TruffleFeature implements InternalFeature {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
+@TargetClass(className = "com.oracle.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_runtime_OptimizedCallTarget {
 
     /*
      * Retry compilation when they failed during image generation.

@@ -188,11 +188,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                 headerMessage + " is not of type StaticObject", element);
             }
-            AnnotationMirror javaTypeMirror = getAnnotation(typeMirror, javaType);
-            if (javaTypeMirror == null) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                                headerMessage + " must be annotated with e.g. @JavaType(String.class) according to the substituted method signature", element);
-            }
+            // @JavaType annotation check is done in SubstitutionProcessor.getGuestTypes
         }
     }
 
@@ -317,11 +313,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
             String actualMethodName = getSubstutitutedMethodName(element);
 
-            // Obtain the (fully qualified) guest types parameters of the element.
-            List<String> guestTypes = getGuestTypes(targetMethod);
-
             // Obtain the hasReceiver() value from the @Substitution annotation.
             boolean hasReceiver = getAnnotationValue(subst, "hasReceiver", Boolean.class);
+
+            // Obtain the (fully qualified) guest types parameters of the element.
+            List<String> guestTypes = getGuestTypes(targetMethod, hasReceiver);
 
             // Obtain the fully qualified guest return type of the element.
             String returnType = getReturnTypeFromHost(targetMethod);
@@ -402,8 +398,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return getInternalName(returnType.toString());
     }
 
-    private List<String> getGuestTypes(ExecutableElement inner) {
+    private List<String> getGuestTypes(ExecutableElement inner, boolean hasReceiver) {
         ArrayList<String> parameterTypeNames = new ArrayList<>();
+        boolean isReceiver = hasReceiver;
         for (VariableElement parameter : inner.getParameters()) {
             if (isActualParameter(parameter)) {
                 AnnotationMirror mirror = getAnnotation(parameter.asType(), javaType);
@@ -412,12 +409,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 } else {
                     // @JavaType annotation not found -> primitive or j.l.Object
                     // All StaticObject(s) parameters must be annotated with @JavaType.
-                    if (processingEnv.getTypeUtils().isSameType(parameter.asType(), staticObjectElement.asType())) {
-                        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "StaticObject parameters require the @JavaType annotation", parameter);
+                    if (!isReceiver && processingEnv.getTypeUtils().isSameType(parameter.asType(), staticObjectElement.asType())) {
+                        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "non-receiver StaticObject parameters require the @JavaType annotation", parameter);
                     }
                     String arg = getInternalName(parameter.asType().toString());
                     parameterTypeNames.add(arg);
                 }
+                isReceiver = false;
             }
         }
         return parameterTypeNames;

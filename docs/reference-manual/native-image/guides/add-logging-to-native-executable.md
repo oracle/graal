@@ -31,10 +31,9 @@ For more details, see [Reflection Support](../Reflection.md).
 
 The logger can be initialized at executable build time with a custom _logging.properties_ configuration file, as illustrated in following example.
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk) 
-    ```
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Save the following Java code into a file named _LoggerBuildTimeInit.java_, then compile it using `javac`:
     ```java

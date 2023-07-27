@@ -35,14 +35,17 @@ public class ImageStringsReader {
     public static final int HASH_MULTIPLIER = 0x01000193;
     public static final int POSITIVE_MASK = 0x7FFFFFFF;
 
-    private final BasicImageReader reader;
+    private final ByteBuffer strings;
 
-    ImageStringsReader(BasicImageReader reader) {
-        this.reader = Objects.requireNonNull(reader);
+    ImageStringsReader(ByteBuffer strings) {
+        this.strings = Objects.requireNonNull(strings);
     }
 
     public int match(int offset, ByteSequence string, int stringOffset) {
-        return reader.match(offset, string, stringOffset);
+        if (offset < 0 || offset >= strings.limit()) {
+            throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
+        }
+        return ImageStringsReader.stringFromByteBufferMatches(strings, offset, string, stringOffset);
     }
 
     public static int hashCode(ByteSequence s) {

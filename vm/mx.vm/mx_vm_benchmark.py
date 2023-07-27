@@ -139,6 +139,7 @@ class NativeImageVM(GraalVm):
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
+            self.extra_jvm_args = bm_suite.extra_jvm_arg(self.benchmark_name, args)
             self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(image_run_args))
             self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(image_run_args))
             for option in self.extra_agentlib_options:
@@ -149,7 +150,7 @@ class NativeImageVM(GraalVm):
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
-            self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
+            self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
             self.profile_file_extension = '.iprof'
@@ -879,6 +880,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_agent(self, config, stages):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
+        hotspot_vm_args += config.extra_jvm_args
         agentlib_options = ['native-image-agent=config-output-dir=' + str(config.config_dir)] + config.extra_agentlib_options
         hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
 
@@ -939,6 +941,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
+        image_run_cmd += config.extra_jvm_args
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
@@ -1002,7 +1005,7 @@ class NativeImageVM(GraalVm):
         if not config.is_runnable:
             mx.abort(f"Benchmark {config.benchmark_suite_name}:{config.benchmark_name} is not runnable.")
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        with stages.set_command([image_path] + config.image_run_args) as s:
+        with stages.set_command([image_path] + config.extra_jvm_args + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 self._print_binary_size(config, out)

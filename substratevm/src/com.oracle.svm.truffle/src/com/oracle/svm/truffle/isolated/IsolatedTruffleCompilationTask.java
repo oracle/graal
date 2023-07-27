@@ -28,12 +28,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.nativebridge.BinaryInput;
-import org.graalvm.nativebridge.BinaryOutput;
-import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -49,6 +43,10 @@ import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
+import com.oracle.svm.truffle.isolated.BinaryOutput.ByteArrayBinaryOutput;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.vm.ci.meta.JavaConstant;
 

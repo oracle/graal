@@ -330,6 +330,14 @@ public final class Meta extends ContextAccessImpl {
             java_lang_ClassLoader_name = null;
         }
 
+        if (getJavaVersion().java19OrLater()) {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = knownKlass(Type.jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl);
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl.requireDeclaredField(Name.handle, Type._long);
+        } else {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = null;
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
+        }
+
         java_net_URL = knownKlass(Type.java_net_URL);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
@@ -386,7 +394,10 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = diff() //
+                        .method(lower(20), Name._init_, Signature._void_long_int) //
+                        .method(higher(21), Name._init_, Signature._void_long_long) //
+                        .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
@@ -403,13 +414,17 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
         if (context.getEspressoEnv().EnableManagement) {
-            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR);
+            HIDDEN_THREAD_WAITING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITING_MONITOR);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+            HIDDEN_THREAD_DEPTH_FIRST_NUMBER = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_DEPTH_FIRST_NUMBER);
         } else {
-            HIDDEN_THREAD_BLOCKED_OBJECT = null;
+            HIDDEN_THREAD_PENDING_MONITOR = null;
+            HIDDEN_THREAD_WAITING_MONITOR = null;
             HIDDEN_THREAD_BLOCKED_COUNT = null;
             HIDDEN_THREAD_WAITED_COUNT = null;
+            HIDDEN_THREAD_DEPTH_FIRST_NUMBER = null;
         }
 
         if (getJavaVersion().java19OrLater()) {
@@ -894,6 +909,29 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_module_Modules_defineModule = null;
         }
 
+        if (getJavaVersion().java20OrLater()) {
+            jdk_internal_foreign_abi_VMStorage = knownKlass(Type.jdk_internal_foreign_abi_VMStorage);
+            jdk_internal_foreign_abi_VMStorage_type = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.type, Type._byte);
+            jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.segmentMaskOrSize, Type._short);
+            jdk_internal_foreign_abi_VMStorage_indexOrOffset = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.indexOrOffset, Type._int);
+            jdk_internal_foreign_abi_NativeEntryPoint = knownKlass(Type.jdk_internal_foreign_abi_NativeEntryPoint);
+            jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = jdk_internal_foreign_abi_NativeEntryPoint.requireDeclaredField(Name.downcallStubAddress, Type._long);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = knownKlass(Type.jdk_internal_foreign_abi_UpcallLinker_CallRegs);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.argRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.retRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
+        } else {
+            // also exists in a different shape in 19 but we don't support that
+            jdk_internal_foreign_abi_VMStorage = null;
+            jdk_internal_foreign_abi_VMStorage_type = null;
+            jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize = null;
+            jdk_internal_foreign_abi_VMStorage_indexOrOffset = null;
+            jdk_internal_foreign_abi_NativeEntryPoint = null;
+            jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = null;
+        }
+
         jdk_internal_module_ModuleLoaderMap_Modules = diff() //
                         .klass(VERSION_17_OR_HIGHER, Type.jdk_internal_module_ModuleLoaderMap_Modules) //
                         .notRequiredKlass();
@@ -1089,6 +1127,9 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
+
+    public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
+    public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
 
     public final ObjectKlass java_net_URL;
 
@@ -1286,9 +1327,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
-    public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
+    public final Field HIDDEN_THREAD_PENDING_MONITOR;
+    public final Field HIDDEN_THREAD_WAITING_MONITOR;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
+    public final Field HIDDEN_THREAD_DEPTH_FIRST_NUMBER;
 
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
@@ -1511,6 +1554,17 @@ public final class Meta extends ContextAccessImpl {
     public final Field jdk_internal_misc_UnsafeConstants_BIG_ENDIAN;
     public final Field jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS;
     public final Field jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE;
+
+    // Foreign
+    public final Klass jdk_internal_foreign_abi_VMStorage;
+    public final Field jdk_internal_foreign_abi_VMStorage_type;
+    public final Field jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize;
+    public final Field jdk_internal_foreign_abi_VMStorage_indexOrOffset;
+    public final Klass jdk_internal_foreign_abi_NativeEntryPoint;
+    public final Field jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress;
+    public final Klass jdk_internal_foreign_abi_UpcallLinker_CallRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

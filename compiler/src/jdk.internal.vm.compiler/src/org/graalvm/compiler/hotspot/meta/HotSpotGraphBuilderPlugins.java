@@ -160,6 +160,7 @@ import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.SHANode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -243,7 +244,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32Plugins(invocationPlugins, config, replacements);
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
-                registerSHAPlugins(invocationPlugins, config, replacements);
+                registerSHAPlugins(invocationPlugins, config, replacements, target.arch);
                 registerMD5Plugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
@@ -280,8 +281,8 @@ public class HotSpotGraphBuilderPlugins {
             // cannot install intrinsics without
             return;
         }
-
-        Registration tl = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/runtime/hotspot/HotSpotFastThreadLocal;"));
+        Registration tl = new Registration(plugins, "com.oracle.truffle.runtime.hotspot.HotSpotFastThreadLocal");
         tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -659,9 +660,9 @@ public class HotSpotGraphBuilderPlugins {
 
     // @formatter:off
     @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-              lineStart = 2856,
-              lineEnd   = 2917,
-              commit    = "230bcb769a2701b80b4a12a39785f88a1db48ba9",
+              lineStart = 2861,
+              lineEnd   = 2922,
+              commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
               sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -1029,7 +1030,7 @@ public class HotSpotGraphBuilderPlugins {
 
     }
 
-    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements, Architecture arch) {
         boolean useMD5 = config.md5ImplCompressMultiBlock != 0L;
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
@@ -1059,11 +1060,9 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
-        rSha1.registerConditional(useSha1, new DigestInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));
-
+        // HotSpot runtime sha256_implCompress stub AVX2 variant is not yet ported
         Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        rSha256.registerConditional(useSha256, new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
+        rSha256.registerConditional(useSha256 && !SHANode.SHA256Node.isSupported(arch), new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
 
         Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
         rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));

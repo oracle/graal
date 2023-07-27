@@ -211,6 +211,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
 
+    /**
+     * Contains callbacks that are notified when this type is marked as instantiated. Each callback
+     * is called at least once, but there are no guarantees that it will be called exactly once.
+     */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
     @SuppressWarnings("this-escape")

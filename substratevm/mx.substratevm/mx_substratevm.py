@@ -938,7 +938,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle Macro', 'SubstrateVM Static Libraries'],
+    dependencies=['GraalVM compiler', 'Truffle API', 'Truffle Macro', 'SubstrateVM Static Libraries'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -1172,20 +1172,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 ))
 
 libgraal_jar_distributions = [
-    'substratevm:GRAAL_HOTSPOT_LIBRARY',
-    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
+    'sdk:NATIVEBRIDGE',
+    'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.jniutils=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni.annotation=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.annotate=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
@@ -1193,6 +1192,8 @@ libgraal_build_args = [
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
     '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+    # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
+    '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
@@ -1215,7 +1216,10 @@ libgraal_build_args = [
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
-] if mx.get_arch() == 'aarch64' else [])
+] if mx.get_arch() == 'aarch64' else []) + ([
+   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+] if mx.is_linux() else [])
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1234,20 +1238,19 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleLibGraalFeature'],
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,com.oracle.svm.graal.hotspot.libgraal.truffle.TruffleLibGraalFeature'],
             add_to_module='java.base',
             headers=False,
         ),
     ],
-    # GR-46611 Temporary solution. When the optimized runtime is moved to the TRUFFLE_API distribution, truffleattach should be moved as well.
-    support_libraries_distributions=['compiler:TRUFFLE_LIBGRAAL_TRUFFLEATTACH_GRAALVM_SUPPORT'],
+    support_libraries_distributions=[],
     stability="supported",
     jlink=False,
 )
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
@@ -1413,9 +1416,9 @@ def clinittest(args):
         mkpath(build_dir)
 
         if new_class_init_policy:
-            policy_args = ['-H:+UseNewExperimentalClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = ['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = ['-H:-UseNewExperimentalClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = ['-H:+UseDeprecatedOldClassInitialization', '-H:-SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         native_image(

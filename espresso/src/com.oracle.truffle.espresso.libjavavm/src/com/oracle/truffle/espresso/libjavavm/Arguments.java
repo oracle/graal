@@ -29,6 +29,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -65,6 +67,14 @@ public final class Arguments {
     private Arguments() {
     }
 
+    private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
+                    "ReservedCodeCacheSize",
+                    // `TieredStopAtLevel=0` is handled separately, other values are ignored
+                    "TieredStopAtLevel");
+
+    private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
+                    "TieredCompilation", "engine.MultiTier");
+
     public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
         Pointer p = (Pointer) args.getOptions();
         int count = args.getNOptions();
@@ -72,7 +82,7 @@ public final class Arguments {
         String bootClasspathPrepend = null;
         String bootClasspathAppend = null;
 
-        ArgumentsHandler handler = new ArgumentsHandler(builder, args);
+        ArgumentsHandler handler = new ArgumentsHandler(builder, IGNORED_XX_OPTIONS, MAPPED_XX_OPTIONS, args);
         List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = false;
@@ -156,20 +166,38 @@ public final class Arguments {
                         handler.addOpens(optionString.substring("--add-opens=".length()));
                     } else if (optionString.startsWith("--add-modules=")) {
                         handler.addModules(optionString.substring("--add-modules=".length()));
+                    } else if (optionString.startsWith("--enable-native-access=")) {
+                        handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
                         builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {
                         builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                     } else if (optionString.startsWith("--limit-modules=")) {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
+                    } else if (optionString.equals("--enable-preview")) {
+                        builder.option("java.EnablePreview", "true");
                     } else if (isXOption(optionString)) {
                         RuntimeOptions.set(optionString.substring("-X".length()), null);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = true;
                     } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = false;
+                    } else if (optionString.equals("-XX:+UnlockExperimentalVMOptions") ||
+                                    optionString.equals("-XX:+UnlockDiagnosticVMOptions")) {
+                        // approximate UnlockDiagnosticVMOptions as UnlockExperimentalVMOptions
+                        handler.setExperimental(true);
+                    } else if (optionString.equals("-XX:-UnlockExperimentalVMOptions") ||
+                                    optionString.equals("-XX:-UnlockDiagnosticVMOptions")) {
+                        handler.setExperimental(false);
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
+                    } else if (optionString.startsWith("-Xcomp")) {
+                        builder.option("engine.CompileImmediately", "true");
+                    } else if (optionString.startsWith("-Xbatch")) {
+                        builder.option("engine.BackgroundCompilation", "false");
+                        builder.option("engine.CompileImmediately", "true");
+                    } else if (optionString.startsWith("-Xint") || optionString.equals("-XX:TieredStopAtLevel=0")) {
+                        builder.option("engine.Compilation", "false");
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
@@ -234,7 +262,11 @@ public final class Arguments {
 
     private static boolean isExperimentalFlag(String optionString) {
         // return false for "--experimental-options=[garbage]
-        return optionString.equals("--experimental-options") || optionString.equals("--experimental-options=true") || optionString.equals("--experimental-options=false");
+        return optionString.equals("--experimental-options") ||
+                        optionString.equals("--experimental-options=true") ||
+                        optionString.equals("--experimental-options=false") ||
+                        optionString.equals("-XX:+UnlockDiagnosticVMOptions") ||
+                        optionString.equals("-XX:-UnlockDiagnosticVMOptions");
     }
 
     private static boolean isXOption(String optionString) {

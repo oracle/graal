@@ -3,7 +3,7 @@ layout: docs
 toc_group: dynamic-features
 link_title: Reflection
 permalink: /reference-manual/native-image/dynamic-features/Reflection/
-redirect_from: /$version/reference-manual/native-image/Reflection/
+redirect_from: /reference-manual/native-image/Reflection/
 ---
 
 # Reflection in Native Image

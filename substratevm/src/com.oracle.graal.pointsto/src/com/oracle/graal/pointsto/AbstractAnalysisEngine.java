@@ -337,6 +337,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         executor.execute(task);
     }
 
+    public void postTask(final Runnable task) {
+        executor.execute(new CompletionExecutor.DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
+    }
+
     @Override
     public final boolean executorIsStarted() {
         return executor.isStarted();

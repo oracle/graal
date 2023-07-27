@@ -109,5 +109,9 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return false;
     }
 
+    public boolean isNFA() {
+        return false;
+    }
+
     protected abstract RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex);
 }

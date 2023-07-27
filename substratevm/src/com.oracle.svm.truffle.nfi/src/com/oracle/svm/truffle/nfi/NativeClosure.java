@@ -45,7 +45,10 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -215,6 +218,9 @@ final class NativeClosure {
         }
     }
 
+    private static final CGlobalData<CCharPointer> errorMessageThread = CGlobalDataFactory.createCString("Failed to enter by thread for closure.");
+    private static final CGlobalData<CCharPointer> errorMessageIsolate = CGlobalDataFactory.createCString("Failed to enter by isolate for closure.");
+
     static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "NativeClosure.pendingException");
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
@@ -227,9 +233,15 @@ final class NativeClosure {
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -279,9 +291,15 @@ final class NativeClosure {
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -312,9 +330,15 @@ final class NativeClosure {
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -346,9 +370,15 @@ final class NativeClosure {
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);

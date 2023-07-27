@@ -266,9 +266,11 @@ final class LinkedKlassFieldLayout {
                                 new HiddenField(Name.HIDDEN_THREAD_PARK_LOCK, Type.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
 
                                 // Only used for j.l.management bookkeeping.
-                                new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),
+                                new HiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR),
+                                new HiddenField(Name.HIDDEN_THREAD_WAITING_MONITOR),
                                 new HiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT),
-                                new HiddenField(Name.HIDDEN_THREAD_WAITED_COUNT)
+                                new HiddenField(Name.HIDDEN_THREAD_WAITED_COUNT),
+                                new HiddenField(Name.HIDDEN_THREAD_DEPTH_FIRST_NUMBER),
                 };
             }
             if (holder == Type.java_lang_Class) {
