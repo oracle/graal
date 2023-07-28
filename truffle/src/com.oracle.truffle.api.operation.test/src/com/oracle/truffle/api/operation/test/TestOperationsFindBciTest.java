@@ -15,6 +15,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -126,24 +127,24 @@ public class TestOperationsFindBciTest {
 
         // <anon>
         assertNull(frames.get(0).getCallNode());
-        assertEquals(-1, TestOperationsBase.findBci(frames.get(0).getCallNode()));
+        assertEquals(-1, OperationRootNode.findBci(frames.get(0).getCallNode()));
 
         // baz
-        int bazBci = TestOperationsBase.findBci(frames.get(1).getCallNode());
+        int bazBci = OperationRootNode.findBci(frames.get(1).getCallNode());
         assertNotEquals(-1, bazBci);
         SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
         assertEquals(bazSourceSection.getSource(), bazSource);
         assertEquals(bazSourceSection.getCharacters(), "<dump>");
 
         // bar
-        int barBci = TestOperationsBase.findBci(frames.get(2).getCallNode());
+        int barBci = OperationRootNode.findBci(frames.get(2).getCallNode());
         assertNotEquals(-1, barBci);
         SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
         assertEquals(barSourceSection.getSource(), barSource);
         assertEquals(barSourceSection.getCharacters(), "baz()");
 
         // foo
-        int fooBci = TestOperationsBase.findBci(frames.get(3).getCallNode());
+        int fooBci = OperationRootNode.findBci(frames.get(3).getCallNode());
         assertNotEquals(-1, fooBci);
         SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
         assertEquals(fooSourceSection.getSource(), fooSource);
