@@ -75,7 +75,7 @@ final class PthreadVMLockFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
-            return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));
+            return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
         }
     };
 
