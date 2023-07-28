@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.runtime.panama;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
-    private int intIndex;
-    private int floatIndex;
-    private int globalIndex;
+    protected int intIndex;
+    protected int floatIndex;
+    protected int globalIndex;
 
     public DefaultArgumentsCalculator(Platform platform, VMStorage[] callIntRegs, VMStorage[] callFloatRegs, VMStorage intReturn, VMStorage floatReturn) {
         super(platform, callIntRegs, callFloatRegs, intReturn, floatReturn);
@@ -66,6 +66,11 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
             assert isFloat(type);
             return true;
         }
+        return false;
+    }
+
+    @Override
+    public boolean isVarArgsStart(VMStorage reg, Klass type) {
         return false;
     }
 

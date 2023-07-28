@@ -91,11 +91,11 @@ public final class DowncallStubs {
         assert validCapturableState(capturedStates, OS.getCurrent());
 
         LOGGER.fine(() -> {
-            StringBuilder sb = new StringBuilder("Creating downcall stub (");
+            StringBuilder sb = new StringBuilder("Downcall stub request: ");
             if (!needsReturnBuffer) {
                 sb.append("no ");
             }
-            sb.append("ret buf, captured state=").append(capturedStates).append(") sig: (");
+            sb.append("ret buf, captured state=").append(capturedStates).append(", sig=(");
             for (int i = 0; i < pTypes.length; i++) {
                 Klass pType = pTypes[i];
                 sb.append(pType.getType());
@@ -103,7 +103,7 @@ public final class DowncallStubs {
                     sb.append(", ");
                 }
             }
-            sb.append(")").append(rType.getType()).append(" in: (");
+            sb.append(")").append(rType.getType()).append(", in=(");
             for (int i = 0; i < inputRegs.length; i++) {
                 VMStorage inputReg = inputRegs[i];
                 sb.append(platform.toString(inputReg));
@@ -111,7 +111,7 @@ public final class DowncallStubs {
                     sb.append(", ");
                 }
             }
-            sb.append(") out: (");
+            sb.append("), out=(");
             for (int i = 0; i < outRegs.length; i++) {
                 VMStorage outReg = outRegs[i];
                 sb.append(platform.toString(outReg));
@@ -129,6 +129,7 @@ public final class DowncallStubs {
         int[] shuffle = new int[pTypes.length];
         NativeType[] nativeParamTypes = new NativeType[pTypes.length];
         int nativeIndex = 0;
+        int nativeVarArgsIndex = -1;
         for (int i = 0; i < pTypes.length; i++) {
             Klass pType = pTypes[i];
             VMStorage inputReg = inputRegs[i];
@@ -140,6 +141,9 @@ public final class DowncallStubs {
                     default -> throw EspressoError.unimplemented(inputReg.getStubLocation(platform).toString());
                 }
             } else {
+                if (nativeVarArgsIndex < 0 && argsCalc.isVarArgsStart(inputReg, pType)) {
+                    nativeVarArgsIndex = nativeIndex;
+                }
                 int index = argsCalc.getNextInputIndex(inputReg, pType);
                 if (index >= 0) {
                     shuffle[nativeIndex] = i;
@@ -165,8 +169,24 @@ public final class DowncallStubs {
         if (!capturedStates.isEmpty() && captureIndex < 0) {
             throw EspressoError.shouldNotReachHere("Didn't find the capture index in downcall arguments");
         }
-        NativeSignature nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
-        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature, captureIndex, capturedStates);
+        NativeSignature nativeSignature;
+        if (nativeVarArgsIndex < 0) {
+            nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
+        } else {
+            nativeSignature = NativeSignature.createVarArg(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeVarArgsIndex),
+                            Arrays.copyOfRange(nativeParamTypes, nativeVarArgsIndex, nativeIndex));
+        }
+        DowncallStub downcallStub = new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature, captureIndex, capturedStates);
+        LOGGER.fine(() -> {
+            StringBuilder sb = new StringBuilder("Creating downcall stub: targetIndex=");
+            sb.append(downcallStub.targetIndex).append(" shuffle=").append(Arrays.toString(downcallStub.shuffle));
+            sb.append(" sig=").append(downcallStub.signature).append(" capture=").append(capturedStates);
+            if (downcallStub.captureIndex >= 0) {
+                sb.append("@").append(downcallStub.captureIndex);
+            }
+            return sb.toString();
+        });
+        return downcallStub;
     }
 
     private static boolean validCapturableState(EnumSet<CapturableState> states, OS os) {

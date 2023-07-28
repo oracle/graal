@@ -66,6 +66,11 @@ public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     }
 
     @Override
+    public boolean isVarArgsStart(VMStorage reg, Klass type) {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "DefaultArgumentsCalculator{" +
                         "platform=" + platform +
