@@ -85,8 +85,8 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
     }
 
     @SuppressWarnings("unused")
-    default AbstractTruffleException handleStackOverflow(StackOverflowError error) {
-        return null;
+    default Throwable interceptInternalException(Throwable t) {
+        return t;
     }
 
     // Sets an invocation threshold that must be reached before the baseline interpreter switches to

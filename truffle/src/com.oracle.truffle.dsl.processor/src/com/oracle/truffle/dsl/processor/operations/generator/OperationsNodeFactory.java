@@ -3995,22 +3995,24 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(); // switch
 
             b.end(); // try
-            DeclaredType abstractTruffleException = context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException");
-            boolean handlesStackOverflow = model.handleStackOverflow != null;
 
-            if (handlesStackOverflow) {
-                b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
-                b.declaration(abstractTruffleException, "ex");
-                b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
-                b.startAssign("ex").string("ate").end();
-                b.end().startElseIf().string("throwable instanceof java.lang.StackOverflowError soe").end().startBlock();
-                b.startAssign("ex").startCall("$this." + model.handleStackOverflow.getSimpleName().toString()).string("soe").end(2);
-                b.end().startElseBlock();
-                b.statement("throw throwable");
-                b.end();
-            } else {
-                b.startCatchBlock(abstractTruffleException, "ex");
-            }
+            DeclaredType abstractTruffleException = context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException");
+            b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
+            /*
+             * We can handle throwable if it's an AbstractTruffleException or
+             * interceptInternalException(throwable) converts it to one.
+             */
+
+            b.declaration(abstractTruffleException, "ex");
+            b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
+            b.startAssign("ex").string("ate").end();
+            b.end().startElseBlock();
+            b.startTryBlock(); // nested try
+            b.startThrow().string("sneakyThrow($this.interceptInternalException(throwable))").end();
+            b.end().startCatchBlock(abstractTruffleException, "ate");
+            b.startAssign("ex").string("ate").end();
+            b.end(); // nested try
+            b.end(); // else
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();

@@ -42,7 +42,6 @@ package com.oracle.truffle.api.operation.test;
 
 import java.util.List;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -50,7 +49,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -227,23 +225,6 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         }
     }
 
-    @Operation
-    public static final class GlobalCachedReadOp {
-        @Specialization(assumptions = "cachedAssumption")
-        public static Object doCached(final Association assoc,
-                        @Cached(value = "assoc.getAssumption()", allowUncached = true) final Assumption cachedAssumption) {
-            return assoc.getValue();
-        }
-    }
-
-    @Operation
-    public static final class NonNodeInstance {
-        @Specialization(limit = "3", guards = "i == cachedI")
-        public static Integer doCached(Integer i, @Cached("i") Integer cachedI) {
-            return cachedI;
-        }
-    }
-
     @SuppressWarnings("unused")
     @Operation
     public static final class Invoke {
@@ -300,14 +281,6 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     }
 
     @Operation
-    public static final class ZeroLocalOperation {
-        @Specialization
-        public static void doZero(VirtualFrame frame, LocalSetter setter) {
-            setter.setInt(frame, 0);
-        }
-    }
-
-    @Operation
     public static final class ToBoolean {
         @Specialization
         public static boolean doLong(long l) {
@@ -353,16 +326,5 @@ class TestClosure {
 
     public Object call() {
         return root.call(frame);
-    }
-}
-
-class Association {
-    public Object getValue() {
-        return new Object();
-    }
-
-    @NeverDefault
-    public Assumption getAssumption() {
-        return Assumption.ALWAYS_VALID;
     }
 }
