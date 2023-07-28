@@ -456,7 +456,9 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public ConfigurationCondition isIncluded(Module module, String resourceName, URI resource) {
+        public List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resource) {
+            // Possibly we can have multiple conditions for one resource
+            List<ConfigurationCondition> conditions = new ArrayList<>();
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -472,7 +474,7 @@ public final class ResourcesFeature implements InternalFeature {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return null;
+                    return conditions; // returns empty list
                 }
             }
 
@@ -481,11 +483,11 @@ public final class ResourcesFeature implements InternalFeature {
                     continue;
                 }
                 if (rp.compiledPattern().pattern.matcher(resourceName).matches() || rp.compiledPattern().pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return rp.condition();
+                    conditions.add(rp.condition());
                 }
             }
 
-            return null;
+            return conditions;
         }
 
         @Override

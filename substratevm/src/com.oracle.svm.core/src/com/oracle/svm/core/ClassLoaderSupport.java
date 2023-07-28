@@ -54,7 +54,7 @@ public abstract class ClassLoaderSupport {
     protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
 
     public interface ResourceCollector {
-        ConfigurationCondition isIncluded(Module module, String resourceName, URI resourceURI);
+        List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resourceURI);
 
         void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar);
 

@@ -136,8 +136,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             var includeAll = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
             List<ConditionalResource> resourcesFound = new ArrayList<>();
             moduleReader.list().forEach(resourceName -> {
-                ConfigurationCondition condition = shouldIncludeEntry(info.module(), resourceCollector, resourceName, moduleReference.location().orElse(null), includeAll);
-                if (condition != null) {
+                List<ConfigurationCondition> conditions = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeAll);
+                for (ConfigurationCondition condition : conditions) {
                     resourcesFound.add(new ConditionalResource(condition, resourceName));
                 }
             });
@@ -192,7 +192,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) throws IOException {
         List<ConditionalResource> matchedDirectoryResources = new ArrayList<>();
-       Set<String> allEntries = new HashSet<>();
+        Set<String> allEntries = new HashSet<>();
 
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
@@ -201,20 +201,21 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
             /* Resources always use / as the separator, as do our resource inclusion patterns */
             String relativeFilePath;
-            ConfigurationCondition condition;
+            List<ConfigurationCondition> conditions;
             if (entry != root) {
                 relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
-                condition = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeAll);
+                conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeAll);
                 allEntries.add(relativeFilePath);
             } else {
                 relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
-                condition = collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri());
+                conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeAll);
             }
 
             if (Files.isDirectory(entry)) {
-                if (condition != null) {
+                for (ConfigurationCondition condition : conditions) {
                     matchedDirectoryResources.add(new ConditionalResource(condition, relativeFilePath));
                 }
+
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
                     if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
@@ -225,7 +226,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                 }
             } else {
-                if (condition != null) {
+                for (ConfigurationCondition condition : conditions) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         if (ConfigurationCondition.isAlwaysTrue(condition)) {
                             collector.addResource(null, relativeFilePath, is, false);
@@ -259,8 +260,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 URI uri = jarPath.toUri();
                 if (entry.isDirectory()) {
                     String dirName = entry.getName().substring(0, entry.getName().length() - 1);
-                    ConfigurationCondition condition = shouldIncludeEntry(null, collector, dirName, jarPath.toUri(), includeAll);
-                    if (condition != null) {
+                    List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, dirName, jarPath.toUri(), includeAll);
+                    for (ConfigurationCondition condition : conditions) {
                         // Register the directory with empty content to preserve Java behavior
                         if (ConfigurationCondition.isAlwaysTrue(condition)) {
                             collector.addDirectoryResource(null, dirName, "", true);
@@ -269,8 +270,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         }
                     }
                 } else {
-                    ConfigurationCondition condition = shouldIncludeEntry(null, collector, entry.getName(), jarPath.toUri(), includeAll);
-                    if (condition != null) {
+                    List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entry.getName(), jarPath.toUri(), includeAll);
+                    for (ConfigurationCondition condition : conditions) {
                         try (InputStream is = jf.getInputStream(entry)) {
                             if (ConfigurationCondition.isAlwaysTrue(condition)) {
                                 collector.addResource(null, entry.getName(), is, true);
@@ -286,10 +287,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static ConfigurationCondition shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeAll) {
-        ConfigurationCondition conditions = collector.isIncluded(module, fileName, uri);
+    private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeAll) {
+        List<ConfigurationCondition> conditions = collector.isIncluded(module, fileName, uri);
         if (includeAll && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
-            return ConfigurationCondition.alwaysTrue();
+            return Collections.singletonList(ConfigurationCondition.alwaysTrue());
         }
 
         return conditions;
