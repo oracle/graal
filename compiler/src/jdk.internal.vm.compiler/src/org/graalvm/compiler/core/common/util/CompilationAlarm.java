@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -51,6 +52,9 @@ public final class CompilationAlarm implements AutoCloseable {
                         + "made in the compiler.",
                  type = OptionType.Debug)
          public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
+        @Option(help = "Log detailed information about progress detection.",
+                 type = OptionType.Debug)
+         public static final OptionKey<Boolean> CompilationAlarmLogProgressDetection = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -90,6 +94,7 @@ public final class CompilationAlarm implements AutoCloseable {
     public void close() {
         if (this != NEVER_EXPIRES) {
             currentAlarm.set(null);
+            resetProgressDetection();
         }
     }
 
@@ -131,23 +136,23 @@ public final class CompilationAlarm implements AutoCloseable {
      * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
      * compilation alarm.
      */
-    public static final int CHECK_BAILOUT_COUNTER = 1024 * 16;
+    public static final int CHECK_BAILOUT_COUNTER = 1024;
 
     public static void checkProgress(Graph graph) {
         if (graph != null && graph.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
-            overflowAction(graph.getOptions());
+            overflowAction(graph.getOptions(), graph);
         }
     }
 
     public static boolean checkProgress(OptionValues opt, EventCounter eventCounter) {
         if (opt != null && eventCounter.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
-            overflowAction(opt);
+            overflowAction(opt, eventCounter);
             return true;
         }
         return false;
     }
 
-    private static void overflowAction(OptionValues opt) {
+    private static void overflowAction(OptionValues opt, EventCounter counter) {
         if (IS_BUILDING_NATIVE_IMAGE) {
             /*
              * Do not run progress detection in compiler loops when we are building a native image.
@@ -157,7 +162,7 @@ public final class CompilationAlarm implements AutoCloseable {
         if (CompilationAlarm.current().hasExpired()) {
             compilationAlarmExpired(opt);
         }
-        assertProgress(opt);
+        assertProgress(opt, counter);
     }
 
     /**
@@ -165,12 +170,14 @@ public final class CompilationAlarm implements AutoCloseable {
      * is no progress made within a certain time frame - abort compilation under the assumption of a
      * hang and throw a bailout.
      */
-    private static void assertProgress(OptionValues opt) {
+    private static void assertProgress(OptionValues opt, EventCounter counter) {
         StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
         StackTraceElement[] currentStackTrace = Thread.currentThread().getStackTrace();
-        if (lastStackTrace == null || !Arrays.equals(lastStackTrace, currentStackTrace)) {
+        EventCounter lastCounter = lastCounterForThread.get();
+        if (lastStackTrace == null || !Arrays.equals(lastStackTrace, currentStackTrace) || !lastCounter.equals(counter)) {
             lastStackTraceForThread.set(currentStackTrace);
             lastUniqueStackTraceForThread.set(System.currentTimeMillis());
+            lastCounterForThread.set(counter);
             return;
         } else {
             assert Arrays.equals(lastStackTrace, currentStackTrace) : "Must only enter this branch if no progress was made";
@@ -182,13 +189,25 @@ public final class CompilationAlarm implements AutoCloseable {
             final long currentTimeStamp = System.currentTimeMillis();
             final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
 
-            boolean noProgressForPeriod = timeDiff > (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+            final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+
+            boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
+
+            if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
+                TTY.printf("CompilationAlarm: Progress detection; no progress for %s seconds - progress %s - max no progress period %s %n", timeDiff / 1000, noProgressForPeriod, maxNoProgressPeriod);
+            }
 
             if (noProgressForPeriod) {
-                throw new PermanentBailoutException("Observed identical stack traces for %d seconds, indicating a stuck compilation, stack is %n%s", timeDiff / 1000, Util.toString(lastStackTrace));
+                throw new PermanentBailoutException("Observed identical stack traces for %d seconds, indicating a stuck compilation, counter = %s, stack is %n%s", timeDiff / 1000, lastCounter,
+                                Util.toString(lastStackTrace));
             }
 
         }
+    }
+
+    public static void resetProgressDetection() {
+        lastStackTraceForThread.set(null);
+        lastUniqueStackTraceForThread.set(null);
     }
 
     public static void compilationAlarmExpired(Graph graph) {
@@ -202,4 +221,5 @@ public final class CompilationAlarm implements AutoCloseable {
 
     private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
     private static final ThreadLocal<Long> lastUniqueStackTraceForThread = new ThreadLocal<>();
+    private static final ThreadLocal<EventCounter> lastCounterForThread = new ThreadLocal<>();
 }

@@ -191,6 +191,10 @@ public class Graph implements EventCounter {
         return false;
     }
 
+    public int getEventCounter() {
+        return eventCounter;
+    }
+
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
 
