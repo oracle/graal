@@ -611,7 +611,7 @@ public class SubstrateJVM {
      * See {@link JVM#getEventWriter}.
      */
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        return threadLocal.getEventWriter();
+        return JfrThreadLocal.getEventWriter();
     }
 
     /**
@@ -681,7 +681,7 @@ public class SubstrateJVM {
     }
 
     public void setExcluded(Thread thread, boolean excluded) {
-        getThreadLocal().setExcluded(thread, excluded);
+        JfrThreadLocal.setExcluded(thread, excluded);
     }
 
     public boolean isExcluded(Thread thread) {
@@ -697,7 +697,7 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
-        return getThreadLocal().isCurrentThreadExcluded();
+        return JfrThreadLocal.isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

@@ -38,6 +38,9 @@ public final class Target_jdk_jfr_internal_EventWriter {
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) boolean excluded;
 
+    @Alias //
+    long threadID;
+
     @Alias
     @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK17OrEarlier.class)
