@@ -150,7 +150,7 @@ public abstract class ObjectHeader {
     }
 
     @Fold
-    protected static int getHubOffset() {
+    public static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
     }
 }

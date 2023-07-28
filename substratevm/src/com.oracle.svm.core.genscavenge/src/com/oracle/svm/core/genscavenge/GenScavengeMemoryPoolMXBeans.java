@@ -51,7 +51,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static MemoryPoolMXBean[] createMemoryPoolMXBeans() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialOrParallelGC()) {
             mxBeans = new AbstractMemoryPoolMXBean[]{
                             new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
                             new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),

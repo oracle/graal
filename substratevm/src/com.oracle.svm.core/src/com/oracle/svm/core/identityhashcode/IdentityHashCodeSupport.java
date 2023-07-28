@@ -85,8 +85,12 @@ public final class IdentityHashCodeSupport {
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
     public static int computeHashCodeFromAddress(Object obj) {
-        Word address = Word.objectToUntrackedPointer(obj);
         long salt = Heap.getHeap().getIdentityHashSalt(obj);
+        return computeHashCodeFromAddress(Word.objectToUntrackedPointer(obj), salt);
+    }
+
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
+    public static int computeHashCodeFromAddress(Word address, long salt) {
         SignedWord salted = WordFactory.signed(salt).xor(address);
         int hash = mix32(salted.rawValue()) >>> 1; // shift: ensure positive, same as on HotSpot
         return (hash == 0) ? 1 : hash; // ensure nonzero

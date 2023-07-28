@@ -124,7 +124,7 @@ public class SubstrateDiagnostics {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isFatalErrorHandlingThread() {
-        return fatalErrorState().diagnosticThread.get() == CurrentIsolate.getCurrentThread();
+        return CurrentIsolate.getCurrentThread().isNonNull() && fatalErrorState().diagnosticThread.get() == CurrentIsolate.getCurrentThread();
     }
 
     public static int maxInvocations() {

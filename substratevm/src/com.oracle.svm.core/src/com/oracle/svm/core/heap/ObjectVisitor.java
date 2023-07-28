@@ -38,7 +38,9 @@ public interface ObjectVisitor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
     boolean visitObject(Object o);
 
-    /** Like visitObject(Object), but inlined for performance. */
+    /**
+     * Like visitObject(Object), but inlined for performance.
+     */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
     default boolean visitObjectInline(Object o) {
         return visitObject(o);

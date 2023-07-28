@@ -31,11 +31,13 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -97,6 +99,8 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
+                assert ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase() ||
+                                innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
@@ -105,11 +109,12 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
-            assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
+                assert ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase() ||
+                                innerOffset < LayoutEncoding.getSizeFromObjectInGC(copy).rawValue();
                 Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
             } else {
@@ -152,19 +157,17 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteUnmodifiedReference();
 
-        void toLog();
-
         void reset();
     }
 
     public static class RealCounters implements Counters {
-        private long objRef;
-        private long nullObjRef;
-        private long nullReferent;
-        private long forwardedReferent;
-        private long nonHeapReferent;
-        private long copiedReferent;
-        private long unmodifiedReference;
+        private final AtomicLong objRef = new AtomicLong(0);
+        private final AtomicLong nullObjRef = new AtomicLong(0);
+        private final AtomicLong nullReferent = new AtomicLong(0);
+        private final AtomicLong forwardedReferent = new AtomicLong(0);
+        private final AtomicLong nonHeapReferent = new AtomicLong(0);
+        private final AtomicLong copiedReferent = new AtomicLong(0);
+        private final AtomicLong unmodifiedReference = new AtomicLong(0);
 
         RealCounters() {
             reset();
@@ -172,13 +175,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void reset() {
-            objRef = 0L;
-            nullObjRef = 0L;
-            nullReferent = 0L;
-            forwardedReferent = 0L;
-            nonHeapReferent = 0L;
-            copiedReferent = 0L;
-            unmodifiedReference = 0L;
+            objRef.set(0L);
+            nullObjRef.set(0L);
+            nullReferent.set(0L);
+            forwardedReferent.set(0L);
+            nonHeapReferent.set(0L);
+            copiedReferent.set(0L);
+            unmodifiedReference.set(0L);
         }
 
         @Override
@@ -196,50 +199,49 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteObjRef() {
-            objRef += 1L;
+            objRef.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNullReferent() {
-            nullReferent += 1L;
+            nullReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteForwardedReferent() {
-            forwardedReferent += 1L;
+            forwardedReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNonHeapReferent() {
-            nonHeapReferent += 1L;
+            nonHeapReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteCopiedReferent() {
-            copiedReferent += 1L;
+            copiedReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
-            unmodifiedReference += 1L;
+            unmodifiedReference.incrementAndGet();
         }
 
-        @Override
-        public void toLog() {
+        private void toLog() {
             Log log = Log.log();
             log.string("[GreyToBlackObjRefVisitor.counters:");
-            log.string("  objRef: ").signed(objRef);
-            log.string("  nullObjRef: ").signed(nullObjRef);
-            log.string("  nullReferent: ").signed(nullReferent);
-            log.string("  forwardedReferent: ").signed(forwardedReferent);
-            log.string("  nonHeapReferent: ").signed(nonHeapReferent);
-            log.string("  copiedReferent: ").signed(copiedReferent);
-            log.string("  unmodifiedReference: ").signed(unmodifiedReference);
+            log.string("  objRef: ").signed(objRef.get());
+            log.string("  nullObjRef: ").signed(nullObjRef.get());
+            log.string("  nullReferent: ").signed(nullReferent.get());
+            log.string("  forwardedReferent: ").signed(forwardedReferent.get());
+            log.string("  nonHeapReferent: ").signed(nonHeapReferent.get());
+            log.string("  copiedReferent: ").signed(copiedReferent.get());
+            log.string("  unmodifiedReference: ").signed(unmodifiedReference.get());
             log.string("]").newline();
         }
     }
@@ -286,10 +288,6 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
-        }
-
-        @Override
-        public void toLog() {
         }
 
         @Override

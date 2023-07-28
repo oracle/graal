@@ -556,6 +556,11 @@ public abstract class PlatformThreads {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.startThreadUnmanaged directly.");
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle) {
+        return joinThreadUnmanaged(threadHandle, WordFactory.nullPointer());
+    }
+
     @SuppressWarnings("unused")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {

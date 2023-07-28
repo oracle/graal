@@ -57,6 +57,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -196,6 +197,9 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     public boolean tearDown() {
+        if (ParallelGC.isEnabled()) {
+            ParallelGC.singleton().tearDown();
+        }
         youngGeneration.tearDown();
         oldGeneration.tearDown();
         getChunkProvider().tearDown();
@@ -715,7 +719,7 @@ public final class HeapImpl extends Heap {
             assert !isInImageHeap(obj) : "Image heap objects have identity hash code fields";
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-        return HeapChunk.getIdentityHashSalt(chunk).rawValue();
+        return HeapChunk.getIdentityHashSalt(chunk);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -50,7 +51,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 final class ReferenceObjectProcessing {
     /** Head of the linked list of discovered references that need to be revisited. */
-    private static Reference<?> rememberedRefsList;
+    private static final AtomicReference<Reference<?>> rememberedRefsList = new AtomicReference<>();
 
     /**
      * For a {@link SoftReference}, the longest duration after its last access to keep its referent
@@ -113,17 +114,22 @@ final class ReferenceObjectProcessing {
             // Referents in the image heap cannot be moved or reclaimed, no need to look closer.
             return;
         }
-        if (maybeUpdateForwardedReference(dr, referentAddr)) {
+
+        /*
+         * The parallel GC may modify the object header at any time, so we only read the object
+         * header once.
+         */
+        UnsignedWord referentHeader = ObjectHeader.readHeaderFromPointer(referentAddr);
+        if (maybeUpdateForwardedReference(dr, referentAddr, referentHeader)) {
             // Some other object had a strong reference to the referent, so the referent was already
             // promoted. The call above updated the reference object so that it now points to the
             // promoted object.
             return;
         }
-        Object refObject = referentAddr.toObject();
-        if (willSurviveThisCollection(refObject)) {
+        if (willSurviveThisCollection(referentAddr, referentHeader)) {
             // Referent is in a to-space. So, this is either an object that got promoted without
             // being moved or an object in the old gen.
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, referentAddr.toObject());
             return;
         }
         if (!softReferencesAreWeak && dr instanceof SoftReference) {
@@ -146,9 +152,11 @@ final class ReferenceObjectProcessing {
         // are revisited after the GC finished promoting all strongly reachable objects.
 
         // null link means undiscovered, avoid for the last node with a cyclic reference
-        Reference<?> next = (rememberedRefsList != null) ? rememberedRefsList : dr;
-        ReferenceInternals.setNextDiscovered(dr, next);
-        rememberedRefsList = dr;
+        Reference<?> expected;
+        do {
+            expected = rememberedRefsList.get();
+            ReferenceInternals.setNextDiscovered(dr, expected != null ? expected : dr);
+        } while (!rememberedRefsList.compareAndSet(expected, dr));
     }
 
     /**
@@ -159,8 +167,7 @@ final class ReferenceObjectProcessing {
      */
     static Reference<?> processRememberedReferences() {
         Reference<?> pendingHead = null;
-        Reference<?> current = rememberedRefsList;
-        rememberedRefsList = null;
+        Reference<?> current = rememberedRefsList.getAndSet(null);
 
         while (current != null) {
             // Get the next node (the last node has a cyclic reference to self).
@@ -185,7 +192,7 @@ final class ReferenceObjectProcessing {
     }
 
     static void afterCollection(UnsignedWord freeBytes) {
-        assert rememberedRefsList == null;
+        assert rememberedRefsList.get() == null;
         UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
         maxSoftRefAccessIntervalMs = unused.multiply(SerialGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
@@ -203,12 +210,13 @@ final class ReferenceObjectProcessing {
         Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
         assert refPointer.isNonNull() : "Referent is null: should not have been discovered";
         assert !HeapImpl.getHeapImpl().isInImageHeap(refPointer) : "Image heap referent: should not have been discovered";
-        if (maybeUpdateForwardedReference(dr, refPointer)) {
+
+        UnsignedWord refHeader = ObjectHeader.readHeaderFromPointer(refPointer);
+        if (maybeUpdateForwardedReference(dr, refPointer, refHeader)) {
             return true;
         }
-        Object refObject = refPointer.toObject();
-        if (willSurviveThisCollection(refObject)) {
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
+        if (willSurviveThisCollection(refPointer, refHeader)) {
+            RememberedSet.get().dirtyCardIfNecessary(dr, refPointer.toObject());
             return true;
         }
         /*
@@ -223,11 +231,9 @@ final class ReferenceObjectProcessing {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        UnsignedWord header = ObjectHeader.readHeaderFromPointer(referentAddr);
+    private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr, UnsignedWord header) {
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Object forwardedObj = ohi.getForwardedObject(referentAddr);
+            Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(referentAddr, header);
             ReferenceInternals.setReferent(dr, forwardedObj);
             return true;
         }
@@ -235,9 +241,9 @@ final class ReferenceObjectProcessing {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean willSurviveThisCollection(Object obj) {
-        HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
+    private static boolean willSurviveThisCollection(Pointer ptr, UnsignedWord header) {
+        HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(ptr, header);
         Space space = HeapChunk.getSpace(chunk);
-        return !space.isFromSpace();
+        return space != null && !space.isFromSpace();
     }
 }

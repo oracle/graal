@@ -65,6 +65,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -334,6 +335,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
+                SubstrateOptions.UseParallelGC.update(values, false);
                 SubstrateOptions.UseEpsilonGC.update(values, false);
             }
         }
@@ -346,9 +348,43 @@ public class SubstrateOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
                 SubstrateOptions.UseSerialGC.update(values, false);
+                SubstrateOptions.UseParallelGC.update(values, false);
             }
         }
     };
+
+    @APIOption(name = "parallel", group = GCGroup.class, customHelp = "Parallel garbage collector")//
+    @Option(help = "Use a parallel GC")//
+    public static final HostedOptionKey<Boolean> UseParallelGC = new HostedOptionKey<>(false, SubstrateOptions::requireMultiThreading) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                SubstrateOptions.UseSerialGC.update(values, false);
+                SubstrateOptions.UseEpsilonGC.update(values, false);
+            }
+        }
+    };
+
+    @Option(help = "Number of GC worker threads. Parallel and G1 GC only.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
+
+    private static void requireMultiThreading(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !MultiThreaded.getValue()) {
+            throw new InterruptImageBuilding(String.format("The option %s requires the option %s to be set.",
+                            SubstrateOptionsParser.commandArgument(optionKey, "+"),
+                            SubstrateOptionsParser.commandArgument(MultiThreaded, "+")));
+        }
+    }
+
+    @Fold
+    public static boolean useSerialOrParallelGC() {
+        return UseSerialGC.getValue() || UseParallelGC.getValue();
+    }
+
+    @Fold
+    public static boolean useSerialOrParallelOrEpsilonGC() {
+        return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
+    }
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);

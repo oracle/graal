@@ -114,6 +114,14 @@ public final class AlignedHeapChunk {
         return result;
     }
 
+    /** Retract the latest allocation. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void retractAllocation(AlignedHeader that, UnsignedWord size) {
+        Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
+        assert newTop.aboveOrEqual(getObjectsStart(that));
+        HeapChunk.setTopPointer(that, newTop);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());
@@ -168,11 +176,6 @@ public final class AlignedHeapChunk {
         @Override
         public boolean isAligned(AlignedHeapChunk.AlignedHeader heapChunk) {
             return true;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return getObjectsStart(heapChunk);
         }
     }
 }
