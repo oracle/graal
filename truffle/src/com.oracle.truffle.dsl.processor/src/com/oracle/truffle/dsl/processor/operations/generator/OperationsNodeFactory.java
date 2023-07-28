@@ -297,9 +297,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
 
-        // Define helpers for bci lookups.
-        operationNodeGen.add(createFindBci());
-        operationNodeGen.add(createFindOperationBci());
+        // Define helper for bci lookups.
+        operationNodeGen.add(createFindBciOfOperationNode());
 
         // Define helpers for boxing-eliminated accesses.
         if (model.hasBoxingElimination()) {
@@ -950,39 +949,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createFindBci() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(int.class), "findBci");
-
-        ex.addParameter(new CodeVariableElement(types.Node, "callNode"));
+    private CodeExecutableElement createFindBciOfOperationNode() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "findBciOfOperationNode");
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        // Find the operation node, whose immediate parent will be the root node.
-        b.declaration(types.Node, "current", "callNode");
-        b.startWhile().startGroup().string("current != null && !(current.getParent() instanceof ").type(model.getTemplateType().asType()).string(")").end(2).startBlock();
-        b.statement("current = current.getParent()");
-        b.end();
-
-        b.startIf().string("current == null").end().startBlock();
-        b.startReturn().string("-1").end();
-        b.end();
-
-        b.declaration(operationNodeGen.asType(), "rootNode", castNodeGen("current.getParent()"));
-        b.startReturn().string("rootNode.findOperationBci(current)").end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createFindOperationBci() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "findOperationBci");
-
-        ex.addParameter(new CodeVariableElement(types.Node, "operationNode"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-
         b.tree(createNeverPartOfCompilation());
         b.declaration(arrayOf(types.Node), "nodes", "cachedNodes");
-
         b.startIf().string("nodes == null").end().startBlock();
         b.startReturn().string("-1").end();
         b.end();
@@ -1042,6 +1014,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startReturn().string("-1").end();
 
         return ex;
+
     }
 
     static Object[] merge(Object[] array0, Object[] array1) {
@@ -4002,12 +3975,12 @@ public class OperationsNodeFactory implements ElementHelpers {
              * We can handle throwable if it's an AbstractTruffleException or
              * interceptInternalException(throwable) converts it to one.
              */
-
             b.declaration(abstractTruffleException, "ex");
             b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
             b.startAssign("ex").string("ate").end();
             b.end().startElseBlock();
             b.startTryBlock(); // nested try
+            b.tree(createTransferToInterpreterAndInvalidate("$this"));
             b.startThrow().string("sneakyThrow($this.interceptInternalException(throwable))").end();
             b.end().startCatchBlock(abstractTruffleException, "ate");
             b.startAssign("ex").string("ate").end();
