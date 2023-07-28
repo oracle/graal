@@ -55,7 +55,6 @@ public class CompilationInfo {
     protected boolean inCompileQueue;
 
     private volatile CompilationGraph compilationGraph;
-    private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
     protected boolean trivialInliningDisabled;
@@ -106,19 +105,6 @@ public class CompilationInfo {
         return compilationGraph;
     }
 
-    /**
-     * Create a graph from this compilation info using the default compile options set in the
-     * {@link CompilationInfo}.
-     */
-    public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
-        return createGraph(debug, compileOptions, compilationId, decode);
-    }
-
-    /**
-     * Create a graph from this compilation info using the custom compile options instead of the
-     * ones defined in {@link CompilationInfo}. This is to be used if you intentionally wish to
-     * override any of the Options in the default {@link OptionValues}.
-     */
     @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
         var graph = new StructuredGraph.Builder(options, debug)
@@ -145,14 +131,6 @@ public class CompilationInfo {
 
     public void setCompilationGraph(CompilationGraph graph) {
         compilationGraph = graph;
-    }
-
-    public void setCompileOptions(OptionValues compileOptions) {
-        this.compileOptions = compileOptions;
-    }
-
-    public OptionValues getCompileOptions() {
-        return compileOptions;
     }
 
     public void clear() {

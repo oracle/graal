@@ -57,7 +57,7 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
 
     @Override
     protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
-        return ((HostedMethod) method).compilationInfo.createGraph(graph.getDebug(), CompilationIdentifier.INVALID_COMPILATION_ID, true);
+        return ((HostedMethod) method).compilationInfo.createGraph(graph.getDebug(), graph.getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true);
     }
 
     /**
