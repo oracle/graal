@@ -1252,7 +1252,7 @@ libgraal_build_args = [
     '-H:+ReportExceptionStackTraces',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
-    '-H:InitialCollectionPolicy=AggressiveShrink',
+    '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal
     '-H:+PreserveFramePointer',

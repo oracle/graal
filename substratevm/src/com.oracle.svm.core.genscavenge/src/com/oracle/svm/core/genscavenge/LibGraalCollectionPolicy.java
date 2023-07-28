@@ -33,10 +33,15 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
- * A garbage collection policy that responses to GC hints and aggressively expands/shrinks the eden
- * space.
+ * A libgraal specific garbage collection policy that responds to GC hints and aggressively
+ * expands/shrinks the eden space. It also limits the maximum heap size to 16G as the SVM Serial GC
+ * can hit a fatal error if it fails to allocate memory or address space (when compressed references
+ * are enabled) during a GC (GR-47622). By restricting the heap to 16G, the latter problem can be
+ * avoided. Running out of OS memory will almost certainly cause HotSpot to exit anyway so there
+ * less concern about defending against that. It's also expected that 16G is a reasonable limit for
+ * a libgraal JIT compilation.
  */
-class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
+class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
 
     public static final class Options {
         @Option(help = "Ratio of used bytes to total allocated bytes for eden space. Setting it to a smaller value " +
@@ -50,6 +55,9 @@ class AggressiveShrinkCollectionPolicy extends AdaptiveCollectionPolicy {
     protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(64L * 1024L * 1024L);
     protected static final UnsignedWord FULL_GC_BONUS = WordFactory.unsigned(2L * 1024L * 1024L);
 
+    /**
+     * See class javadoc for rationale behind this 16G limit.
+     */
     protected static final UnsignedWord MAXIMUM_HEAP_SIZE = WordFactory.unsigned(16L * 1024L * 1024L * 1024L);
 
     private UnsignedWord sizeBefore = WordFactory.zero();
