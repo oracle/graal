@@ -166,6 +166,7 @@ public class VariadicTest {
         @Operation
         static final class Variadic1Operation {
             @Specialization
+            @SuppressWarnings("unused")
             public static Object[] variadic(long arg0, @Variadic Object[] args) {
                 return args;
             }

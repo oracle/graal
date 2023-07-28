@@ -17,6 +17,7 @@ public final class NonPublicSpecializationOperationProxy {
 
     @Fallback
     @ExpectError("Operation specialization is not visible to the generated Operation node.")
+    @SuppressWarnings("unused")
     static Object fallback(Object a, Object b) {
         return a;
     }

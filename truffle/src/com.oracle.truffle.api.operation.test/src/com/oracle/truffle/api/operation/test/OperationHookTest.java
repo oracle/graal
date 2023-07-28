@@ -10,7 +10,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
@@ -124,8 +123,8 @@ abstract class OperationNodeWithHooks extends RootNode implements OperationRootN
     }
 
     @Override
-    public AbstractTruffleException handleStackOverflow(StackOverflowError error) {
-        return new MyException(error.getMessage());
+    public Throwable interceptInternalException(Throwable t) {
+        return new MyException(t.getMessage());
     }
 
     public static final class MyException extends AbstractTruffleException {
