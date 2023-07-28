@@ -47,7 +47,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.exception.Failure;

@@ -82,7 +82,7 @@ final class UnsafeUtilities {
                 return (byte) ((fullWord & mask) >> shift);
             }
         } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 
@@ -105,7 +105,7 @@ final class UnsafeUtilities {
                 return (short) ((fullWord & mask) >> shift);
             }
         } while (!unsafe.compareAndSwapInt(null, startAddress + wordOffset,
-                fullWord, (fullWord & ~mask) | maskedX));
+                        fullWord, (fullWord & ~mask) | maskedX));
         return expected;
     }
 

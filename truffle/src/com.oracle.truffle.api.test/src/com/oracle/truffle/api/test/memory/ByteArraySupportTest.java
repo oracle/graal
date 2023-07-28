@@ -1219,6 +1219,57 @@ public class ByteArraySupportTest {
         ByteArraySupport.littleEndian().compareAndExchangeLong(buffer, 1, 1, 1);
     }
 
+    @Test
+    public void incrementSharedCounter() throws InterruptedException {
+        byte[] buffer = new byte[4];
+        Runnable runnable = () -> {
+            for (int i = 0; i < 10000000; i++) {
+                ByteArraySupport.littleEndian().getAndAddInt(buffer, 0, 1);
+            }
+        };
+
+        Thread thread1 = new Thread(runnable);
+        Thread thread2 = new Thread(runnable);
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+
+        int finalValue = ByteArraySupport.littleEndian().getIntVolatile(buffer, 0);
+        Assert.assertEquals(20000000, finalValue);
+    }
+
+    @Test
+    public void incrementSharedCounterWithSpinLock() throws InterruptedException {
+        // last byte is the lock
+        byte[] buffer = new byte[5];
+        Runnable runnable = () -> {
+            for (int i = 0; i < 10000000; i++) {
+                // acquire the spinlock
+                while (ByteArraySupport.littleEndian().compareAndExchangeByte(buffer, 4, (byte) 0, (byte) 1) != 0) {
+                    // spin
+                }
+
+                // critical section
+                int oldValue = ByteArraySupport.littleEndian().getInt(buffer, 0);
+                ByteArraySupport.littleEndian().putInt(buffer, 0, oldValue + 1);
+
+                // release the spinlock
+                ByteArraySupport.littleEndian().putByteVolatile(buffer, 4, (byte) 0);
+            }
+        };
+
+        Thread thread1 = new Thread(runnable);
+        Thread thread2 = new Thread(runnable);
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+
+        int finalValue = ByteArraySupport.littleEndian().getIntVolatile(buffer, 0);
+        Assert.assertEquals(20000000, finalValue);
+    }
+
     private static void assertBytesEqual(byte[] actual, String expected) {
         Assert.assertEquals(expected, bytesToHex(actual));
     }
