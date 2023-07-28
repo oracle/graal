@@ -67,4 +67,22 @@ public final class AAPCS64 extends Platform {
     public ArgumentsCalculator getArgumentsCalculator() {
         return new DefaultArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, r0, v0);
     }
+
+    @Override
+    protected String getIntegerRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == AArch64Regs.REG64_MASK) {
+            return AArch64Regs.getIntegerRegisterName(idx);
+        } else {
+            return "?INT_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
+
+    @Override
+    protected String getVectorRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == AArch64Regs.V128_MASK) {
+            return AArch64Regs.getVectorRegisterName(idx);
+        } else {
+            return "?VEC_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
 }

@@ -33,22 +33,15 @@ import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm2;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm3;
 
 import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
-import com.oracle.truffle.espresso.runtime.panama.Platform;
-import com.oracle.truffle.espresso.runtime.panama.StorageType;
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
 import com.oracle.truffle.espresso.runtime.panama.WindowsArgumentsCalculator;
 
-public final class WindowsX64 extends Platform {
+public final class WindowsX64 extends X64Platform {
     public static final WindowsX64 INSTANCE = new WindowsX64();
     public static final VMStorage[] CALL_INT_REGS = {rcx, rdx, r8, r9};
     public static final VMStorage[] CALL_FLOAT_REGS = {xmm0, xmm1, xmm2, xmm3};
 
     private WindowsX64() {
-    }
-
-    @Override
-    public StorageType getStorageType(byte id) {
-        return X64StorageType.get(id);
     }
 
     @Override

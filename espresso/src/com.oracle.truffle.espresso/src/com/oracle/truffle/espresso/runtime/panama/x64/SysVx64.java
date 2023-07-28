@@ -40,21 +40,14 @@ import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm7;
 
 import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
 import com.oracle.truffle.espresso.runtime.panama.DefaultArgumentsCalculator;
-import com.oracle.truffle.espresso.runtime.panama.Platform;
-import com.oracle.truffle.espresso.runtime.panama.StorageType;
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
 
-public final class SysVx64 extends Platform {
+public final class SysVx64 extends X64Platform {
     public static final SysVx64 INSTANCE = new SysVx64();
     public static final VMStorage[] CALL_INT_REGS = {rdi, rsi, rdx, rcx, r8, r9};
     public static final VMStorage[] CALL_FLOAT_REGS = {xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7};
 
     private SysVx64() {
-    }
-
-    @Override
-    public StorageType getStorageType(byte id) {
-        return X64StorageType.get(id);
     }
 
     @Override

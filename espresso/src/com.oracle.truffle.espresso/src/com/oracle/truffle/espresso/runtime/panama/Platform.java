@@ -57,4 +57,23 @@ public abstract class Platform {
     public String toString() {
         return getClass().getSimpleName();
     }
+
+    public String toString(VMStorage reg) {
+        StorageType type = reg.type(this);
+        if (type.isPlaceholder()) {
+            return reg.getStubLocation(this).toString();
+        } else if (type.isStack()) {
+            return "stack[" + reg.indexOrOffset() + "]";
+        } else if (type.isInteger()) {
+            return getIntegerRegisterName(reg.indexOrOffset(), reg.segmentMaskOrSize());
+        } else if (type.isVector()) {
+            return getVectorRegisterName(reg.indexOrOffset(), reg.segmentMaskOrSize());
+        } else {
+            return "??[" + type + ", " + reg.indexOrOffset() + ", " + reg.segmentMaskOrSize() + "]";
+        }
+    }
+
+    protected abstract String getIntegerRegisterName(int idx, int maskOrSize);
+
+    protected abstract String getVectorRegisterName(int idx, int maskOrSize);
 }

@@ -28,12 +28,14 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
@@ -43,6 +45,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
 
 public final class DowncallStubs {
+    private final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, DowncallStubs.class);
     public static final int MAX_STUB_COUNT = Integer.MAX_VALUE - 8;
     private final Platform platform;
     private DowncallStub[] stubs;
@@ -86,6 +89,39 @@ public final class DowncallStubs {
 
         EnumSet<CapturableState> capturedStates = CapturableState.fromMask(capturedStateMask);
         assert validCapturableState(capturedStates, OS.getCurrent());
+
+        LOGGER.fine(() -> {
+            StringBuilder sb = new StringBuilder("Creating downcall stub (");
+            if (!needsReturnBuffer) {
+                sb.append("no ");
+            }
+            sb.append("ret buf, captured state=").append(capturedStates).append(") sig: (");
+            for (int i = 0; i < pTypes.length; i++) {
+                Klass pType = pTypes[i];
+                sb.append(pType.getType());
+                if (i < pTypes.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(")").append(rType.getType()).append(" in: (");
+            for (int i = 0; i < inputRegs.length; i++) {
+                VMStorage inputReg = inputRegs[i];
+                sb.append(platform.toString(inputReg));
+                if (i < inputRegs.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(") out: (");
+            for (int i = 0; i < outRegs.length; i++) {
+                VMStorage outReg = outRegs[i];
+                sb.append(platform.toString(outReg));
+                if (i < outRegs.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(")");
+            return sb.toString();
+        });
 
         ArgumentsCalculator argsCalc = platform.getArgumentsCalculator();
         int targetIndex = -1;

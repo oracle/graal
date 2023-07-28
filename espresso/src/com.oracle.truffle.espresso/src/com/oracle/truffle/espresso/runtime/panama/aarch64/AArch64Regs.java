@@ -104,4 +104,12 @@ final class AArch64Regs {
     private static VMStorage vectorRegister(int index) {
         return new VMStorage(AArch64StorageType.VECTOR.getId(), V128_MASK, index);
     }
+
+    public static String getIntegerRegisterName(int idx) {
+        return "r" + idx;
+    }
+
+    public static String getVectorRegisterName(int idx) {
+        return "v" + idx;
+    }
 }
