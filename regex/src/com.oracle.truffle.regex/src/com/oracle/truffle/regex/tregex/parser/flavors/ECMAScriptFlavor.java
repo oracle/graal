@@ -61,8 +61,8 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
-        return new JSRegexValidator(source);
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return new JSRegexValidator(language, source, compilationBuffer);
     }
 
     @Override

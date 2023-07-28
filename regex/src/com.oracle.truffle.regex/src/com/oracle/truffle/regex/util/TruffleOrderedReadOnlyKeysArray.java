@@ -38,31 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
+package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.AbstractRegexObject;
 
 /**
- * Checks whether a given term contains capture groups. To be used instead of
- * {@link RegexASTNode#hasCaptureGroups()} before {@link CalcASTPropsVisitor} was run.
+ * Represents an array of keys (members) of a TRegex TruffleObject. This ordered variant respects
+ * the order of the keys as passed to the constructor. This order is then observable when using
+ * {@link InteropLibrary#getMembers(Object)}.
  */
-public class HasCaptureGroupsVisitor extends DepthFirstTraversalRegexASTVisitor {
+@ExportLibrary(InteropLibrary.class)
+public class TruffleOrderedReadOnlyKeysArray extends AbstractRegexObject {
 
-    private boolean result;
+    @CompilationFinal(dimensions = 1) private final String[] keys;
 
-    public boolean hasCaptureGroups(RegexASTNode node) {
-        result = false;
-        run(node);
-        return result;
+    @TruffleBoundary
+    public TruffleOrderedReadOnlyKeysArray(String... keys) {
+        this.keys = keys;
     }
 
-    @Override
-    protected void visit(Group group) {
-        if (group.isCapturing()) {
-            result = true;
-            done();
+    public boolean contains(String key) {
+        for (int i = 0; i < keys.length; i++) {
+            if (key.equals(keys[i])) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < keys.length;
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return keys.length;
+    }
+
+    @ExportMessage
+    String readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return keys[(int) index];
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "TRegexOrderedReadOnlyArray{" + "keys=" + Arrays.toString(keys) + '}';
     }
 }

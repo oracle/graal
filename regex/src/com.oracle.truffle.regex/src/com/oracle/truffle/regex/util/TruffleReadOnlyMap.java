@@ -70,7 +70,7 @@ public final class TruffleReadOnlyMap extends AbstractRegexObject {
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new TruffleReadOnlyKeysArray(setToArray(mapKeySet(map), new String[map.size()]));
+        return new TruffleOrderedReadOnlyKeysArray(setToArray(mapKeySet(map), new String[map.size()]));
     }
 
     @ExportMessage

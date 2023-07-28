@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -183,7 +184,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            RegexValidator validator = flavor.createValidator(source);
+            RegexValidator validator = flavor.createValidator(this, source, new CompilationBuffer(source.getEncoding()));
             validator.validate();
             return TruffleNull.INSTANCE;
         }
