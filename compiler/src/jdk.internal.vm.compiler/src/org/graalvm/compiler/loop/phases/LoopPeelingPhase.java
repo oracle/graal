@@ -73,19 +73,23 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     }
 
     @Override
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "deprecation"})
     protected void run(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
         if (graph.hasLoops()) {
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
+            boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
+            int shouldPeelOnly = LoopPolicies.Options.PeelOnly.getValue(graph.getOptions());
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
                     if (canPeel(loop)) {
                         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
-                            if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) {
+                            if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
+                                    (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())){
                                 LoopTransformations.peel(loop);
                                 loop.invalidateFragmentsAndIVs();
                                 data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
+                                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After peeling loop %s", loop);
                             }
                         }
                     }
