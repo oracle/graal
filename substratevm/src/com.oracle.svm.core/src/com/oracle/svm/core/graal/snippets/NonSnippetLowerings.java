@@ -310,7 +310,8 @@ public abstract class NonSnippetLowerings {
                      * entry point, we need to anchor the receiver to the control flow. To avoid
                      * that Graal optimizes away the InstanceOfNode immediately, we need an
                      * OpaqueValueNode that removes all type information from the receiver. Then we
-                     * wire up an IfNode that leads to a ForeignCallNode in case the verification fails.
+                     * wire up an IfNode that leads to a ForeignCallNode in case the verification
+                     * fails.
                      */
                     FixedValueAnchorNode anchoredReceiver = graph.add(new FixedValueAnchorNode(receiver));
                     graph.addBeforeFixed(node, anchoredReceiver);

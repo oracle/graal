@@ -339,8 +339,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock, Node currentUsage) {
             GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof FrameState && latestBlock == earliestBlock.getDominator()),
-                            "%s earliest block %s (%s) does not dominate latest block %s (%s), added usage %s", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock,
-                                 latestBlock.getBeginNode(), currentUsage);
+                    "%s earliest block %s (%s) does not dominate latest block %s (%s), added usage %s", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock,
+                    latestBlock.getBeginNode(), currentUsage);
         }
 
         private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
