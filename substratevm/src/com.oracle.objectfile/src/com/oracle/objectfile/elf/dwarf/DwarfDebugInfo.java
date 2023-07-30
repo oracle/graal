@@ -51,59 +51,61 @@ public class DwarfDebugInfo extends DebugInfoBase implements DwarfConstants {
     /*
      * Define all the abbrev section codes we need for our DIEs.
      */
-    public static final int ABBREV_CODE_null = 0;
-    /* Level 0 DIEs. */
-    public static final int ABBREV_CODE_builtin_unit = 1;
-    public static final int ABBREV_CODE_class_unit1 = 2;
-    public static final int ABBREV_CODE_class_unit2 = 3;
-    /* Level 1 DIEs. */
-    public static final int ABBREV_CODE_primitive_type = 4;
-    public static final int ABBREV_CODE_void_type = 5;
-    public static final int ABBREV_CODE_object_header = 6;
-    public static final int ABBREV_CODE_namespace = 7;
-    public static final int ABBREV_CODE_class_layout1 = 8;
-    public static final int ABBREV_CODE_class_layout2 = 9;
-    public static final int ABBREV_CODE_class_pointer = 10;
-    public static final int ABBREV_CODE_foreign_pointer = 11;
-    public static final int ABBREV_CODE_foreign_typedef = 12;
-    public static final int ABBREV_CODE_foreign_struct = 13;
-    public static final int ABBREV_CODE_method_location = 14;
-    public static final int ABBREV_CODE_static_field_location = 15;
-    public static final int ABBREV_CODE_array_layout = 16;
-    public static final int ABBREV_CODE_array_pointer = 17;
-    public static final int ABBREV_CODE_interface_layout = 18;
-    public static final int ABBREV_CODE_interface_pointer = 19;
-    public static final int ABBREV_CODE_indirect_layout = 20;
-    public static final int ABBREV_CODE_indirect_pointer = 21;
-    /* Level 2 DIEs. */
-    public static final int ABBREV_CODE_method_declaration = 22;
-    public static final int ABBREV_CODE_method_declaration_static = 23;
-    public static final int ABBREV_CODE_field_declaration1 = 24;
-    public static final int ABBREV_CODE_field_declaration2 = 25;
-    public static final int ABBREV_CODE_field_declaration3 = 26;
-    public static final int ABBREV_CODE_field_declaration4 = 27;
-    public static final int ABBREV_CODE_class_constant = 28;
-    public static final int ABBREV_CODE_header_field = 29;
-    public static final int ABBREV_CODE_array_data_type1 = 30;
-    public static final int ABBREV_CODE_array_data_type2 = 31;
-    public static final int ABBREV_CODE_array_subrange = 32;
-    public static final int ABBREV_CODE_super_reference = 33;
-    public static final int ABBREV_CODE_interface_implementor = 34;
-    /* Level 2+K DIEs (where inline depth K >= 0) */
-    public static final int ABBREV_CODE_inlined_subroutine = 35;
-    public static final int ABBREV_CODE_inlined_subroutine_with_children = 36;
-    public static final int ABBREV_CODE_abstract_inline_method = 37;
-    /* Level 2 DIEs. */
-    public static final int ABBREV_CODE_method_parameter_declaration1 = 38;
-    public static final int ABBREV_CODE_method_parameter_declaration2 = 39;
-    public static final int ABBREV_CODE_method_parameter_declaration3 = 40;
-    public static final int ABBREV_CODE_method_local_declaration1 = 41;
-    public static final int ABBREV_CODE_method_local_declaration2 = 42;
-    /* Level 3 DIEs. */
-    public static final int ABBREV_CODE_method_parameter_location1 = 43;
-    public static final int ABBREV_CODE_method_parameter_location2 = 44;
-    public static final int ABBREV_CODE_method_local_location1 = 45;
-    public static final int ABBREV_CODE_method_local_location2 = 46;
+    enum AbbrevCode {
+        /* null marker which must come first as its ordinal has to equal zero */
+        NULL,
+        /* Level 0 DIEs. */
+        BUILTIN_UNIT,
+        CLASS_UNIT_1,
+        CLASS_UNIT_2,
+        /* Level 1 DIEs. */
+        PRIMITIVE_TYPE,
+        VOID_TYPE,
+        OBJECT_HEADER,
+        NAMESPACE,
+        CLASS_LAYOUT_1,
+        CLASS_LAYOUT_2,
+        CLASS_POINTER,
+        FOREIGN_POINTER,
+        FOREIGN_TYPEDEF,
+        FOREIGN_STRUCT,
+        METHOD_LOCATION,
+        STATIC_FIELD_LOCATION,
+        ARRAY_LAYOUT,
+        ARRAY_POINTER,
+        INTERFACE_LAYOUT,
+        INTERFACE_POINTER,
+        INDIRECT_LAYOUT,
+        INDIRECT_POINTER,
+        /* Level 2 DIEs. */
+        METHOD_DECLARATION,
+        METHOD_DECLARATION_STATIC,
+        FIELD_DECLARATION_1,
+        FIELD_DECLARATION_2,
+        FIELD_DECLARATION_3,
+        FIELD_DECLARATION_4,
+        CLASS_CONSTANT,
+        HEADER_FIELD,
+        ARRAY_DATA_TYPE_1,
+        ARRAY_DATA_TYPE_2,
+        ARRAY_SUBRANGE,
+        SUPER_REFERENCE,
+        INTERFACE_IMPLEMENTOR,
+        /* Level 2+K DIEs (where inline depth K >= 0) */
+        INLINED_SUBROUTINE,
+        INLINED_SUBROUTINE_WITH_CHILDREN,
+        ABSTRACT_INLINE_METHOD,
+        /* Level 3 DIEs. */
+        METHOD_PARAMETER_DECLARATION_1,
+        METHOD_PARAMETER_DECLARATION_2,
+        METHOD_PARAMETER_DECLARATION_3,
+        METHOD_LOCAL_DECLARATION_1,
+        METHOD_LOCAL_DECLARATION_2,
+        METHOD_PARAMETER_LOCATION_1,
+        METHOD_PARAMETER_LOCATION_2,
+        METHOD_LOCAL_LOCATION_1,
+        METHOD_LOCAL_LOCATION_2,
+    }
 
     /**
      * This field defines the value used for the DW_AT_language attribute of compile units.

@@ -44,6 +44,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -419,8 +420,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl implemen
         writeInt(length, buffer, lengthPos);
     }
 
-    protected int writeAbbrevCode(long code, byte[] buffer, int pos) {
-        return writeSLEB(code, buffer, pos);
+    protected int writeAbbrevCode(AbbrevCode code, byte[] buffer, int pos) {
+        return writeSLEB(code.ordinal(), buffer, pos);
     }
 
     protected int writeTag(long code, byte[] buffer, int pos) {

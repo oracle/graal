@@ -27,19 +27,19 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * An interface that provides definitions for a variety of constants defined
- * by the DWARF standard, employing the same names and types. The primary
- * reference for these constants is the DWARF Debugging Information Format
- * Version 4 Specification published at dwarfstd.org.<p/>
+ * An interface that provides definitions for a variety of constants defined by the DWARF standard,
+ * employing the same names and types. The primary reference for these constants is the DWARF
+ * Debugging Information Format Version 4 Specification published at dwarfstd.org.
+ * <p/>
  *
- * Note that this is not an exhaustive list of all DWARF constants. It merely
- * includes constants that are needed by GraalVM.
+ * Note that this is not an exhaustive list of all DWARF constants. It merely includes constants
+ * that are needed by GraalVM.
  */
 public interface DwarfConstants {
     /*
-     * Names of the different ELF sections we create in reverse dependency order. The
-     * sequence starts with the name of the text section (not defined in the DWARF spec
-     * and not created by debug info code).
+     * Names of the different ELF sections we create in reverse dependency order. The sequence
+     * starts with the name of the text section (not defined in the DWARF spec and not created by
+     * debug info code).
      */
     String TEXT_SECTION_NAME = ".text";
     String DW_STR_SECTION_NAME = ".debug_str";
@@ -52,8 +52,8 @@ public interface DwarfConstants {
     String DW_RANGES_SECTION_NAME = ".debug_ranges";
 
     /**
-     * Currently generated debug info relies on DWARF spec version 4. However,
-     * some sections may still need to be generated as version 2.
+     * Currently generated debug info relies on DWARF spec version 4. However, some sections may
+     * still need to be generated as version 2.
      */
     short DW_VERSION_2 = 2;
     short DW_VERSION_4 = 4;
@@ -100,17 +100,14 @@ public interface DwarfConstants {
     int DW_AT_artificial = 0x34;
     int DW_AT_count = 0x37;
     int DW_AT_data_member_location = 0x38;
-    @SuppressWarnings("unused")
-    int DW_AT_decl_column = 0x39;
+    @SuppressWarnings("unused") int DW_AT_decl_column = 0x39;
     int DW_AT_decl_file = 0x3a;
     int DW_AT_decl_line = 0x3b;
     int DW_AT_declaration = 0x3c;
     int DW_AT_encoding = 0x3e;
     int DW_AT_external = 0x3f;
-    @SuppressWarnings("unused")
-    int DW_AT_return_addr = 0x2a;
-    @SuppressWarnings("unused")
-    int DW_AT_frame_base = 0x40;
+    @SuppressWarnings("unused") int DW_AT_return_addr = 0x2a;
+    @SuppressWarnings("unused") int DW_AT_frame_base = 0x40;
     int DW_AT_specification = 0x47;
     int DW_AT_type = 0x49;
     int DW_AT_data_location = 0x50;
@@ -128,21 +125,14 @@ public interface DwarfConstants {
     int DW_FORM_addr = 0x1;
     int DW_FORM_data2 = 0x05;
     int DW_FORM_data4 = 0x6;
-    @SuppressWarnings("unused")
-    int DW_FORM_data8 = 0x7;
-    @SuppressWarnings("unused")
-    int DW_FORM_string = 0x8;
-    @SuppressWarnings("unused")
-    int DW_FORM_block1 = 0x0a;
+    @SuppressWarnings("unused") int DW_FORM_data8 = 0x7;
+    @SuppressWarnings("unused") int DW_FORM_string = 0x8;
+    @SuppressWarnings("unused") int DW_FORM_block1 = 0x0a;
     int DW_FORM_ref_addr = 0x10;
-    @SuppressWarnings("unused")
-    int DW_FORM_ref1 = 0x11;
-    @SuppressWarnings("unused")
-    int DW_FORM_ref2 = 0x12;
-    @SuppressWarnings("unused")
-    int DW_FORM_ref4 = 0x13;
-    @SuppressWarnings("unused")
-    int DW_FORM_ref8 = 0x14;
+    @SuppressWarnings("unused") int DW_FORM_ref1 = 0x11;
+    @SuppressWarnings("unused") int DW_FORM_ref2 = 0x12;
+    @SuppressWarnings("unused") int DW_FORM_ref4 = 0x13;
+    @SuppressWarnings("unused") int DW_FORM_ref8 = 0x14;
     int DW_FORM_sec_offset = 0x17;
     int DW_FORM_data1 = 0x0b;
     int DW_FORM_flag = 0xc;
@@ -150,8 +140,8 @@ public interface DwarfConstants {
     int DW_FORM_expr_loc = 0x18;
 
     /*
-     * The following constants correspond to pre-defined value ranges appropriate
-     * to a specific attribute or form.
+     * The following constants correspond to pre-defined value ranges appropriate to a specific
+     * attribute or form.
      */
 
     /*
@@ -163,8 +153,7 @@ public interface DwarfConstants {
     /*
      * DW_FORM_flag haas two possible attribute values.
      */
-    @SuppressWarnings("unused")
-    byte DW_FLAG_false = 0;
+    @SuppressWarnings("unused") byte DW_FLAG_false = 0;
     byte DW_FLAG_true = 1;
 
     /*
@@ -175,36 +164,28 @@ public interface DwarfConstants {
     /*
      * Values for DW_AT_inline attribute with form DATA1.
      */
-    @SuppressWarnings("unused")
-    byte DW_INL_not_inlined = 0;
+    @SuppressWarnings("unused") byte DW_INL_not_inlined = 0;
     byte DW_INL_inlined = 1;
-    @SuppressWarnings("unused")
-    byte DW_INL_declared_not_inlined = 2;
-    @SuppressWarnings("unused")
-    byte DW_INL_declared_inlined = 3;
+    @SuppressWarnings("unused") byte DW_INL_declared_not_inlined = 2;
+    @SuppressWarnings("unused") byte DW_INL_declared_inlined = 3;
 
     /*
      * DW_AT_Accessibility attribute values.
      */
-    @SuppressWarnings("unused")
-    byte DW_ACCESS_public = 1;
-    @SuppressWarnings("unused")
-    byte DW_ACCESS_protected = 2;
-    @SuppressWarnings("unused")
-    byte DW_ACCESS_private = 3;
+    @SuppressWarnings("unused") byte DW_ACCESS_public = 1;
+    @SuppressWarnings("unused") byte DW_ACCESS_protected = 2;
+    @SuppressWarnings("unused") byte DW_ACCESS_private = 3;
 
     /*
      * DW_AT_encoding attribute values
      */
-    @SuppressWarnings("unused")
-    byte DW_ATE_address = 0x1;
+    @SuppressWarnings("unused") byte DW_ATE_address = 0x1;
     byte DW_ATE_boolean = 0x2;
     byte DW_ATE_float = 0x4;
     byte DW_ATE_signed = 0x5;
     byte DW_ATE_signed_char = 0x6;
     byte DW_ATE_unsigned = 0x7;
-    @SuppressWarnings("unused")
-    byte DW_ATE_unsigned_char = 0x8;
+    @SuppressWarnings("unused") byte DW_ATE_unsigned_char = 0x8;
 
     /*
      * Constants that appear in CIE and FDE frame section entries.
@@ -216,31 +197,24 @@ public interface DwarfConstants {
     byte DW_CFA_restore = 0x3;
     /* Values encoded in low 6 bits. */
     byte DW_CFA_nop = 0x0;
-    @SuppressWarnings("unused")
-    byte DW_CFA_set_loc1 = 0x1;
+    @SuppressWarnings("unused") byte DW_CFA_set_loc1 = 0x1;
     byte DW_CFA_advance_loc1 = 0x2;
     byte DW_CFA_advance_loc2 = 0x3;
     byte DW_CFA_advance_loc4 = 0x4;
-    @SuppressWarnings("unused")
-    byte DW_CFA_offset_extended = 0x5;
-    @SuppressWarnings("unused")
-    byte DW_CFA_restore_extended = 0x6;
-    @SuppressWarnings("unused")
-    byte DW_CFA_undefined = 0x7;
-    @SuppressWarnings("unused")
-    byte DW_CFA_same_value = 0x8;
+    @SuppressWarnings("unused") byte DW_CFA_offset_extended = 0x5;
+    @SuppressWarnings("unused") byte DW_CFA_restore_extended = 0x6;
+    @SuppressWarnings("unused") byte DW_CFA_undefined = 0x7;
+    @SuppressWarnings("unused") byte DW_CFA_same_value = 0x8;
     byte DW_CFA_register = 0x9;
     byte DW_CFA_def_cfa = 0xc;
-    @SuppressWarnings("unused")
-    byte DW_CFA_def_cfa_register = 0xd;
+    @SuppressWarnings("unused") byte DW_CFA_def_cfa_register = 0xd;
     byte DW_CFA_def_cfa_offset = 0xe;
 
     /*
      * Values used to build DWARF expressions and locations
      */
     byte DW_OP_addr = 0x03;
-    @SuppressWarnings("unused")
-    byte DW_OP_deref = 0x06;
+    @SuppressWarnings("unused") byte DW_OP_deref = 0x06;
     byte DW_OP_dup = 0x12;
     byte DW_OP_and = 0x1a;
     byte DW_OP_not = 0x20;
@@ -335,5 +309,4 @@ public interface DwarfConstants {
      * Set file as explicit string argument.
      */
     byte DW_LNE_define_file = 3;
-    
 }
