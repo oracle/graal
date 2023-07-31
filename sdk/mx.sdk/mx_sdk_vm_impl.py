@@ -2994,6 +2994,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
         _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
+            ('/std:c++17' if mx.is_windows() else '-std=c++17'),
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
