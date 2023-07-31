@@ -1611,14 +1611,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     private void computeTypeConversionState() {
         CompilerAsserts.neverPartOfCompilation();
+        assert typeConversionState == UN_INITIALIZED;
         if (getContext().getPolyglotTypeMappings().mapTypeConversion(this) != null) {
             typeConversionState = TYPE_MAPPED;
         } else if (getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this) != null) {
             typeConversionState = INTERNAL_MAPPED;
         } else if (getContext().getPolyglotTypeMappings().mapEspressoForeignCollection(this) != null) {
             typeConversionState = INTERNAL_COLLECTION_MAPPED;
-        }
-        if (typeConversionState == UN_INITIALIZED) {
+        } else {
             typeConversionState = NOT_MAPPED;
         }
     }
