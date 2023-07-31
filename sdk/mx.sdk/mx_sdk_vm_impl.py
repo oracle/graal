@@ -3004,16 +3004,20 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
+        def escaped_relpath(path):
+            relative = relpath(path, start=_exe_dir)
+            if mx.is_windows():
+                return relative.replace('\\', '\\\\')
+            else:
+                return relative
+
         _graalvm_home = _get_graalvm_archive_path("")
 
         # launcher classpath for launching via jvm
         _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
         # path from language launcher to jars
-        _cp = [relpath(x, start=_exe_dir) for x in _cp]
-
-        if mx.is_windows():
-            _cp = [x.replace('\\', '\\\\') for x in _cp]
+        _cp = [escaped_relpath(x) for x in _cp]
 
         _mp = _cp
 
@@ -3041,10 +3045,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         # path to libjvm
         if mx.is_windows():
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
-            _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
         else:
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
-            _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
+        _libjvm_path = escaped_relpath(_libjvm_path)
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
         ]
@@ -3052,8 +3055,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         languages_dir = join(_graalvm_home, "languages")
         tools_dir = join(_graalvm_home, "tools")
         _dynamic_cflags += [
-            '-DLANGUAGES_DIR=' + relpath(languages_dir, start=_exe_dir),
-            '-DTOOLS_DIR=' + relpath(tools_dir, start=_exe_dir),
+            '-DLANGUAGES_DIR=' + escaped_relpath(languages_dir),
+            '-DTOOLS_DIR=' + escaped_relpath(tools_dir),
         ]
 
         # path to libjli - only needed on osx for AWT
@@ -3062,7 +3065,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             if mx_sdk_vm.base_jdk_version() < 17:
                 _libjli_path = join(_libjli_path, 'jli')
             _libjli_path = join(_libjli_path, mx.add_lib_suffix("libjli"))
-            _libjli_path = relpath(_libjli_path, start=_exe_dir)
+            _libjli_path = escaped_relpath(_libjli_path)
             _dynamic_cflags += [
                 '-DLIBJLI_RELPATH=' + _libjli_path,
             ]
@@ -3073,9 +3076,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _lib_path = join(_graalvm_home, "languages", self.language_library_config.language, self.default_language_home_relative_libpath())
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
-        _liblang_relpath = relpath(_lib_path, start=_exe_dir)
         _dynamic_cflags += [
-            '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
+            '-DLIBLANG_RELPATH=' + escaped_relpath(_lib_path)
         ]
 
         if len(self.language_library_config.option_vars) > 0:
