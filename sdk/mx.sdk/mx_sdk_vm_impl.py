@@ -3095,10 +3095,17 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
     @property
     def ldlibs(self):
+        llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
+        libcxx_dir = join(llvm_toolchain, 'lib')
+        if mx.is_linux():
+            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
+            libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
+
         _dynamic_ldlibs = [
             '-stdlib=libc++',
-            '-static-libstdc++', # it looks weird but this does link libc++ statically
-            '-l:libc++abi.a',
+            '-nostdlib++', # avoids to dynamically link libc++
+            join(libcxx_dir, 'libc++.a'),
+            join(libcxx_dir, 'libc++abi.a'),
         ]
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
