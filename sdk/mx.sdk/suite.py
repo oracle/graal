@@ -490,7 +490,8 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_SDK",
-        "LAUNCHER_COMMON"
+        "LAUNCHER_COMMON",
+        "mx:JUNIT",
       ],
       "maven" : False,
     },
@@ -570,12 +571,15 @@ suite = {
       "dependencies" : [
         "org.graalvm.nativebridge.processor.test"
       ],
+      "distDependencies" : [
+        "mx:JUNIT",
+        "NATIVEBRIDGE"
+      ],
       "requiresConcealed": {
         "jdk.internal.vm.ci": [
           "jdk.vm.ci.services",
         ],
       },
-      "distDependencies" : ["NATIVEBRIDGE"],
       "maven": False,
       "testDistribution" : True,
     },

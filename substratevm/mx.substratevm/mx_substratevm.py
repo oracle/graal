@@ -319,7 +319,9 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
 
 def truffle_args(extra_build_args):
     assert isinstance(extra_build_args, list)
-    build_args = ['--force-builder-on-cp', '--build-args', '--macro:truffle', '-H:MaxRuntimeCompileMethods=5000', '-H:+TruffleCheckBlackListedMethods']
+    build_args = ['--build-args', '--macro:truffle', '--language:nfi',
+                  '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                  '-H:MaxRuntimeCompileMethods=5000', '-H:+TruffleCheckBlackListedMethods']
     run_args = ['--run-args', '--very-verbose', '--enable-timing']
     return build_args + extra_build_args + run_args
 
@@ -388,7 +390,10 @@ def svm_gate_body(args, tasks):
                     mx.warn('NFI unittests use dlopen and thus do not work with statically linked executables')
                 else:
                     testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
-                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
+                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args',
+                                            '--macro:truffle',
+                                            '--language:nfi',
+                                            '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
                                             '-H:MaxRuntimeCompileMethods=2000',
                                             '-H:+TruffleCheckBlackListedMethods'] + args.extra_image_builder_arguments + [
                                             '--run-args', testlib, '--very-verbose', '--enable-timing']
@@ -938,7 +943,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries'],
+    dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries', 'svmt'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -962,7 +967,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'Truffle NFI'],
     truffle_jars=[],
-    builder_jar_distributions=['substratevm:SVM_LIBFFI'],
+    builder_jar_distributions=[],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
     installable=False,
 ))
@@ -1105,6 +1110,19 @@ llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "a
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='Truffle SVM Macro',
+    short_name='tflsm',
+    dir_name='truffle-svm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['svmt'],
+    priority=0,
+    support_distributions=['truffle:TRUFFLE_SVM_GRAALVM_SUPPORT', 'substratevm:SVM_TRUFFLE_RUNTIME_GRAALVM_SUPPORT'],
+    stability="supported",
+))
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=suite,
     name='Truffle Runtime SVM',
@@ -1116,6 +1134,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     builder_jar_distributions=[
         'substratevm:TRUFFLE_RUNTIME_SVM',
     ],
+    support_distributions=[],
     stability="supported",
     jlink=False,
 ))
@@ -1187,6 +1206,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
+    'sdk:JNIUTILS',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
 libgraal_build_args = [

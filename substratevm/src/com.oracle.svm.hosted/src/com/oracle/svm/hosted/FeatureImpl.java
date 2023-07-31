@@ -788,6 +788,10 @@ public class FeatureImpl {
 
         @Override
         public Path getImagePath() {
+            if (linkerInvocation == null) {
+                // null in web-image
+                return null;
+            }
             return linkerInvocation.getOutputFile();
         }
 

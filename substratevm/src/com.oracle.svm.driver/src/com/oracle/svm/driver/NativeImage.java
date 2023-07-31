@@ -147,6 +147,7 @@ public class NativeImage {
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
+
         return null;
     }
 
@@ -422,6 +423,10 @@ public class NativeImage {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "graal", "enterprise-graal"));
             }
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+            if (!modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
+                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+            }
             return result;
         }
 
@@ -548,8 +553,8 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(createTruffleBuilderModulePath());
             if (modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
             return result;
@@ -564,8 +569,12 @@ public class NativeImage {
                  * future no longer be needed.
                  */
                 jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
-                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle", "builder"))));
+                Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
+                if (Files.exists(builderPath)) {
+                    jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
+                }
             }
+
             return jars;
         }
 
@@ -631,7 +640,13 @@ public class NativeImage {
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
-                forEachPropertyValue(properties.get("Requires"), args, (s) -> "--" + s);
+                if (config.modulePathBuild) {
+                    /*
+                     * Requires can for compatibility reasons only be interpreted using module
+                     * builds.
+                     */
+                    forEachPropertyValue(properties.get("Requires"), args, (s) -> "--" + s);
+                }
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -1590,8 +1605,8 @@ public class NativeImage {
      *
      * @see #callListModules(String, List)
      */
-    private static Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
-        if (modulePath.isEmpty()) {
+    private Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+        if (modulePath.isEmpty() || !config.modulePathBuild) {
             return Map.of();
         }
         String modulePathEntries = modulePath.stream()
@@ -1635,9 +1650,7 @@ public class NativeImage {
                 Path externalPath = null;
                 if (splitString.length > 1) {
                     String pathURI = splitString[1]; // url: file://path/to/file
-                    if (pathURI.startsWith("file://")) {
-                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
-                    }
+                    externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
                 }
                 result.put(splitModuleNameAndVersion[0], externalPath);
             }

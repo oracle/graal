@@ -194,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Enables compilation of Truffle ASTs to machine code";
+        return "Provides support for Truffle runtime compilation";
     }
 
     public static class Options {
@@ -257,6 +257,9 @@ public class TruffleFeature implements InternalFeature {
         return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
     }
 
+    /*
+     * Duplicated from SafepointSamplingProfilingFeature. Make sure it is in sync.
+     */
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return isInConfiguration();

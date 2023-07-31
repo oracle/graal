@@ -115,7 +115,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK', 'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE'],
+    boot_jars=['sdk:GRAAL_SDK'],
     stability="supported",
 ))
 

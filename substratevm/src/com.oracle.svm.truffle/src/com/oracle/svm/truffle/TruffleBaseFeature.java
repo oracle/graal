@@ -168,7 +168,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides base support for Truffle";
+        return "Provides support for Truffle languages";
     }
 
     public static Class<?> lookupClass(String className) {
@@ -1015,55 +1015,63 @@ public final class TruffleBaseFeature implements InternalFeature {
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
                 PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
             }
+
         }
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
         if (Options.CopyLanguageResources.getValue()) {
-            Path buildDir = access.getImagePath().getParent();
-            assert buildDir != null;
-            Path resourcesDir = buildDir.resolve("resources");
-            if (languageHomesToCopy != null) {
-                Path languagesDir = resourcesDir.resolve("languages");
-                if (Files.exists(languagesDir)) {
+            Path buildDir = access.getImagePath();
+            if (buildDir != null) {
+                Path parent = buildDir.getParent();
+                if (parent != null) {
+                    copyResources(parent);
+                }
+            }
+        }
+    }
 
-                    try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
-                        filesToDelete.sorted(Comparator.reverseOrder())
-                                        .forEach(f -> {
-                                            try {
-                                                Files.deleteIfExists(f);
-                                            } catch (IOException ioe) {
-                                                throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                                            }
-                                        });
-                    } catch (IOException ioe) {
-                        throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                    }
+    private void copyResources(Path buildDir) {
+        Path resourcesDir = buildDir.resolve("resources");
+        if (languageHomesToCopy != null) {
+            Path languagesDir = resourcesDir.resolve("languages");
+            if (Files.exists(languagesDir)) {
+                try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
+                    filesToDelete.sorted(Comparator.reverseOrder())
+                                    .forEach(f -> {
+                                        try {
+                                            Files.deleteIfExists(f);
+                                        } catch (IOException ioe) {
+                                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                                        }
+                                    });
+                } catch (IOException ioe) {
+                    throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
                 }
-                HomeFinder hf = HomeFinder.getInstance();
-                Map<String, Path> languageHomes = hf.getLanguageHomes();
-                languageHomesToCopy.forEach((s, path) -> {
-                    Path copyTo = buildDir.resolve(path);
-                    Path copyFrom = languageHomes.get(s);
-                    Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
-                    try {
-                        Files.lines(fileListFile).forEach(fileName -> {
-                            copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
-                        });
-                    } catch (IOException ioe) {
-                        throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
-                    }
-                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
-                });
             }
-            try {
-                if (Engine.copyResources(resourcesDir)) {
-                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
+            HomeFinder hf = HomeFinder.getInstance();
+            Map<String, Path> languageHomes = hf.getLanguageHomes();
+            languageHomesToCopy.forEach((s, path) -> {
+                Path copyTo = buildDir.resolve(path);
+                Path copyFrom = languageHomes.get(s);
+                Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
+                try {
+                    Files.lines(fileListFile).forEach(fileName -> {
+                        copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
+                    });
+                } catch (IOException ioe) {
+                    throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
                 }
-            } catch (IOException ioe) {
-                throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
+            });
+        }
+        try {
+            if (Engine.copyResources(resourcesDir)) {
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
             }
+        } catch (IOException ioe) {
+            throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
         }
     }
 

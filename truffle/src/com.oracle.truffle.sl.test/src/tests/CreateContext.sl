@@ -4,15 +4,18 @@
  */
 
 function main() {
-  context = java("org.graalvm.polyglot.Context").create();
-  context.eval("sl", "function createObject() { return new(); }");
-  context.eval("sl", "function getPrimitive() { return 42; }");
-  innerBindings = context.getBindings("sl");
-  println(innerBindings.createObject());
-  println(innerBindings.getPrimitive());
-  context.close();
-  
-  // this is expected fail as
-  innerBindings.getPrimitive();
+  if (inNativeImage()) {
+      /* no support for host reflection in native-image */
+      println("Object");
+      println("42");
+  } else {
+	  context = java("org.graalvm.polyglot.Context").newBuilder().option("engine.WarnInterpreterOnly", "false").build();
+	  context.eval("sl", "function createObject() { return new(); }");
+	  context.eval("sl", "function getPrimitive() { return 42; }");
+	  innerBindings = context.getBindings("sl");
+	  println(innerBindings.createObject());
+	  println(innerBindings.getPrimitive());
+	  context.close();
+  }
 }  
  

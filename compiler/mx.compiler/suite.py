@@ -452,7 +452,9 @@ suite = {
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
-        "regex:TREGEX"
+        "regex:TREGEX",
+        "ASM_TREE_9.5",
+        "ASM_UTIL_9.5",
       ],
       "exclude" : [
         "mx:JUNIT",

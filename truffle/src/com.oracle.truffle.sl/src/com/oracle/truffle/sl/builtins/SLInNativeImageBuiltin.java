@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,36 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package com.oracle.truffle.sl.builtins;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-import org.junit.Test;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
 
-@SuppressWarnings("static-method")
-public final class ImageSingletonsTest {
-    public interface MyService {
-        void useMyService();
-    }
+/**
+ * Built-in function that returns true if in a native-image builtin.
+ */
+@NodeInfo(shortName = "inNativeImage")
+public abstract class SLInNativeImageBuiltin extends SLBuiltinNode {
 
-    @Test
-    public void containsCanBeUsedInRegularJDK() throws Exception {
-        assertFalse("Service isn't in the ImageSingletons", ImageSingletons.contains(MyService.class));
-    }
-
-    @Test(expected = Error.class)
-    public void lookupCannotBeUsedInRegularJDK() throws Exception {
-        MyService myService = ImageSingletons.lookup(MyService.class);
-        fail("No service expected: " + myService);
-    }
-
-    @Test
-    public void checkAndUseWorksOnRegularJDK() throws Exception {
-        /*- @start region="ImageSingletonsTest" */
-        if (ImageSingletons.contains(MyService.class)) {
-            MyService myService = ImageSingletons.lookup(MyService.class);
-            myService.useMyService();
-        }
-        /*- @end region="ImageSingletonsTest" */
+    @Specialization
+    public boolean isExecutable() {
+        return TruffleOptions.AOT;
     }
 }

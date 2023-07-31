@@ -1374,19 +1374,6 @@ suite = {
             "noMavenJavadoc": True,
         },
 
-        "SVM_LIBFFI": {
-            "subDir": "src",
-            "description" : "SubstrateVM support for Truffle NFI LibFFI backend",
-            "dependencies": [
-                "com.oracle.svm.truffle.nfi",
-                "com.oracle.svm.truffle.nfi.posix",
-                "com.oracle.svm.truffle.nfi.windows",
-            ],
-            "distDependencies": [
-                "TRUFFLE_RUNTIME_SVM",
-            ],
-        },
-
         "JVMTI_AGENT_BASE": {
             "subDir": "src",
             "description": "Base framework for creating a JVMTI agent.",
@@ -1482,7 +1469,10 @@ suite = {
             "subDir": "src",
             "description" : "SVM Runtime for Truffle languages.",
             "dependencies": [
-                 "com.oracle.svm.truffle",
+                "com.oracle.svm.truffle",
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.truffle.nfi.posix",
+                "com.oracle.svm.truffle.nfi.windows",
             ],
             "distDependencies": [
                 "SVM",
@@ -1498,6 +1488,9 @@ suite = {
                 ],
                 "opens" : [
                     "com.oracle.svm.truffle to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.nfi to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.nfi.windows to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.nfi.posix to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.isolated to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler",
                 ],
@@ -1507,6 +1500,7 @@ suite = {
                     # the runtime might not be available at runtime
                     # the module can still be used with the TruffleBaseFeature
                     "static org.graalvm.truffle.runtime",
+                    "static org.graalvm.jniutils",
                 ],
                 "uses" : [
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
@@ -1873,6 +1867,21 @@ suite = {
                 "truffle-nfi-none.jar" : "string:",
                 "builder/svm-none.jar" : "string:",
                 "builder/clibraries-none/.empty.h" : "file:src/com.oracle.svm.libffi/include/empty.h",
+            },
+        },
+
+        "SVM_TRUFFLE_RUNTIME_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "Native libraries and headers for SubstrateVM NFI support",
+            "layout" : {
+                "builder/include/" : [
+                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
+                    "extracted-dependency:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT/include/trufflenfi.h",
+                ],
+                "builder/" : [
+                    "extracted-dependency:truffle:LIBFFI_DIST"
+                ],
             },
         },
 
