@@ -26,6 +26,8 @@ package org.graalvm.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -45,6 +47,27 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    public static boolean isNumericInteger(ValueNode v) {
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        return s instanceof IntegerStamp;
+    }
+
+    /**
+     * Determine if the given node has a 64-bit integer stamp.
+     */
+    public static boolean isLong(ValueNode v) {
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        return s instanceof IntegerStamp && IntegerStamp.getBits(s) == 64;
+    }
+
+    /**
+     * Determine if the given node has a 32-bit integer stamp.
+     */
+    public static boolean isInt(ValueNode v) {
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        return s instanceof IntegerStamp && IntegerStamp.getBits(s) == 32;
+    }
 
     /**
      * Remove loop proxies that became obsolete over time, i.e., they proxy a value that already
