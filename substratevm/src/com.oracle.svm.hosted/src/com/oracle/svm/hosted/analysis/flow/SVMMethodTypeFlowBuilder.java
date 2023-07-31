@@ -29,6 +29,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -46,6 +47,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -147,7 +149,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
             if (field.isStatic() &&
-                            !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
+                            getHostVM().getClassInitializationSupport().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                             !field.getDeclaringClass().unsafeFieldsRecomputed() &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
@@ -176,13 +178,14 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * the node has an exact type. This works with allocation site sensitivity because the
          * StoreVMThreadLocal is modeled by writing the objects to the all-instantiated.
          */
-        if (n instanceof StoreVMThreadLocalNode) {
-            StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
+        if (n instanceof StoreVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getValue());
             return true;
-        } else if (n instanceof CompareAndSetVMThreadLocalNode) {
-            CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
+        } else if (n instanceof CompareAndSetVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getUpdate());
+            return true;
+        } else if (n instanceof InlinedInvokeArgumentsNode node) {
+            processInlinedInvokeArgumentsNode(state, node);
             return true;
         }
         return super.delegateNodeProcessing(n, state);
@@ -204,5 +207,16 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             storeBuilder.addUseDependency(valueBuilder);
             typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
         }
+    }
+
+    private void processInlinedInvokeArgumentsNode(TypeFlowsOfNodes state, InlinedInvokeArgumentsNode node) {
+        /*
+         * Create a proxy invoke type flow for the inlined method.
+         */
+        PointsToAnalysisMethod targetMethod = (PointsToAnalysisMethod) node.getInvokeTarget();
+        // GR-45916 add proper source position information.
+        BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(node, method);
+        InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
+        processMethodInvocation(state, node, invokeKind, targetMethod, node.getArguments(), true, position, true);
     }
 }

@@ -76,8 +76,19 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * For the moment we only use one abbrev table and one CU. It employs the following top level and
- * nested DIES
+ * For the moment we only use one abbrev table with two types of CU. There is one occurrence of the
+ * <code>builtin_unit</code> CU which includes definitions of Java primitive value types and the
+ * struct type used to model a Java object header. There are multiple occurrences of the
+ * <code>class_unit</code> CU, one for each Java class, interface or array class included in the
+ * generated native image binary. The latter describes the class, array or interface layout and
+ * defines a class, interface or array reference pointer type. It provides declarations for instance
+ * and static methods and static fields of a class, and methods of an interface. In the case of a
+ * class it may also include definitions of static fields (i.e. location info) and for a class or
+ * interface definitions of compiled methods (i.e. code address locations). The latter may include
+ * details of inlined method frames and top level or inlined parameter or local variable locations.
+ * <p>
+ *
+ * These two CUs include the following top level and nested DIES
  * <p>
  *
  * Level 0 DIEs
@@ -86,8 +97,11 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>code = null, tag == null</code> - empty terminator
  *
- * <li><code>code = class_unit, tag == compile_unit</code> - CU that defines the Java object header
- * struct, all Java primitive and object types and all Java compiled code.
+ * <li><code>code = builtin_unit, tag == class_unit</code> - CU that defines the Java object header
+ * struct and all Java primitive types.
+ *
+ * <li><code>code = class_unit, tag == class_unit</code> - CU that defines a specific Java object,
+ * interface or array type.
  *
  * </ul>
  *
@@ -95,12 +109,13 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <ul>
  *
- * <li><code>code = primitive_type, tag == base_type, parent = class_unit</code> - Java primitive
+ * <li><code>code = primitive_type, tag == base_type, parent = builtin_unit</code> - Java primitive
  * type (non-void)
  *
- * <li><code>code = void_type, tag == unspecified_type, parent = class_unit</code> - Java void type
+ * <li><code>code = void_type, tag == unspecified_type, parent = builtin_unit</code> - Java void
+ * type
  *
- * <li><code>code = object_header, tag == structure_type, parent = class_unit</code> - Java object
+ * <li><code>code = object_header, tag == structure_type, parent = builtin_unit</code> - Java object
  * header
  *
  * <li><code>code = class_layout, tag == class_type, parent = class_unit</code> - Java instance type
@@ -115,10 +130,10 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>code = static_field_location, tag == variable, parent = class_unit</code> - Java static
  * field definition (i.e. location of data)
  *
- * <li><code>code = array_layout, tag == structure_type, parent = array_unit</code> - Java array
+ * <li><code>code = array_layout, tag == structure_type, parent = class_unit</code> - Java array
  * type structure definition
  *
- * <li><code>code = array_pointer, tag == pointer_type, parent = array_unit</code> - Java array ref
+ * <li><code>code = array_pointer, tag == pointer_type, parent = class_unit</code> - Java array ref
  * type
  *
  * <li><code>code = interface_layout, tag == union_type, parent = class_unit</code> - Java array
@@ -127,25 +142,23 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>code = interface_pointer, tag == pointer_type, parent = class_unit</code> - Java
  * interface ref type
  *
- * <li><code>code = indirect_layout, tag == class_type, parent = class_unit, array_unit,
- * interface_unit</code> - wrapper layout attaches address rewriting logic to the layout types that
- * it wraps using a data_location attribute
+ * <li><code>code = indirect_layout, tag == class_type, parent = class_unit</code> - wrapper layout
+ * attaches address rewriting logic to the layout types that it wraps using a
+ * <code>data_location</code> attribute
  *
- * <li><code>code = indirect_pointer, tag == pointer_type, parent = class_unit, array_unit,
- * interface_unit</code> - indirect ref type used to type indirect oops that encode the address of
- * an object, whether by adding tag bits or representing the address as an offset from some base
- * address. these are used to type object references stored in static and instance fields. They are
- * not needed when typing local vars and parameters held in registers or on the stack as they appear
- * as raw addresses.
+ * <li><code>code = indirect_pointer, tag == pointer_type, parent = class_unit</code> - indirect ref
+ * type used to type indirect oops that encode the address of an object, whether by adding tag bits
+ * or representing the address as an offset from some base address. these are used to type object
+ * references stored in static and instance fields. They are not needed when typing local vars and
+ * parameters held in registers or on the stack as they appear as raw addresses.
  *
- * <li><code>code = namespace, tag == namespace, parent = class_unit, array_unit,
- * interface_unit</code> - a wrap-around DIE that is used to embed all the normal level 1 DIEs of a
- * <code>class_unit</code> or <code>array_unit</code> in a namespace. This is needed when the
- * corresponding class/interface or array base element type have been loaded by a loader with a
- * non-empty loader in order to ensure that mangled names for the class and its members can
- * legitimately employ the loader id as a namespace prefix. Note that use of a namespace wrapper DIE
- * causes all the embedded level 1+ DIEs documented above and all their children to be generated at
- * a level one greater than documented here.
+ * <li><code>code = namespace, tag == namespace, parent = class_unit</code> - a wrap-around DIE that
+ * is used to embed all the normal level 1 DIEs of a <code>class_unit</code> in a namespace. This is
+ * needed when the corresponding class/interface or array base element type have been loaded by a
+ * loader with a non-empty loader in order to ensure that mangled names for the class and its
+ * members can legitimately employ the loader id as a namespace prefix. Note that use of a namespace
+ * wrapper DIE causes all the embedded level 1+ DIEs documented above and all their children to be
+ * generated at a level one greater than documented here.
  *
  * </ul>
  *
@@ -156,7 +169,7 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>code = header_field, tag == member, parent = object_header</code> - object/array header
  * field
  *
- * <li><code>code == method_declaration1/2, tag == subprogram, parent = class_layout</code>
+ * <li><code>code == method_declaration1/2, tag == subprogram, parent = class_layout, interface_layout</code>
  *
  * <li><code>code = field_declaration1/2/3/4, tag == member, parent = class_layout</code> - instance
  * field declaration (i.e. specification of properties)
@@ -192,12 +205,28 @@ import org.graalvm.compiler.debug.DebugContext;
  * Detailed layouts of the DIEs listed above are as follows:
  * <p>
  *
- * A single instance of the level 0 <code>class_unit</code> compile unit provides details of the
- * object header struct, all Java primitive and object types and all Java compiled code.
+ * A single instance of the level 0 <code>builtin_unit</code> compile unit provide details of all
+ * Java primitive types and the struct type used to model a Java object header
  *
  * <ul>
  *
- * <li><code>abbrev_code == class_unit, tag == DW_TAG_compilation_unit,
+ * <li><code>abbrev_code == built_unit, tag == DW_TAG_compilation_unit,
+ * has_children</code>
+ *
+ * <li><code>DW_AT_language : ... DW_FORM_data1</code>
+ *
+ * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+ *
+ * <li><code>DW_AT_use_UTF8 : ... DW_FORM_flag</code>
+ *
+ * </ul>
+ *
+ * Instances of the level 0 <code>class_unit</code> compile unit provide details of all Java object
+ * types and compiled code.
+ *
+ * <ul>
+ *
+ * <li><code>abbrev_code == class_unit1/2, tag == DW_TAG_compilation_unit,
  * has_children</code>
  *
  * <li><code>DW_AT_language : ... DW_FORM_data1</code>
@@ -206,18 +235,15 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_comp_dir : ... DW_FORM_strp</code>
  *
- * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code>
+ * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code> only for class_unit1
  *
- * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
+ * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code> only for class_unit1
  *
  * <li><code>DW_AT_use_UTF8 : ... DW_FORM_flag</code>
  *
  * <li><code>DW_AT_stmt_list : .. DW_FORM_sec_offset</code>
  *
  * </ul>
- *
- * All other Java derived DIEs are embedded within this top level CU.
- * <p>
  *
  * Primitive Types: For each non-void Java primitive type there is a level 1 DIE defining a base
  * type
@@ -362,12 +388,12 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_declaration : ....... DW_FORM_flag</code>
  *
- * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr</code> n.b. only for method_declaration1,
+ * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref4</code> n.b. only for method_declaration1,
  * points to param 0 DIE
  *
  * <li><code>DW_AT_virtuality : ........ DW_FORM_data1<code> (for override methods)
  *
- * <li><code>DW_AT_containing_type : ... DW_FORM_ref_addr</code> (for override methods)
+ * <li><code>DW_AT_containing_type : ... DW_FORM_ref4</code> (for override methods)
  *
  * </ul>
  *
@@ -493,7 +519,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -503,7 +529,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -543,7 +569,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
  *
- * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_specification : ... DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -562,10 +588,39 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>abbrev_code == DW_ABBREV_CODE_method_local_location1/2, tag ==
  * DW_TAG_formal_parameter, no_children</code>
  *
- * <li><code>DW_AT_specification : .......... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_specification : .......... DW_FORM_ref4</code>
  *
  * <li><code>DW_AT_location: ................ DW_FORM_sec_offset</code> n.b. only for
  * method_local_location2
+ *
+ * </ul>
+ *
+ * Abstract Inline Methods: For any method m' which has been inlined into a top level compiled
+ * method m there will be an abstract_inline_method DIE for m' at level 1 DIE in the CU to which m
+ * belongs. The declaration serves as an abstract_origin for any corresponding inlined method DIEs
+ * appearing as children of m. The abstract_inline_method DIE will inherit attributes from the
+ * method_definition DIE referenced as its specification attribute without the need to repeat them,
+ * including attributes specified in child DIEs of the method_definition. However, it is actually
+ * necessary to replicate the method_parameter/local_declaration DIEs of the specification as
+ * children of the abstract_inline_method DIE. This provides a CU-local target for references from
+ * the corresponding method_parameter/local_location DIEs that sit below the inlined_subroutine DIEs
+ * in the concrete inlined subroutine tree. This is needed because some tools require the location
+ * DIEs abstract_origin attribute that links the location to specification to be a CU-relative
+ * offset (FORM_Ref4) rather than a relcoatabel cross-CU info section offset. This has the added
+ * benefit that repeated reference to abstract inline methods or parameters from concrete inline
+ * method DIEs or parameter or local location DIES only avoids the cost of tracking separate
+ * relocatable reference.
+ *
+ * <ul>
+ *
+ * <li><code>abbrev_code == DW_ABBREV_CODE_abstract_inline_method, tag == DW_TAG_subprogram,
+ * has_children</code>
+ *
+ * <li><code>DW_AT_inline : .......... DW_FORM_data1</code>
+ *
+ * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
+ *
+ * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
  *
  * </ul>
  *
@@ -592,7 +647,7 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>abbrev_code == DW_ABBREV_CODE_inlined_subroutine_with_children, tag ==
  * DW_TAG_subprogram, has_children</code>
  *
- * <li><code>DW_AT_abstract_origin : ... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_abstract_origin : ... DW_FORM_ref4</code>
  *
  * <li><code>DW_AT_low_pc : ............ DW_FORM_addr</code>
  *
@@ -612,7 +667,7 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>abbrev_code == static_field_location, tag == DW_TAG_variable,
  * no_children</code>
  *
- * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_specification : ... DW_FORM_ref4</code>
  *
  * <li><code>DW_AT_linkage_name : .... DW_FORM_strp</code>
  *
@@ -671,7 +726,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>Dw_AT_type : ........ DW_FORM_ref_addr</code>
+ * <li><code>Dw_AT_type : ........ DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -739,7 +794,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_byte_size : ... DW_FORM_data1</code>
  *
- * <li><code>DW_AT_TYPE : ....... DW_FORM_ref_addr</code>
+ * <li><code>DW_AT_TYPE : ....... DW_FORM_ref4</code>
  *
  * </ul>
  *
@@ -812,7 +867,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
     public int writeAbbrevs(DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeClassUnitAbbrev(context, buffer, pos);
+        pos = writeCompileUnitAbbrevs(context, buffer, pos);
 
         pos = writePrimitiveTypeAbbrev(context, buffer, pos);
         pos = writeVoidTypeAbbrev(context, buffer, pos);
@@ -832,9 +887,15 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
         pos = writeInterfaceReferenceAbbrev(context, buffer, pos);
 
+        pos = writeForeignReferenceAbbrev(context, buffer, pos);
+        pos = writeForeignTypedefAbbrev(context, buffer, pos);
+        pos = writeForeignStructAbbrev(context, buffer, pos);
+
         pos = writeHeaderFieldAbbrev(context, buffer, pos);
-        pos = writeArrayDataTypeAbbrev(context, buffer, pos);
+        pos = writeArrayDataTypeAbbrevs(context, buffer, pos);
+        pos = writeArraySubrangeTypeAbbrev(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
+        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
         pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
         pos = writeSuperReferenceAbbrev(context, buffer, pos);
         pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
@@ -875,9 +936,17 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return writeSLEB(code, buffer, pos);
     }
 
-    private int writeClassUnitAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeCompileUnitAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_class_unit, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_builtin_unit, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit1, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit2, buffer, pos);
+        return pos;
+    }
+
+    private int writeCompileUnitAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_compile_unit, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_language, buffer, pos);
@@ -888,12 +957,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_comp_dir, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_low_pc, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_stmt_list, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_ranges, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_low_pc, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_stmt_list, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
+        }
         /*
          * Now terminate.
          */
@@ -1019,7 +1090,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1062,10 +1133,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_virtuality, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_containing_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_declaration) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_object_pointer, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         }
         /*
          * Now terminate.
@@ -1180,7 +1251,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1214,7 +1285,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1243,6 +1314,66 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeForeignReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_pointer, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_pointer_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        // n.b we use a (relocatable) ref_addr here rather than a (CU-relative) ref4
+        // because an unknown foreign pointer type will reference void which is not
+        // local to the current CU.
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignTypedefAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_typedef, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_typedef, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignStructAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_struct, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_structure_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
     private int writeHeaderFieldAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
 
@@ -1254,7 +1385,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_data_member_location, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_accessibility, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         /*
@@ -1265,16 +1396,46 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeArrayDataTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeArrayDataTypeAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeArrayDataTypeAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_array_data_type1, buffer, pos);
+        pos = writeArrayDataTypeAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2, buffer, pos);
+        return pos;
+    }
+
+    private int writeArrayDataTypeAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
         int pos = p;
 
-        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_array_data_type, buffer, pos);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_array_type, buffer, pos);
-        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        boolean hasChildren = (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2);
+        pos = writeFlag((hasChildren ? DwarfDebugInfo.DW_CHILDREN_yes : DwarfDebugInfo.DW_CHILDREN_no), buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_array_data_type2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+        }
+        // n.b we use a (relocatable) ref_addr here rather than a (CU-relative) ref4
+        // because a foreign array type can reference another foreign type which is
+        // not in the current CU.
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+
+        return pos;
+    }
+
+    private int writeArraySubrangeTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_array_subrange, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_subrange_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_count, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1292,6 +1453,25 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeAbstractInlineMethodAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_subprogram, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_inline, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
@@ -1354,7 +1534,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * pointer type that is used to type values that need translation to a raw address i.e.
          * values stored in static and instance fields.
          */
-        /* the type ofr an indirect layout that includes address translation info */
+        /* the type for an indirect layout that includes address translation info */
         pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_indirect_layout, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_class_type, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
@@ -1384,7 +1564,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /*
          * Now terminate.
          */
@@ -1545,9 +1725,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     /**
-     * The debug_abbrev section depends on debug_aranges section.
+     * The debug_abbrev section depends on debug_ranges section.
      */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_RANGES_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

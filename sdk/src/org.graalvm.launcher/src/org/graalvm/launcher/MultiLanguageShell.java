@@ -55,15 +55,15 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
-import org.jline.keymap.KeyMap;
-import org.jline.reader.EndOfFileException;
-import org.jline.reader.History;
-import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
-import org.jline.reader.Reference;
-import org.jline.reader.UserInterruptException;
-import org.jline.reader.impl.history.DefaultHistory;
-import org.jline.terminal.Terminal;
+import org.graalvm.shadowed.org.jline.keymap.KeyMap;
+import org.graalvm.shadowed.org.jline.reader.EndOfFileException;
+import org.graalvm.shadowed.org.jline.reader.History;
+import org.graalvm.shadowed.org.jline.reader.LineReader;
+import org.graalvm.shadowed.org.jline.reader.LineReaderBuilder;
+import org.graalvm.shadowed.org.jline.reader.Reference;
+import org.graalvm.shadowed.org.jline.reader.UserInterruptException;
+import org.graalvm.shadowed.org.jline.reader.impl.history.DefaultHistory;
+import org.graalvm.shadowed.org.jline.terminal.Terminal;
 
 class MultiLanguageShell implements Closeable {
     private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";

@@ -98,7 +98,7 @@ The shepherding process includes ensuring that none of the public and internal t
 Commonly, the person to shepherd the PR should be the same person that reviewed and approved it.
 If that person is unresponsive or unavailable to do so, feel free to cc @boris-spas to the PR.
 
-[1]: http://www.oracle.com/technetwork/community/oca-486395.html
+[1]: https://oca.opensource.oracle.com/
 [2]: http://wiki.netbeans.org/APIReviews
 [3]: http://wiki.apidesign.org/wiki/TheAPIBook
 [4]: http://wiki.apidesign.org/wiki/TruffleSigtest

@@ -260,7 +260,7 @@ public abstract class TypeFlow<T> {
 
     /**
      * Return true if this flow is saturated. When an observer becomes saturated it doesn't
-     * immediately remove itslef from all its inputs. The inputs lazily remove it on next update.
+     * immediately remove itself from all its inputs. The inputs lazily remove it on next update.
      */
     public boolean isSaturated() {
         return isSaturated;
@@ -276,7 +276,7 @@ public abstract class TypeFlow<T> {
 
     /**
      * Mark this flow as saturated. Each flow starts with isSaturated as false and once it is set to
-     * true it cannnot be changed.
+     * true it cannot be changed.
      */
     public void setSaturated() {
         isSaturated = true;
@@ -644,11 +644,11 @@ public abstract class TypeFlow<T> {
     /*** Notify the uses and observers that this flow is saturated and unlink them. */
     private void notifySaturated(PointsToAnalysis bb) {
         for (TypeFlow<?> use : getUses()) {
-            use.onInputSaturated(bb, this);
+            notifyUseOfSaturation(bb, use);
             removeUse(use);
         }
         for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedSaturated(bb, this);
+            notifyObserverOfSaturation(bb, observer);
             removeObserver(observer);
         }
     }

@@ -40,14 +40,25 @@ public final class HeapAccounting {
     private final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
     private final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
+    /* During a GC, the values are invalid. They are updated once the GC ends. */
+    private boolean invalidData;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapAccounting() {
     }
 
-    public void setEdenAndYoungGenBytes(UnsignedWord edenBytes, UnsignedWord youngBytes) {
+    public void notifyBeforeCollection() {
+        assert VMOperation.isGCInProgress();
+        invalidData = true;
+    }
+
+    public void notifyAfterCollection(GCAccounting accounting) {
         assert VMOperation.isGCInProgress() : "would cause races otherwise";
-        youngUsedBytes.set(youngBytes);
-        edenUsedBytes.set(edenBytes);
+        assert invalidData;
+
+        youngUsedBytes.set(accounting.getYoungChunkBytesAfter());
+        edenUsedBytes.set(accounting.getEdenChunkBytesAfter());
+        invalidData = false;
     }
 
     @Uninterruptible(reason = "Must be done during TLAB registration to not race with a potential collection.", callerMustBe = true)
@@ -58,13 +69,13 @@ public final class HeapAccounting {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getYoungUsedBytes() {
-        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        assert !invalidData : "value is incorrect during a GC";
         return youngUsedBytes.get();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getEdenUsedBytes() {
-        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        assert !invalidData : "value is incorrect during a GC";
         return edenUsedBytes.get();
     }
 

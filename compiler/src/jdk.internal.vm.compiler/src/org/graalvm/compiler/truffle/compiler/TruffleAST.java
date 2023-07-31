@@ -36,16 +36,17 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator.SourceLanguagePositionImpl;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallNode.State;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphStructure;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -68,12 +69,12 @@ final class TruffleAST implements JavaMethodContext {
     private final List<TruffleAST.ASTBlock> blocks = new ArrayList<>();
     private final List<ASTNode> nodes = new ArrayList<>();
     private final TruffleCompilationTask task;
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
     private final PartialEvaluator partialEvaluator;
     private final CallTree callTree;
     private int currentId = 0;
 
-    private TruffleAST(PartialEvaluator partialEvaluator, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
+    private TruffleAST(PartialEvaluator partialEvaluator, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
         this.partialEvaluator = partialEvaluator;
         this.compilable = compilable;
         this.callTree = callTree;
@@ -84,11 +85,11 @@ final class TruffleAST implements JavaMethodContext {
         buildTree(rootNode, root, root.block);
     }
 
-    static TruffleAST create(PartialEvaluator config, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
+    static TruffleAST create(PartialEvaluator config, TruffleCompilationTask task, TruffleCompilable compilable, CallTree callTree) {
         return new TruffleAST(config, task, compilable, callTree);
     }
 
-    private JavaConstant readRootNode(CompilableTruffleAST c) {
+    private JavaConstant readRootNode(TruffleCompilable c) {
         return constantReflection().readFieldValue(types().OptimizedCallTarget_rootNode, c.asJavaConstant());
     }
 
@@ -133,7 +134,7 @@ final class TruffleAST implements JavaMethodContext {
             }
             if (found != null && found.getState() == State.Inlined) {
                 TruffleAST.ASTBlock block = makeASTBlock(parent.block, found);
-                CompilableTruffleAST ast = block.callNode.getDirectCallTarget();
+                TruffleCompilable ast = block.callNode.getDirectCallTarget();
                 buildTree(readRootNode(ast), astNode, block);
 
                 if (astNode.children.size() >= 1) {
@@ -144,7 +145,7 @@ final class TruffleAST implements JavaMethodContext {
         }
     }
 
-    private static void injectRootName(ASTNode rootNode, CompilableTruffleAST ast) {
+    private static void injectRootName(ASTNode rootNode, TruffleCompilable ast) {
         String rootName = ast.getName();
         rootNode.properties.put("label", rootNode.properties.get("label") + " (" + rootName + ")");
         rootNode.properties.put("rootName", rootName);

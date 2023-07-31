@@ -51,9 +51,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -87,6 +89,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -114,6 +117,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
     private PolyglotValueDispatch disconnectedHostValue;
+    private PolyglotValueDispatch disconnectedBigIntegerHostValue;
     private volatile Object defaultFileSystemContext;
 
     private static volatile AbstractPolyglotImpl abstractImpl;
@@ -163,6 +167,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     protected void initialize() {
         this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull());
         this.disconnectedHostValue = new PolyglotValueDispatch.HostValue(this);
+        this.disconnectedBigIntegerHostValue = new PolyglotValueDispatch.BigIntegerHostValue(this);
         PolyglotValueDispatch.createDefaultValues(this, null, primitiveValues);
     }
 
@@ -328,7 +333,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         OptionDescriptors engineOptionDescriptors = PolyglotImpl.getInstance().createAllEngineOptionDescriptors();
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
-        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true);
+        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true, true);
         values.putAll(null, engineOptions, allowExperimentalOptions);
         return values;
     }
@@ -392,20 +397,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (Supplier<ClassLoader> supplier : EngineAccessor.locatorOrDefaultLoaders()) {
+        for (AbstractClassLoaderSupplier supplier : EngineAccessor.locatorOrDefaultLoaders()) {
             ClassLoader loader = supplier.get();
             if (loader != null) {
                 try {
-                    Class<?> c = loader.loadClass(className);
-                    if (!TruffleOptions.AOT) {
-                        /*
-                         * In JDK 9+, the Truffle API packages must be dynamically exported to a
-                         * Truffle API client since the Truffle API module descriptor only exports
-                         * these packages to modules known at build time (such as the Graal module).
-                         */
-                        ModuleUtils.exportTo(loader, null);
+                    Class<?> clazz = loader.loadClass(className);
+                    if (supplier.accepts(clazz)) {
+                        Module clazzModule = clazz.getModule();
+                        ModuleUtils.exportTransitivelyTo(clazzModule);
+                        return clazz;
                     }
-                    return c;
                 } catch (ClassNotFoundException e) {
                 }
             }
@@ -452,7 +453,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
             }
-            return getAPIAccess().newValue(disconnectedHostValue, null, guestValue);
+            return getAPIAccess().newValue(hostValue instanceof BigInteger ? disconnectedBigIntegerHostValue : disconnectedHostValue, null, guestValue);
         }
     }
 
@@ -468,8 +469,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public FileSystem newDefaultFileSystem() {
-        return FileSystems.newDefaultFileSystem();
+    public FileSystem newDefaultFileSystem(String hostTmpDir) {
+        return FileSystems.newDefaultFileSystem(hostTmpDir);
     }
 
     @Override
@@ -529,6 +530,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public AbstractHostAccess createHostAccess() {
         return new PolyglotHostAccess(this);
+    }
+
+    @Override
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
     }
 
     @Override
@@ -655,18 +661,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final class EmbedderFileSystemContext {
 
         private final PolyglotImpl impl;
+        final FileSystem fileSystem;
+
+        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
+        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
 
         EmbedderFileSystemContext(PolyglotImpl impl) {
             this.impl = Objects.requireNonNull(impl);
+            this.fileSystem = FileSystems.newDefaultFileSystem(null);
         }
 
         PolyglotImpl getImpl() {
             return impl;
         }
-
-        final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
-        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
-        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
 
     }
 

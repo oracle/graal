@@ -30,8 +30,6 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -43,13 +41,15 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class NodeLimitTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
         setupContext();
-        Assume.assumeFalse(dummyTarget().getOptionValue(PolyglotCompilerOptions.CompileImmediately));
+        Assume.assumeFalse(dummyTarget().getOptionValue(OptimizedRuntimeOptions.CompileImmediately));
     }
 
     private static OptimizedCallTarget dummyTarget() {
@@ -173,7 +173,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, Supplier<RootNode> rootNodeFactory) {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootCallTarget target = rootNodeFactory.get().getCallTarget();
         final Object[] arguments = {1};
         partialEval((OptimizedCallTarget) target, arguments);

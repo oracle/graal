@@ -29,7 +29,6 @@ import java.util.stream.IntStream;
 
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,6 +38,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class BeginNodeOptimizationTest extends PartialEvaluationTest {
 
@@ -57,7 +57,7 @@ public class BeginNodeOptimizationTest extends PartialEvaluationTest {
     }
 
     private void compileAndCheck(Supplier<RootNode> rootNodeFactory, int totalNodeLimit, int beginNodeLimit) {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(totalNodeLimit)).build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("compiler.MaximumGraalGraphSize", Integer.toString(totalNodeLimit)).build());
         RootNode rootNode = rootNodeFactory.get();
         RootCallTarget target = rootNode.getCallTarget();
 

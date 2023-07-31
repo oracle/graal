@@ -25,10 +25,6 @@
 
 package org.graalvm.component.installer.gds.rest;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONTokener;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.RELEASE_GDS_PRODUCT_ID_KEY;
@@ -56,6 +52,11 @@ import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.MetadataLoaderAdapter;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory.HttpConnectionException;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
+
 import java.net.HttpURLConnection;
 import java.util.zip.GZIPInputStream;
 

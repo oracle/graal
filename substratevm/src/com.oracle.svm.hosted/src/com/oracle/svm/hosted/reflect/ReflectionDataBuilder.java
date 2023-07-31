@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,7 @@ import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -742,7 +743,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForRecordComponent(RecordComponent recordComponent) {
-        register(ConfigurationCondition.alwaysTrue(), true, recordComponent.getAccessor());
+        Method accessorOrNull = recordComponent.getAccessor();
+        if (accessorOrNull != null) {
+            register(ConfigurationCondition.alwaysTrue(), true, accessorOrNull);
+        }
         registerTypesForAnnotations(recordComponent);
         registerTypesForTypeAnnotations(recordComponent);
     }
@@ -898,7 +902,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
+        LogUtils.warning("Could not register complete reflection metadata for %s. Reason(s): %s.", clazz.getTypeName(), messages);
     }
 
     protected void afterAnalysis() {

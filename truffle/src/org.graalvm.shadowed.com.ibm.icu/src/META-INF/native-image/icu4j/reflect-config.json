@@ -1,0 +1,66 @@
+[
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.CurrencyData" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyDisplayInfoProvider",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyMetaInfo",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.LocaleDisplayNamesImpl",
+    "methods":[
+      {
+        "name":"getInstance",
+        "parameterTypes":[
+          "org.graalvm.shadowed.com.ibm.icu.util.ULocale",
+          "org.graalvm.shadowed.com.ibm.icu.text.DisplayContext[]"
+        ]
+      }
+    ]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.LocaleDisplayNamesImpl" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.ICULangDataTables",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.LocaleDisplayNamesImpl" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.ICURegionDataTables",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.TimeZoneNames" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.impl.TimeZoneNamesFactoryImpl",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.NumberFormat" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.text.NumberFormatServiceShim",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.Collator" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.text.CollatorServiceShim",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.BreakIterator" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.text.BreakIteratorFactory",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  },
+
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.charset.CharsetICU" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.charset.CharsetUTF7",
+    "methods":[{"name":"<init>","parameterTypes":["java.lang.String", "java.lang.String", "java.lang.String[]"]}]
+  },
+  {
+    "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.charset.CharsetICU" },
+    "name":"org.graalvm.shadowed.com.ibm.icu.charset.CharsetHZ",
+    "methods":[{"name":"<init>","parameterTypes":["java.lang.String", "java.lang.String", "java.lang.String[]"]}]
+  }
+]

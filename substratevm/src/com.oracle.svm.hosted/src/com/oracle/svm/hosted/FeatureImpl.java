@@ -65,6 +65,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
@@ -411,12 +412,12 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField, reason);
         }
 
-        public void registerAsRoot(Executable method, boolean invokeSpecial) {
-            bb.addRootMethod(method, invokeSpecial);
+        public void registerAsRoot(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(method, invokeSpecial, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
-            bb.addRootMethod(aMethod, invokeSpecial);
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(aMethod, invokeSpecial, otherRoots);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {
@@ -458,6 +459,21 @@ public class FeatureImpl {
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
             bb.getAnnotationSubstitutionProcessor().registerFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Registers a method as having an analysis-opaque return value. This designation limits the
+         * type-flow analysis performed on the method's return value.
+         *
+         * Currently we expect only methods with the Object return type to be registered via this
+         * method; however, the underlying analysis support can handle other object types (including
+         * untrusted interfaces).
+         */
+        public void registerOpaqueMethodReturn(Method method) {
+            AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
+            VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
+            VMError.guarantee(method.getReturnType().equals(Object.class), "Called registerOpaqueMethodReturn for a method with a non-Object return type: %s", method);
+            aMethod.setReturnsAllInstantiatedTypes();
         }
     }
 

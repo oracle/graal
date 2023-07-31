@@ -229,7 +229,7 @@ public final class RubyFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
         return RubyRegexParser.createValidator(source);
     }
 

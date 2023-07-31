@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -124,7 +124,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
     public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
-    public final ResolvedJavaType enterprise_UnsafeAccess = lookupTypeOptional("com.oracle.truffle.object.enterprise.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");
@@ -150,11 +149,11 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField AbstractAssumption_isValid = findField(AbstractAssumption, "isValid");
 
     // truffle.runtime
-    public final ResolvedJavaType BaseOSRRootNode = lookupTypeCached("org.graalvm.compiler.truffle.runtime.BaseOSRRootNode");
+    public final ResolvedJavaType BaseOSRRootNode = lookupTypeCached("com.oracle.truffle.runtime.BaseOSRRootNode");
     public final ResolvedJavaField BaseOSRRootNode_loopNode = findField(BaseOSRRootNode, "loopNode");
-    public final ResolvedJavaType CompilationState = lookupType("org.graalvm.compiler.truffle.runtime.CompilationState");
+    public final ResolvedJavaType CompilationState = lookupType("com.oracle.truffle.runtime.CompilationState");
 
-    public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
+    public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
     public final ResolvedJavaMethod OptimizedCallTarget_callDirect = findMethod(OptimizedCallTarget, "callDirect", Node, Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callInlined = findMethod(OptimizedCallTarget, "callInlined", Node, Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callIndirect = findMethod(OptimizedCallTarget, "callIndirect", Node, Object_Array);
@@ -165,12 +164,12 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField OptimizedCallTarget_validRootAssumption = findField(OptimizedCallTarget, "validRootAssumption");
     public final ResolvedJavaField OptimizedCallTarget_rootNode = findField(OptimizedCallTarget, "rootNode");
 
-    public final ResolvedJavaType OptimizedDirectCallNode = lookupTypeCached("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode");
+    public final ResolvedJavaType OptimizedDirectCallNode = lookupTypeCached("com.oracle.truffle.runtime.OptimizedDirectCallNode");
     public final ResolvedJavaField OptimizedDirectCallNode_currentCallTarget = findField(OptimizedDirectCallNode, "currentCallTarget");
     public final ResolvedJavaField OptimizedDirectCallNode_inliningForced = findField(OptimizedDirectCallNode, "inliningForced");
     public final ResolvedJavaField OptimizedDirectCallNode_callCount = findField(OptimizedDirectCallNode, "callCount");
 
-    public final ResolvedJavaType OptimizedAssumption = lookupType("org.graalvm.compiler.truffle.runtime.OptimizedAssumption");
+    public final ResolvedJavaType OptimizedAssumption = lookupType("com.oracle.truffle.runtime.OptimizedAssumption");
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
 
     // Checkstyle: resume field name check

@@ -37,9 +37,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.hpp",
-          lineStart = 205,
-          lineEnd   = 208,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 207,
+          lineEnd   = 210,
+          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
           sha1      = "2f4ca87d86c3b184d2b7826e51990a3a3682433f")
 // @formatter:on
 public final class AMD64HalfFloatToFloatOp extends AMD64LIRInstruction {

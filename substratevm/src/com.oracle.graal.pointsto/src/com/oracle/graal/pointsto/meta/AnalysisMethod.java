@@ -53,6 +53,7 @@ import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -66,6 +67,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -91,6 +93,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isImplementationInvokedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isImplementationInvoked");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> implementationInvokedNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "implementationInvokedNotifications");
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isIntrinsicMethodUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isIntrinsicMethod");
@@ -136,6 +141,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private Object entryPointData;
     @SuppressWarnings("unused") private volatile Object isInvoked;
     @SuppressWarnings("unused") private volatile Object isImplementationInvoked;
+    /**
+     * Contains callbacks that are notified when this method is marked as implementation-invoked.
+     * Each callback is called at least once, but there are no guarantees that it will be called
+     * exactly once.
+     */
+    @SuppressWarnings("unused") private volatile Object implementationInvokedNotifications;
     @SuppressWarnings("unused") private volatile Object isIntrinsicMethod;
     @SuppressWarnings("unused") private volatile Object isInlined;
 
@@ -150,6 +161,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * overridden methods in subclasses, as well as this method if it is non-abstract.
      */
     protected AnalysisMethod[] implementations;
+
+    /**
+     * Indicates that this method returns all instantiated types. This is necessary when there are
+     * control flows present which cannot be tracked by analysis, which happens for continuation
+     * support.
+     *
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    private boolean returnsAllInstantiatedTypes;
 
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
@@ -215,6 +236,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
+        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -329,7 +351,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void registerAsIntrinsicMethod(Object reason) {
         assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
-        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onReachable);
+        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onImplementationInvoked);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -361,12 +383,36 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
-        return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onReachable);
+        return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onImplementationInvoked);
     }
 
     public void registerAsInlined(Object reason) {
         assert isValidReason(reason) : "Registering a method as inlined needs to provide a valid reason, found: " + reason;
         AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, this::onReachable);
+    }
+
+    public void registerImplementationInvokedCallback(Consumer<DuringAnalysisAccess> callback) {
+        if (this.isImplementationInvoked()) {
+            /* If the method is already implementation-invoked just trigger the callback. */
+            execute(getUniverse(), () -> callback.accept(declaringClass.getUniverse().getConcurrentAnalysisAccess()));
+        } else {
+            ElementNotification notification = new ElementNotification(callback);
+            ConcurrentLightHashSet.addElement(this, implementationInvokedNotificationsUpdater, notification);
+            if (this.isImplementationInvoked()) {
+                /* Trigger callback if method became implementation-invoked during registration. */
+                notifyImplementationInvokedCallback(notification);
+            }
+        }
+    }
+
+    private void notifyImplementationInvokedCallback(ElementNotification notification) {
+        notification.notifyCallback(declaringClass.getUniverse(), this);
+        ConcurrentLightHashSet.removeElement(this, implementationInvokedNotificationsUpdater, notification);
+    }
+
+    protected void notifyImplementationInvokedCallbacks() {
+        ConcurrentLightHashSet.forEach(this, implementationInvokedNotificationsUpdater, (ElementNotification c) -> c.notifyCallback(declaringClass.getUniverse(), this));
+        ConcurrentLightHashSet.removeElementIf(this, implementationInvokedNotificationsUpdater, ElementNotification::isNotified);
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -460,6 +506,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return true;
         }
         return isClassInitializer() && getDeclaringClass().isInitialized();
+    }
+
+    public void onImplementationInvoked() {
+        onReachable();
+        notifyImplementationInvokedCallbacks();
     }
 
     @Override
@@ -863,10 +914,23 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
+        var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
                         analyzedGraph.trackNodeSourcePosition()).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
+        /*
+         * Since we are merely decoding the graph, the resulting graph should have the same
+         * assumptions as the analyzed graph.
+         */
+        switch (allowAssumptions) {
+            case YES -> {
+                assert analyzedGraph.getAssumptions().equals(result.getAssumptions());
+            }
+            case NO -> {
+                assert analyzedGraph.getAssumptions() == null && result.getAssumptions() == null;
+            }
+        }
         return result;
     }
 
@@ -922,6 +986,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             createAction.accept(newMethod);
             return newMethod;
         });
+    }
+
+    /**
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    public void setReturnsAllInstantiatedTypes() {
+        returnsAllInstantiatedTypes = true;
+    }
+
+    public boolean getReturnsAllInstantiatedTypes() {
+        return returnsAllInstantiatedTypes;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);

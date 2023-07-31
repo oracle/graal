@@ -400,17 +400,28 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        CEntryPointListenerSupport.singleton().beforeThreadAttach();
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
             if (!VMThreads.isInitialized()) {
-                return CEntryPointErrors.UNINITIALIZED_ISOLATE;
+                error = CEntryPointErrors.UNINITIALIZED_ISOLATE;
+                CEntryPointListenerSupport.singleton().errorThreadAttach(error);
+                return error;
             }
-            IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+
+            IsolateThread thread = WordFactory.nullPointer();
+            if (startedByIsolate) {
+                assert VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler).isNull();
+            } else {
+                thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+            }
+
             if (thread.isNull()) { // not attached
                 error = attachUnattachedThread(isolate, startedByIsolate, inCrashHandler, vmThreadSize);
                 if (error != CEntryPointErrors.NO_ERROR) {
+                    CEntryPointListenerSupport.singleton().errorThreadAttach(error);
                     return error;
                 }
             } else {
@@ -422,6 +433,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } else {
             StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
         }
+        CEntryPointListenerSupport.singleton().afterThreadAttach();
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -465,6 +477,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
+
         /*
          * Note that we do not reset the fixed registers used for the thread and isolate to null:
          * Since these values are not copied to different registers when they are used, we need to
@@ -476,9 +489,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Thread state going away.")
     private static int detachThreadMT(IsolateThread currentThread) {
+        CEntryPointListenerSupport.singleton().beforeThreadDetach();
         try {
             VMThreads.singleton().detachThread(currentThread);
+            CEntryPointListenerSupport.singleton().afterThreadDetach();
         } catch (Throwable t) {
+            CEntryPointListenerSupport.singleton().errorThreadDetach(CEntryPointErrors.UNCAUGHT_EXCEPTION);
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
         return CEntryPointErrors.NO_ERROR;

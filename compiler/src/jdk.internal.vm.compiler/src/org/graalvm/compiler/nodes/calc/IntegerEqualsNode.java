@@ -67,29 +67,6 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         if (result != null) {
             return result;
         }
-        if (x instanceof ConditionalNode) {
-            ConditionalNode conditionalNode = (ConditionalNode) x;
-            // (x op y ? x : y) == x <==> only for op = ==
-            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
-                if (conditionalNode.trueValue() == y) {
-                    return conditionalNode.condition();
-                }
-                if (conditionalNode.falseValue() == y) {
-                    return LogicNegationNode.create(conditionalNode.condition());
-                }
-            }
-        } else if (y instanceof ConditionalNode) {
-            ConditionalNode conditionalNode = (ConditionalNode) y;
-            // x == (x op y ? x : y) <==> only for op = ==
-            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
-                if (conditionalNode.trueValue() == x) {
-                    return conditionalNode.condition();
-                }
-                if (conditionalNode.falseValue() == x) {
-                    return LogicNegationNode.create(conditionalNode.condition());
-                }
-            }
-        }
         return new IntegerEqualsNode(x, y).maybeCommuteInputs();
     }
 
@@ -150,25 +127,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 return LogicConstantNode.contradiction();
             }
 
-            if (forX instanceof AddNode && forY instanceof AddNode) {
-                AddNode addX = (AddNode) forX;
-                AddNode addY = (AddNode) forY;
+            if ((forX instanceof AddNode && forY instanceof AddNode) || (forX instanceof XorNode && forY instanceof XorNode)) {
+                BinaryNode addX = (BinaryNode) forX;
+                BinaryNode addY = (BinaryNode) forY;
                 ValueNode v1 = null;
                 ValueNode v2 = null;
                 if (addX.getX() == addY.getX()) {
-                    // (x + y) == (x + z) => y == z
+                    // (x op y) == (x op z) => y == z for op == + || op == ^
                     v1 = addX.getY();
                     v2 = addY.getY();
                 } else if (addX.getX() == addY.getY()) {
-                    // (x + y) == (z + x) => y == z
+                    // (x op y) == (z op x) => y == z for op == + || op == ^
                     v1 = addX.getY();
                     v2 = addY.getX();
                 } else if (addX.getY() == addY.getX()) {
-                    // (y + x) == (x + z) => y == z
+                    // (y op x) == (x op z) => y == z for op == + || op == ^
                     v1 = addX.getX();
                     v2 = addY.getY();
                 } else if (addX.getY() == addY.getY()) {
-                    // (y + x) == (z + x) => y == z
+                    // (y op x) == (z op x) => y == z for op == + || op == ^
                     v1 = addX.getX();
                     v2 = addY.getX();
                 }
@@ -198,25 +175,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 }
             }
 
-            if (forX instanceof AddNode) {
-                AddNode addNode = (AddNode) forX;
-                if (addNode.getX() == forY) {
-                    // (x + y) == x => y == 0
-                    return create(addNode.getY(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
-                } else if (addNode.getY() == forY) {
-                    // (x + y) == y => x == 0
-                    return create(addNode.getX(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
+            if (forX instanceof AddNode || forX instanceof XorNode) {
+                BinaryNode binaryNode = (BinaryNode) forX;
+                if (binaryNode.getX() == forY) {
+                    // (x op y) == x => y == 0 for op == + || op == ^
+                    return create(binaryNode.getY(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
+                } else if (binaryNode.getY() == forY) {
+                    // (x op y) == y => x == 0 for op == + || op == ^
+                    return create(binaryNode.getX(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
                 }
             }
 
-            if (forY instanceof AddNode) {
-                AddNode addNode = (AddNode) forY;
-                if (addNode.getX() == forX) {
-                    // x == (x + y) => y == 0
-                    return create(addNode.getY(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
-                } else if (addNode.getY() == forX) {
-                    // y == (x + y) => x == 0
-                    return create(addNode.getX(), ConstantNode.forIntegerStamp(view.stamp(addNode), 0), view);
+            if (forY instanceof AddNode || forY instanceof XorNode) {
+                BinaryNode binaryNode = (BinaryNode) forY;
+                if (binaryNode.getX() == forX) {
+                    // x == (x op y) => y == 0 for op == + || op == ^
+                    return create(binaryNode.getY(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
+                } else if (binaryNode.getY() == forX) {
+                    // y == (x op y) => x == 0 for op == + || op == ^
+                    return create(binaryNode.getX(), ConstantNode.forIntegerStamp(view.stamp(binaryNode), 0), view);
                 }
             }
 
@@ -267,9 +244,9 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     if (nonConstant instanceof AndNode) {
                         AndNode andNode = (AndNode) nonConstant;
                         return new IntegerTestNode(andNode.getX(), andNode.getY());
-                    } else if (nonConstant instanceof SubNode) {
-                        SubNode subNode = (SubNode) nonConstant;
-                        return IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, subNode.getX(), subNode.getY(), view);
+                    } else if (nonConstant instanceof SubNode || nonConstant instanceof XorNode) {
+                        BinaryNode binaryNode = (BinaryNode) nonConstant;
+                        return IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, binaryNode.getX(), binaryNode.getY(), view);
                     } else if (nonConstant instanceof ShiftNode && nonConstant.stamp(view) instanceof IntegerStamp) {
                         if (nonConstant instanceof LeftShiftNode) {
                             LeftShiftNode shift = (LeftShiftNode) nonConstant;

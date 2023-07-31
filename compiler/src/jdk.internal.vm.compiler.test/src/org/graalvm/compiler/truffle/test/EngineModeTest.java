@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,6 +32,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 public class EngineModeTest extends TestWithSynchronousCompiling {
 
@@ -43,12 +43,12 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     public static final String MODE = "engine.Mode";
 
     private static void compileAndAssertLatency(OptimizedCallTarget target) {
-        for (int i = 0; i < target.getOptionValue(PolyglotCompilerOptions.FirstTierCompilationThreshold); i++) {
+        for (int i = 0; i < target.getOptionValue(OptimizedRuntimeOptions.FirstTierCompilationThreshold); i++) {
             target.call();
         }
         assertCompiled(target);
         Assert.assertFalse(target.isValidLastTier());
-        for (int i = 0; i < target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold); i++) {
+        for (int i = 0; i < target.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold); i++) {
             target.call();
         }
         assertCompiled(target);
@@ -77,7 +77,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     @Test
     public void testLatencyNoSplitting() {
         setupContext(MODE, LATENCY);
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         AbstractSplittingStrategyTest.SplitCountingListener listener = new AbstractSplittingStrategyTest.SplitCountingListener();
         try {
             runtime.addListener(listener);
@@ -121,7 +121,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     @Test
     public void testLatencyNoInlining() {
         setupContext(MODE, LATENCY, "engine.CompileOnly", ROOT);
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -155,6 +155,11 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             @Override
             public String getName() {
                 return ROOT;
+            }
+
+            @Override
+            public String toString() {
+                return getName();
             }
         }.getCallTarget();
         compileAndAssertLatency(target);

@@ -47,9 +47,9 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 5771,
-          lineEnd   = 5819,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 5774,
+          lineEnd   = 5822,
+          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
           sha1      = "76d47473bf8d1408bf6e7bf6b8a3d93c19dab9c6")
 // @formatter:on
 @Opcode("AARCH64_ROUND_FLOAT_TO_INTEGER")

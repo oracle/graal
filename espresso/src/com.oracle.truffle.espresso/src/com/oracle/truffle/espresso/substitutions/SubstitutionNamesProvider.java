@@ -23,7 +23,10 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.Arrays;
+
 public abstract class SubstitutionNamesProvider {
+    @SuppressWarnings("this-escape")
     protected SubstitutionNamesProvider() {
         assert substitutionClassNames().length == getMethodNames("").length;
     }
@@ -32,9 +35,7 @@ public abstract class SubstitutionNamesProvider {
 
     public String[] getMethodNames(String name) {
         String[] names = new String[substitutionClassNames().length];
-        for (int i = 0; i < names.length; i++) {
-            names[i] = name;
-        }
+        Arrays.fill(names, name);
         return names;
     }
 
@@ -47,11 +48,11 @@ public abstract class SubstitutionNamesProvider {
         return names;
     }
 
-    private static String[] APPENDS = new String[]{
+    private static final String[] APPENDS = {
                     "",
                     "0"
     };
 
-    public abstract class NoProvider extends SubstitutionNamesProvider {
+    public abstract static class NoProvider extends SubstitutionNamesProvider {
     }
 }

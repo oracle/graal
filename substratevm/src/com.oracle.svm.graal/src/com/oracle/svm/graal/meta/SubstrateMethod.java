@@ -31,7 +31,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -40,6 +39,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
@@ -85,22 +86,22 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final int hashCode;
     private SubstrateType declaringClass;
     private int encodedGraphStartOffset;
-    @UnknownPrimitiveField private int vTableIndex;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
 
     /**
      * A pointer to the compiled code of the corresponding method in the native image. Used as
      * destination address if this method is called in a direct call.
      */
-    @UnknownPrimitiveField private int codeOffsetInImage;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int codeOffsetInImage;
 
     /**
      * A pointer to the deoptimization target code in the native image. Used as destination address
      * for deoptimization. This is only != 0, if there _is_ a deoptimization target method in the
      * image for this method.
      */
-    @UnknownPrimitiveField private int deoptOffsetInImage;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int deoptOffsetInImage;
 
-    @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true)//
+    @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true, availability = ReadyForCompilation.class)//
     protected Object implementations;
 
     private SubstrateSignature signature;
@@ -122,7 +123,6 @@ public class SubstrateMethod implements SharedRuntimeMethod {
          * in a synthetic hash-code field (see NativeImageHeap.ObjectInfo.identityHashCode).
          */
         hashCode = original.hashCode();
-        implementations = new SubstrateMethod[0];
         encodedGraphStartOffset = -1;
 
         SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isEntryPoint());
@@ -171,21 +171,14 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         this.declaringClass = declaringClass;
     }
 
-    public boolean setImplementations(SubstrateMethod[] rawImplementations) {
-        Object newImplementations;
+    public void setImplementations(SubstrateMethod[] rawImplementations) {
         if (rawImplementations.length == 0) {
-            newImplementations = null;
+            implementations = null;
         } else if (rawImplementations.length == 1) {
-            newImplementations = rawImplementations[0];
-        } else if (!(this.implementations instanceof SubstrateMethod[]) || !Arrays.equals((SubstrateMethod[]) this.implementations, rawImplementations)) {
-            newImplementations = rawImplementations;
+            implementations = rawImplementations[0];
         } else {
-            newImplementations = this.implementations;
+            implementations = rawImplementations;
         }
-
-        boolean result = this.implementations != newImplementations;
-        this.implementations = newImplementations;
-        return result;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

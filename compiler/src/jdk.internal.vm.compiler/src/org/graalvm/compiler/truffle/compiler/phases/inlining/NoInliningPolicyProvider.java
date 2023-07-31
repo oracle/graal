@@ -25,8 +25,8 @@
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.options.OptionValues;
 
 @ServiceProvider(InliningPolicyProvider.class)
 public class NoInliningPolicyProvider extends InliningPolicyProvider {
@@ -39,7 +39,7 @@ public class NoInliningPolicyProvider extends InliningPolicyProvider {
     }
 
     @Override
-    public InliningPolicy get(org.graalvm.compiler.options.OptionValues graalOptions, OptionValues options, CoreProviders providers) {
+    public InliningPolicy get(OptionValues compilerOptions, CoreProviders providers) {
         return new NoInliningPolicy();
     }
 }

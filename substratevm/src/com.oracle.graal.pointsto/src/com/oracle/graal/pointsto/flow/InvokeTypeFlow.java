@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.flow;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -63,7 +64,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected final MultiMethodKey callerMultiMethodKey;
 
     /**
-     * Flag to monitor whether all callees are original or not. This is used for to optimize
+     * Flag to monitor whether all callees are original or not. This is used to optimize
      * {@link #getOriginalCallees}.
      */
     protected volatile boolean allOriginalCallees = true;
@@ -148,6 +149,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public void setActualReturn(PointsToAnalysis bb, boolean isStatic, ActualReturnTypeFlow actualReturn) {
+        assert this.actualReturn == null;
         this.actualReturn = actualReturn;
         bb.analysisPolicy().linkActualReturn(bb, isStatic, this);
     }
@@ -159,12 +161,36 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     /**
      * When the type flow constraints are relaxed the receiver object state can contain types that
      * are not part of the receiver's type hierarchy. We filter those out.
+     *
+     * With saturation enabled, types not part of the hierarchy may always reach the receiver
+     * because:
+     * <ul>
+     * <li>{@link FilterTypeFlow}s saturate to the type of the filter.</li>
+     * <li>Instanceof checks can create {@link FilterTypeFlow}s which are not assignable to the
+     * receiver type.</li>
+     * <li>A receiver type can be attached to different inputs (and FilterTypeFlows) based on the
+     * optimizations performed on the graph.</li>
+     * </ul>
+     *
+     * Therefore, under no circumstances can this filtering be removed.
      */
-    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState invokeState) {
+    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState receiverState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return TypeState.forIntersection(bb, invokeState, receiverType.getAssignableTypes(true));
+            return TypeState.forIntersection(bb, receiverState, receiverType.getAssignableTypes(true));
+        } else {
+            // when not filtering, all input types should be assignable
+            assert verifyAllAssignable(bb, receiverState);
         }
-        return invokeState;
+        return receiverState;
+    }
+
+    private boolean verifyAllAssignable(BigBang bb, TypeState receiverState) {
+        for (AnalysisType type : receiverState.types(bb)) {
+            if (!receiverType.isAssignableFrom(type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, AnalysisObject receiverObject) {
@@ -209,13 +235,20 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                  * a non-state-transfer link. The link only exists for a proper iteration of type
                  * flow graphs, but the state update of 'this' parameters is achieved through direct
                  * state update in VirtualInvokeTypeFlow.update and SpecialInvokeTypeFlow.update by
-                 * calling FormalReceiverTypeFlow.addReceiverState. This happens because the formal
-                 * receiver , i.e., 'this' parameter, state must ONLY reflect those objects of the
-                 * actual receiver that generated the context for the method clone which it belongs
-                 * to. A direct link would instead transfer all the objects of compatible type from
-                 * the actual receiver to the formal receiver.
+                 * calling FormalReceiverTypeFlow.addReceiverState.
+                 * 
+                 * In other words, while the receiver param (actualParameters[0] when !isStatic) is
+                 * linked to the FormalReceiverTypeFlow of the callee, type information is not
+                 * propagated along this edge. This is accomplished by overriding the addState
+                 * method within FormalReceiverTypeFlow.
+                 *
+                 * This action is taken because the formal receiver (i.e., 'this' parameter) state
+                 * must ONLY reflect those objects of the actual receiver that generated the context
+                 * for the method clone which it belongs to. A direct link would instead transfer
+                 * all the objects of compatible type from the actual receiver to the formal
+                 * receiver.
                  */
-                if (actualParam != null && formalParam != null /* && (i != 0 || isStatic) */) {
+                if (actualParam != null && formalParam != null) {
                     // create the use link:
                     // (formalParam, callerContext) -> (actualParam, calleeContext)
                     // Note: the callerContext is an implicit property of the current InvokeTypeFlow
@@ -237,38 +270,26 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
-            if (actualReturn != null) {
-                if (bb.optimizeReturnedParameter()) {
-                    int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
-                    if (paramNodeIndex != -1) {
-                        if (isStatic || paramNodeIndex != 0) {
-                            TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
-                            actualParam.addUse(bb, actualReturn);
-                        } else {
-                            /*
-                             * The callee returns `this`. The formal-receiver state is updated in
-                             * InvokeTypeFlow#updateReceiver() for each linked callee and every time
-                             * the formal-receiver is updated then the same update state is
-                             * propagated to the actual-return. One may think that we could simply
-                             * add a direct use link from the formal-receiver in the callee to the
-                             * actual-return in the caller to get the state propagation
-                             * automatically. But that would be wrong because then the actual-return
-                             * would get the state from *all* the other places that callee may be
-                             * called from, and that would defeat the purpose of this optimization:
-                             * we want just the receiver state from the caller of current invoke to
-                             * reach the actual-return.
-                             */
-                        }
+        if (actualReturn != null && bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            if (bb.optimizeReturnedParameter()) {
+                int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+                if (paramNodeIndex != -1) {
+                    if (isStatic || paramNodeIndex != 0) {
+                        TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
+                        actualParam.addUse(bb, actualReturn);
                     } else {
                         /*
-                         * The callee may have a return type, hence the actualReturn is non-null,
-                         * but it might throw an exception instead of returning, hence the formal
-                         * return is null.
+                         * The callee returns `this`. The formal-receiver state is updated in
+                         * InvokeTypeFlow#updateReceiver() for each linked callee and every time the
+                         * formal-receiver is updated then the same update state is propagated to
+                         * the actual-return. One may think that we could simply add a direct use
+                         * link from the formal-receiver in the callee to the actual-return in the
+                         * caller to get the state propagation automatically. But that would be
+                         * wrong because then the actual-return would get the state from *all* the
+                         * other places that callee may be called from, and that would defeat the
+                         * purpose of this optimization: we want just the receiver state from the
+                         * caller of current invoke to reach the actual-return.
                          */
-                        if (calleeFlows.getReturnFlow() != null) {
-                            calleeFlows.getReturnFlow().addUse(bb, actualReturn);
-                        }
                     }
                 } else {
                     /*
@@ -279,6 +300,14 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                     if (calleeFlows.getReturnFlow() != null) {
                         calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                     }
+                }
+            } else {
+                /*
+                 * The callee may have a return type, hence the actualReturn is non-null, but it
+                 * might throw an exception instead of returning, hence the formal return is null.
+                 */
+                if (calleeFlows.getReturnFlow() != null) {
+                    calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
         }

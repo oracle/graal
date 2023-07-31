@@ -24,18 +24,21 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.BooleanSupplier;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 
 /** For fields with this annotation no static analysis is done. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface UnknownPrimitiveField {
-
+    Class<? extends BooleanSupplier> availability() default AfterAnalysis.class;
 }

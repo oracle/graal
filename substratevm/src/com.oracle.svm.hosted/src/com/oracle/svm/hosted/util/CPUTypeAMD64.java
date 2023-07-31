@@ -66,6 +66,8 @@ import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -161,7 +163,7 @@ public enum CPUTypeAMD64 implements CPUType {
             return X86_64_V3.getName();
         } else {
             if (printFallbackWarning) {
-                System.out.printf("Warning: The host machine does not support all features of '%s'. Falling back to '%s' for best compatibility.%n",
+                LogUtils.warning("The host machine does not support all features of '%s'. Falling back to '%s' for best compatibility.",
                                 X86_64_V3.getName(), SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, COMPATIBILITY.getName()));
             }
             return COMPATIBILITY.getName();
@@ -183,7 +185,7 @@ public enum CPUTypeAMD64 implements CPUType {
             throw UserError.abort("Unsupported architecture '%s'. Please adjust '%s'. On AMD64, only %s are available.",
                             marchValue,
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, marchValue),
-                            List.of(values()).stream().map(v -> v.name).collect(Collectors.joining(", ")));
+                            StringUtil.joinSingleQuoted(values()));
         }
         return value.getFeatures();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -608,7 +608,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected unknown memory", e.getMessage().contains("unknown memory: 5 should = 0"));
+                Assert.assertTrue("Expected unknown memory", e.getMessage().contains("unknown memory: 5 should be < 1"));
             }
         }));
     }

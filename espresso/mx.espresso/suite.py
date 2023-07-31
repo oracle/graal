@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.20.0",
+    "mxversion": "6.27.1",
     "name": "espresso",
     "version" : "23.1.0",
     "release" : False,
@@ -125,6 +125,7 @@ suite = {
             "requires": [
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
+                "java.management",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",

@@ -49,7 +49,6 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -133,12 +132,12 @@ import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.library.DefaultExportProvider;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -152,6 +151,7 @@ import com.oracle.truffle.api.staticobject.StaticShape;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.polyglot.Engine;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -296,12 +296,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator",
                         "Truffle classes are always initialized at build time");
 
-        for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
-            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
-        }
-        for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
-            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
-        }
         initializeTruffleReflectively(imageClassLoader);
         initializeHomeFinder();
         needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
@@ -449,6 +443,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
             SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
+            graalGraphObjectReplacer.setAnalysisAccess(config);
         }
 
         TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup());
@@ -492,6 +487,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         markAsUnsafeAccessed = null;
+        invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "resetNativeImageState", List.of());
     }
 
     public static void preInitializeEngine() {
@@ -1015,40 +1011,50 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (languageHomesToCopy != null) {
+        if (Options.CopyLanguageResources.getValue()) {
             Path buildDir = access.getImagePath().getParent();
             assert buildDir != null;
-            Path languagesDir = buildDir.resolve(Path.of("resources", "languages"));
-            if (Files.exists(languagesDir)) {
+            Path resourcesDir = buildDir.resolve("resources");
+            if (languageHomesToCopy != null) {
+                Path languagesDir = resourcesDir.resolve("languages");
+                if (Files.exists(languagesDir)) {
 
-                try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
-                    filesToDelete.sorted(Comparator.reverseOrder())
-                                    .forEach(f -> {
-                                        try {
-                                            Files.deleteIfExists(f);
-                                        } catch (IOException ioe) {
-                                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                                        }
-                                    });
-                } catch (IOException ioe) {
-                    throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                    try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
+                        filesToDelete.sorted(Comparator.reverseOrder())
+                                        .forEach(f -> {
+                                            try {
+                                                Files.deleteIfExists(f);
+                                            } catch (IOException ioe) {
+                                                throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                                            }
+                                        });
+                    } catch (IOException ioe) {
+                        throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                    }
                 }
+                HomeFinder hf = HomeFinder.getInstance();
+                Map<String, Path> languageHomes = hf.getLanguageHomes();
+                languageHomesToCopy.forEach((s, path) -> {
+                    Path copyTo = buildDir.resolve(path);
+                    Path copyFrom = languageHomes.get(s);
+                    Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
+                    try {
+                        Files.lines(fileListFile).forEach(fileName -> {
+                            copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
+                        });
+                    } catch (IOException ioe) {
+                        throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
+                    }
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
+                });
             }
-            HomeFinder hf = HomeFinder.getInstance();
-            Map<String, Path> languageHomes = hf.getLanguageHomes();
-            languageHomesToCopy.forEach((s, path) -> {
-                Path copyTo = buildDir.resolve(path);
-                Path copyFrom = languageHomes.get(s);
-                Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
-                try {
-                    Files.lines(fileListFile).forEach(fileName -> {
-                        copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
-                    });
-                } catch (IOException ioe) {
-                    throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
+            try {
+                if (Engine.copyResources(resourcesDir)) {
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
                 }
-                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
-            });
+            } catch (IOException ioe) {
+                throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
+            }
         }
     }
 

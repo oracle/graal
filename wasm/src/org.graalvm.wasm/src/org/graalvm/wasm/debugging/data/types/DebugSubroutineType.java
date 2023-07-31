@@ -58,6 +58,7 @@ public class DebugSubroutineType extends DebugType {
     protected final DebugType[] parameterTypes;
 
     public DebugSubroutineType(String name, DebugType returnType, DebugType[] parameterTypes) {
+        assert parameterTypes != null : "the parameter types of the parameters of a debug subroutine type (function) must not be null";
         this.name = name;
         this.returnType = returnType;
         this.parameterTypes = parameterTypes;

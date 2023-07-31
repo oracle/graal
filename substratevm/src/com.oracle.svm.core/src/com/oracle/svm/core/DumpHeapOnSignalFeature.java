@@ -38,15 +38,14 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 
-import sun.misc.Signal;
-import sun.misc.SignalHandler;
+import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
 public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.EnableSignalAPI.getValue();
+        return VMInspectionOptions.hasHeapDumpSupport();
     }
 
     @Override
@@ -58,13 +57,13 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 final class DumpHeapStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             DumpHeapReport.install();
         }
     }
 }
 
-class DumpHeapReport implements SignalHandler {
+class DumpHeapReport implements Signal.Handler {
     private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
 
     static void install() {

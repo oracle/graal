@@ -85,7 +85,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
-import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -173,7 +173,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
     private final IDGenerater idGenerater = new IDGenerater();
-    private final LLDBSupport lldbSupport = new LLDBSupport(this);
+    private final LLDBSupport lldbSupport = new LLDBSupport();
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
@@ -379,8 +379,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    public static LLDBSupport getLLDBSupport() {
-        return get(null).lldbSupport;
+    public static CallTarget getLLDBLoadFunction(Type type) {
+        LLVMLanguage language = get(null);
+        return language.lldbSupport.getLoadFunction(language, type);
     }
 
     public <C extends LLVMCapability> C getCapability(Class<C> type) {

@@ -260,7 +260,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         for (HostedField field : hUniverse.getFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
-                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addConstant(readConstantField(field, null), false, field);
             }
         }
@@ -525,7 +525,7 @@ public final class NativeImageHeap implements ImageHeap {
                          */
                         relocatable = relocatable || fieldRelocatable;
                     }
-                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
+                    written = written || ((field.isWritten() || !field.isValueAvailable()) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);

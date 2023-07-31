@@ -74,6 +74,9 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -100,7 +103,6 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -124,7 +126,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.FileSystems.ResetablePath;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
@@ -148,6 +150,9 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
+    static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final DynamicObjectSupport DYNAMIC_OBJECT = ACCESSOR.dynamicObjectSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -157,7 +162,9 @@ final class EngineAccessor extends Accessor {
         if (loaders == null) {
             return null;
         }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(loaders.size());
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(2 + loaders.size());
+        suppliers.add(new ModulePathLoaderSupplier(ClassLoader.getSystemClassLoader()));
+        suppliers.add(new WeakModulePathLoaderSupplier(Thread.currentThread().getContextClassLoader()));
         for (ClassLoader loader : loaders) {
             suppliers.add(new StrongClassLoaderSupplier(loader));
         }
@@ -165,8 +172,7 @@ final class EngineAccessor extends Accessor {
     }
 
     private static List<AbstractClassLoaderSupplier> defaultLoaders() {
-        return Arrays.<AbstractClassLoaderSupplier> asList(
-                        new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+        return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
                         new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
                         new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
     }
@@ -271,13 +277,13 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleFile getTruffleFile(TruffleContext truffleContext, String path) {
             PolyglotContextImpl context = getPolyglotContext(truffleContext);
-            return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), path);
+            return EngineAccessor.LANGUAGE.getTruffleFile(path, context.getHostContext().getPublicFileSystemContext());
         }
 
         @Override
         public TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri) {
             PolyglotContextImpl context = getPolyglotContext(truffleContext);
-            return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), uri);
+            return EngineAccessor.LANGUAGE.getTruffleFile(uri, context.getHostContext().getPublicFileSystemContext());
         }
 
         private static PolyglotContextImpl getPolyglotContext(TruffleContext truffleContext) {
@@ -289,21 +295,36 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
-            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
-            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
-                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
-                    found.putIfAbsent(service.getClass(), service);
-                }
+            // 1) Add known Truffle DynamicObjectLibraryProvider service.
+            DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            Class<? extends T> legacyInterface = null;
+            if (type == EagerExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.EagerExportProvider.class.asSubclass(type);
+            } else if (type == DefaultExportProvider.class) {
+                legacyInterface = com.oracle.truffle.api.library.DefaultExportProvider.class.asSubclass(type);
             }
-            // Search guest languages and tools.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
-                    ModuleUtils.exportTo(loader, null);
+                    // 2) Lookup implementations of a module aware interface
                     for (T service : ServiceLoader.load(type, loader)) {
-                        found.putIfAbsent(service.getClass(), service);
+                        if (loaderSupplier.accepts(service.getClass())) {
+                            ModuleUtils.exportTransitivelyTo(service.getClass().getModule());
+                            found.putIfAbsent(service.getClass(), service);
+                        }
+                    }
+                    // 3) Lookup implementations of a legacy interface
+                    // GR-46293 Remove the deprecated service interface lookup.
+                    if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
+                        ModuleUtils.exportToUnnamedModuleOf(loader);
+                        for (T service : ServiceLoader.load(legacyInterface, loader)) {
+                            if (loaderSupplier.accepts(service.getClass())) {
+                                found.putIfAbsent(service.getClass(), service);
+                            }
+                        }
                     }
                 }
             }
@@ -544,8 +565,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemObject) {
-            if (engineFileSystemObject instanceof PolyglotLanguageContext) {
-                return ((PolyglotLanguageContext) engineFileSystemObject).context.engine.getFileTypeDetectorsSupplier().get();
+            if (engineFileSystemObject instanceof VMObject vmObject) {
+                return vmObject.getEngine().getFileTypeDetectorsSupplier().get();
             } else if (engineFileSystemObject instanceof EmbedderFileSystemContext) {
                 return ((EmbedderFileSystemContext) engineFileSystemObject).fileTypeDetectors.get();
             } else {
@@ -564,8 +585,8 @@ final class EngineAccessor extends Accessor {
         }
 
         private static LanguageCache getLanguageCache(Object engineObject, String language) throws AssertionError {
-            if (engineObject instanceof PolyglotLanguageContext) {
-                PolyglotLanguage polyglotLanguage = ((PolyglotLanguageContext) engineObject).context.engine.idToLanguage.get(language);
+            if (engineObject instanceof VMObject vmObject) {
+                PolyglotLanguage polyglotLanguage = vmObject.getEngine().idToLanguage.get(language);
                 if (polyglotLanguage != null) {
                     return polyglotLanguage.cache;
                 } else {
@@ -681,17 +702,16 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean inContextPreInitialization(Object polyglotObject) {
-            PolyglotContextImpl polyglotContext;
-            if (polyglotObject instanceof PolyglotContextImpl) {
-                polyglotContext = (PolyglotContextImpl) polyglotObject;
-            } else if (polyglotObject instanceof PolyglotLanguageContext) {
-                polyglotContext = ((PolyglotLanguageContext) polyglotObject).context;
+            if (polyglotObject instanceof PolyglotLanguageContext languageContext) {
+                PolyglotContextImpl polyglotContext = languageContext.context;
+                return polyglotContext.getEngine().inEnginePreInitialization && polyglotContext.parent == null;
+            } else if (polyglotObject instanceof PolyglotEngineImpl polyglotEngine) {
+                return polyglotEngine.inEnginePreInitialization;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
                 throw shouldNotReachHere();
             }
-            return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
         }
 
         @Override
@@ -1231,10 +1251,10 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isInternal(Object engineObject, FileSystem fs) {
             AbstractPolyglotImpl polyglot;
-            if (engineObject instanceof PolyglotLanguageContext) {
-                polyglot = ((PolyglotLanguageContext) engineObject).getImpl();
-            } else if (engineObject instanceof EmbedderFileSystemContext) {
-                polyglot = ((EmbedderFileSystemContext) engineObject).getImpl();
+            if (engineObject instanceof VMObject vmObject) {
+                polyglot = vmObject.getImpl();
+            } else if (engineObject instanceof EmbedderFileSystemContext embedderContext) {
+                polyglot = embedderContext.getImpl();
             } else {
                 throw new AssertionError("Unsupported engine object " + engineObject);
             }
@@ -1243,9 +1263,10 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isSocketIOAllowed(Object engineFileSystemContext) {
-            if (engineFileSystemContext instanceof PolyglotLanguageContext) {
-                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
+            if (engineFileSystemContext instanceof PolyglotLanguageContext languageContext) {
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
+            } else if (engineFileSystemContext instanceof PolyglotEngineImpl) {
+                return false;
             } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
                 return true;
             } else {
@@ -1516,6 +1537,23 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile) {
+            FileSystem fs = LANGUAGE.getFileSystem(truffleFile);
+            if (FileSystems.isInternalResourceFileSystem(fs)) {
+                if (truffleFile.isAbsolute()) {
+                    Path root = fs.parsePath(FileSystems.getInternalResourceFileSystemRoot(fs).get().toString());
+                    Path path = LANGUAGE.getPath(truffleFile);
+                    if (path.startsWith(root)) {
+                        return LANGUAGE.getTruffleFile(root.relativize(path), LANGUAGE.getFileSystemContext(truffleFile));
+                    }
+                } else {
+                    return truffleFile;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public void onSourceCreated(Source source) {
             PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
             if (currentContext != null && currentContext.sourcesToInvalidate != null) {
@@ -1534,16 +1572,14 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public String getReinitializedPath(TruffleFile truffleFile) {
-            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((PreInitializeContextFileSystem) fs).pathToString(path);
+            return ((ResetablePath) path).getReinitializedPath();
         }
 
         @Override
         public URI getReinitializedURI(TruffleFile truffleFile) {
-            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
+            return ((ResetablePath) path).getReinitializedURI();
         }
 
         @Override
@@ -2022,14 +2058,54 @@ final class EngineAccessor extends Accessor {
             PolyglotInstrument polyglotInstrument = ((PolyglotContextImpl) polyglotContextImpl).engine.idToInstrument.get(instrumentId);
             polyglotInstrument.ensureCreated();
         }
+
+        @Override
+        public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException {
+            InternalResource.Id id = resourceType.getAnnotation(InternalResource.Id.class);
+            assert id != null : resourceType + " must be annotated by @InternalResource.Id";
+            return getInternalResource(owner, id.value());
+        }
+
+        @Override
+        public TruffleFile getInternalResource(Object owner, String resourceId) throws IOException {
+            Map<String, TruffleFile> cachedRoots;
+            InternalResourceCache resourceCache;
+            if (owner instanceof PolyglotLanguageContext languageContext) {
+                PolyglotLanguage polyglotLanguage = languageContext.language;
+                cachedRoots = polyglotLanguage.internalResources;
+                resourceCache = languageContext.language.cache.getResourceCache(resourceId);
+            } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
+                cachedRoots = polyglotInstrument.internalResources;
+                resourceCache = polyglotInstrument.cache.getResourceCache(resourceId);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
+            }
+
+            TruffleFile root = cachedRoots.get(resourceId);
+            if (root == null) {
+                PolyglotEngineImpl polyglotEngine = ((VMObject) owner).getEngine();
+                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
+                root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
+                var prevValue = cachedRoots.putIfAbsent(resourceId, root);
+                root = prevValue != null ? prevValue : root;
+            }
+            return root;
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
-
         private final int hashCode;
 
         AbstractClassLoaderSupplier(ClassLoader loader) {
             this.hashCode = loader == null ? 0 : loader.hashCode();
+        }
+
+        boolean supportsLegacyProviders() {
+            return true;
+        }
+
+        boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
+            return true;
         }
 
         @Override
@@ -2050,7 +2126,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static final class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    static class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final ClassLoader classLoader;
 
@@ -2065,7 +2141,24 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    private static final class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    private static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
+
+        ModulePathLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+        }
+
+        @Override
+        boolean supportsLegacyProviders() {
+            return false;
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
+        }
+    }
+
+    private static class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final Reference<ClassLoader> classLoaderRef;
 
@@ -2077,6 +2170,23 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoaderRef.get();
+        }
+    }
+
+    private static final class WeakModulePathLoaderSupplier extends WeakClassLoaderSupplier {
+
+        WeakModulePathLoaderSupplier(ClassLoader loader) {
+            super(loader);
+        }
+
+        @Override
+        boolean supportsLegacyProviders() {
+            return false;
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
         }
     }
 

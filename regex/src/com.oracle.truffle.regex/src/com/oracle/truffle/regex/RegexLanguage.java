@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import org.graalvm.polyglot.SandboxPolicy;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -116,7 +119,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
- * 
+ *
  * Debug loggers: {@link com.oracle.truffle.regex.tregex.util.Loggers}.
  *
  * @see RegexOptions
@@ -130,6 +133,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 internal = true, //
                 interactive = false, //
+                sandbox = SandboxPolicy.UNTRUSTED, //
                 website = "https://github.com/oracle/graal/tree/master/regex")
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
@@ -169,8 +173,9 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         }
         String pattern = srcStr.substring(firstSlash + 1, lastSlash);
         String flags = srcStr.substring(lastSlash + 1);
-        // ECMAScript-specific: the 'u' flag changes the encoding
-        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
+        // ECMAScript-specific: the 'u' and 'v' flags change the encoding
+        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW &&
+                        (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0)) {
             optBuilder.encoding(Encodings.UTF_16);
         }
         return new RegexSource(pattern, flags, optBuilder.build(), source);
@@ -179,7 +184,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            RegexValidator validator = flavor.createValidator(source);
+            RegexValidator validator = flavor.createValidator(this, source, new CompilationBuffer(source.getEncoding()));
             validator.validate();
             return TruffleNull.INSTANCE;
         }

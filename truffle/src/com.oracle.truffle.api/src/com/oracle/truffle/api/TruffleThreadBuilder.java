@@ -163,7 +163,11 @@ public final class TruffleThreadBuilder {
     }
 
     /**
-     * Creates a new thread based on the parameters specified by this builder.
+     * Creates a new thread based on the parameters specified by this builder. The thread is
+     * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
+     * {@link Thread#start() started}, and {@link TruffleLanguage#finalizeThread(Object, Thread)
+     * finalized} and {@link TruffleLanguage#disposeThread(Object, Thread) disposed} when it
+     * finishes its execution.
      * <p>
      * It is recommended to set an
      * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler) uncaught

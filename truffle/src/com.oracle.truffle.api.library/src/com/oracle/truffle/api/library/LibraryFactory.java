@@ -46,7 +46,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +64,8 @@ import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 import sun.misc.Unsafe;
@@ -446,11 +447,7 @@ public abstract class LibraryFactory<T extends Library> {
             providerList.add(provider);
         }
         for (List<DefaultExportProvider> providerList : providers.values()) {
-            Collections.sort(providerList, new Comparator<DefaultExportProvider>() {
-                public int compare(DefaultExportProvider o1, DefaultExportProvider o2) {
-                    return Integer.compare(o2.getPriority(), o1.getPriority());
-                }
-            });
+            providerList.sort((o1, o2) -> Integer.compare(o2.getPriority(), o1.getPriority()));
         }
         return providers;
     }
@@ -464,6 +461,7 @@ public abstract class LibraryFactory<T extends Library> {
                 providers = eagerExportProviders;
                 if (providers == null) {
                     providers = loadEagerExportProviders();
+                    eagerExportProviders = providers;
                 }
             }
         }
@@ -504,6 +502,16 @@ public abstract class LibraryFactory<T extends Library> {
         } else {
             return cached;
         }
+    }
+
+    /**
+     * Internal method for generated code only.
+     *
+     * @since 23.1
+     */
+    protected static boolean assertAdopted(Node node) {
+        LibraryExport.assertAdopted(node);
+        return true;
     }
 
     private boolean needsAssertions(LibraryExport<T> export) {

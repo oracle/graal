@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,6 +40,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class MultiTierCompilationTest extends PartialEvaluationTest {
 
@@ -184,7 +184,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testDefault() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("compiler.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
@@ -211,7 +211,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testFirstTierInlining() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInliningPolicy", "Default").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("compiler.FirstTierInliningPolicy", "Default").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
@@ -234,7 +234,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @Test
     public void testWhenCalleeCompiledFirst() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                        "true").option("compiler.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
@@ -270,7 +270,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         int firstThreshold = 100;
         int secondThreshold = 1000;
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold",
+                        "true").option("compiler.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold",
                                         String.valueOf(firstThreshold)).option("engine.LastTierCompilationThreshold", String.valueOf(secondThreshold)).build());
 
         MultiTierLoopBodyNode body = new MultiTierLoopBodyNode(firstThreshold);

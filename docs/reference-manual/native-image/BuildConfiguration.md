@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: build-overview
 link_title: Build Configuration
 permalink: /reference-manual/native-image/overview/BuildConfiguration/
-redirect_from: /$version/reference-manual/native-image/BuildConfiguration/
+redirect_from: /reference-manual/native-image/BuildConfiguration/
 ---
 
 # Native Image Build Configuration
@@ -132,7 +132,7 @@ It maxes out at 32GB by default and can be overwritten with, for example, `-J-XX
 `-XX:GCTimeRatio=19` increases the goal of the total time for garbage collection to 5%, which is more throughput-oriented and reduces peak RSS.
 The build process also exits on the first `OutOfMemoryError` (`-XX:+ExitOnOutOfMemoryError`) to provide faster feedback in environments under a lot of memory pressure.
 
-By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the option `-H:NumberOfThreads=...`.
+By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the `--parallelism=...` option.
 
 For other related options available to the `native-image` tool, see the output from the command `native-image --expert-options-all`.
 

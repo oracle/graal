@@ -72,7 +72,7 @@ import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
-import com.oracle.truffle.espresso.redefinition.RedefintionNotSupportedException;
+import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.threads.State;
@@ -255,6 +255,11 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Thread asHostThread(Object thread) {
         return context.getThreadAccess().getHost((StaticObject) thread);
+    }
+
+    @Override
+    public boolean isVirtualThread(Object thread) {
+        return context.getThreadAccess().isVirtualThread((StaticObject) thread);
     }
 
     @Override
@@ -769,11 +774,11 @@ public final class JDWPContextImpl implements JDWPContext {
             assert !changedKlasses.contains(null);
             // run post redefinition plugins before ending the redefinition transaction
             try {
-                classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
+                classRedefinition.runPostRedefinitionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
             } catch (Throwable t) {
                 controller.severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
             }
-        } catch (RedefintionNotSupportedException ex) {
+        } catch (RedefinitionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
             classRedefinition.end();
@@ -781,7 +786,7 @@ public final class JDWPContextImpl implements JDWPContext {
         return 0;
     }
 
-    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefintionNotSupportedException {
+    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefinitionNotSupportedException {
         // list to hold removed inner classes that must be marked removed
         List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
         // list of classes that need to refresh due to
@@ -804,7 +809,7 @@ public final class JDWPContextImpl implements JDWPContext {
             controller.fine(() -> "Redefining class " + packet.info.getNewName());
             int result = classRedefinition.redefineClass(packet, invalidatedClasses, redefinedClasses);
             if (result != 0) {
-                throw new RedefintionNotSupportedException(result);
+                throw new RedefinitionNotSupportedException(result);
             }
         }
 

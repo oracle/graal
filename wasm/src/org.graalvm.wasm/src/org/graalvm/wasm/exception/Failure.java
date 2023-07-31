@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,6 +104,7 @@ public enum Failure {
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
     TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
+    MEMORY_COUNT_LIMIT_EXCEEDED(Type.INVALID, "memory count exceeds limit"),
     IMPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "import count exceeds limit"),
     EXPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "export count exceeds limit"),
     GLOBAL_COUNT_LIMIT_EXCEEDED(Type.INVALID, "global count exceeds limit"),

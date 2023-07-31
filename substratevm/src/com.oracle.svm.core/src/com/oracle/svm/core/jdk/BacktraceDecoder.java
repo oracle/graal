@@ -37,6 +37,10 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * Decoder for backtraces computed by {@link BacktraceVisitor} and stored in
+ * {@link Target_java_lang_Throwable#backtrace}.
+ */
 public abstract class BacktraceDecoder {
 
     /**
@@ -44,7 +48,7 @@ public abstract class BacktraceDecoder {
      * 
      * @param backtrace internal backtrace stored in {@link Target_java_lang_Throwable#backtrace}
      * @param maxFramesProcessed the maximum number of frames that should be
-     *            {@linkplain #processFrameInfo processed}
+     *            {@linkplain #processSourceReference processed}
      * @param maxFramesDecode the maximum number of frames that should be decoded (0 means all)
      * @return the number of decoded frames
      */
@@ -53,18 +57,39 @@ public abstract class BacktraceDecoder {
         int framesDecoded = 0;
         if (backtrace != null) {
             final long[] trace = (long[]) backtrace;
-            for (long address : trace) {
-                if (address == 0) {
-                    break;
+            int backtraceIndex = 0;
+            while (backtraceIndex < trace.length && trace[backtraceIndex] != 0) {
+                long entry = trace[backtraceIndex];
+                if (BacktraceVisitor.isSourceReference(entry)) {
+                    /* Entry is an encoded source reference. */
+                    VMError.guarantee(backtraceIndex + BacktraceVisitor.entriesPerSourceReference() <= trace.length, "Truncated backtrace array");
+                    visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
+                    /* Always a single frame. */
+                    framesDecoded++;
+                    backtraceIndex += BacktraceVisitor.entriesPerSourceReference();
+                } else {
+                    /* Entry is a raw code pointer. */
+                    CodePointer ip = WordFactory.pointer(entry);
+                    /* Arbitrary number of Java frames for a single native frame (inlining). */
+                    framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
+                    backtraceIndex++;
                 }
-                CodePointer ip = WordFactory.pointer(address);
-                framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
                 if (framesDecoded == maxFramesDecodeLimit) {
                     break;
                 }
             }
         }
         return framesDecoded - maxFramesProcessed;
+    }
+
+    private void visitSourceReference(int maxFramesProcessed, int framesDecoded, long[] trace, int backtraceIndex) {
+        int sourceLineNumber = BacktraceVisitor.readSourceLineNumber(trace, backtraceIndex);
+        Class<?> sourceClass = BacktraceVisitor.readSourceClass(trace, backtraceIndex);
+        String sourceMethodName = BacktraceVisitor.readSourceMethodName(trace, backtraceIndex);
+
+        if (framesDecoded < maxFramesProcessed) {
+            processSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+        }
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
@@ -91,7 +116,7 @@ public abstract class BacktraceDecoder {
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private int visitFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
-        frameInfoCursor.initialize(tetheredCodeInfo, ip);
+        frameInfoCursor.initialize(tetheredCodeInfo, ip, true);
         while (frameInfoCursor.advance()) {
             FrameInfoQueryResult frameInfo = frameInfoCursor.get();
             if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
@@ -106,7 +131,7 @@ public abstract class BacktraceDecoder {
                 continue;
             }
             if (framesDecoded < maxFramesProcessed) {
-                processFrameInfo(frameInfo);
+                processSourceReference(frameInfo.getSourceClass(), frameInfo.getSourceMethodName(), frameInfo.getSourceLineNumber());
             }
             framesDecoded++;
             if (framesDecoded == maxFramesDecode) {
@@ -117,5 +142,5 @@ public abstract class BacktraceDecoder {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    protected abstract void processFrameInfo(FrameInfoQueryResult frameInfo);
+    protected abstract void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber);
 }

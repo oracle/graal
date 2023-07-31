@@ -52,6 +52,7 @@ import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
@@ -79,11 +80,6 @@ import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -91,6 +87,11 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
@@ -124,8 +125,13 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return backends;
     }
 
+    @Override
+    protected OptionValues getGraalOptions() {
+        return HotSpotGraalOptionValues.defaultOptions();
+    }
+
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {
-        OptionValues options = runtime.getGraalOptions(OptionValues.class);
+        OptionValues options = HotSpotGraalOptionValues.defaultOptions();
         /*
          * Host inlining is not necessary for Truffle guest compilation so disable it.
          */
@@ -229,7 +235,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public TruffleCompilationIdentifier createCompilationIdentifier(TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    public TruffleCompilationIdentifier createCompilationIdentifier(TruffleCompilationTask task, TruffleCompilable compilable) {
         ResolvedJavaMethod rootMethod = partialEvaluator.rootForCallTarget(compilable);
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) rootMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, 0L);
         return new HotSpotTruffleCompilationIdentifier(request, task, compilable);
@@ -253,13 +259,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return factories;
     }
 
-    @Override
-    public String getCompilerConfigurationName() {
-        return hotspotGraalRuntime.getCompilerConfigurationName();
+    public HotSpotGraalRuntimeProvider getHotspotGraalRuntime() {
+        return hotspotGraalRuntime;
     }
 
     @Override
-    protected DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable, PrintStream logStream) {
+    protected DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, TruffleCompilable compilable, PrintStream logStream) {
         return hotspotGraalRuntime.openDebugContext(options, compilationId, compilable, getDebugHandlerFactories(), logStream);
     }
 
@@ -279,7 +284,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * {@link TruffleCallBoundaryInstrumentationFactory}.
      */
     @Override
-    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
+    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
             final Backend backend = config.lastTier().backend();
             return compileTruffleStub(debug, javaMethod, compilationId, getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName()), new InvocationPlugins());
@@ -301,7 +306,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * reserved oop field. See HotSpotFastThreadLocal.
      */
     @Override
-    public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
+    public void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
         int jvmciReservedReference0Offset = hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset;
         if (jvmciReservedReference0Offset == -1) {
             throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available."); // ExcludeFromJacocoGeneratedReport
@@ -320,9 +325,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             // nothing to do
             return;
         }
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
         HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.lastTier().backend().getCompilationIdentifier(method);
-        OptionValues options = runtime.getGraalOptions(OptionValues.class);
+        OptionValues options = getGraalOptions();
         try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                         ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
                         : DebugContext.disabled(options);
@@ -375,7 +379,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
+    public int pendingTransferToInterpreterOffset(TruffleCompilable compilable) {
         return hotspotGraalRuntime.getVMConfig().pendingTransferToInterpreterOffset;
     }
 
@@ -412,7 +416,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
+    protected InstalledCode createInstalledCode(TruffleCompilable compilable) {
         return null;
     }
 
@@ -423,20 +427,19 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, TruffleCompilable compilable) {
         return new HotSpotTruffleCompilationResult(compilationIdentifier, name, compilable);
     }
 
     @Override
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
         if (result instanceof HotSpotTruffleCompilationResult) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
-            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
+            config.runtime().onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
         }
     }
 
     @Override
-    protected CompilableTruffleAST getCompilable(CompilationResult result) {
+    protected TruffleCompilable getCompilable(CompilationResult result) {
         if (result instanceof HotSpotTruffleCompilationResult) {
             return ((HotSpotTruffleCompilationResult) result).compilable;
         }
@@ -445,9 +448,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     private static final class HotSpotTruffleCompilationResult extends CompilationResult {
 
-        final CompilableTruffleAST compilable;
+        final TruffleCompilable compilable;
 
-        HotSpotTruffleCompilationResult(CompilationIdentifier compilationId, String name, CompilableTruffleAST compilable) {
+        HotSpotTruffleCompilationResult(CompilationIdentifier compilationId, String name, TruffleCompilable compilable) {
             super(compilationId, name);
             this.compilable = compilable;
         }

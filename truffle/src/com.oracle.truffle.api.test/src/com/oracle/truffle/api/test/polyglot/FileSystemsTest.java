@@ -2973,9 +2973,9 @@ public class FileSystemsTest {
 
     private static FileSystem createPreInitializeContextFileSystem() throws ReflectiveOperationException {
         Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
-        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor();
+        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor(String.class);
         ReflectionUtils.setAccessible(init, true);
-        return init.newInstance();
+        return init.newInstance(System.getProperty("java.io.tmpdir"));
     }
 
     private static void switchToImageExecutionTime(FileSystem fileSystem, Path cwd) throws ReflectiveOperationException {

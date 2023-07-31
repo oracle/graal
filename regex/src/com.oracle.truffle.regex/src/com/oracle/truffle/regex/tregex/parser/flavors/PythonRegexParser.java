@@ -76,7 +76,7 @@ public final class PythonRegexParser implements RegexParser {
 
     public PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.mode = PythonREMode.fromEncoding(source.getEncoding());
-        this.lexer = new PythonRegexLexer(source, mode);
+        this.lexer = new PythonRegexLexer(source, mode, compilationBuffer);
         this.astBuilder = new RegexASTBuilder(language, source, createECMAScriptFlags(source), false, compilationBuffer);
     }
 
@@ -113,8 +113,8 @@ public final class PythonRegexParser implements RegexParser {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
             switch (token.kind) {
-                case a:
-                case z:
+                case A:
+                case Z:
                     astBuilder.addPositionAssertion(token);
                     break;
                 case caret:
@@ -255,8 +255,9 @@ public final class PythonRegexParser implements RegexParser {
         }
         RegexAST ast = astBuilder.popRootGroup();
         for (Token.BackReference conditionalBackReference : conditionalBackReferences) {
-            if (conditionalBackReference.getGroupNr() >= ast.getNumberOfCaptureGroups()) {
-                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNr())), conditionalBackReference.getPosition() + 3);
+            assert conditionalBackReference.getGroupNumbers().length == 1;
+            if (conditionalBackReference.getGroupNumbers()[0] >= ast.getNumberOfCaptureGroups()) {
+                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3);
             }
         }
         return ast;
@@ -270,7 +271,8 @@ public final class PythonRegexParser implements RegexParser {
      */
     private void verifyGroupReference(Token.BackReference backRefToken) throws RegexSyntaxException {
         boolean conditional = backRefToken.kind == Token.Kind.conditionalBackreference;
-        int groupNumber = backRefToken.getGroupNr();
+        assert backRefToken.getGroupNumbers().length == 1;
+        int groupNumber = backRefToken.getGroupNumbers()[0];
         boolean insideLookBehind = insideLookBehind();
         // CPython allows conditional back-references to be forward references and to also refer to
         // an open group. However, this is not the case when inside a look-behind assertion. In such

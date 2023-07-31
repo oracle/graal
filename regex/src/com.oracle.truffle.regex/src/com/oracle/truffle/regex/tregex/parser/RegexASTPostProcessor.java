@@ -107,25 +107,26 @@ public class RegexASTPostProcessor {
         int literalEnd = -1;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
-            if (t.isCharacterClass() &&
-                            (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
-                            ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
-                            !(ast.getEncoding() == Encodings.UTF_16 && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES))) {
+            if (isLiteralChar(t)) {
+                assert !t.hasLoops();
                 if (literalStart < 0) {
                     literalStart = i;
                 }
                 literalEnd = i + 1;
-            } else if (literalStart >= 0 || t.hasLoops() || t.hasBackReferences()) {
+            } else if (literalStart >= 0 || t.hasBackReferences()) {
                 break;
-            } else {
-                if (t.getMaxPath() > 4) {
-                    return;
-                }
             }
         }
-        if (literalStart >= 0 && (literalStart > 0 || literalEnd - literalStart > 1)) {
+        if (literalStart >= 0 && (literalStart > 0 || literalEnd - literalStart > 0)) {
             properties.setInnerLiteral(literalStart, literalEnd);
         }
+    }
+
+    private boolean isLiteralChar(Term t) {
+        return t.isCharacterClass() &&
+                        (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
+                        ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
+                        !(ast.getEncoding() == Encodings.UTF_16 && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
     }
 
     private static final class UnrollQuantifiersVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -455,7 +456,7 @@ public class RegexASTPostProcessor {
                 // character set is guaranteed to be in BMP range, and its inverse will match all
                 // surrogates
                 CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
-                assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
+                assert !ast.getFlags().isEitherUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
                 if (cc.getCharSet().isEmpty()) {
                     // negative lookaround on a character class that can never match -> no-op
                     return LookAroundOptimization.NO_OP;

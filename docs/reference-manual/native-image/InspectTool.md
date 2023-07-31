@@ -1,14 +1,14 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: debugging-and-diagnostics
 link_title: Inspection Tool
 permalink: /reference-manual/native-image/debugging-and-diagnostics/InspectTool/
-redirect_from: /$version/reference-manual/native-image/inspect/
+redirect_from: /reference-manual/native-image/inspect/
 ---
 
 # Native Image Inspection Tool
 
-Native Image provides the inspection tool to list all methods included in a native executable or a native shared library. Run the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>` to list classes, methods, fields, and constructors in the JSON format that validates against the JSON schema defined in [`native-image-inspect-schema-v0.2.0.json`](../assets/native-image-inspect-schema-v0.2.0.json).
+Native Image provides the inspection tool to list all methods included in a native executable or a native shared library. Run the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>` to list classes, methods, fields, and constructors in the JSON format that validates against the JSON schema defined in [`native-image-inspect-schema-v0.2.0.json`](assets/native-image-inspect-schema-v0.2.0.json).
 
 > Note: The inspection tool is not available in GraalVM Community Edition.
 

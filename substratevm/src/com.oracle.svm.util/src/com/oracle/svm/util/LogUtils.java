@@ -24,12 +24,55 @@
  */
 package com.oracle.svm.util;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+// Checkstyle: Allow raw info or warning printing - begin
 public class LogUtils {
+    /**
+     * Print an info message.
+     */
+    public static void info(String message) {
+        System.out.println("Info: " + message);
+    }
+
+    /**
+     * Print an info using a formatted message.
+     *
+     * This method uses {@link String#format} which is currently not safe to be used at run time as
+     * it pulls in high amounts of JDK code. This might change in the future, e.g., if parse-once is
+     * fully supported (GR-39237). Until then, the format string variant of {@link LogUtils#info}
+     * can only be used in hosted-only code.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void info(String format, Object... args) {
+        info(format.formatted(args));
+    }
+
+    /**
+     * Print a warning.
+     */
     public static void warning(String message) {
         System.out.println("Warning: " + message);
     }
 
+    /**
+     * Print a warning using a formatted message.
+     *
+     * This method uses {@link String#format} which is currently not safe to be used at run time as
+     * it pulls in high amounts of JDK code. This might change in the future, e.g., if parse-once is
+     * fully supported (GR-39237). Until then, the format string variant of {@link LogUtils#warning}
+     * can only be used in hosted-only code.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void warning(String format, Object... args) {
+        warning(format.formatted(args));
+    }
+
+    /**
+     * Print a warning for a deprecated environment variable.
+     */
     public static void warningDeprecatedEnvironmentVariable(String environmentVariableName) {
-        warning("The %s environment variable is deprecated and might be removed in a future release. Please refer to the GraalVM release notes.".formatted(environmentVariableName));
+        warning("The " + environmentVariableName + " environment variable is deprecated and might be removed in a future release. Please refer to the GraalVM release notes.");
     }
 }

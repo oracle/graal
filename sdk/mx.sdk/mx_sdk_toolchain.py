@@ -82,6 +82,18 @@ class ToolchainTestBuildTask(mx.BuildTask):
                 return True, f'{result} does not exist'
         return False, 'up to date'
 
+    # this is not really a native project, but it's testing a native project
+    # so skip it if we're not building native projects
+    def buildForbidden(self):
+        if not self.args.native:
+            return True
+        return super(ToolchainTestBuildTask, self).buildForbidden()
+
+    def cleanForbidden(self):
+        if not self.args.native:
+            return True
+        return super(ToolchainTestBuildTask, self).cleanForbidden()
+
     def build(self):
         mx.ensure_dir_exists(self.subject.get_output_root())
 

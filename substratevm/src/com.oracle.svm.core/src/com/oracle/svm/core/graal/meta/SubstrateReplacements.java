@@ -223,7 +223,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
         OptionValues optionValues = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options),
                         DebugOptions.OptimizationLog, null);
-        EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, false, trackNodeSourcePosition);
         try (DebugContext debug = openSnippetDebugContext("SVMSnippet_", method, optionValues)) {
             StructuredGraph result = new StructuredGraph.Builder(optionValues, debug)
                             .method(method)
@@ -231,6 +230,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
                             .recordInlinedMethods(false)
                             .setIsSubstitution(true)
                             .build();
+
+            EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, result);
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 

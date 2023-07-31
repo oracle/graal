@@ -55,4 +55,8 @@ void* initializeManagementContext3(void* (*fetch_by_name)(const char *));
 
 void disposeManagementContext3(void *management_ptr, void (*release_closure)(void *));
 
+void* initializeManagementContext4(void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext4(void *management_ptr, void (*release_closure)(void *));
+
 #endif // _MANAGEMENT_H

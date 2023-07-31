@@ -27,8 +27,8 @@ package org.graalvm.compiler.lir.amd64;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -51,9 +51,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
-          lineStart = 907,
-          lineEnd   = 999,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 917,
+          lineEnd   = 1009,
+          commit    = "d7b941640638b35f9ac1ef11cd6bf6ccb795c29a",
           sha1      = "beab5f4817b620d98201e17dc1e07f680177b147")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {

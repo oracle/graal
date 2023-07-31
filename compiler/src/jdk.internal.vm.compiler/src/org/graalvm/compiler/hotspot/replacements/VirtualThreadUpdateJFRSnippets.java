@@ -65,9 +65,9 @@ import jdk.vm.ci.code.Register;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-          lineStart = 3313,
-          lineEnd   = 3439,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 3429,
+          lineEnd   = 3555,
+          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
           sha1      = "1f980401f5d7d9a363577635fd57fc1e24505d91")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {

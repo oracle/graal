@@ -40,8 +40,8 @@ import jdk.jfr.consumer.RecordedEvent;
 public class TestGCEvents extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.GarbageCollection.getName(), JfrEvent.GCPhasePauseEvent.getName(), JfrEvent.GCPhasePauseLevel1Event.getName(),
-                        JfrEvent.GCPhasePauseLevel2Event.getName(), JfrEvent.ExecuteVMOperation.getName()};
+        String[] events = new String[]{JfrEvent.GarbageCollection.getName(), JfrEvent.GCPhasePause.getName(), JfrEvent.GCPhasePauseLevel1.getName(),
+                        JfrEvent.GCPhasePauseLevel2.getName(), JfrEvent.ExecuteVMOperation.getName()};
         Recording recording = startRecording(events);
 
         System.gc();

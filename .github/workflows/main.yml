@@ -79,13 +79,9 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "21"
-              GATE_TAGS: "build,test,helloworld"
+              GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
-          - env:
-              JDK_VERSION: "21"
-              GATE_TAGS: "build,helloworld_debug"
-              PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "21"
               GATE_TAGS: "build,debuginfotest"
@@ -96,8 +92,7 @@ jobs:
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              # See note for compiler style checks above.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /truffle

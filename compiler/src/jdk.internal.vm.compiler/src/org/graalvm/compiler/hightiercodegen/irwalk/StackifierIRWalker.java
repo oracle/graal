@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -77,9 +78,12 @@ public class StackifierIRWalker extends IRWalker {
     public static final String LABEL_PREFIX = "looplabel_";
     protected final BlockNestingVerifier blockNestingVerifier;
 
+    protected final StackifierData stackifierData;
+
     public StackifierIRWalker(CodeGenTool codeGenTool, ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodeMap, NodeMap<HIRBlock> nodeToBlockMap, ReconstructionData reconstructionData) {
         super(codeGenTool, cfg, blockToNodeMap, nodeToBlockMap, reconstructionData);
         this.blockNestingVerifier = new BlockNestingVerifier();
+        this.stackifierData = (StackifierData) reconstructionData;
     }
 
     /**
@@ -155,7 +159,7 @@ public class StackifierIRWalker extends IRWalker {
      * via {@code continue} statements. As a side note, the end of a loop has an implicit back-edge.
      * Since all back-edges are handled via {@link LoopEndNode} and the corresponding
      * {@code continue} statement we place a {@code break} at the end of the loop to avoid this
-     * backwards jump, see {@link #lowerLoopStackifier(StackifierData, HIRBlock)}.
+     * backwards jump, see {@link #lowerLoop(HIRBlock)}.
      *
      * Now an example where we assume {@code A()} might produce an exception
      *
@@ -193,7 +197,6 @@ public class StackifierIRWalker extends IRWalker {
     @Override
     @SuppressWarnings({"unused", "try"})
     protected void lower(DebugContext debugContext) {
-        StackifierData stackifierData = (StackifierData) reconstructionData;
         stackifierData.debugDump(debugContext);
 
         predeclareVariables(cfg.graph);
@@ -221,9 +224,7 @@ public class StackifierIRWalker extends IRWalker {
      *
      * @param blocks blocks to be lowered
      */
-    @SuppressWarnings("deprecated")
-    private void lowerBlocks(HIRBlock[] blocks) {
-        StackifierData stackifierData = (StackifierData) reconstructionData;
+    protected void lowerBlocks(HIRBlock[] blocks) {
         for (HIRBlock currentBlock : blocks) {
             if (blockHistory.blockVisited(currentBlock)) {
                 continue;
@@ -255,15 +256,18 @@ public class StackifierIRWalker extends IRWalker {
                 }
             }
 
-            LabeledBlock blockEnd = stackifierData.labeledBlockEnd(currentBlock);
-
             /*
              * Generate the end of the labeled block before a possible loop header as well as all
              * labeled blocks that need to start before the loop header.
              */
             if (!isInRecursiveLoopCall(isLoopHeader, currentBlock, blocks)) {
                 // generate end of forward blocks
-                genLabeledBlockEnd(blockEnd);
+                LabeledBlock blockEnd = stackifierData.labeledBlockEnd(currentBlock);
+                if (blockEnd != null) {
+                    genLabeledBlockEnd(blockEnd);
+                }
+
+                // Open labeled blocks before loop header
                 labeledBlockStartsBeforeLoop.forEach(this::genLabeledBlockHeader);
             }
 
@@ -273,12 +277,13 @@ public class StackifierIRWalker extends IRWalker {
              * first basic block. If it does, we are already in that recursive call.
              */
             if (newLoopStartsHere(isLoopHeader, currentBlock, blocks)) {
-                lowerLoopStackifier(stackifierData, currentBlock);
+                lowerLoop(currentBlock);
                 continue;
             }
 
             codeGenTool.genComment("Start of block " + currentBlock);
 
+            // Open labeled blocks after loop header
             labeledBlockStartsAfterLoop.forEach(this::genLabeledBlockHeader);
 
             for (Node node : blockToNodeMap.get(currentBlock)) {
@@ -287,8 +292,8 @@ public class StackifierIRWalker extends IRWalker {
                 } else if (node instanceof LoopBeginNode) {
                     /*
                      * We should only be able to visit a LoopBeginNode if we are recursively called
-                     * from lowerLoopStackifier and as such the node can be ignored since
-                     * lowerLoopStackifier already emitted the loop header.
+                     * from lowerLoop and as such the node can be ignored since lowerLoop already
+                     * emitted the loop header.
                      */
                     assert currentBlock == blocks[0];
                 } else if (!(node instanceof LoopExitNode)) {
@@ -298,35 +303,24 @@ public class StackifierIRWalker extends IRWalker {
                 verifier.visitNode(node, codeGenTool);
             }
 
-            Node lastNode = currentBlock.getEndNode();
+            FixedNode lastNode = currentBlock.getEndNode();
             if (lastNode instanceof ControlSinkNode) {
                 lowerNode(lastNode);
-            } else if (lastNode instanceof IfNode) {
-                lowerIfStackifier(currentBlock, (IfNode) lastNode);
-            } else if (lastNode instanceof IntegerSwitchNode) {
-                lowerSwitch((IntegerSwitchNode) lastNode, stackifierData);
-            } else if (lastNode instanceof TypeSwitchNode) {
-                lowerTypeSwitch((TypeSwitchNode) lastNode, stackifierData);
+            } else if (lastNode instanceof IfNode ifNode) {
+                lowerIf(currentBlock, ifNode);
+            } else if (lastNode instanceof IntegerSwitchNode switchNode) {
+                lowerSwitch(switchNode);
+            } else if (lastNode instanceof TypeSwitchNode switchNode) {
+                lowerTypeSwitch(switchNode);
             } else if (isWithExceptionNode(lastNode)) {
-                lowerWithExceptionStackifier(currentBlock, (WithExceptionNode) lastNode);
+                lowerWithException(currentBlock, (WithExceptionNode) lastNode);
             } else if ((lastNode instanceof ControlSplitNode) && !(lastNode instanceof BasicArrayCopyNode)) {
                 // BasicArrayCopyNode is also a ControlSplitNode
                 assert false : "Unsupported control split node " + lastNode + " is not implemented yet";
-            } else if (lastNode instanceof LoopEndNode) {
-                lowerLoopEndResolver((LoopEndNode) lastNode);
-                codeGenTool.genLoopContinue();
+            } else if (lastNode instanceof LoopEndNode loopEnd) {
+                lowerLoopEnd(loopEnd);
             } else {
-                if (!(lastNode instanceof LoopExitNode) && !(lastNode instanceof LoopBeginNode)) {
-                    /*
-                     * Special case for basic blocks with only one node. LoopExitNode and
-                     * LoopBeginNode need to be handled separately again, as they must not be
-                     * lowered by the node lowerer.
-                     */
-                    lowerNode(lastNode);
-                }
-                HIRBlock successor = nodeToBlockMap.get(lastNode.cfgSuccessors().iterator().next());
-                generateForwardJump(currentBlock, successor, stackifierData);
-
+                lowerUnhandledBlockEnd(currentBlock, lastNode);
             }
 
             verifier.visitNode(lastNode, codeGenTool);
@@ -337,8 +331,7 @@ public class StackifierIRWalker extends IRWalker {
 
     /**
      * Whether the lowering of the given currentBlock happens inside a recursive call from
-     * {@link #lowerLoopStackifier(StackifierData, HIRBlock)} and the current block is the start of
-     * the loop.
+     * {@link #lowerLoop(HIRBlock)} and the current block is the start of the loop.
      *
      * If this is true, the loop header was already emitted otherwise it hasn't.
      */
@@ -359,9 +352,8 @@ public class StackifierIRWalker extends IRWalker {
      *
      * @param currentBlock block from which to jump from
      * @param successor target of the jump
-     * @param stackifierData stackifier data
      */
-    private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor, StackifierData stackifierData) {
+    private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
         if (LabeledBlockGeneration.isNormalLoopExit(currentBlock, successor, stackifierData)) {
             Loop<HIRBlock> loop = currentBlock.getLoop();
             Scope loopScope = ((LoopScopeContainer) stackifierData.getScopeEntry(loop.getHeader().getBeginNode())).getLoopScope();
@@ -428,11 +420,10 @@ public class StackifierIRWalker extends IRWalker {
      * we want is to go to {@code C()}. Therefore a {@code break} is inserted at the loop end which
      * makes the back-edge at the end of the loop unreachable and adds a loop exit.
      *
-     * @param stackifierData data generated by the stackifier reconstruction algorithm
      * @param currentBlock current block
      */
-    private void lowerLoopStackifier(StackifierData stackifierData, HIRBlock currentBlock) {
-        assert currentBlock.getBeginNode() instanceof LoopBeginNode;
+    protected void lowerLoop(HIRBlock currentBlock) {
+        assert currentBlock.isLoopHeader();
         LoopScopeContainer loopScopeEntry = (LoopScopeContainer) stackifierData.getScopeEntry(currentBlock.getBeginNode());
         Scope loopScope = loopScopeEntry.getLoopScope();
 
@@ -442,6 +433,11 @@ public class StackifierIRWalker extends IRWalker {
         genLoopEnd(currentBlock);
     }
 
+    protected void lowerLoopEnd(LoopEndNode loopEnd) {
+        lowerLoopEndResolver(loopEnd);
+        codeGenTool.genLoopContinue();
+    }
+
     /**
      * Lower a WithExceptionNode. For an example how the generated code looks like, see
      * {@link #lower(DebugContext)}.
@@ -449,8 +445,7 @@ public class StackifierIRWalker extends IRWalker {
      * @param currentBlock basic block that contains {@link WithExceptionNode}
      * @param lastNode the {@link WithExceptionNode}
      */
-    private void lowerWithExceptionStackifier(HIRBlock currentBlock, WithExceptionNode lastNode) {
-        StackifierData stackifierData = (StackifierData) reconstructionData;
+    protected void lowerWithException(HIRBlock currentBlock, WithExceptionNode lastNode) {
         HIRBlock normSucc = cfg.blockFor(lastNode.next());
         HIRBlock excpSucc = cfg.blockFor(lastNode.exceptionEdge());
         CatchScopeContainer scopeEntry = (CatchScopeContainer) stackifierData.getScopeEntry(lastNode);
@@ -463,7 +458,7 @@ public class StackifierIRWalker extends IRWalker {
          * once it is encountered in its own basic block.
          */
         lowerNode(lastNode);
-        generateForwardJump(currentBlock, normSucc, stackifierData);
+        generateForwardJump(currentBlock, normSucc);
 
         String caughtObjectName = codeGenTool.getExceptionObjectId(excpSucc.getBeginNode());
         ResolvedJavaType caughtObjectType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(Throwable.class);
@@ -473,7 +468,7 @@ public class StackifierIRWalker extends IRWalker {
          * the caught object is set to Throwable, and only changed if the exception edge indeed is
          * an ExceptionObjectNode
          */
-        if (excpSucc.getBeginNode()instanceof ExceptionObjectNode excpObj) {
+        if (excpSucc.getBeginNode() instanceof ExceptionObjectNode excpObj) {
             caughtObjectType = excpObj.stamp(NodeView.DEFAULT).javaType(codeGenTool.getProviders().getMetaAccess());
         }
         codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
@@ -481,7 +476,7 @@ public class StackifierIRWalker extends IRWalker {
         if (catchScope != null) {
             lowerBlocks(catchScope.getSortedBlocks());
         } else {
-            generateForwardJump(currentBlock, excpSucc, stackifierData);
+            generateForwardJump(currentBlock, excpSucc);
         }
         codeGenTool.genScopeEnd();
     }
@@ -497,10 +492,7 @@ public class StackifierIRWalker extends IRWalker {
      * @param currentBlock basic block containing the {@link IfNode}
      * @param lastNode the {@link IfNode}
      */
-    private void lowerIfStackifier(HIRBlock currentBlock, IfNode lastNode) {
-        StackifierData stackifierData = (StackifierData) reconstructionData;
-        HIRBlock trueBlock = nodeToBlockMap.get(lastNode.trueSuccessor());
-        HIRBlock falseBlock = nodeToBlockMap.get(lastNode.falseSuccessor());
+    protected void lowerIf(HIRBlock currentBlock, IfNode lastNode) {
         IfScopeContainer ifScopeContainer = (IfScopeContainer) stackifierData.getScopeEntry(lastNode);
         Scope thenScope = ifScopeContainer.getThenScope();
         Scope elseScope = ifScopeContainer.getElseScope();
@@ -508,15 +500,36 @@ public class StackifierIRWalker extends IRWalker {
         if (thenScope != null) {
             lowerBlocks(thenScope.getSortedBlocks());
         } else {
-            generateForwardJump(currentBlock, trueBlock, stackifierData);
+            HIRBlock trueBlock = nodeToBlockMap.get(lastNode.trueSuccessor());
+            generateForwardJump(currentBlock, trueBlock);
         }
         codeGenTool.genElseHeader();
         if (elseScope != null) {
             lowerBlocks(elseScope.getSortedBlocks());
         } else {
-            generateForwardJump(currentBlock, falseBlock, stackifierData);
+            HIRBlock falseBlock = nodeToBlockMap.get(lastNode.falseSuccessor());
+            generateForwardJump(currentBlock, falseBlock);
         }
         codeGenTool.genScopeEnd();
+    }
+
+    /**
+     * Lowers the end of an HIR block (including the last node) in case the last node is not a
+     * control-flow node.
+     * <p>
+     * Also generates a potential forward jump to the next basic block in the control-flow-graph.
+     */
+    protected void lowerUnhandledBlockEnd(HIRBlock currentBlock, FixedNode lastNode) {
+        if (!(lastNode instanceof LoopExitNode) && !(lastNode instanceof LoopBeginNode)) {
+            /*
+             * Special case for basic blocks with only one node. LoopExitNode and LoopBeginNode need
+             * to be handled separately again, as they must not be lowered by the node lowerer.
+             */
+            lowerNode(lastNode);
+        }
+
+        HIRBlock successor = nodeToBlockMap.get(lastNode.cfgSuccessors().iterator().next());
+        generateForwardJump(currentBlock, successor);
     }
 
     /**
@@ -618,9 +631,8 @@ public class StackifierIRWalker extends IRWalker {
      * blocks.
      *
      * @param switchNode node to be lowered
-     * @param stackifierData data for forward jumps
      */
-    public void lowerSwitch(IntegerSwitchNode switchNode, StackifierData stackifierData) {
+    protected void lowerSwitch(IntegerSwitchNode switchNode) {
 
         codeGenTool.genSwitchHeader(switchNode.value());
 
@@ -658,7 +670,7 @@ public class StackifierIRWalker extends IRWalker {
             if (caseScopes[i] != null) {
                 lowerBlocks(caseScopes[i].getSortedBlocks());
             } else {
-                generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
+                generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
             }
             codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
@@ -669,7 +681,7 @@ public class StackifierIRWalker extends IRWalker {
             if (caseScopes[defaultIndex] != null) {
                 lowerBlocks(caseScopes[defaultIndex].getSortedBlocks());
             } else {
-                generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
+                generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()));
             }
             codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
@@ -764,9 +776,8 @@ public class StackifierIRWalker extends IRWalker {
      * blocks.
      *
      * @param switchNode node to be lowered
-     * @param stackifierData data for forward jumps
      */
-    public void lowerTypeSwitch(TypeSwitchNode switchNode, StackifierData stackifierData) {
+    protected void lowerTypeSwitch(TypeSwitchNode switchNode) {
         boolean hasdefault = switchNode.defaultSuccessor() != null;
         for (int i = 0; i < switchNode.blockSuccessorCount(); i++) {
             // one successor
@@ -788,29 +799,27 @@ public class StackifierIRWalker extends IRWalker {
             }
             assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
             lowerTypeSwitchCase(switchNode, succ, i, succKeys);
-            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
+            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
             codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         if (hasdefault) {
             lowerTypeSwitchDefaultCase(switchNode);
-            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
+            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()));
             codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
     }
 
-    private void genLabeledBlockHeader(LabeledBlock labeledBlock) {
+    protected void genLabeledBlockHeader(LabeledBlock labeledBlock) {
         blockNestingVerifier.pushLabel(labeledBlock);
         codeGenTool.genLabeledBlockHeader(labeledBlock.getLabel());
     }
 
-    private void genLabeledBlockEnd(LabeledBlock blockEnd) {
-        if (blockEnd != null) {
-            blockNestingVerifier.popLabel(blockEnd);
-            codeGenTool.genScopeEnd();
-            codeGenTool.genComment("End of LabeledBlock " + blockEnd.getLabel());
-        }
+    protected void genLabeledBlockEnd(LabeledBlock blockEnd) {
+        blockNestingVerifier.popLabel(blockEnd);
+        codeGenTool.genScopeEnd();
+        codeGenTool.genComment("End of LabeledBlock " + blockEnd.getLabel());
     }
 
     private void genLoopHeader(HIRBlock block) {

@@ -38,9 +38,14 @@ import com.oracle.svm.core.util.VMError;
 
 public class GenScavengeMemoryPoolMXBeans {
 
-    private static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
-    private static final String COMPLETE_SCAVENGER = "complete scavenger";
-    private static final String EPSILON_SCAVENGER = "epsilon scavenger";
+    static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
+    static final String COMPLETE_SCAVENGER = "complete scavenger";
+    static final String EPSILON_SCAVENGER = "epsilon scavenger";
+
+    static final String EDEN_SPACE = "eden space";
+    static final String SURVIVOR_SPACE = "survivor space";
+    static final String OLD_GEN_SPACE = "old generation space";
+    static final String EPSILON_HEAP = "epsilon heap";
 
     private static AbstractMemoryPoolMXBean[] mxBeans;
 
@@ -71,7 +76,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         EdenMemoryPoolMXBean(String... managerNames) {
-            super("eden space", managerNames);
+            super(EDEN_SPACE, managerNames);
         }
 
         @Override
@@ -114,7 +119,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         SurvivorMemoryPoolMXBean(String... managerNames) {
-            super("survivor space", managerNames);
+            super(SURVIVOR_SPACE, managerNames);
         }
 
         @Override
@@ -152,7 +157,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         OldGenerationMemoryPoolMXBean(String... managerNames) {
-            super("old generation space", managerNames);
+            super(OLD_GEN_SPACE, managerNames);
         }
 
         @Override
@@ -190,7 +195,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         EpsilonMemoryPoolMXBean(String... managerNames) {
-            super("epsilon heap", managerNames);
+            super(EPSILON_HEAP, managerNames);
         }
 
         @Override

@@ -113,10 +113,11 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.LibGraalIsolate;
-import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
+
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalIsolate;
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -138,6 +139,8 @@ public final class CompileTheWorld {
 
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle");
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
     }
 
     /**

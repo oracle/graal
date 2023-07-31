@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -87,7 +88,6 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -253,7 +253,7 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
@@ -409,7 +409,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder, imageCodeInfo);
+        assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
     }
 
     protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
@@ -506,7 +506,7 @@ public abstract class NativeImageCodeCache {
         List<JavaKind> sourceKinds = Arrays.asList(sourceFrame.expectedKinds);
         if (targetFrame.getNumLocals() != sourceFrame.numLocals || targetFrame.getNumStack() != sourceFrame.numStack || targetFrame.getNumLocks() != sourceFrame.numLocks) {
             StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Mismatch between number of expected values in target and source.%n");
+            errorMessage.append("Mismatch between number of expected values in target and source.").append(System.lineSeparator());
             errorMessage.append(String.format("Target: locals-%d, stack-%d, locks-%d.%n", targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks()));
             appendFrameInfo(errorMessage, true, Arrays.stream(targetValues).map(FrameInfoQueryResult.ValueInfo::getKind).collect(Collectors.toList()));
             errorMessage.append(String.format("Source: locals-%d, stack-%d, locks-%d.%n", sourceFrame.numLocals, sourceFrame.numStack, sourceFrame.numLocks));
@@ -547,14 +547,26 @@ public abstract class NativeImageCodeCache {
     }
 
     private static boolean error(HostedMethod method, long encodedBci, String msg) {
-        System.out.println(method.format("%H.%n(%p)") + ", encodedBci " + encodedBci + " (bci " + FrameInfoDecoder.readableBci(encodedBci) + "): " + msg);
+        System.out.println(method.format("%H.%n(%p)") + ", encodedBci " + encodedBci + " (bci " + FrameInfoDecoder.readableBci(encodedBci) + "):" + System.lineSeparator() + msg);
         return true;
     }
 
-    protected boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
-        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            HostedMethod method = pair.getLeft();
-            CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);
+    protected boolean verifyMethods(HostedUniverse hUniverse, ForkJoinPool threadPool, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+        /*
+         * Run method verification in parallel to reduce computation time.
+         */
+        BigBang bb = hUniverse.getBigBang();
+        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        try {
+            executor.init();
+            executor.start();
+            for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+                HostedMethod method = pair.getLeft();
+                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo));
+            }
+            executor.complete();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere("Failed to verify methods");
         }
         codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;
@@ -648,10 +660,6 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
-            if (ImageSingletons.contains(ProfilingSampler.class)) {
-                return true;
-            }
-
             if (isDeoptEntry || ((HostedMethod) method).compilationInfo.canDeoptForTesting()) {
                 /*
                  * Need to restore locals from deoptimization source.

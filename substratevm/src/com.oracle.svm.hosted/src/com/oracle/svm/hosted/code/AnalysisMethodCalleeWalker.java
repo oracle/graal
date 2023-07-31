@@ -64,7 +64,6 @@ public class AnalysisMethodCalleeWalker {
         return (epilogueResult != VisitResult.CONTINUE);
     }
 
-    /** Visit this method, and the methods it calls. */
     VisitResult walkMethodAndCallees(AnalysisMethod method, AnalysisMethod caller, BytecodePosition invokePosition, CallPathVisitor visitor) {
         if (path.contains(method)) {
             /*
@@ -75,19 +74,13 @@ public class AnalysisMethodCalleeWalker {
         }
         path.add(method);
         try {
-            /* Visit the method directly. */
             VisitResult directResult = visitor.visitMethod(method, caller, invokePosition, path.size());
             if (directResult != VisitResult.CONTINUE) {
                 return directResult;
             }
-            /* Visit the callees of this method. */
             for (InvokeInfo invoke : method.getInvokes()) {
-                walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getPosition(), visitor);
-            }
-            if (caller != null) {
-                /* Visit all the implementations of this method. */
-                for (AnalysisMethod impl : method.getImplementations()) {
-                    walkMethodAndCallees(impl, caller, invokePosition, visitor);
+                for (AnalysisMethod target : invoke.getOriginalCallees()) {
+                    walkMethodAndCallees(target, method, invoke.getPosition(), visitor);
                 }
             }
             return VisitResult.CONTINUE;
@@ -110,7 +103,6 @@ public class AnalysisMethodCalleeWalker {
          * false.
          */
         public VisitResult prologue() {
-            /* The default is to continue the walk. */
             return VisitResult.CONTINUE;
         }
 
@@ -126,7 +118,6 @@ public class AnalysisMethodCalleeWalker {
          * else false.
          */
         public VisitResult epilogue() {
-            /* The default is to continue the walk. */
             return VisitResult.CONTINUE;
         }
     }

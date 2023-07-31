@@ -61,8 +61,8 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
-        return new JSRegexValidator(source);
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return new JSRegexValidator(language, source, compilationBuffer);
     }
 
     @Override
@@ -72,7 +72,7 @@ public final class ECMAScriptFlavor extends RegexFlavor {
 
     @Override
     public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getFlags().isUnicode()) {
+        if (ast.getFlags().isEitherUnicode()) {
             return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
         } else {
             return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();

@@ -63,6 +63,7 @@ public abstract class RegexFlavor {
     protected static final int LOOKBEHINDS_RUN_LEFT_TO_RIGHT = 1 << 5;
     protected static final int NEEDS_GROUP_START_POSITIONS = 1 << 6;
     protected static final int HAS_CONDITIONAL_BACKREFERENCES = 1 << 7;
+    protected static final int SUPPORTS_RECURSIVE_BACKREFERENCES = 1 << 8;
 
     private final int traits;
 
@@ -72,7 +73,7 @@ public abstract class RegexFlavor {
 
     public abstract RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
-    public abstract RegexValidator createValidator(RegexSource source);
+    public abstract RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
     public abstract BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast);
 
@@ -82,6 +83,10 @@ public abstract class RegexFlavor {
 
     public boolean backreferencesToUnmatchedGroupsFail() {
         return hasTrait(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL);
+    }
+
+    public boolean supportsRecursiveBackreferences() {
+        return hasTrait(SUPPORTS_RECURSIVE_BACKREFERENCES);
     }
 
     public boolean emptyChecksMonitorCaptureGroups() {

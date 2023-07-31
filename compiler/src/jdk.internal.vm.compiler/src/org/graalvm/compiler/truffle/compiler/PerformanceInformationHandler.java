@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TreatPerformanceWarningsAsErrors;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TracePerformanceWarnings;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceStackTraceLimit;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TreatPerformanceWarningsAsErrors;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -48,15 +47,16 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -73,18 +73,18 @@ public final class PerformanceInformationHandler implements Closeable {
     private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();
     private final TruffleCompilerRuntime runtime;
     private final OptionValues options;
-    private final Set<PolyglotCompilerOptions.PerformanceWarningKind> warningKinds = EnumSet.noneOf(PolyglotCompilerOptions.PerformanceWarningKind.class);
+    private final Set<PerformanceWarningKind> warningKinds = EnumSet.noneOf(PerformanceWarningKind.class);
 
     private PerformanceInformationHandler(TruffleCompilerRuntime runtime, OptionValues options) {
         this.options = options;
         this.runtime = runtime;
     }
 
-    private void addWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind) {
+    private void addWarning(PerformanceWarningKind warningKind) {
         warningKinds.add(warningKind);
     }
 
-    private Set<PolyglotCompilerOptions.PerformanceWarningKind> getWarnings() {
+    private Set<PerformanceWarningKind> getWarnings() {
         return warningKinds;
     }
 
@@ -101,25 +101,24 @@ public final class PerformanceInformationHandler implements Closeable {
         return handler;
     }
 
-    public static boolean isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind warningKind) {
+    public static boolean isWarningEnabled(PerformanceWarningKind warningKind) {
         PerformanceInformationHandler handler = instance.get();
-        return handler.options.get(TracePerformanceWarnings).contains(warningKind) ||
-                        handler.options.get(PerformanceWarningsAreFatal).contains(warningKind) ||
-                        handler.options.get(TreatPerformanceWarningsAsErrors).contains(warningKind);
+        return TracePerformanceWarnings.getValue(handler.options).kinds().contains(warningKind) ||
+                        TreatPerformanceWarningsAsErrors.getValue(handler.options).kinds().contains(warningKind);
     }
 
-    public static void logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind, CompilableTruffleAST compilable, List<? extends Node> locations, String details,
+    public static void logPerformanceWarning(PerformanceWarningKind warningKind, TruffleCompilable compilable, List<? extends Node> locations, String details,
                     Map<String, Object> properties) {
         PerformanceInformationHandler handler = instance.get();
         handler.addWarning(warningKind);
         handler.logPerformanceWarningImpl(compilable, "perf warn", details, properties, handler.getPerformanceStackTrace(locations));
     }
 
-    private void logPerformanceInfo(CompilableTruffleAST compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
+    private void logPerformanceInfo(TruffleCompilable compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
         logPerformanceWarningImpl(compilable, "perf info", details, properties, instance.get().getPerformanceStackTrace(locations));
     }
 
-    private void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
+    private void logPerformanceWarningImpl(TruffleCompilable compilable, String event, String details, Map<String, Object> properties, String message) {
         runtime.logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
     }
 
@@ -127,7 +126,7 @@ public final class PerformanceInformationHandler implements Closeable {
         if (locations == null || locations.isEmpty()) {
             return null;
         }
-        int limit = options.get(TraceStackTraceLimit); // TODO
+        int limit = TraceStackTraceLimit.getValue(options);
         if (limit <= 0) {
             return null;
         }
@@ -176,7 +175,7 @@ public final class PerformanceInformationHandler implements Closeable {
         StructuredGraph graph = context.graph;
         DebugContext debug = context.debug;
         ArrayList<ValueNode> warnings = new ArrayList<>();
-        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {
+        if (isWarningEnabled(PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {
             for (MethodCallTargetNode call : context.graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod targetMethod = call.targetMethod();
                 if (targetMethod.isNative()) {
@@ -184,14 +183,14 @@ public final class PerformanceInformationHandler implements Closeable {
                 }
 
                 if (targetMethod.canBeInlined() && context.getPartialEvaluator().getMethodInfo(targetMethod).inlineForPartialEvaluation().allowsInlining()) {
-                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, context.compilable, Arrays.asList(call),
+                    logPerformanceWarning(PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, context.compilable, Arrays.asList(call),
                                     String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),
                                     null);
                     warnings.add(call);
                 }
             }
         }
-        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_INSTANCEOF)) {
+        if (isWarningEnabled(PerformanceWarningKind.VIRTUAL_INSTANCEOF)) {
             EconomicMap<ResolvedJavaType, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
             for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
                 if (!instanceOf.type().isExact()) {
@@ -213,7 +212,7 @@ public final class PerformanceInformationHandler implements Closeable {
                 logPerformanceInfo(context.compilable, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
             }
         }
-        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
+        if (isWarningEnabled(PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             for (Loop<HIRBlock> loop : cfg.getLoops()) {
                 // check if all loop exit contain trusted profiles
@@ -227,7 +226,7 @@ public final class PerformanceInformationHandler implements Closeable {
                     if (loopBlocks.contains(exitDom) && exitDom.getEndNode() instanceof ControlSplitNode) {
                         ControlSplitNode split = (ControlSplitNode) exitDom.getEndNode();
                         if (!ProfileSource.isTrusted(split.getProfileData().getProfileSource())) {
-                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, context.compilable, Arrays.asList(loop.getHeader().getBeginNode()),
+                            logPerformanceWarning(PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, context.compilable, Arrays.asList(loop.getHeader().getBeginNode()),
                                             String.format("Missing loop profile for %s at loop %s.", split, loop.getHeader().getBeginNode()), null);
                         }
                     }
@@ -243,10 +242,7 @@ public final class PerformanceInformationHandler implements Closeable {
             }
         }
 
-        if (!Collections.disjoint(getWarnings(), options.get(PerformanceWarningsAreFatal))) { // TODO
-            throw new AssertionError("Performance warning detected and is fatal.");
-        }
-        if (!Collections.disjoint(getWarnings(), options.get(TreatPerformanceWarningsAsErrors))) {
+        if (!Collections.disjoint(getWarnings(), TreatPerformanceWarningsAsErrors.getValue(options).kinds())) {
             throw new AssertionError("Performance warning detected and is treated as a compilation error.");
         }
     }

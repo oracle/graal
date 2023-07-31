@@ -80,7 +80,7 @@ class HeapDumpHostedUtils {
                 for (ResolvedJavaField resolvedJavaField : inHotSpotFieldOrder(sfields)) {
                     if (resolvedJavaField instanceof SharedField) {
                         final SharedField field = (SharedField) resolvedJavaField;
-                        if (!field.isWritten()) {
+                        if (!field.isWritten() && field.isValueAvailable()) {
                             /* I am only interested in fields that are not constants. */
                             continue;
                         }

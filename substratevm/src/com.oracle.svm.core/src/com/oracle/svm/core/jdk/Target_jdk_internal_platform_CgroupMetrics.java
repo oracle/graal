@@ -26,29 +26,17 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 
 @Platforms(Platform.LINUX.class)
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = CgroupMetricsJDK.class)
+@TargetClass(className = "jdk.internal.platform.CgroupMetrics")
 public final class Target_jdk_internal_platform_CgroupMetrics {
     @Substitute
     public static boolean isUseContainerSupport() {
         return UseContainerSupport.getValue();
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = HasGetTotalMemorySize0.class)
-    public static long getTotalMemorySize0() {
-        // We ought not to use PhysicalMemory.size() here since that might return the
-        // container memory which we explicitly want to avoid for this method. It serves
-        // as an upper bound of the container memory.
-        return ImageSingletons.lookup(PhysicalMemorySupport.class).size().rawValue();
     }
 }

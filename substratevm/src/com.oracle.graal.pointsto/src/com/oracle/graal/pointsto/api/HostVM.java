@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -50,10 +51,13 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -220,10 +224,9 @@ public abstract class HostVM {
         return true;
     }
 
-    @SuppressWarnings("unused")
-    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
+    public InlineBeforeAnalysisGraphDecoder createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
-        return InlineBeforeAnalysisPolicy.NO_INLINING;
+        return new InlineBeforeAnalysisGraphDecoder(bb, InlineBeforeAnalysisPolicy.NO_INLINING, resultGraph, bb.getProviders(method), null);
     }
 
     @SuppressWarnings("unused")
@@ -315,7 +318,7 @@ public abstract class HostVM {
          *         called multiple times with the same parameters; hence, values returned by this
          *         method are allowed to be cached
          */
-        <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow parsingReason);
+        <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow);
 
         /**
          * Decides whether the caller's flows should be linked to callee's parameters flows.
@@ -345,7 +348,7 @@ public abstract class HostVM {
     protected static final MultiMethodAnalysisPolicy DEFAULT_MULTIMETHOD_ANALYSIS_POLICY = new MultiMethodAnalysisPolicy() {
 
         @Override
-        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow parsingReason) {
+        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {
             return List.of(implementation);
         }
 
@@ -376,5 +379,24 @@ public abstract class HostVM {
 
     public boolean ignoreInstanceOfTypeDisallowed() {
         return false;
+    }
+
+    /**
+     * Returns the function Strengthen Graphs should use to improve types based on analysis results.
+     */
+    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
+        return (t) -> t;
+    }
+
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods. More work is needed to
+         * support it within deoptimization targets and runtime-compiled methods.
+         */
+        return method.isOriginalMethod();
+    }
+
+    public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
+        return null;
     }
 }

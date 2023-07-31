@@ -40,19 +40,13 @@ meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void disposeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
 meth protected void exitContext({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.TruffleLanguage$ExitMode,int)
 meth protected void finalizeContext({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void finalizeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
 meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
 meth protected void initializeMultiThreading({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void initializeMultipleContexts()
 meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
 supr java.lang.Object
 hfds languageInfo,polyglotLanguageInstance
-
-CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
- outer com.oracle.truffle.api.TruffleLanguage
-meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public abstract java.lang.String getLanguageClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -63,6 +57,7 @@ meth public abstract !hasdefault boolean interactive()
 meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.InternalResource>[] internalResources()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
@@ -82,6 +77,16 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedB
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String methodName()
 meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
+cons protected init()
+meth protected abstract java.lang.Object create()
+meth protected abstract java.lang.String getLanguageClassName()
+meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth protected abstract java.util.List<?> createFileTypeDetectors()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
+supr java.lang.Object
 
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
@@ -166,12 +171,13 @@ meth public abstract int value()
 
 CLSS public final com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
 cons public init()
-intf com.oracle.truffle.api.TruffleLanguage$Provider
-meth public com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public java.lang.String getLanguageClassName()
-meth public java.util.Collection<java.lang.String> getServicesClassNames()
-meth public java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
-supr java.lang.Object
+meth protected java.lang.Object create()
+meth protected java.lang.Object createInternalResource(java.lang.String)
+meth protected java.lang.String getLanguageClassName()
+meth protected java.util.Collection<java.lang.String> getServicesClassNames()
+meth protected java.util.List<?> createFileTypeDetectors()
+meth protected java.util.List<java.lang.String> getInternalResourceIds()
+supr com.oracle.truffle.api.provider.TruffleLanguageProvider
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception

@@ -24,12 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.Map;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,6 +31,10 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 
@@ -48,15 +46,14 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     @Test
     public void test() {
         RootNode rootNode = new TestRootNode();
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         target.call(0);
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
-        Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         TestTruffleCompilationTask task = new TestTruffleCompilationTask();
-        compiler.doCompile(task, compilable, options, null);
+        compiler.doCompile(task, compilable, null);
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());

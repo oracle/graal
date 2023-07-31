@@ -41,10 +41,6 @@ public abstract class AbstractProcessor {
     void setInLivePhase(@SuppressWarnings("unused") boolean live) {
     }
 
-    static void logWarning(String warning) {
-        System.err.println("Warning: " + warning);
-    }
-
     @SuppressWarnings("unchecked")
     static <T> T singleElement(List<?> list) {
         expectSize(list, 1);

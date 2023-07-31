@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.Signature;
  * debug scopes.
  */
 public final class TruffleDebugJavaMethod implements JavaMethod {
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
     private final TruffleCompilationTask task;
 
     private static final int NUMBER_OF_TIERS = 3;
@@ -117,12 +117,12 @@ public final class TruffleDebugJavaMethod implements JavaMethod {
 
     }
 
-    public TruffleDebugJavaMethod(TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    public TruffleDebugJavaMethod(TruffleCompilationTask task, TruffleCompilable compilable) {
         this.compilable = compilable;
         this.task = task;
     }
 
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return compilable;
     }
 

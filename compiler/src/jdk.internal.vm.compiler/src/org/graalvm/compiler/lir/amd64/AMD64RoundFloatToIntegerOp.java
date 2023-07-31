@@ -49,14 +49,14 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 9444,
-          lineEnd   = 9540,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 9561,
+          lineEnd   = 9657,
+          commit    = "d7b941640638b35f9ac1ef11cd6bf6ccb795c29a",
           sha1      = "9e13c7375bbb35809ad79ebd6a9cc19e66f57aa1")
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 607,
-          lineEnd   = 774,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          lineStart = 604,
+          lineEnd   = 771,
+          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
           sha1      = "312f16a0551887f78cc567638477bbbcbc3765c5")
 // @formatter:on
 @Opcode("AMD64_ROUND_FLOAT_TO_INTEGER")

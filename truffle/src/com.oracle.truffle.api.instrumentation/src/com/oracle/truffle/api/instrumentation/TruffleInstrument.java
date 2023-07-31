@@ -52,6 +52,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -81,6 +82,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -97,6 +99,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -353,7 +356,7 @@ public abstract class TruffleInstrument {
      * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
      * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
      * should be done in this method.
-     * 
+     *
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -1057,6 +1060,52 @@ public abstract class TruffleInstrument {
         }
 
         /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. The internal resource is guaranteed to be fully
+         * {@link InternalResource#unpackFiles(InternalResource.Env, Path)} unpacked} before this
+         * method returns. When this method is called for the first time and the resource is not
+         * cached than the resource will be unpacked. Unpacking an internal resource can be an
+         * expensive operation, but the implementation makes sure that unpacked internal resources
+         * are cached.
+         * <p>
+         * The returned {@link TruffleFile} will only grant read-only access to the target
+         * directory, but access is provided even if IO access is disabled.
+         * <p>
+         * On a HotSpot VM the internal resource is typically cached in the user directory, so
+         * unpacking would be repeated once per operating system user. When the language was
+         * compiled using native-image internal resources are unpacked at native-image compile time
+         * and stored relative to the native-image.
+         *
+         * @param resource the resource class to load
+         * @throws IllegalArgumentException if {@code resource} is not associated with this
+         *             instrument
+         * @throws IOException in case of IO error
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resource);
+        }
+
+        /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
+         * optional resources whose classes may not exist at runtime. In this case the optional
+         * resource must be unpacked at build time, see
+         * {@link Engine#copyResources(Path, String...)}.
+         *
+         * @param resourceId unique id of the resource to be loaded
+         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
+         *             associated with this instrument
+         * @throws IOException in case of IO error
+         * @see #getInternalResource(Class)
+         * @see Engine#copyResources(Path, String...)
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(String resourceId) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resourceId);
+        }
+
+        /**
          * Find or create an engine bound logger for an instrument. When a logging is required from
          * a thread which entered a context the context's logging handler and options are used.
          * Otherwise the engine's logging handler and options are used.
@@ -1419,6 +1468,15 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of {@link InternalResource} classes that is associated with this
+         * instrument. To unpack all resources of an instrument embedders may use
+         * {@link Engine#copyResources(Path, String...)}.
+         *
+         * @since 23.1
+         */
+        Class<? extends InternalResource>[] internalResources() default {};
     }
 
     /**
@@ -1428,7 +1486,9 @@ public abstract class TruffleInstrument {
      * {@link Registration} annotations from the {@link TruffleInstrument}.
      *
      * @since 19.3.0
+     * @deprecated Use {@link TruffleInstrumentProvider}.
      */
+    @Deprecated(since = "23.1")
     public interface Provider {
 
         /**

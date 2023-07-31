@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.17.0",
+    "mxversion": "6.27.1",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -59,7 +59,7 @@ suite = {
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 "TruffleJWS",
             ],
             "requires" : [
@@ -154,7 +154,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -184,7 +184,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -213,7 +213,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -244,7 +244,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -287,7 +287,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "truffle:TruffleJSON"
+                "truffle:TRUFFLE_JSON"
             ],
             "requires" : [
                 "java.logging",
@@ -364,16 +364,12 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.chromeinspector",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "chromeinspector",
@@ -407,11 +403,9 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
+                "exports" : [
+                  "org.graalvm.tools.insight"
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
@@ -430,11 +424,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight.heap",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation",
-                    ],
-                },
             },
             "dependencies": [
                 "org.graalvm.tools.insight.heap"
@@ -480,17 +469,17 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.profiler",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
+                "exports" : [
+                    # chromeinspector and smoke tests use CPUSampler
+                    "com.oracle.truffle.tools.profiler",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "profiler",
@@ -522,17 +511,13 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.coverage",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "coverage",
@@ -564,17 +549,13 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.dap",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "com.oracle.truffle.tools.dap",
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "dap",
@@ -631,11 +612,6 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.lsp",
-                "requiresConcealed" : {
-                    "org.graalvm.truffle" : [
-                        "com.oracle.truffle.api.instrumentation"
-                    ],
-                },
             },
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
@@ -643,6 +619,7 @@ suite = {
             ],
             "distDependencies" : [
                 "LSP_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
               "artifactId" : "lsp",

@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.LightImmutableCollection;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -81,7 +80,7 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
              * callee to be set, but for it not to be linked.
              */
             Collection<AnalysisMethod> result = LightImmutableCollection.toCollection(this, CALLEES_ACCESSOR);
-            assert result.stream().filter(MultiMethod::isOriginalMethod).allMatch(AnalysisMethod::isImplementationInvoked);
+            assert result.stream().filter(m -> m.isOriginalMethod()).allMatch(AnalysisMethod::isImplementationInvoked);
             return result;
         }
         return Collections.emptyList();

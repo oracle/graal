@@ -28,9 +28,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context.Builder;
 import org.junit.Before;
+
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
  * Base class for Truffle unit tests that require that there be no background compilation.
@@ -54,7 +55,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
                     "engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD), //
                     "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
                     "engine.CompileImmediately", Boolean.FALSE.toString(), //
-                    "engine.EncodedGraphCache", Boolean.FALSE.toString()
+                    "compiler.EncodedGraphCache", Boolean.FALSE.toString()
     };
 
     @Before

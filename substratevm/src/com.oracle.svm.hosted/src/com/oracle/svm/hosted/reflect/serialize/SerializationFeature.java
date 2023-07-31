@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.hosted.reflect.serialize;
 
-import static com.oracle.svm.hosted.reflect.serialize.SerializationFeature.warn;
-
 import java.io.Externalizable;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -94,6 +92,7 @@ import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -266,10 +265,6 @@ public class SerializationFeature implements InternalFeature {
         }
     }
 
-    static void warn(String str) {
-        System.err.println("Warning: " + str);
-    }
-
     private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
         return Stream.concat(Stream.concat(
                         Arrays.stream(t.getDeclaredMethods(false)),
@@ -331,7 +326,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
         boolean denied = deniedClasses.containsKey(clazz);
         if (denied && deniedClasses.get(clazz)) {
             deniedClasses.put(clazz, false); /* Warn only once */
-            warn("Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
+            LogUtils.warning("Serialization deny list contains %s. Image will not support serialization/deserialization of this class.", clazz.getName());
         }
         return !denied;
     }
@@ -392,13 +387,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             return;
         } else if (access.findSubclasses(clazz).size() > 1) {
             // The classes returned from access.findSubclasses API including the base class itself
-            warn("Class " + targetClassName + " has subclasses. No classes were registered for object serialization.\n");
+            LogUtils.warning("Class %s has subclasses. No classes were registered for object serialization.", targetClassName);
             return;
         }
         try {
             clazz.getDeclaredMethod("writeObject", ObjectOutputStream.class);
-            warn("Class " + targetClassName +
-                            " implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.\n");
+            LogUtils.warning("Class %s implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.", targetClassName);
             return;
         } catch (NoSuchMethodException e) {
             // Expected case. Do nothing
@@ -448,7 +442,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         if (ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class) == null) {
-            warn("Could not register " + serializationTargetClass + " for lambda serialization as it does not capture any serializable lambda.");
+            LogUtils.warning("Could not register %s for lambda serialization as it does not capture any serializable lambda.", serializationTargetClass);
             return;
         }
 
@@ -511,13 +505,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 if (!customTargetConstructorClass.isAssignableFrom(serializationTargetClass)) {
-                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
-                                    " is not a superclass of the serialization target " + serializationTargetClass + ".");
+                    LogUtils.warning("The given customTargetConstructorClass %s is not a superclass of the serialization target %s.", customTargetConstructorClass.getName(), serializationTargetClass);
                     return;
                 }
                 if (ReflectionUtil.lookupConstructor(true, customTargetConstructorClass) == null) {
-                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
-                                    " does not declare a parameterless constructor.");
+                    LogUtils.warning("The given customTargetConstructorClass %s does not declare a parameterless constructor.", customTargetConstructorClass.getName());
                     return;
                 }
             }

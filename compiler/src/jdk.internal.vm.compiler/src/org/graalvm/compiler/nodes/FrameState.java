@@ -869,6 +869,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 properties.put("sourceFile", ste.getFileName());
                 properties.put("sourceLine", ste.getLineNumber());
             }
+            if (bci >= 0 && code.getCodeSize() > bci) {
+                properties.put("bytecode", Bytecodes.nameOf(code.getCode()[bci]));
+            }
         }
         if (isPlaceholderBci(bci)) {
             properties.put("bci", getPlaceholderBciName(bci));

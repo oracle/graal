@@ -369,7 +369,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
 
         if (verifyState) {
-            verifyStackEffect(bci, pushedValues != null ? pushedValues.length : 0);
+            verifyStackEffect(bci, pushedSlotKinds);
         }
 
         return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
@@ -380,11 +380,11 @@ public final class FrameStateBuilder implements SideEffectsState {
      * stack effect of the instruction at {@code bci}.
      *
      * @param bci
-     * @param pushedValueCount The number of values to push to the stack before creating the frame
-     *            state; 0 if no values are to be pushed. See
+     * @param pushedSlotKinds The kinds of values to push to the stack before creating the frame
+     *            state; may be {@code null} if no values are to be pushed. See
      *            {@link #create(int, BytecodeParser, boolean, JavaKind[], ValueNode[])}.
      */
-    private void verifyStackEffect(int bci, int pushedValueCount) {
+    private void verifyStackEffect(int bci, JavaKind[] pushedSlotKinds) {
         if (parser != null && (!parser.parsingIntrinsic() && parser.graphBuilderConfig.insertFullInfopoints())) {
             /*
              * We might be building the state for an infopoint, be less strict than for state
@@ -414,9 +414,15 @@ public final class FrameStateBuilder implements SideEffectsState {
             return;
         }
 
-        if (stackSize + pushedValueCount + Bytecodes.stackEffectOf(opcode) < 0) {
+        int pushedSlotCount = 0;
+        if (pushedSlotKinds != null) {
+            for (JavaKind pushedKind : pushedSlotKinds) {
+                pushedSlotCount += pushedKind.getSlotCount();
+            }
+        }
+        if (stackSize + pushedSlotCount + Bytecodes.stackEffectOf(opcode) < 0) {
             throw new PermanentBailoutException("At %s, bci %s: opcode %s (%s) has a stack effect of %s, the stack size is %s + %s, this will underflow the bytecode stack.",
-                            code, bci, opcode & 0xff, Bytecodes.nameOf(opcode), Bytecodes.stackEffectOf(opcode), stackSize, pushedValueCount);
+                            code, bci, opcode & 0xff, Bytecodes.nameOf(opcode), Bytecodes.stackEffectOf(opcode), stackSize, pushedSlotCount);
         }
     }
 

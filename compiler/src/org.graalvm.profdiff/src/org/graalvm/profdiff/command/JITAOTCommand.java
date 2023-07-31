@@ -35,24 +35,31 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.core.Writer;
 
 /**
- * Compares a JIT-compiled experiment with an AOT compilation. Uses proftool data of the JIT
- * experiment to designate hot compilations units. All methods that are hot in JIT or inlined in a
- * hot JIT method are marked as hot in the AOT experiment.
+ * Compares a JIT-compiled experiment with an AOT experiment. It is possible to provide a profile of
+ * the AOT experiment. If no AOT profile is provided, all methods that are hot or inlined in a hot
+ * JIT method are marked hot in the AOT experiment.
  */
 public class JITAOTCommand implements Command {
     private final ArgumentParser argumentParser;
+
     private final StringArgument jitOptimizationLogArgument;
-    private final StringArgument proftoolArgument;
+
+    private final StringArgument jitProftoolArgument;
+
     private final StringArgument aotOptimizationLogArgument;
+
+    private final StringArgument aotProftoolArgument;
 
     public JITAOTCommand() {
         argumentParser = new ArgumentParser();
         jitOptimizationLogArgument = argumentParser.addStringArgument(
                         "jit_optimization_log", "directory with optimization logs for each compilation unit in the JIT experiment");
-        proftoolArgument = argumentParser.addStringArgument(
-                        "proftool_output", "proftool output of the JIT experiment in JSON");
+        jitProftoolArgument = argumentParser.addStringArgument(
+                        "jit_proftool_output", "proftool output of the JIT experiment in JSON");
         aotOptimizationLogArgument = argumentParser.addStringArgument(
                         "aot_optimization_log", "directory with optimization logs of the AOT compilation");
+        aotProftoolArgument = argumentParser.addStringArgument(
+                        "aot_proftool_output", null, "proftool output of the AOT experiment in JSON");
     }
 
     @Override
@@ -76,24 +83,29 @@ public class JITAOTCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        Experiment jit = ExperimentParser.parseOrPanic(ExperimentId.ONE, Experiment.CompilationKind.JIT, jitProftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
-        Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument.getValue(), writer);
-        aot.writeExperimentSummary(writer);
-        for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
-            if (!jitUnit.isHot()) {
-                continue;
-            }
-            jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
-                if (node.isPositive() && node.getName() != null) {
-                    aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+        Experiment aot = ExperimentParser.parseOrPanic(ExperimentId.TWO, Experiment.CompilationKind.AOT, aotProftoolArgument.getValue(), aotOptimizationLogArgument.getValue(), writer);
+        if (aotProftoolArgument.getValue() == null) {
+            for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
+                if (!jitUnit.isHot()) {
+                    continue;
                 }
-            });
+                jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
+                    if (node.isPositive() && node.getName() != null) {
+                        aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                    }
+                });
+            }
+        } else {
+            writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(aot);
         }
+        aot.writeExperimentSummary(writer);
 
+        writer.writeln();
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit, aot));
     }

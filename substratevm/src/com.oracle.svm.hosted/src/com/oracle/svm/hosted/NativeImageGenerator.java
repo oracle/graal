@@ -227,6 +227,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -260,6 +261,7 @@ import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
@@ -269,6 +271,7 @@ import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
+import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
 import com.oracle.svm.hosted.image.AbstractImage;
@@ -306,6 +309,7 @@ import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -581,7 +585,6 @@ public class NativeImageGenerator {
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
-            reporter.printFeatures(featureHandler.getUserSpecificFeatures());
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -629,7 +632,7 @@ public class NativeImageGenerator {
                     }
                 }
                 if (hostedEntryPoints.size() == 0) {
-                    throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @%s", CEntryPoint.class.getSimpleName());
+                    throw UserError.abort("No entry points found, i.e., no method annotated with @%s", CEntryPoint.class.getSimpleName());
                 }
 
                 bb.getUnsupportedFeatures().report(bb);
@@ -654,6 +657,8 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
+            BuildPhaseProvider.markReadyForCompilation();
+
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
@@ -674,10 +679,10 @@ public class NativeImageGenerator {
                     codeCache.layoutMethods(debug, bb, compilationExecutor);
                 }
 
-                BuildPhaseProvider.markCompilationFinished();
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
                                 runtimeConfiguration, nativeLibraries);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
+                BuildPhaseProvider.markCompilationFinished();
             }
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
@@ -864,6 +869,7 @@ public class NativeImageGenerator {
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
                 ImageSingletons.add(ClassLoaderSupport.class, classLoaderSupport);
                 ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(loader, classLoaderSupport));
+                ImageSingletons.add(ObservableImageHeapMapProvider.class, new ObservableImageHeapMapProviderImpl());
 
                 ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.create(originalMetaAccess, loader);
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
@@ -905,6 +911,8 @@ public class NativeImageGenerator {
                 HostedProviders aProviders = createHostedProviders(target, aUniverse,
                                 originalProviders, platformConfig, classInitializationSupport, aMetaAccess);
                 aUniverse.hostVM().initializeProviders(aProviders);
+
+                ImageSingletons.add(SimulateClassInitializerSupport.class, ((SVMHost) aUniverse.hostVM()).createSimulateClassInitializerSupport(aMetaAccess));
 
                 bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, analysisExecutor, loader.watchdog::recordActivity,
                                 annotationSubstitutions);
@@ -958,7 +966,7 @@ public class NativeImageGenerator {
                 registerEntryPointStubs(entryPoints);
             }
 
-            ProgressReporter.singleton().printInitializeEnd();
+            ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures());
         }
     }
 
@@ -1374,6 +1382,7 @@ public class NativeImageGenerator {
 
         assert pluginsMetaAccess != null;
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
+                        loader,
                         pluginsMetaAccess,
                         hostedSnippetReflection,
                         plugins.getInvocationPlugins(),
@@ -1890,7 +1899,7 @@ public class NativeImageGenerator {
             try {
                 result.add(Enum.valueOf(enumType, enumValue));
             } catch (IllegalArgumentException iae) {
-                throw VMError.shouldNotReachHere("Value '" + enumValue + "' does not exist. Available values are:\n" + Arrays.toString(availValues));
+                throw VMError.shouldNotReachHere("Value '" + enumValue + "' does not exist. Available values are " + StringUtil.joinSingleQuoted(availValues) + ".");
             }
         }
         return result;

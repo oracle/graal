@@ -711,23 +711,23 @@ public final class Deoptimizer {
                 if (ignoreNonDeoptimizable) {
                     return null;
                 } else {
-                    throw fatalDeoptimizationError("Deoptimization: cannot deoptimize a method that has no deoptimization entry point", deoptInfo);
+                    throw fatalDeoptimizationError("Deoptimization: cannot deoptimize a method that has no deoptimization entry point", deoptInfo, frameInfo);
                 }
             }
 
             CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptInfo.getDeoptMethodOffset(), deoptInfo.getEncodedBci());
             if (targetInfo == null || targetInfo.getFrameInfo() == null) {
                 throw fatalDeoptimizationError(
-                                "Deoptimization: no matching target bytecode frame found for deopt target method", deoptInfo);
+                                "Deoptimization: no matching target bytecode frame found for deopt target method", deoptInfo, frameInfo);
             } else if (!targetInfo.getFrameInfo().isDeoptEntry()) {
                 throw fatalDeoptimizationError(
-                                "Deoptimization: target frame information not marked as deoptimization entry point", deoptInfo);
+                                "Deoptimization: target frame information not marked as deoptimization entry point", deoptInfo, frameInfo);
             } else if (targetInfo.getFrameInfo().getDeoptMethod() != null && targetInfo.getFrameInfo().getDeoptMethod().hasCalleeSavedRegisters()) {
                 /*
                  * The deoptMethod is not guaranteed to be available, but this is only a last check,
                  * to have a better error than the probable segfault.
                  */
-                throw fatalDeoptimizationError("Deoptimization: target method has callee saved registers, which are not properly restored by the deoptimization runtime", deoptInfo);
+                throw fatalDeoptimizationError("Deoptimization: target method has callee saved registers, which are not properly restored by the deoptimization runtime", deoptInfo, frameInfo);
             }
             VirtualFrame virtualFrame = constructTargetFrame(targetInfo, deoptInfo);
             if (previousVirtualFrame != null) {
@@ -744,7 +744,7 @@ public final class Deoptimizer {
         if (sourceChunk.getTotalFrameSize() < FrameAccess.wordSize()) {
             throw fatalDeoptimizationError(
                             String.format("Insufficient space in frame for pointer to DeoptimizedFrame sourceChunkSize: %s, word size: %s", sourceChunk.getTotalFrameSize(), FrameAccess.wordSize()),
-                            frameInfo);
+                            frameInfo, frameInfo);
         }
 
         RelockObjectData[] relockObjectData = relockedObjects == null ? null : relockedObjects.toArray(new RelockObjectData[relockedObjects.size()]);
@@ -1298,8 +1298,27 @@ public final class Deoptimizer {
     }
 
     static RuntimeException fatalDeoptimizationError(String originalMessage, FrameInfoQueryResult frameInfo) {
+        throw fatalDeoptimizationError0(originalMessage, frameInfo, frameInfo, false);
+    }
+
+    static RuntimeException fatalDeoptimizationError(String originalMessage, FrameInfoQueryResult frameInfo, FrameInfoQueryResult topFrame) {
+        throw fatalDeoptimizationError0(originalMessage, frameInfo, topFrame, true);
+    }
+
+    private static RuntimeException fatalDeoptimizationError0(String originalMessage, FrameInfoQueryResult frameInfo, FrameInfoQueryResult topFrame, boolean fullStack) {
         long encodedBci = frameInfo.getEncodedBci();
         String message = String.format("%s%nencodedBci: %s (bci %s)%nMethod info: %s", originalMessage, encodedBci, FrameInfoDecoder.readableBci(encodedBci), frameInfo.getSourceReference());
-        throw VMError.shouldNotReachHere(message);
+        StringBuilder sb = new StringBuilder(message);
+        if (fullStack) {
+            sb.append(System.lineSeparator()).append("Full Deoptimized Stack").append(System.lineSeparator());
+        } else {
+            sb.append(System.lineSeparator()).append("Partial Deoptimized Stack").append(System.lineSeparator());
+        }
+        FrameInfoQueryResult current = topFrame;
+        while (current != null) {
+            sb.append(current.getSourceReference()).append(System.lineSeparator());
+            current = current.getCaller();
+        }
+        throw VMError.shouldNotReachHere(sb.toString());
     }
 }

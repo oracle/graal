@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.errors.JsErrorMessages;
@@ -234,5 +236,21 @@ public class JsTests extends RegexTestBase {
         test("\\s*(p$)?", "", "px", 0, true, 0, 0, -1, -1);
         // original test case
         test("^(\\d{1,2})[:.,;\\-]?(\\d{1,2})?[:.,;\\-]?(\\d{1,2})?[:.,;\\-]?(\\d{1,3})?[:.,;\\-]?\\s*([ap](?=[m]|^\\w|$))?", "i", "08:00:00.000 PDT", 0, true, 0, 13, 0, 2, 3, 5, 6, 8, 9, 12, -1, -1);
+    }
+
+    @Test
+    public void gr46659() {
+        // original test case
+        test("((?<!\\+)https?:\\/\\/(?:www\\.)?(?:[-\\w.]+?[.@][a-zA-Z\\d]{2,}|localhost)(?:[-\\w.:%+~#*$!?&/=@]*?(?:,(?!\\s))*?)*)", "g", "https://sindresorhus.com/?id=foo,bar", 0, true, 0, 36, 0,
+                        36);
+        // related smaller test cases
+        test("(?:\\w*,*?)*", "", "foo,bar", 0, true, 0, 7);
+        test("(?:\\w*(?:,(?!\\s))*?)*", "", "foo,bar", 0, true, 0, 7);
+    }
+
+    @Test
+    public void groupsDeclarationOrder() {
+        Value compiledRegex = compileRegex("(?:(?<x>a)|(?<x>b))(?<foo>foo)(?<bar>bar)", "");
+        Assert.assertArrayEquals(new String[]{"x", "foo", "bar"}, compiledRegex.getMember("groups").getMemberKeys().toArray(new String[0]));
     }
 }

@@ -36,6 +36,7 @@ import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -59,9 +60,10 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
 
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, providers);
-        super.initialize(options, factories, providers, config, allocationSnippetTemplates);
+        super.initialize(options, factories, providers, config, arraycopySnippetTemplates, allocationSnippetTemplates);
     }
 
     @Override

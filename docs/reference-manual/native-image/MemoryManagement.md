@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: optimizations-and-performance
 link_title: Memory Management
 permalink: /reference-manual/native-image/optimizations-and-performance/MemoryManagement/
-redirect_from: /$version/reference-manual/native-image/MemoryManagement/
+redirect_from: /reference-manual/native-image/MemoryManagement/
 ---
 
 # Memory Management

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,8 +123,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             final WasmContext context = WasmContext.get(null);
             return context.tables().table(tableAddress(tableIndex));
         }
-        if (symbolTable.exportedMemoryNames().contains(member)) {
-            return memory();
+        final Integer memoryIndex = symbolTable.exportedMemories().get(member);
+        if (memoryIndex != null) {
+            return memory(memoryIndex);
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
@@ -163,7 +164,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final SymbolTable symbolTable = symbolTable();
         try {
             return symbolTable.exportedFunctions().containsKey(member) ||
-                            symbolTable.exportedMemoryNames().contains(member) ||
+                            symbolTable.exportedMemories().containsKey(member) ||
                             symbolTable.exportedTables().containsKey(member) ||
                             symbolTable.exportedGlobals().containsKey(member);
         } catch (NumberFormatException exc) {
@@ -224,7 +225,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         for (String tableName : symbolTable.exportedTables().getKeys()) {
             exportNames.add(tableName);
         }
-        exportNames.addAll(symbolTable.exportedMemoryNames());
+        for (String memoryName : symbolTable.exportedMemories().getKeys()) {
+            exportNames.add(memoryName);
+        }
         for (String globalName : symbolTable.exportedGlobals().getKeys()) {
             exportNames.add(globalName);
         }

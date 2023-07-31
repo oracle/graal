@@ -86,12 +86,9 @@ public class BytecodeGen {
      * Allocates the given number of bytes in the custom data.
      *
      * @param size The number of bytes to allocate
-     * @return The start location of the newly allocated bytes
      */
-    public int allocate(int size) {
-        final int location = location();
+    public void allocate(int size) {
         data.allocate(size);
-        return location;
     }
 
     /**

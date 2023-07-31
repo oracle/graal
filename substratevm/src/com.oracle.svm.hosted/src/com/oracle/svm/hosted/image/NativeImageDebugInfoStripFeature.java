@@ -45,13 +45,14 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.util.LogUtils;
 
 @AutomaticallyRegisteredFeature
 public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.useDebugInfoGeneration() || SubstrateOptions.UseOldDebugInfo.getValue();
+        return SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.StripDebugInfo.getValue();
     }
 
     @SuppressWarnings("try")
@@ -93,7 +94,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
         }
 
         if (!objcopyAvailable) {
-            System.out.printf("Warning: %s not available. Skipping generation of separate debuginfo file %s, debuginfo will remain embedded in the executable%n", objcopyExe, debugInfoName);
+            LogUtils.warning("%s not available. Skipping generation of separate debuginfo file %s, debuginfo will remain embedded in the executable.", objcopyExe, debugInfoName);
         } else {
             try {
                 String imageFilePath = outputDirectory.resolve(imageName).toString();

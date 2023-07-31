@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,22 +34,27 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -57,11 +62,10 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 @AutomaticallyRegisteredFeature
 public class ClassInitializationFeature implements InternalFeature {
@@ -110,7 +114,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
         universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
         metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
@@ -118,10 +121,10 @@ public class ClassInitializationFeature implements InternalFeature {
 
     private Object checkImageHeapInstance(Object obj) {
         /*
-         * Note that computeInitKind also memoizes the class as InitKind.BUILD_TIME, which means
-         * that the user cannot later manually register it as RERUN or RUN_TIME.
+         * Note that initializeAtBuildTime also memoizes the class as InitKind.BUILD_TIME, which
+         * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
-        if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
+        if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
             String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
             msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
                             " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
@@ -169,25 +172,40 @@ public class ClassInitializationFeature implements InternalFeature {
      */
     @Override
     @SuppressWarnings("try")
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void afterAnalysis(AfterAnalysisAccess a) {
+        AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
-            classInitializationSupport.setUnsupportedFeatures(null);
-
             assert classInitializationSupport.checkDelayedInitialization();
 
-            classInitializationSupport.doLateInitialization(universe, metaAccess);
+            if (SimulateClassInitializerSupport.singleton().isEnabled()) {
+                /* Simulation of class initializer replaces the "late initialization". */
+            } else {
+                classInitializationSupport.doLateInitialization(universe, metaAccess);
+            }
 
             if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
-                reportClassInitializationInfo(SubstrateOptions.reportsPath());
+                reportClassInitializationInfo(access, SubstrateOptions.reportsPath());
             }
             if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
                 reportTrackedClassInitializationTraces(SubstrateOptions.reportsPath());
             }
 
             if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                /*
+                 * This option enables a check that all application classes have an explicitly
+                 * specified initialization status. This is useful to ensure that most classes (all
+                 * classes for which it is feasible) are marked as "initialize at image build time"
+                 * to avoid the overhead of class initialization checks at run time.
+                 *
+                 * We exclude JDK classes from the check: the application should not interfere with
+                 * the class initialization status of the JDK because the application cannot know
+                 * which JDK classes are safe for initialization at image build time.
+                 */
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
+                                .filter(name -> !LambdaUtils.isLambdaName(name))
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
                     System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));
@@ -202,21 +220,32 @@ public class ClassInitializationFeature implements InternalFeature {
      * Prints a file for every type of class initialization. Each file contains a list of classes
      * that belong to it.
      */
-    private void reportClassInitializationInfo(String path) {
+    private void reportClassInitializationInfo(AfterAnalysisAccessImpl access, String path) {
         ReportUtils.report("class initialization report", path, "class_initialization_report", "csv", writer -> {
             writer.println("Class Name, Initialization Kind, Reason for Initialization");
-            reportKind(writer, BUILD_TIME);
-            reportKind(writer, RERUN);
-            reportKind(writer, RUN_TIME);
+            reportKind(access, writer, BUILD_TIME);
+            reportKind(access, writer, RERUN);
+            reportKind(access, writer, RUN_TIME);
         });
     }
 
-    private void reportKind(PrintWriter writer, InitKind kind) {
+    private void reportKind(AfterAnalysisAccessImpl access, PrintWriter writer, InitKind kind) {
         List<Class<?>> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
         allClasses.sort(Comparator.comparing(Class::getTypeName));
         allClasses.forEach(clazz -> {
             writer.print(clazz.getTypeName() + ", ");
-            writer.print(kind + ", ");
+            boolean simulated = false;
+            if (kind != BUILD_TIME) {
+                Optional<AnalysisType> type = access.getMetaAccess().optionalLookupJavaType(clazz);
+                if (type.isPresent()) {
+                    simulated = SimulateClassInitializerSupport.singleton().isClassInitializerSimulated(type.get());
+                }
+            }
+            if (simulated) {
+                writer.print("SIMULATED, ");
+            } else {
+                writer.print(kind + ", ");
+            }
             writer.println(classInitializationSupport.reasonForClass(clazz));
         });
     }

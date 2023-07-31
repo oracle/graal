@@ -195,6 +195,16 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public InvokeTypeFlow createDeoptInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        if (targetMethod.isStatic()) {
+            return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, true);
+        } else {
+            return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, true);
+        }
+    }
+
+    @Override
     public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
         return method.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, null);
     }

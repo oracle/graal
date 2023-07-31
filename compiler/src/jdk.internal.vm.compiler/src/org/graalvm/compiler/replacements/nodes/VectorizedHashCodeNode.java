@@ -24,7 +24,13 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 
 import java.util.EnumSet;
 
@@ -103,7 +109,7 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX2);
+        return EnumSet.of(SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, AVX, AVX2);
     }
 
     @SuppressWarnings("unlikely-arg-type")
@@ -115,16 +121,21 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitVectorizedHashCode(runtimeCheckedCPUFeatures, gen.operand(arrayStart), gen.operand(length), gen.operand(initialValue), arrayKind));
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "vectorizedHashCodeBoolean", parameters = "Boolean")
-    @GenerateStub(name = "vectorizedHashCodeChar", parameters = "Char")
-    @GenerateStub(name = "vectorizedHashCodeByte", parameters = "Byte")
-    @GenerateStub(name = "vectorizedHashCodeShort", parameters = "Short")
-    @GenerateStub(name = "vectorizedHashCodeInt", parameters = "Int")
+    @GenerateStub(name = "vectorizedHashCodeBoolean", parameters = "Boolean", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeChar", parameters = "Char", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeByte", parameters = "Byte", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeShort", parameters = "Short", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "vectorizedHashCodeInt", parameters = "Int", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
     public static native int vectorizedHashCode(Pointer arrayStart, int length, int initialValue, @ConstantNodeParameter JavaKind arrayKind);
 
     @NodeIntrinsic

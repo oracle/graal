@@ -121,7 +121,7 @@ public class ObjectScanner {
         }
     }
 
-    private void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+    protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
@@ -147,14 +147,14 @@ public class ObjectScanner {
      * @param field the scanned field
      * @param receiver the receiver object
      */
-    protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
+    protected void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
             if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
                 /* The value is not available yet. */
                 return;
             }
-            JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+            JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -197,7 +197,7 @@ public class ObjectScanner {
             if (!arrayType.getComponentType().isPrimitive()) {
                 ImageHeapArray heapArray = (ImageHeapArray) array;
                 for (int idx = 0; idx < heapArray.getLength(); idx++) {
-                    final JavaConstant element = (JavaConstant) heapArray.getElement(idx);
+                    final JavaConstant element = heapArray.readElementValue(idx);
                     if (element.isNull()) {
                         scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                     } else {
@@ -235,7 +235,7 @@ public class ObjectScanner {
         scanConstant(elementConstant, reason);
     }
 
-    public final void scanConstant(JavaConstant value, ScanReason reason) {
+    public void scanConstant(JavaConstant value, ScanReason reason) {
         if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }

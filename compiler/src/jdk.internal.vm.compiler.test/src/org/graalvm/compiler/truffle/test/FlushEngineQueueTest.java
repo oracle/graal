@@ -26,12 +26,12 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertNotEquals;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 @SuppressWarnings("try")
 public class FlushEngineQueueTest {

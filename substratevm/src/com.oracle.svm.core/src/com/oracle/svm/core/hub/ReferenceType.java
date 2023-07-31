@@ -31,11 +31,10 @@ import com.oracle.svm.core.util.DuplicatedInNativeCode;
 @DuplicatedInNativeCode
 public enum ReferenceType {
     None(0),     // non-reference class
-    Other(1),    // Subclass of Reference, but not a subclass of one of the classes below
-    Soft(2),     // Subclass of SoftReference
-    Weak(3),     // Subclass of WeakReference
-    Unused(4),
-    Phantom(5);  // Subclass of PhantomReference
+    Soft(1),     // Subclass of SoftReference
+    Weak(2),     // Subclass of WeakReference
+    Reserved(3),
+    Phantom(4);  // Subclass of PhantomReference
 
     private final byte value;
 

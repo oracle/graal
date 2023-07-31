@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -47,7 +46,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -86,6 +84,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -136,8 +135,6 @@ public final class ResourcesFeature implements InternalFeature {
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
-
-    public final Set<Module> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -228,7 +225,6 @@ public final class ResourcesFeature implements InternalFeature {
         private final DebugContext debugContext;
         private final ResourcePattern[] includePatterns;
         private final ResourcePattern[] excludePatterns;
-        private final Set<Module> includedResourcesModules;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
@@ -239,12 +235,10 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<Module> includedResourcesModules,
-                        Runnable heartbeatCallback) {
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Runnable heartbeatCallback) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
-            this.includedResourcesModules = includedResourcesModules;
 
             this.heartbeatCallback = heartbeatCallback;
             this.reachedResourceEntries = new LongAdder();
@@ -257,7 +251,7 @@ public final class ResourcesFeature implements InternalFeature {
             scheduledExecutor.scheduleAtFixedRate(() -> {
                 if (initialReport) {
                     initialReport = false;
-                    System.out.println("WARNING: Resource scanning is taking a long time. " +
+                    LogUtils.warning("Resource scanning is taking a long time. " +
                                     "This can be caused by class-path or module-path entries that point to large directory structures. " +
                                     "Please make sure class-/module-path entries are easily accessible to native-image");
                 }
@@ -307,20 +301,12 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
-            collectModule(module);
             registerResource(debugContext, module, resourceName, resourceStream, fromJar);
         }
 
         @Override
         public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
-            collectModule(module);
             registerDirectoryResource(debugContext, module, dir, content, fromJar);
-        }
-
-        private void collectModule(Module module) {
-            if (module != null && module.isNamed()) {
-                includedResourcesModules.add(module);
-            }
         }
     }
 
@@ -337,7 +323,7 @@ public final class ResourcesFeature implements InternalFeature {
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
         try {
             collector.prepareProgressReporter();
             ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
@@ -351,7 +337,7 @@ public final class ResourcesFeature implements InternalFeature {
         return patterns.stream()
                         .filter(s -> s.length() > 0)
                         .map(this::makeResourcePattern)
-                        .collect(Collectors.toList())
+                        .toList()
                         .toArray(new ResourcePattern[]{});
     }
 
@@ -428,6 +414,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
+            return;
+        }
+
         Method[] resourceMethods = {
                         ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
                         ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
@@ -435,11 +425,11 @@ public final class ResourcesFeature implements InternalFeature {
         Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
         for (Method method : resourceMethods) {
-            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName);
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
         }
     }
 
-    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName) {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName, ParsingReason reason) {
         List<Class<?>> parameterTypes = new ArrayList<>();
         assert !Modifier.isStatic(method.getModifiers());
         parameterTypes.add(InvocationPlugin.Receiver.class);
@@ -458,7 +448,7 @@ public final class ResourcesFeature implements InternalFeature {
                         Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
                         String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                        b.add(new ReachabilityRegistrationNode(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName)));
+                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
                         return true;
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {

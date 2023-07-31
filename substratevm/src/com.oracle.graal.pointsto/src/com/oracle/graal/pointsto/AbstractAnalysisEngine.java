@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -336,6 +337,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         executor.execute(task);
     }
 
+    public void postTask(final Runnable task) {
+        executor.execute(new CompletionExecutor.DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
+    }
+
     @Override
     public final boolean executorIsStarted() {
         return executor.isStarted();
@@ -362,6 +378,35 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {
             bci = ((DeoptBciSupplier) node).bci();
+        }
+
+        /*
+         * If the node is a state split, then we can read the framestate to get a better guess of
+         * the node's position
+         */
+        if (node instanceof StateSplit stateSplit) {
+            var frameState = stateSplit.stateAfter();
+            if (frameState != null) {
+                if (frameState.outerFrameState() != null) {
+                    /*
+                     * If the outer framestate is not null, then inlinebeforeanalysis has inlined
+                     * this call. We store the position of the original call to prevent recursive
+                     * flows.
+                     */
+                    var current = frameState;
+                    while (current.outerFrameState() != null) {
+                        current = current.outerFrameState();
+                    }
+                    assert method.equals(current.getMethod());
+                    bci = current.bci;
+                } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+                    /*
+                     * If there is a single framestate, then use its bci if nothing better is
+                     * available
+                     */
+                    bci = frameState.bci;
+                }
+            }
         }
         return new BytecodePosition(null, method, bci);
     }

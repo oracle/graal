@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.truffle.isolated;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.util.VMError;
@@ -43,6 +46,8 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
+import com.oracle.svm.truffle.isolated.BinaryOutput.ByteArrayBinaryOutput;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
@@ -111,7 +116,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public boolean isSameOrSplit(TruffleCompilable ast) {
         IsolatedCompilableTruffleAST other = (IsolatedCompilableTruffleAST) ast;
         return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, other.handle);
     }
@@ -139,6 +144,19 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     @Override
     public boolean isTrivial() {
         return isTrivial0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
+    @Override
+    public long engineId() {
+        return engineId0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
+    @Override
+    public Map<String, String> getCompilerOptions() {
+        Map<String, String> options = new LinkedHashMap<>();
+        var optionsHandle = IsolatedCompileContext.get().hand(options);
+        getCompilerOptions0(IsolatedCompileContext.get().getClient(), handle, optionsHandle);
+        return options;
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -215,7 +233,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
-        CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
+        TruffleCompilable ast = IsolatedCompileClient.get().unhand(handle);
         ast.prepareForCompilation();
     }
 
@@ -223,6 +241,53 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static boolean isTrivial0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.isTrivial();
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static long engineId0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+        SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
+        return compilable.engineId();
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @SuppressWarnings("unused")
+    private static void getCompilerOptions0(ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilable> inliningHandle,
+                    CompilerHandle<Map<String, String>> targetProperties) {
+        TruffleCompilable task = IsolatedCompileClient.get().unhand(inliningHandle);
+        Map<String, String> debugProperties = task.getCompilerOptions();
+        ByteArrayBinaryOutput out = BinaryOutput.create();
+        writeCompilerOptions(out, debugProperties);
+        byte[] array = out.getArray();
+        try (CTypeConversion.CCharPointerHolder pin = CTypeConversion.toCBytes(array)) {
+            fillCompilerOptions0(IsolatedCompileClient.get().getCompiler(), client, pin.get(), array.length, targetProperties);
+        }
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @SuppressWarnings("unused")
+    private static void fillCompilerOptions0(@CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
+                    ClientIsolateThread client, CCharPointer buffer, int bufferLength,
+                    CompilerHandle<Map<String, String>> targetPropertiesHandle) {
+        Map<String, String> targetProperties = IsolatedCompileContext.get().unhand(targetPropertiesHandle);
+        readCompilerOptions(targetProperties, BinaryInput.create(buffer, bufferLength));
+    }
+
+    private static Map<String, String> readCompilerOptions(Map<String, String> map, BinaryInput in) {
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            map.put(key, in.readUTF());
+        }
+        return map;
+    }
+
+    private static void writeCompilerOptions(BinaryOutput out, Map<String, String> map) {
+        out.writeInt(map.size());
+        for (Map.Entry<String, String> e : map.entrySet()) {
+            out.writeUTF(e.getKey());
+            out.writeUTF(e.getValue());
+        }
     }
 
 }

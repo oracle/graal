@@ -42,14 +42,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -58,7 +59,7 @@ final class GraphManager {
     public static final int TRIVIAL_NODE_COUNT_LIMIT = 500;
     private final PartialEvaluator partialEvaluator;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
-    private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
+    private final EconomicMap<TruffleCompilable, GraphManager.Entry> irCache = EconomicMap.create();
     private final TruffleTierContext rootContext;
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
     private final boolean useSize;
@@ -68,11 +69,11 @@ final class GraphManager {
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
-        this.useSize = rootContext.options.get(PolyglotCompilerOptions.InliningUseSize);
+        this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(rootContext.compilerOptions);
     }
 
     @SuppressWarnings("try")
-    Entry pe(CompilableTruffleAST truffleAST) {
+    Entry pe(TruffleCompilable truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             // the guest scope represents the guest language method of truffle
@@ -98,10 +99,10 @@ final class GraphManager {
         return entry;
     }
 
-    private TruffleTierContext newContext(CompilableTruffleAST truffleAST, boolean finalize) {
+    private TruffleTierContext newContext(TruffleCompilable truffleAST, boolean finalize) {
         return new TruffleTierContext(
                         partialEvaluator,
-                        rootContext.options,
+                        rootContext.compilerOptions,
                         rootContext.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
@@ -128,12 +129,12 @@ final class GraphManager {
         return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
     }
 
-    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
+    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, TruffleCompilable truffleAST, InliningUtil.InlineeReturnAction returnAction) {
         return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
                         "cost-benefit analysis", AgnosticInliningPhase.class.getName(), returnAction);
     }
 
-    void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
+    void finalizeGraph(Invoke invoke, TruffleCompilable truffleAST) {
         final TruffleTierContext context = newContext(truffleAST, true);
         partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
@@ -158,7 +159,7 @@ final class GraphManager {
         final boolean trivial;
         // Populated only when debug dump is enabled with debug dump level >= info.
         final StructuredGraph graphAfterPEForDebugDump;
-        // Only populated if PolyglotCompilerOptions.InliningUseSize is true
+        // Only populated if TruffleCompilerOptions.InliningUseSize is true
         final int graphSize;
 
         Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {

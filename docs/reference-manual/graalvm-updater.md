@@ -3,7 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: GraalVM Updater
 permalink: /reference-manual/graalvm-updater/
-redirect_from: /$version/docs/graalvm-updater/
+redirect_from: /docs/graalvm-updater/
 ---
 
 # GraalVM Updater
@@ -11,7 +11,7 @@ redirect_from: /$version/docs/graalvm-updater/
 * [Check Available Components](#check-available-components)
 * [Install Components](#install-components)
 * [Install Components Manually](#install-components-manually)
-* [Install Components from Local Collection](#install-cmponents-from-local-collection)
+* [Install Components from Local Collection](#install-components-from-local-collection)
 * [Uninstall Components](#uninstall-components)
 * [Rebuild Images](#rebuild-images)
 * [Replace Components and Files](#replace-components-and-files)
@@ -23,7 +23,7 @@ GraalVM Updater, `gu`, is a command-line tool for installing and managing option
 It is available in the GraalVM JDK.
 To assist you with the installation, language runtimes and utilities are pre-packaged as JAR files and referenced in the documentation as "components".
 GraalVM Updater can be also used to update your local GraalVM installation to a newer version or upgrade from GraalVM Community Edition to Oracle GraalVM.
-Read more in [Upgrade GraalVM](#upgrade-graalvm).
+Read more in [Upgrade GraalVM](#graalvm-updater-commands-overview).
 
 ## Check Available Components
 
@@ -78,8 +78,6 @@ To see more verbose output during the installation, as the download progress bar
 
 If a component is installed that depends on another component, GraalVM Updater will search for the appropriate dependency and install it as well.
 If a required component cannot be found, the installation will fail.
-
-> Note: See the [Install Components on GraalVM Enterprise guide](https://www.graalvm.org/22.3/reference-manual/graalvm-updater/#install-components-on-graalvm-enterprise) for information on installing components on older GraalVM Enterprise releases.
 
 ## Install Components Manually
 
@@ -260,4 +258,4 @@ Additonal options:
 
 ### Related Documentation
 
-Check the [GraalVM's components availability and support per platform](../introduction.md#features-support).
+Check the [GraalVM's components availability and support per platform](../introduction.md#licensing-and-support).

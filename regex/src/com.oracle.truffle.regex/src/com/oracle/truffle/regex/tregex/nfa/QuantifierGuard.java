@@ -117,6 +117,10 @@ public final class QuantifierGuard {
          */
         updateCG,
         /**
+         * Transition is leaving a group containing recursive back-references.
+         */
+        updateRecursiveBackrefPointer,
+        /**
          * Transition is entering the then-branch (the first alternative) of a
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
          * {@link #getIndex()} must be matched in order to proceed.
@@ -190,6 +194,10 @@ public final class QuantifierGuard {
 
     public static QuantifierGuard createUpdateCG(int index) {
         return new QuantifierGuard(Kind.updateCG, index);
+    }
+
+    public static QuantifierGuard createUpdateRecursiveBackref(int index) {
+        return new QuantifierGuard(Kind.updateRecursiveBackrefPointer, index);
     }
 
     public static QuantifierGuard createCheckGroupMatched(int groupNumber) {

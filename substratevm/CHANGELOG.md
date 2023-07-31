@@ -5,6 +5,11 @@ This changelog summarizes major changes to GraalVM Native Image.
 ## Version 23.1.0
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
 * (GR-45841) BellSoft added support for the JFR event ThreadCPULoad.
+* (GR-45994) Removed the option `-H:EnableSignalAPI`. Please use the runtime option `EnableSignalHandling` if it is necessary to enable or disable signal handling explicitly.
+* (GR-39406) Simulation of class initializer: Class initializer of classes that are not marked for initialization at image build time are simulated at image build time to avoid executing them at image run time.
+* (GR-39406) All classes can now be used at image build time, even when they are not explicitly configured as `--initialize-at-build-time`. Note, however, that still only classes configured as `--initialize-at-build-time` are allowed in the image heap.
+* (GR-46392) Add `--parallelism` option to control how many threads are used by the build process.
+* (GR-46392) Add build resources section to the build output that shows the memory and thread limits of the build process.
 
 ## Version 23.0.0
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.

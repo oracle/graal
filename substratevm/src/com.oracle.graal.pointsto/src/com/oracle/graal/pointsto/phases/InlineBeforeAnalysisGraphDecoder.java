@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
@@ -50,14 +51,15 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scope> extends PEGraphDecoder {
+public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     public class InlineBeforeAnalysisMethodScope extends PEMethodScope {
 
-        private final S policyScope;
+        public final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
 
         private boolean inliningAborted;
 
@@ -75,7 +77,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             } else {
-                policyScope = policy.openCalleeScope((cast(caller)).policyScope);
+                policyScope = policy.openCalleeScope(method, (cast(caller)).policyScope);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
@@ -84,14 +86,14 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     }
 
     protected final BigBang bb;
-    protected final InlineBeforeAnalysisPolicy<S> policy;
+    protected final InlineBeforeAnalysisPolicy policy;
 
-    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph, HostedProviders providers) {
-        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
+    public InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy policy, StructuredGraph graph, HostedProviders providers, LoopExplosionPlugin loopExplosionPlugin) {
+        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, loopExplosionPlugin,
                         providers.getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
                         null, policy.nodePlugins, null, null,
-                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
+                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), policy.needsExplicitExceptions(), false);
         this.bb = bb;
         this.policy = policy;
 
@@ -128,8 +130,9 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     }
 
     @Override
-    protected Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
+    protected final Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
         Node canonical = super.canonicalizeFixedNode(methodScope, loopScope, node);
+        canonical = doCanonicalizeFixedNode(cast(methodScope), loopScope, canonical);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
          * alive, but we know it was just decoded and therefore not checked yet).
@@ -141,6 +144,11 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             maybeAbortInlining(methodScope, loopScope, canonical);
         }
         return canonical;
+    }
+
+    @SuppressWarnings("unused")
+    protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
+        return node;
     }
 
     @Override
@@ -155,7 +163,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv("  ".repeat(methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
             }
-            if (!policy.processNode(bb.getMetaAccess(), methodScope.method, methodScope.policyScope, node)) {
+            if (!methodScope.policyScope.processNode(bb.getMetaAccess(), methodScope.method, node)) {
                 abortInlining(methodScope);
             }
         }
@@ -197,8 +205,9 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv("  ".repeat(callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
             }
+            AnalysisError.guarantee(inlineScope.policyScope.allowAbort(), "Unexpected abort: %s", inlineScope);
             if (callerScope.policyScope != null) {
-                policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+                callerScope.policyScope.abortCalleeScope(inlineScope.policyScope);
             }
             if (invokeData.invokePredecessor.next() != null) {
                 killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
@@ -222,7 +231,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             graph.getDebug().logv("  ".repeat(callerScope.inliningDepth) + "  committed " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
         }
         if (callerScope.policyScope != null) {
-            policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+            callerScope.policyScope.commitCalleeScope(inlineScope.policyScope);
         }
         Object reason = graph.currentNodeSourcePosition() != null ? graph.currentNodeSourcePosition() : graph.method();
 
@@ -297,5 +306,11 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     @SuppressWarnings("unchecked")
     protected InlineBeforeAnalysisMethodScope cast(MethodScope methodScope) {
         return (InlineBeforeAnalysisMethodScope) methodScope;
+    }
+
+    @Override
+    protected FixedWithNextNode afterMethodScopeCreation(PEMethodScope is, FixedWithNextNode predecessor) {
+        InlineBeforeAnalysisMethodScope inlineScope = cast(is);
+        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments());
     }
 }

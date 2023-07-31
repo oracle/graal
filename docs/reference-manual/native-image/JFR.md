@@ -1,15 +1,15 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: debugging-and-diagnostics
 link_title: JDK Flight Recorder
 permalink: /reference-manual/native-image/debugging-and-diagnostics/JFR/
-redirect_from: /$version/reference-manual/native-image/JFR/
+redirect_from: /reference-manual/native-image/JFR/
 ---
 
 # JDK Flight Recorder (JFR) with Native Image
 
 JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM. 
-GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event`](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.jfr/jdk/jfr/Event.html) API with a similar experience to using JFR in the Java HotSpot VM.
+GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/20/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
 To record JFR events when running a native executable, JFR support and JFR recording must be enabled. 
 
@@ -117,10 +117,11 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 ## Current Limitations
 
-The JFR support is still limited, for example, most VM-internal events and advanced features such as stack traces or memory leak detection are still missing. A subset of JFR features are currently available: custom and system events and disk-based recordings.
-Note that: 
-- JFR events recording is not supported on GraalVM distribution for Windows. 
-- JFR is only supported with native executables built on GraalVM JDK 11.
+JFR support is currently incomplete: for example, few VM-internal events are present. 
+However, JFR currently includes the following features: custom and system events, disk-based recordings, and stack traces. 
+To see an exhaustive list of JFR events and features supported by Native Image, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
+
+> Note: the GraalVM distribution for Windows does not include JFR event recording.
 
 ### Further Reading
 

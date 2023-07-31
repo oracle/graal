@@ -25,8 +25,6 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
@@ -36,6 +34,8 @@ import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<CompilationIdentifier> implements TruffleCompilationIdentifier {
 
@@ -43,16 +43,16 @@ final class IsolatedTruffleCompilationIdentifier extends IsolatedObjectProxy<Com
 
     private final String[] descriptions = new String[VERBOSITIES.length];
     private final TruffleCompilationTask task;
-    private final CompilableTruffleAST compilable;
+    private final TruffleCompilable compilable;
 
-    IsolatedTruffleCompilationIdentifier(ClientHandle<CompilationIdentifier> handle, TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    IsolatedTruffleCompilationIdentifier(ClientHandle<CompilationIdentifier> handle, TruffleCompilationTask task, TruffleCompilable compilable) {
         super(handle);
         this.task = task;
         this.compilable = compilable;
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
+    public TruffleCompilable getCompilable() {
         return compilable;
     }
 

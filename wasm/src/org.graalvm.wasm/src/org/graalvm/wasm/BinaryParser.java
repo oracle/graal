@@ -107,6 +107,7 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean multiValue;
     private final boolean bulkMemoryAndRefTypes;
     private final boolean memory64;
+    private final boolean multiMemory;
 
     private final boolean unsafeMemory;
 
@@ -120,6 +121,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.multiValue = context.getContextOptions().supportMultiValue();
         this.bulkMemoryAndRefTypes = context.getContextOptions().supportBulkMemoryAndRefTypes();
         this.memory64 = context.getContextOptions().supportMemory64();
+        this.multiMemory = context.getContextOptions().supportMultiMemory();
         this.unsafeMemory = context.getContextOptions().useUnsafeMemory();
     }
 
@@ -211,6 +213,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
         if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
+            codeSectionOffset = 0;
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
@@ -248,7 +251,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     /**
      * Reads possible debug sections and stores their offset in the custom data array.
-     * 
+     *
      * @param name the name of the custom section
      * @param size the size of the custom section excluding the name
      * @param customData the custom data
@@ -256,40 +259,22 @@ public class BinaryParser extends BinaryStreamParser {
     private void readDebugSection(String name, int sectionOffset, int size, BytecodeGen customData) {
         switch (name) {
             case DebugUtil.ABBREV_NAME:
-                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.ARANGES_NAME:
-                DebugUtil.setArangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.FRAME_NAME:
-                DebugUtil.setFrameOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.INFO_NAME:
                 DebugUtil.setInfo(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.LINE_NAME:
-                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.LOC_NAME:
-                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.MAC_INFO_NAME:
-                DebugUtil.setMacInfoOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.PUBNAMES_NAME:
-                DebugUtil.setPubnamesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.PUBTYPES_NAME:
-                DebugUtil.setPubtypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.RANGES_NAME:
-                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
             case DebugUtil.STR_NAME:
-                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset);
-                break;
-            case DebugUtil.TYPES_NAME:
-                DebugUtil.setTypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
                 break;
         }
     }
@@ -301,8 +286,11 @@ public class BinaryParser extends BinaryStreamParser {
         if (module.hasDebugInfo()) {
             return module.debugInfoOffset();
         }
-        module.setDebugInfoOffset(customData.location());
-        return customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
+        final int location = customData.location();
+        customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
+        DebugUtil.initializeData(customData, location);
+        module.setDebugInfoOffset(location);
+        return location;
     }
 
     /**
@@ -415,7 +403,8 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ImportIdentifier.MEMORY: {
                     final boolean is64Bit = readMemoryLimits(longMultiResult);
-                    module.symbolTable().importMemory(moduleName, memberName, longMultiResult[0], longMultiResult[1], is64Bit);
+                    final int memoryIndex = module.memoryCount();
+                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, multiMemory);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -456,13 +445,12 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readMemorySection() {
         final int memoryCount = readLength();
-        // Since in the current version of WebAssembly supports at most one table instance per
-        // module, this loop should be executed at most once. `SymbolTable#allocateMemory` fails if
-        // it is not the case.
-        for (int memoryIndex = 0; memoryIndex != memoryCount; memoryIndex++) {
+        final int startingMemoryIndex = module.memoryCount();
+        module.limits().checkMemoryCount(startingMemoryIndex + memoryCount, multiMemory);
+        for (int memoryIndex = startingMemoryIndex; memoryIndex != startingMemoryIndex + memoryCount; memoryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final boolean is64Bit = readMemoryLimits(longMultiResult);
-            module.symbolTable().allocateMemory(longMultiResult[0], longMultiResult[1], is64Bit);
+            module.symbolTable().allocateMemory(memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, multiMemory);
         }
     }
 
@@ -844,101 +832,134 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_LOAD:
-                    state.addMemoryInstruction(Bytecode.F32_LOAD, load(state, F32_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, F32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F32_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F64_LOAD:
-                    state.addMemoryInstruction(Bytecode.F64_LOAD, load(state, F64_TYPE, 64), module.memoryHasIndexType64());
+                    load(state, F64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F64_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD, load(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD8_S:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD8_S, load(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD8_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD8_U:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD8_U, load(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD16_S:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD16_S, load(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD16_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD16_U:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD16_U, load(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD, load(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD8_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD8_S, load(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD8_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD8_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD8_U, load(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD16_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD16_S, load(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD16_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD16_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD16_U, load(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD32_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD32_S, load(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD32_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD32_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD32_U, load(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD32_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F32_STORE:
-                    state.addMemoryInstruction(Bytecode.F32_STORE, store(state, F32_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, F32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F32_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F64_STORE:
-                    state.addMemoryInstruction(Bytecode.F64_STORE, store(state, F64_TYPE, 64), module.memoryHasIndexType64());
+                    store(state, F64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F64_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE:
-                    state.addMemoryInstruction(Bytecode.I32_STORE, store(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE_8:
-                    state.addMemoryInstruction(Bytecode.I32_STORE_8, store(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE_8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE_16:
-                    state.addMemoryInstruction(Bytecode.I32_STORE_16, store(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE_16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE:
-                    state.addMemoryInstruction(Bytecode.I64_STORE, store(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_8:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_8, store(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_16:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_16, store(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_32:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_32, store(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_32, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.MEMORY_SIZE: {
-                    final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
-                    if (module.memoryHasIndexType64() && memory64) {
+                    final int memoryIndex;
+                    if (multiMemory) {
+                        memoryIndex = readMemoryIndex();
+                    } else {
+                        memoryIndex = read1();
+                        assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                        checkMemoryIndex(0);
+                    }
+                    if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY64_SIZE);
+                        state.addInstruction(Bytecode.MEMORY64_SIZE, memoryIndex);
                     } else {
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.MEMORY_SIZE);
+                        state.addInstruction(Bytecode.MEMORY_SIZE, memoryIndex);
                     }
                     break;
                 }
                 case Instructions.MEMORY_GROW: {
-                    final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
-                    if (module.memoryHasIndexType64() && memory64) {
+                    final int memoryIndex;
+                    if (multiMemory) {
+                        memoryIndex = readMemoryIndex();
+                    } else {
+                        memoryIndex = read1();
+                        assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                        checkMemoryIndex(0);
+                    }
+                    if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                         state.popChecked(I64_TYPE);
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY64_GROW);
+                        state.addInstruction(Bytecode.MEMORY64_GROW, memoryIndex);
                     } else {
                         state.popChecked(I32_TYPE);
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.MEMORY_GROW);
+                        state.addInstruction(Bytecode.MEMORY_GROW, memoryIndex);
                     }
                     break;
                 }
@@ -1274,25 +1295,32 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
-                        readMemoryIndex();
+                        final int memoryIndex;
+                        if (multiMemory) {
+                            memoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            memoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        if (module.memoryHasIndexType64() && memory64) {
+                        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
                             if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex, memoryIndex);
                             } else {
-                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex, memoryIndex);
                             }
                         } else {
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
                             if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY_INIT_UNSAFE, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY_INIT_UNSAFE, dataIndex, memoryIndex);
                             } else {
-                                state.addInstruction(Bytecode.MEMORY_INIT, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY_INIT, dataIndex, memoryIndex);
                             }
                         }
                         break;
@@ -1311,38 +1339,67 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_COPY: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
-                        readMemoryIndex();
-                        if (module.memoryHasIndexType64() && memory64) {
+                        final int destMemoryIndex;
+                        final int srcMemoryIndex;
+                        if (multiMemory) {
+                            destMemoryIndex = readMemoryIndex();
+                            srcMemoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            read1();
+                            destMemoryIndex = 0;
+                            srcMemoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
+                        if (module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY64_COPY);
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S64, destMemoryIndex, srcMemoryIndex);
+                        } else if (module.memoryHasIndexType64(destMemoryIndex) && !module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S32, destMemoryIndex, srcMemoryIndex);
+                        } else if (!module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D32_S64, destMemoryIndex, srcMemoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_COPY);
+                            state.addInstruction(Bytecode.MEMORY_COPY, destMemoryIndex, srcMemoryIndex);
                         }
                         break;
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
-                        if (module.memoryHasIndexType64() && memory64) {
+                        final int memoryIndex;
+                        if (multiMemory) {
+                            memoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            memoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
+                        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY64_FILL);
+                            state.addInstruction(Bytecode.MEMORY64_FILL, memoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_FILL);
+                            state.addInstruction(Bytecode.MEMORY_FILL, memoryIndex);
                         }
                         break;
                     }
@@ -1473,9 +1530,17 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().supportBulkMemoryAndRefTypes(), "Bulk memory operations and reference types are not enabled (opcode: 0x%02x)", opcode);
     }
 
-    private long store(ParserState state, byte type, int n) {
-        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-        readAlignHint(n); // align hint
+    private void store(ParserState state, byte type, int n, long[] result) {
+        int alignHint = readAlignHint(n); // align hint
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
+        final int memoryIndex;
+        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
+            memoryIndex = readMemoryIndex();
+        } else {
+            memoryIndex = 0;
+            checkMemoryIndex(0);
+        }
         final long memoryOffset;
         if (memory64) {
             memoryOffset = readUnsignedInt64(); // 64-bit store offset
@@ -1483,30 +1548,40 @@ public class BinaryParser extends BinaryStreamParser {
             memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
         }
         state.popChecked(type); // value to store
-        if (module.memoryHasIndexType64() && memory64) {
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
         } else {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
-        return memoryOffset;
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
     }
 
-    private long load(ParserState state, byte type, int n) {
-        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-        readAlignHint(n); // align hint
+    private void load(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAlignHint(n); // align hint
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
+        final int memoryIndex;
+        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
+            memoryIndex = readMemoryIndex();
+        } else {
+            memoryIndex = 0;
+            checkMemoryIndex(0);
+        }
         final long memoryOffset;
         if (memory64) {
             memoryOffset = readUnsignedInt64(); // 64-bit load offset
         } else {
             memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
         }
-        if (module.memoryHasIndexType64() && memory64) {
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
         state.push(type); // loaded value
-        return memoryOffset;
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
     }
 
     private void readOffsetExpression(int[] result) {
@@ -1737,8 +1812,8 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
-                    readMemoryIndex();
-                    module.symbolTable().exportMemory(exportName);
+                    final int memoryIndex = readMemoryIndex();
+                    module.symbolTable().exportMemory(memoryIndex, exportName);
                     break;
                 }
                 case ExportIdentifier.GLOBAL: {
@@ -1879,15 +1954,22 @@ public class BinaryParser extends BinaryStreamParser {
             final int mode;
             long offsetAddress;
             final int offsetGlobalIndex;
+            final int memoryIndex;
             if (bulkMemoryAndRefTypes) {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b01;
                 final boolean useMemoryIndex = (sectionType & 0b10) != 0;
-                if (useMemoryIndex) {
+                if (useMemoryIndex && multiMemory) {
+                    memoryIndex = readMemoryIndex();
+                } else if (useMemoryIndex) {
                     readMemoryIndex();
+                    memoryIndex = 0;
+                } else {
+                    memoryIndex = 0;
                 }
                 if (mode == SegmentMode.ACTIVE) {
-                    if (module.memoryHasIndexType64()) {
+                    checkMemoryIndex(memoryIndex);
+                    if (module.memoryHasIndexType64(memoryIndex)) {
                         readLongOffsetExpression(longMultiResult);
                         offsetAddress = longMultiResult[0];
                         offsetGlobalIndex = (int) longMultiResult[1];
@@ -1902,8 +1984,13 @@ public class BinaryParser extends BinaryStreamParser {
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
-                readMemoryIndex();
-                if (module.memoryHasIndexType64()) {
+                if (multiMemory) {
+                    memoryIndex = readMemoryIndex();
+                } else {
+                    readMemoryIndex();
+                    memoryIndex = 0;
+                }
+                if (module.memoryHasIndexType64(memoryIndex)) {
                     readLongOffsetExpression(longMultiResult);
                     offsetAddress = longMultiResult[0];
                     offsetGlobalIndex = (int) longMultiResult[1];
@@ -1919,13 +2006,14 @@ public class BinaryParser extends BinaryStreamParser {
 
             final int headerOffset = bytecode.location();
             if (mode == SegmentMode.ACTIVE) {
-                assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+                checkMemoryIndex(memoryIndex);
                 final long currentOffsetAddress = offsetAddress;
-                bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress);
+                bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, offsetGlobalIndex, byteLength,
-                                bytecodeOffset, droppedDataInstanceOffset));
+                module.addLinkAction(
+                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetGlobalIndex, byteLength,
+                                                bytecodeOffset, droppedDataInstanceOffset));
             } else {
                 bytecode.addDataHeader(mode, byteLength);
                 final int bytecodeOffset = bytecode.location();
@@ -1999,8 +2087,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int checkMemoryIndex(int index) {
-        assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
-        assertIntEqual(index, 0, Failure.UNKNOWN_MEMORY);
+        assertUnsignedIntLess(index, module.symbolTable().memoryCount(), Failure.UNKNOWN_MEMORY);
         return index;
     }
 

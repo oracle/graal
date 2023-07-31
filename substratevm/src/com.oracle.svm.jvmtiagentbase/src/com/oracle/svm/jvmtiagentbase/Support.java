@@ -446,7 +446,9 @@ public final class Support {
     }
 
     public static void check(JvmtiError resultCode) {
-        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
+        if (!resultCode.equals(JvmtiError.JVMTI_ERROR_NONE)) {
+            throw VMError.shouldNotReachHere("JVMTI call failed with " + resultCode);
+        }
     }
 
     public static void checkPhase(JvmtiError resultCode) {

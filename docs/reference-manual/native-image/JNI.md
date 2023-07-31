@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: dynamic-features
 link_title: Java Native Interface
 permalink: /reference-manual/native-image/dynamic-features/JNI/
-redirect_from: /$version/reference-manual/native-image/JNI/
+redirect_from: /reference-manual/native-image/JNI/
 ---
 
 # Java Native Interface (JNI) in Native Image
@@ -72,7 +72,7 @@ class JNIRegistrationFeature implements Feature {
 }
 ```
 To activate the custom feature `--features=<fully qualified name of JNIRegistrationFeature class>` needs to be passed to native-image.
-[Native Image Build Configuration](BuildConfiguration.md#embedding-a-configuration-file) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
+[Native Image Build Configuration](BuildConfiguration.md#embed-a-configuration-file) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ### java.lang.reflect Support
 The JNI functions `FromReflectedMethod` and `ToReflectedMethod` can be used to obtain the corresponding `jmethodID` to a `java.lang.reflect.Method`, or to a `java.lang.reflect.Constructor` object, and vice versa.

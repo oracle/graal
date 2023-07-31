@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.phases;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
@@ -56,7 +55,7 @@ public class NoClassInitializationPlugin implements ClassInitializationPlugin {
     }
 
     @Override
-    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
         return false;
     }
 }

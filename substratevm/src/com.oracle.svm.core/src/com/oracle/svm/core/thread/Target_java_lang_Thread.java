@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -95,14 +96,16 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     volatile boolean interrupted;
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long parentThreadId;
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     public boolean jfrExcluded;
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ThreadData.class)//
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ThreadData.class)//
     UnacquiredThreadData threadData;
 
     @Alias//
@@ -111,19 +114,23 @@ public final class Target_java_lang_Thread {
     @Alias//
     volatile String name;
 
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     int priority;
 
     /* Whether or not the thread is a daemon . */
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     boolean daemon;
 
     /* What will be run. */
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     Runnable target;
 
     /* The group of this thread */
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     ThreadGroup group;
 
     @Alias//
@@ -136,18 +143,22 @@ public final class Target_java_lang_Thread {
      * The requested stack size for this thread, or 0 if the creator did not specify a stack size.
      * It is up to the VM to do whatever it likes with this number; some VMs will ignore it.
      */
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     long stackSize;
 
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class)//
+    @Alias //
+    @TargetElement(onlyWith = JDK19OrLater.class)//
     Target_java_lang_Thread_FieldHolder holder;
 
     /* Thread ID */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
     public long tid;
 
     /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
-    @Delete @TargetElement(onlyWith = JDK17OrEarlier.class)//
+    @Delete //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     static long threadSeqNumber;
     /** We have our own atomic number in {@link JavaThreads#threadInitNumber}. */
     @Delete//
@@ -158,34 +169,43 @@ public final class Target_java_lang_Thread {
      * For unstarted threads created during image generation like the main thread, we do not want to
      * inherit a (more or less random) access control context.
      */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     public AccessControlContext inheritedAccessControlContext;
 
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
     volatile int threadStatus;
 
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     Object blockerLock;
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
     Object interruptLock;
 
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
 
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
     volatile Target_sun_nio_ch_Interruptible nioBlocker;
 
     /** @see JavaThreads#setCurrentThreadLockHelper */
-    @Inject @TargetElement(onlyWith = ContinuationsSupported.class) //
+    @Inject //
+    @TargetElement(onlyWith = ContinuationsSupported.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Inject //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] scopedValueCache;
 
-    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK20OrLater.class) //
     Object scopedValueBindings;
 
     @Alias
@@ -305,7 +325,8 @@ public final class Target_java_lang_Thread {
     }
 
     /** On HotSpot, a field in C++ class {@code JavaThread}. Loads and stores are unordered. */
-    @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
+    @Inject //
+    @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
 
@@ -505,6 +526,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private int countStackFrames() {
         throw VMError.unsupportedFeature("The deprecated method Thread.countStackFrames is not supported");
@@ -632,12 +654,13 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK19OrLater.class)
     native void setInterrupt();
 
-    @Alias
+    @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class)
     native void clearInterrupt();
 
     /** Carrier threads only: the current innermost continuation. */
-    @Alias @TargetElement(onlyWith = LoomJDK.class) //
+    @Alias //
+    @TargetElement(onlyWith = LoomJDK.class) //
     Target_jdk_internal_vm_Continuation cont;
 
     @Alias
@@ -713,7 +736,7 @@ public final class Target_java_lang_Thread {
      * {@code ScopedValue.Carrier} calls this method through the implementation of
      * {@code JavaLangAccess}, which is an anonymous class that we cannot substitute, so we also
      * substitute the calling class to invoke this method directly in
-     * {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
+     * {@link Target_java_lang_ScopedValue_Carrier}.
      */
     @Substitute
     @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", callerMustBe = true)
@@ -733,8 +756,8 @@ public final class Target_java_lang_Thread {
      * could result in bindings leaking to another scope, during which {@link #scopedValueBindings}
      * is cleared as a precaution. We don't have the means to extract the bindings object from the
      * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows
-     * and substitute {@link Target_jdk_incubator_concurrent_ScopedValue#scopedValueBindings} to
-     * never call this method.
+     * and substitute {@link Target_java_lang_ScopedValue#scopedValueBindings} to never call this
+     * method.
      */
     @Delete
     @TargetElement(onlyWith = JDK20OrLater.class)
@@ -788,7 +811,8 @@ interface Target_java_lang_Thread_Builder {
 @TargetClass(value = Thread.class, innerClass = "Constants", onlyWith = JDK19OrLater.class)
 final class Target_java_lang_Thread_Constants {
     // Checkstyle: stop
-    @SuppressWarnings("removal") @Alias static AccessControlContext NO_PERMISSIONS_ACC;
+    @SuppressWarnings("removal") //
+    @Alias static AccessControlContext NO_PERMISSIONS_ACC;
 
     @Alias //
     @TargetElement(onlyWith = JDK20OrEarlier.class) //

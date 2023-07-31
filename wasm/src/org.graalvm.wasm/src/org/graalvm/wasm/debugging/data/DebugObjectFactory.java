@@ -43,7 +43,6 @@ package org.graalvm.wasm.debugging.data;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -72,6 +71,7 @@ import org.graalvm.wasm.debugging.parser.DebugData;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
 /**
@@ -148,216 +148,280 @@ public abstract class DebugObjectFactory {
         return DebugConstantObject.UNSPECIFIED;
     }
 
-    private Optional<DebugType> parseArrayType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<? extends DebugType> elementTypeValue = parse(context, scope, data.asI32(Attributes.TYPE));
-        if (elementTypeValue.isEmpty()) {
-            return Optional.empty();
+    private DebugType parseArrayType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType elementType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (elementType == null) {
+            return null;
         }
-        final DebugType elementType = elementTypeValue.get();
+        if (getChildOrNull(data, Tags.SUBRANGE_TYPE) == null) {
+            return null;
+        }
         final IntArrayList dimensionLengths = new IntArrayList();
-        forEachChild(data, Tags.SUBRANGE_TYPE, s -> dimensionLengths.add(s.tryAsI32(Attributes.COUNT).orElse(0)));
-        return Optional.of(createArrayType(name, elementType, dimensionLengths.toArray()));
+        forEachChild(data, Tags.SUBRANGE_TYPE, s -> dimensionLengths.add(s.asI32OrDefault(Attributes.COUNT, 0)));
+        return createArrayType(name, elementType, dimensionLengths.toArray());
     }
 
-    private Optional<DebugType> parseStructType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<DebugData> variantPart = getChild(data, Tags.VARIANT_PART);
-        if (variantPart.isPresent()) {
-            return parseVariantType(context, scope, name, variantPart.get());
+    private DebugType parseStructType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugData variantPart = getChildOrNull(data, Tags.VARIANT_PART);
+        if (variantPart != null) {
+            return parseVariantType(context, scope, name, variantPart);
         }
         final List<DebugType> superTypes = new ArrayList<>();
         forEachChild(data, Tags.INHERITANCE, (i -> {
-            final Optional<? extends DebugType> superType = parse(context, scope, i);
-            superType.ifPresent(superTypes::add);
+            if (i.asI32OrDefault(Attributes.TYPE, -1) == data.offset()) {
+                // class inheriting from itself
+                return;
+            }
+            final DebugType superType = parse(context, scope, i);
+            if (superType != null) {
+                superTypes.add(superType);
+            }
         }));
         final List<DebugObject> members = new ArrayList<>();
         forEachChild(data, Tags.MEMBER, (m -> {
-            final Optional<? extends DebugObject> member = parseObject(context, scope, m);
-            member.ifPresent(members::add);
-
+            final DebugObject member = parseObject(context, scope, m);
+            if (member != null) {
+                members.add(member);
+            }
         }));
         forEachChild(data, Tags.SUBPROGRAM, (s -> parse(context, scope, s)));
-        return Optional.of(createStructType(name, members.toArray(EMPTY_OBJECTS), superTypes.toArray(EMPTY_TYPES)));
+        return createStructType(name, members.toArray(EMPTY_OBJECTS), superTypes.toArray(EMPTY_TYPES));
     }
 
-    private Optional<DebugType> parseEnumType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<DebugType> baseType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t));
-        if (baseType.isEmpty()) {
-            return Optional.empty();
+    private DebugType parseEnumType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType baseType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (baseType == null) {
+            return null;
         }
         final EconomicMap<Long, String> values = EconomicMap.create();
-        forEachChild(data, Tags.ENUMERATOR, (e -> values.put(e.asI64(Attributes.CONST_VALUE), e.asString(Attributes.NAME))));
-        return Optional.of(createEnumType(name, baseType.get(), values));
+        forEachChild(data, Tags.ENUMERATOR, (e -> {
+            final long constValue = e.asI64OrDefault(Attributes.CONST_VALUE);
+            if (constValue != DebugUtil.DEFAULT_I64) {
+                values.put(constValue, e.asStringOrNull(Attributes.NAME));
+            }
+        }));
+        return createEnumType(name, baseType, values);
     }
 
-    private Optional<DebugObject> parseFormalParameter(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<? extends DebugType> type = parse(context, scope, data.asI32(Attributes.TYPE));
-        if (type.isEmpty()) {
-            return Optional.empty();
+    private DebugObject parseFormalParameter(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType type = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (type == null) {
+            return null;
         }
-        byte[] locationExpression = data.tryAsByteArray(Attributes.LOCATION).orElse(null);
+        byte[] locationExpression = data.asByteArrayOrNull(Attributes.LOCATION);
         if (locationExpression == null) {
-            locationExpression = data.tryAsI32(Attributes.LOCATION).map(context::readLocationList).orElse(null);
+            final int location = data.asI32OrDefault(Attributes.LOCATION);
+            if (location != DebugUtil.DEFAULT_I32) {
+                locationExpression = context.readLocationListOrNull(location);
+            }
         }
-        final DebugObject parameter = createParameter(name, type.get(), locationExpression);
+        final DebugObject parameter = createParameter(name, type, locationExpression);
         if (name != null) {
             scope.addVariable(parameter);
         }
-        return Optional.of(parameter);
+        return parameter;
     }
 
-    private Optional<DebugType> parseLexicalBlock(DebugParserContext context, DebugParserScope scope, DebugData data) {
+    private void parseLexicalBlock(DebugParserContext context, DebugParserScope scope, DebugData data) {
         final DebugParserScope blockScope;
         if (data.hasAttribute(Attributes.LOW_PC)) {
-            final int[] pcs = DebugDataUtil.readPcs(data, context);
+            final int[] pcs = DebugDataUtil.readPcsOrNull(data, context);
+            if (pcs == null) {
+                return;
+            }
+            assert pcs.length == 2 : "the pc range of a debug lexical block must contain exactly two values (start pc and end pc) ";
             blockScope = scope.with(null, pcs[0], pcs[1]);
         } else {
             blockScope = scope;
         }
         parseChildren(context, blockScope, data);
-        return Optional.empty();
     }
 
-    private Optional<? extends DebugType> parseImport(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        return parse(context, scope, data.asI32(Attributes.IMPORT));
+    private DebugType parseImport(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        return parse(context, scope, data.asI32OrDefault(Attributes.IMPORT));
     }
 
-    private Optional<DebugObject> parseMember(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<? extends DebugType> type = parse(context, scope, data.asI32(Attributes.TYPE));
-        if (type.isEmpty()) {
-            return Optional.empty();
+    private DebugObject parseMember(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType type = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (type == null) {
+            return null;
         }
-        final byte[] locationExpression = data.tryAsByteArray(Attributes.DATA_MEMBER_LOCATION).orElse(null);
-        final int offset = data.tryAsI32(Attributes.DATA_MEMBER_LOCATION).orElse(0);
-        final int bitOffset = data.tryAsI32(Attributes.BIT_OFFSET).orElse(-1);
-        final int bitSize = data.tryAsI32(Attributes.BIT_SIZE).orElse(-1);
+        final byte[] locationExpression = data.asByteArrayOrNull(Attributes.DATA_MEMBER_LOCATION);
+        final int offset = data.asI32OrDefault(Attributes.DATA_MEMBER_LOCATION, 0);
+        final int bitOffset = data.asI32OrDefault(Attributes.BIT_OFFSET, -1);
+        final int bitSize = data.asI32OrDefault(Attributes.BIT_SIZE, -1);
 
-        return Optional.of(createMember(name, type.get(), locationExpression, offset, bitOffset, bitSize));
+        return createMember(name, type, locationExpression, offset, bitOffset, bitSize);
     }
 
-    private Optional<DebugType> parsePointerType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final Optional<? extends DebugType> type = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t));
-        return type.map(this::createPointerType);
+    private DebugType parsePointerType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final DebugType type = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (type == null) {
+            return null;
+        }
+        return createPointerType(type);
     }
 
-    private Optional<DebugType> parseSubroutineType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final DebugType returnType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t)).orElse(null);
+    private DebugType parseSubroutineType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType returnType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
         final List<DebugType> parameterTypes = new ArrayList<>();
         for (DebugData child : data.children()) {
             final int tag = child.tag();
             if (tag == Tags.FORMAL_PARAMETER || tag == Tags.UNSPECIFIED_PARAMETERS) {
-                final Optional<? extends DebugType> param = parse(context, scope, child);
-                param.ifPresent(parameterTypes::add);
+                final DebugType param = parse(context, scope, child);
+                if (param != null) {
+                    parameterTypes.add(param);
+                }
             }
         }
-        return Optional.of(createSubroutineType(name, returnType, parameterTypes.toArray(EMPTY_TYPES)));
+        return createSubroutineType(name, returnType, parameterTypes.toArray(EMPTY_TYPES));
     }
 
-    private Optional<DebugType> parseTypeDef(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.asString(Attributes.NAME);
-        final DebugType baseType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t)).orElse(null);
-        return Optional.of(createTypeDef(name, baseType));
+    private DebugType parseTypeDef(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        if (name == null) {
+            return null;
+        }
+        final DebugType baseType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        return createTypeDef(name, baseType);
     }
 
-    private Optional<DebugType> parseVariantType(DebugParserContext context, DebugParserScope scope, String name, DebugData data) {
-        final Optional<DebugObject> discriminantValue = data.tryAsI32(Attributes.DISCR).flatMap(d -> parseObject(context, scope, d));
+    private DebugType parseVariantType(DebugParserContext context, DebugParserScope scope, String name, DebugData data) {
+        final int discr = data.asI32OrDefault(Attributes.DISCR);
         final DebugObject discriminant;
-        if (discriminantValue.isPresent()) {
-            discriminant = discriminantValue.get();
+        if (discr != DebugUtil.DEFAULT_I32) {
+            discriminant = parseObject(context, scope, discr);
         } else {
-            final Optional<? extends DebugObject> type = data.tryAsI32(Attributes.TYPE).flatMap(t -> parseObject(context, scope, t));
-            if (type.isEmpty()) {
-                return Optional.empty();
-            }
-            discriminant = type.get();
+            discriminant = parseObject(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        }
+        if (discriminant == null) {
+            return null;
         }
         final EconomicMap<Long, DebugObject> values = EconomicMap.create();
         final DebugParserScope variantScope = scope.with(name);
         forEachChild(data, Tags.VARIANT, (v -> {
-            final Optional<Long> discValue = v.tryAsI64(Attributes.DISCR_VALUE);
-            if (discValue.isEmpty()) {
+            final long discValue = v.asI64OrDefault(Attributes.DISCR_VALUE);
+            if (discValue == DebugUtil.DEFAULT_I64) {
                 return;
             }
-            Optional<? extends DebugObject> entry = Optional.empty();
+            DebugObject entry = null;
             for (DebugData child : v.children()) {
                 entry = parseObject(context, variantScope, child);
             }
-            if (entry.isEmpty()) {
+            if (entry == null) {
                 return;
             }
-            values.put(discValue.get(), entry.get());
+            values.put(discValue, entry);
         }));
-        return Optional.of(createVariantType(name, discriminant, values));
+        return createVariantType(name, discriminant, values);
     }
 
-    private Optional<DebugType> parseInheritance(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final Optional<DebugType> referenceType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t));
-        if (referenceType.isEmpty()) {
-            return Optional.empty();
+    private DebugType parseInheritance(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final DebugType referenceType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (referenceType == null) {
+            return null;
         }
-        final byte[] locationExpression = data.tryAsByteArray(Attributes.DATA_MEMBER_LOCATION).orElse(null);
-        final int memberOffset = data.tryAsI32(Attributes.DATA_MEMBER_LOCATION).orElse(0);
-        return Optional.of(new DebugInheritance(referenceType.get(), locationExpression, memberOffset));
+        final byte[] locationExpression = data.asByteArrayOrNull(Attributes.DATA_MEMBER_LOCATION);
+        final int memberOffset = data.asI32OrDefault(Attributes.DATA_MEMBER_LOCATION, 0);
+        return new DebugInheritance(referenceType, locationExpression, memberOffset);
     }
 
-    private Optional<DebugType> parsePointerToMemberType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final DebugType memberType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t)).orElse(null);
-        final DebugType containingType = data.tryAsI32(Attributes.CONTAINING_TYPE).flatMap(t -> parse(context, scope, t)).orElse(null);
-        return Optional.of(new DebugPointerToMemberType(memberType, containingType));
+    private DebugType parsePointerToMemberType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final DebugType memberType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        final DebugType containingType = parse(context, scope, data.asI32OrDefault(Attributes.CONTAINING_TYPE));
+        return new DebugPointerToMemberType(memberType, containingType);
     }
 
-    private Optional<DebugType> parseQualifierType(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse(null);
-        final Optional<DebugType> baseType = data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t));
-        return baseType.map(debugType -> createQualifierType(data.tag(), name, debugType));
-    }
-
-    private Optional<DebugType> parseBaseType(DebugData data) {
-        final String name = data.asString(Attributes.NAME);
-        final int encoding = data.asI32(Attributes.ENCODING);
-        final int byteSize = data.tryAsI32(Attributes.BYTE_SIZE).orElse(1);
-        final int bitSize = data.tryAsI32(Attributes.BIT_SIZE).orElse(-1);
-        final int bitOffset = data.tryAsI32(Attributes.BIT_OFFSET).orElse(0);
-        return Optional.of(createBaseType(name, encoding, byteSize, bitSize, bitOffset));
-    }
-
-    private Optional<DebugType> parseSubprogram(DebugParserContext context, DebugData data) {
-        final Optional<Integer> specOffset = data.tryAsI32(Attributes.SPECIFICATION);
-        final Optional<DebugData> specData = specOffset.flatMap(context::tryGetData);
-
-        final Optional<Integer> fileIndexValue = specData.flatMap(s -> s.tryAsI32(Attributes.DECL_FILE));
-        final int fileIndex = fileIndexValue.or(() -> data.tryAsI32(Attributes.DECL_FILE)).orElse(-1);
-
-        final Optional<String> nameValue = specData.flatMap(s -> s.tryAsString(Attributes.NAME));
-        final String name = nameValue.or(() -> data.tryAsString(Attributes.NAME)).orElse(null);
-
-        final Optional<DebugLineMap> debugLineMap = context.tryGetLineMap(fileIndex);
-        if (debugLineMap.isEmpty()) {
-            return Optional.empty();
+    private DebugType parseQualifierType(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        final DebugType baseType = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
+        if (baseType == null) {
+            return null;
         }
-        final DebugLineMap lineMap = debugLineMap.get();
+        return createQualifierType(data.tag(), name, baseType);
+    }
+
+    private DebugType parseBaseType(DebugData data) {
+        final String name = data.asStringOrNull(Attributes.NAME);
+        if (name == null) {
+            return null;
+        }
+        final int encoding = data.asI32OrDefault(Attributes.ENCODING);
+        if (encoding == DebugUtil.DEFAULT_I32) {
+            return null;
+        }
+        int byteSize = data.asI32OrDefault(Attributes.BYTE_SIZE);
+        final int bitSize = data.asI32OrDefault(Attributes.BIT_SIZE, -1);
+        if (byteSize == DebugUtil.DEFAULT_I32) {
+            if (bitSize == -1) {
+                return null;
+            }
+            byteSize = 1;
+        }
+        int bitOffset = data.asI32OrDefault(Attributes.BIT_OFFSET, -1);
+        if (bitOffset == -1) {
+            bitOffset = data.asI32OrDefault(Attributes.DATA_BIT_OFFSET, 0);
+        }
+        return createBaseType(name, encoding, byteSize, bitSize, bitOffset);
+    }
+
+    private DebugType parseSubprogram(DebugParserContext context, DebugData data) {
+        final int fileIndex;
+        final String name;
+        final DebugData specData = context.dataOrNull(data.asI32OrDefault(Attributes.SPECIFICATION));
+        if (specData != null) {
+            final int fileIndexValue = specData.asI32OrDefault(Attributes.DECL_FILE);
+            if (fileIndexValue != DebugUtil.DEFAULT_I32) {
+                fileIndex = fileIndexValue;
+            } else {
+                fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, -1);
+            }
+            name = specData.asStringOrNull(Attributes.NAME);
+        } else {
+            fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, -1);
+            name = data.asStringOrNull(Attributes.NAME);
+        }
+
+        final DebugLineMap lineMap = context.lineMapOrNull(fileIndex);
+        if (lineMap == null) {
+            return null;
+        }
 
         if (data.exists(Attributes.DECLARATION)) {
-            return Optional.empty();
+            return null;
         }
-        if (data.tryAsI32(Attributes.INLINE).map(i -> i == 1 || i == 3).orElse(false)) {
-            return Optional.empty();
+        final int inline = data.asI32OrDefault(Attributes.INLINE, 0);
+        if (inline == 1 || inline == 3) {
+            return null;
         }
 
-        final int[] pcs = DebugDataUtil.readPcs(data, context);
+        final int[] pcs = DebugDataUtil.readPcsOrNull(data, context);
+        if (pcs == null) {
+            return null;
+        }
+        assert pcs.length == 2 : "the pc range of a debug subprogram (function) must contain exactly two values (start pc and end pc)";
         final int scopeStartPc = pcs[0];
         final int scopeEndPc = pcs[1];
         final int startLine = lineMap.getLine(scopeStartPc);
 
-        final Optional<Source> source = context.tryGetSource(fileIndex);
-        final SourceSection sourceSection = source.map(s -> s.createSection(startLine)).orElse(null);
+        final Source source = context.sourceOrNull(fileIndex);
+        final SourceSection sourceSection;
+        if (source != null) {
+            sourceSection = source.createSection(startLine);
+        } else {
+            sourceSection = null;
+        }
 
-        final byte[] frameBaseExpression = data.asByteArray(Attributes.FRAME_BASE);
+        final byte[] frameBaseExpression = data.asByteArrayOrNull(Attributes.FRAME_BASE);
+        if (frameBaseExpression == null) {
+            return null;
+        }
 
         final DebugParserScope functionScope = DebugParserScope.createFunctionScope(scopeStartPc, scopeEndPc, fileIndex);
         parseChildren(context, functionScope, data);
@@ -367,32 +431,45 @@ public abstract class DebugObjectFactory {
         if (name != null) {
             context.addFunction(scopeStartPc, function);
         }
-        return Optional.of(function);
+        return function;
     }
 
-    private Optional<DebugObject> parseVariable(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final Optional<Integer> specOffset = data.tryAsI32(Attributes.SPECIFICATION);
-        final Optional<DebugData> specData = specOffset.flatMap(context::tryGetData);
-
-        final Optional<String> nameValue = specData.flatMap(s -> s.tryAsString(Attributes.NAME));
-        final String variableName = nameValue.orElseGet(() -> data.tryAsString(Attributes.NAME).orElse(null));
-        final String name = scope.name().map(s -> s + namespaceSeparator() + variableName).orElse(variableName);
-
-        final Optional<DebugType> specTypeValue = specData.flatMap(s -> s.tryAsI32(Attributes.TYPE)).flatMap(t -> parse(context, scope, t));
-        final Optional<DebugType> typeValue = specTypeValue.or(() -> data.tryAsI32(Attributes.TYPE).flatMap(t -> parse(context, scope, t)));
-        if (typeValue.isEmpty()) {
-            return Optional.empty();
+    private DebugObject parseVariable(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String variableName;
+        final DebugType type;
+        final DebugData specData = context.dataOrNull(data.asI32OrDefault(Attributes.SPECIFICATION));
+        if (specData != null) {
+            variableName = specData.asStringOrNull(Attributes.NAME);
+            type = parse(context, scope, specData.asI32OrDefault(Attributes.TYPE));
+        } else {
+            variableName = data.asStringOrNull(Attributes.NAME);
+            type = parse(context, scope, data.asI32OrDefault(Attributes.TYPE));
         }
-        final DebugType type = typeValue.get();
+        if (type == null) {
+            return null;
+        }
+        final String name;
+        final String scopeName = scope.nameOrNull();
+        if (scopeName == null) {
+            name = variableName;
+        } else {
+            name = scopeName + namespaceSeparator() + variableName;
+        }
 
         if (data.exists(Attributes.DECLARATION)) {
-            return Optional.empty();
+            return null;
         }
 
-        final byte[] locationExpression = data.tryAsByteArray(Attributes.LOCATION).orElseGet(() -> data.tryAsI32(Attributes.LOCATION).map(context::readLocationList).orElse(null));
-        final int fileIndex = data.tryAsI32(Attributes.DECL_FILE).orElse(scope.fileIndex());
-        final int startLineNumber = data.tryAsI32(Attributes.DECL_LINE).orElse(-1);
-        final int startLocation = context.tryGetSourceLocation(fileIndex, startLineNumber).orElse(-1);
+        byte[] locationExpression = data.asByteArrayOrNull(Attributes.LOCATION);
+        if (locationExpression == null) {
+            final int location = data.asI32OrDefault(Attributes.LOCATION);
+            if (location != DebugUtil.DEFAULT_I32) {
+                locationExpression = context.readLocationListOrNull(location);
+            }
+        }
+        final int fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, scope.fileIndex());
+        final int startLineNumber = data.asI32OrDefault(Attributes.DECL_LINE, -1);
+        final int startLocation = context.sourceLocationOrDefault(fileIndex, startLineNumber, -1);
         final int endLocation = scope.endLocation();
         final DebugObject variable;
         if (locationExpression != null) {
@@ -403,21 +480,24 @@ public abstract class DebugObjectFactory {
         if (variableName != null) {
             scope.addVariable(variable);
         }
-        return Optional.of(variable);
+        return variable;
     }
 
-    private Optional<DebugType> parseNamespace(DebugParserContext context, DebugParserScope scope, DebugData data) {
-        final String name = data.tryAsString(Attributes.NAME).orElse("");
+    private DebugType parseNamespace(DebugParserContext context, DebugParserScope scope, DebugData data) {
+        final String name = data.asStringOrEmpty(Attributes.NAME);
         parseChildren(context, scope.with(name), data);
-        return Optional.empty();
+        return null;
     }
 
-    private Optional<? extends DebugType> parse(DebugParserContext context, DebugParserScope scope, int offset) {
-        final Optional<DebugData> data = context.tryGetData(offset);
-        if (data.isEmpty()) {
-            return Optional.empty();
+    private DebugType parse(DebugParserContext context, DebugParserScope scope, int offset) {
+        if (offset == DebugUtil.DEFAULT_I32) {
+            return null;
         }
-        return parse(context, scope, data.get());
+        final DebugData data = context.dataOrNull(offset);
+        if (data == null) {
+            return null;
+        }
+        return parse(context, scope, data);
     }
 
     /**
@@ -429,22 +509,25 @@ public abstract class DebugObjectFactory {
      * @param data the data of the debug entry
      */
     @TruffleBoundary
-    public Optional<? extends DebugType> parse(DebugParserContext context, DebugParserScope scope, DebugData data) {
+    public DebugType parse(DebugParserContext context, DebugParserScope scope, DebugData data) {
         final int tag = data.tag();
+        if (tag == Tags.LEXICAL_BLOCK) {
+            parseLexicalBlock(context, scope, data);
+            return null;
+        }
         if (tag == Tags.VARIABLE || tag == Tags.MEMBER || tag == Tags.FORMAL_PARAMETER || tag == Tags.UNSPECIFIED_PARAMETERS) {
             return parseObject(context, scope, data);
         }
         if (types.containsKey(data.offset())) {
-            return Optional.of(types.get(data.offset()));
+            return types.get(data.offset());
         }
         final DebugTypeRef objectRef = new DebugTypeRef();
         types.put(data.offset(), objectRef);
-        Optional<? extends DebugType> type = switch (data.tag()) {
+        final DebugType type = switch (data.tag()) {
             case Tags.ARRAY_TYPE -> parseArrayType(context, scope, data);
             case Tags.CLASS_TYPE, Tags.STRUCTURE_TYPE, Tags.UNION_TYPE -> parseStructType(context, scope, data);
             case Tags.ENUMERATION_TYPE -> parseEnumType(context, scope, data);
             case Tags.IMPORTED_DECLARATION, Tags.IMPORTED_MODULE -> parseImport(context, scope, data);
-            case Tags.LEXICAL_BLOCK -> parseLexicalBlock(context, scope, data);
             case Tags.POINTER_TYPE, Tags.REFERENCE_TYPE, Tags.RVALUE_REFERENCE_TYPE -> parsePointerType(context, scope, data);
             case Tags.SUBROUTINE_TYPE -> parseSubroutineType(context, scope, data);
             case Tags.TYPEDEF -> parseTypeDef(context, scope, data);
@@ -454,36 +537,41 @@ public abstract class DebugObjectFactory {
             case Tags.BASE_TYPE -> parseBaseType(data);
             case Tags.SUBPROGRAM -> parseSubprogram(context, data);
             case Tags.NAMESPACE -> parseNamespace(context, scope, data);
-            case Tags.UNSPECIFIED_TYPE -> Optional.of(createUnspecifiedType());
-            default -> Optional.empty();
+            case Tags.UNSPECIFIED_TYPE -> createUnspecifiedType();
+            default -> null;
         };
-        if (type.isPresent()) {
-            types.put(data.offset(), type.get());
-            objectRef.setDelegate(type.get());
+        if (type != null) {
+            types.put(data.offset(), type);
+            objectRef.setDelegate(type);
         }
         return type;
     }
 
-    private Optional<? extends DebugObject> parseObject(DebugParserContext context, DebugParserScope scope, int offset) {
-        final Optional<DebugData> data = context.tryGetData(offset);
-        if (data.isEmpty()) {
-            return Optional.empty();
+    private DebugObject parseObject(DebugParserContext context, DebugParserScope scope, int offset) {
+        if (offset == DebugUtil.DEFAULT_I32) {
+            return null;
         }
-        return parseObject(context, scope, data.get());
+        final DebugData data = context.dataOrNull(offset);
+        if (data == null) {
+            return null;
+        }
+        return parseObject(context, scope, data);
     }
 
-    private Optional<? extends DebugObject> parseObject(DebugParserContext context, DebugParserScope scope, DebugData data) {
+    private DebugObject parseObject(DebugParserContext context, DebugParserScope scope, DebugData data) {
         if (objects.containsKey(data.offset())) {
-            return Optional.of(objects.get(data.offset()));
+            return objects.get(data.offset());
         }
-        Optional<DebugObject> object = switch (data.tag()) {
+        DebugObject object = switch (data.tag()) {
             case Tags.FORMAL_PARAMETER -> parseFormalParameter(context, scope, data);
             case Tags.MEMBER -> parseMember(context, scope, data);
-            case Tags.UNSPECIFIED_PARAMETERS -> Optional.of(createUnspecifiedParameters());
+            case Tags.UNSPECIFIED_PARAMETERS -> createUnspecifiedParameters();
             case Tags.VARIABLE -> parseVariable(context, scope, data);
-            default -> Optional.empty();
+            default -> null;
         };
-        object.ifPresent(debugObject -> objects.put(data.offset(), debugObject));
+        if (object != null) {
+            objects.put(data.offset(), object);
+        }
         return object;
     }
 
@@ -495,13 +583,13 @@ public abstract class DebugObjectFactory {
         }
     }
 
-    private static Optional<DebugData> getChild(DebugData data, int childTag) {
+    private static DebugData getChildOrNull(DebugData data, int childTag) {
         for (DebugData child : data.children()) {
             if (child.tag() == childTag) {
-                return Optional.of(child);
+                return child;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     private void parseChildren(DebugParserContext context, DebugParserScope scope, DebugData data) {

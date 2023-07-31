@@ -75,6 +75,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderPhase;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -147,6 +148,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -156,6 +158,7 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * Base class for compiler unit tests.
@@ -1438,6 +1441,24 @@ public abstract class GraalCompilerTest extends GraalTest {
         return null;
     }
 
+    /**
+     * Profile provider that can be used in unit tests to avoid instabilities of the VM's profiling
+     * machinery. Will return a {@link DefaultProfilingInfo} for each method.
+     */
+    public static final ProfileProvider NO_PROFILE_PROVIDER = new ProfileProvider() {
+
+        @Override
+        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
+            return getProfilingInfo(method, true, true);
+        }
+
+        @Override
+        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+            return DefaultProfilingInfo.get(TriState.FALSE);
+        }
+
+    };
+
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
@@ -1570,7 +1591,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         initializeInvocationPluginExtensions();
         GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy());
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(gbConfCopy));
+        iterator.add(new HotSpotGraphBuilderPhase(gbConfCopy));
         return suite;
     }
 

@@ -60,6 +60,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.BatchExecutor;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 /**
@@ -361,5 +362,14 @@ public class LLVMObjectFile extends ObjectFile {
             // We return a dummy word to avoid having another section with an offset of 0.
             return Long.BYTES;
         }
+    }
+
+    public static String getLld() {
+        return switch (getNativeFormat()) {
+            case ELF -> "ld.lld";
+            case PECOFF -> "lld-link";
+            case MACH_O -> "ld64.lld";
+            case LLVM -> throw VMError.shouldNotReachHere("Cannot have LLVM has native file format as it is linked to OS.");
+        };
     }
 }

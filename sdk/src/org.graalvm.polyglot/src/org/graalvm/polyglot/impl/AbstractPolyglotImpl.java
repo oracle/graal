@@ -55,6 +55,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -384,6 +385,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().createHostAccess();
     }
 
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return getNext().copyResources(targetFolder, components);
+    }
+
     /**
      * Marker base class for native-image.
      */
@@ -585,8 +590,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                        boolean allowValueSharing, boolean useSystemExit);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, String tmpDir,
+                        ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -1150,8 +1155,8 @@ public abstract class AbstractPolyglotImpl {
         return getNext().buildLimits(statementLimit, statementLimitSourceFilter, onLimit);
     }
 
-    public FileSystem newDefaultFileSystem() {
-        return getNext().newDefaultFileSystem();
+    public FileSystem newDefaultFileSystem(String hostTmpDir) {
+        return getNext().newDefaultFileSystem(hostTmpDir);
     }
 
     public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {

@@ -301,7 +301,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: BinaryParser#readDataSection
                         binaryCase(
                                         "Data segment - invalid memory index",
-                                        "unknown memory: 5 should = 0",
+                                        "unknown memory: 5 should be < 1",
                                         // (memory 1) (data 5 (i32.const 0) "Hi")
                                         "0061 736d 0100 0000 0503 0100 010b 0801 0541 000b 0248 69",
                                         Failure.Type.INVALID),

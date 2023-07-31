@@ -25,8 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.sl.runtime.SLStrings;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
@@ -35,6 +34,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
@@ -57,25 +58,24 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold), null, doWhile);
+        testCompilationThreshold(target.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 
     @Test
-    public void testPolyglotCompilerOptionsAreUsed() {
+    public void testRuntimeOptionsAreUsed() {
         setupContext("engine.LastTierCompilationThreshold", "27", //
                         "engine.TraceCompilation", "true", //
                         "engine.TraceCompilationDetails", "true", //
-                        "engine.Inlining", "false", //
+                        "compiler.Inlining", "false", //
                         "engine.Splitting", "false", //
                         "engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold));
-        Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
-        Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
-        Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
-        Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
-        Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
+        Assert.assertEquals(27, (int) target.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold));
+        Assert.assertEquals(true, target.getOptionValue(OptimizedRuntimeOptions.TraceCompilation));
+        Assert.assertEquals(true, target.getOptionValue(OptimizedRuntimeOptions.TraceCompilationDetails));
+        Assert.assertEquals(false, target.getOptionValue(OptimizedRuntimeOptions.Splitting));
+        Assert.assertEquals(OptimizedRuntimeOptions.EngineModeEnum.LATENCY, target.getOptionValue(OptimizedRuntimeOptions.Mode));
     }
 
     @Test
@@ -84,8 +84,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
         setupContext("engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
-        Assert.assertEquals(true, target.engine.inlining);
+        Assert.assertEquals(OptimizedRuntimeOptions.EngineModeEnum.LATENCY, target.getOptionValue(OptimizedRuntimeOptions.Mode));
         Assert.assertEquals(false, target.engine.splitting);
     }
 

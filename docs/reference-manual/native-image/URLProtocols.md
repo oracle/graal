@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: dynamic-features
 link_title: URL Protocols
 permalink: /reference-manual/native-image/dynamic-features/URLProtocols/
-redirect_from: /$version/reference-manual/native-image/URLProtocols/
+redirect_from: /reference-manual/native-image/URLProtocols/
 ---
 
 # URL Protocols in Native Image

@@ -27,12 +27,13 @@ package com.oracle.svm.core.reflect.target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
 @AutomaticallyRegisteredImageSingleton
 public class ReflectionMetadataEncoding {
-    @UnknownObjectField private byte[] encoding;
+    @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
 
     public byte[] getEncoding() {
         return encoding;

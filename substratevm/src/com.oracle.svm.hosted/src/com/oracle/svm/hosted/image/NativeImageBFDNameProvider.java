@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.hosted.image;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedType;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -58,8 +60,11 @@ import java.util.List;
  */
 class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
+    private NativeLibraries nativeLibs;
+
     NativeImageBFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
+        this.nativeLibs = null;
     }
 
     @Override
@@ -251,6 +256,10 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * That scheme also models oops as pointers to a struct whose name is taken from the
          * Java class.
          *
+         * Note also that a foreign pointer type -- i.e. a Java interface or, occasionally, class used to
+         * model a native pointer -- is encoded without the P prefix. That is because for such cases the
+         * DWARF encoding uses the Java name as a typedef to the relevant pointer type.
+         *
          * Void Signatures and Void Return Types:
          *
          * If the method has no parameters then this is represented by encoding the single type
@@ -305,7 +314,17 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          *
          * The bfd Java demangler recognises this special pseudo template and translates it back into
          * the expected Java form i.e. decode(JArray<XXX>) -> concatenate(decode(XXX), "[]"). However,
-         * the default bfd C++ demangler wil not perform this translation.
+         * the default bfd C++ demangler will not perform this translation.
+         *
+         * Foreign pointer parameter types (which may be modeled as interfaces and enums) are encoded using the
+         * class name encoding but without the prefix 'P'.
+         *
+         * com.oracle.svm.core.posix.PosixUtils.dlsym(org.graalvm.word.PointerBase, java.lang.String)
+         *   ->
+         * <method-encoding>  28org.graalvm.word.PointerBaseP16java.lang.String
+         *
+         *
+         * Note that no type is emitted for the implicit 'this' argument
          *
          * Substitutions:
          *
@@ -350,6 +369,17 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
      */
     public String bfdMangle(Member m) {
         return new BFDMangler(this).mangle(m);
+    }
+
+    /**
+     * Make the provider aware of the current native libraries. This is needed because the provider
+     * is created in a feature after registration but the native libraries are only available before
+     * analysis.
+     * 
+     * @param nativeLibs the current native libraries singleton.
+     */
+    public void setNativeLibs(NativeLibraries nativeLibs) {
+        this.nativeLibs = nativeLibs;
     }
 
     private static class BFDMangler {
@@ -516,7 +546,9 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
                 sb.append('P');
                 mangleArrayType(type);
             } else {
-                sb.append('P');
+                if (nameProvider.needsPointerPrefix(type)) {
+                    sb.append('P');
+                }
                 mangleClassName(nameProvider.classLoaderNameAndId(type), type.toJavaName());
             }
         }
@@ -679,4 +711,25 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             return prefixes.indexOf(prefix);
         }
     }
+
+    /**
+     * Determine whether a type modeled as a Java object type needs to be encoded using pointer
+     * prefix P.
+     * 
+     * @param type The type to be checked.
+     * @return true if the type needs to be encoded using pointer prefix P otherwise false.
+     */
+    private boolean needsPointerPrefix(ResolvedJavaType type) {
+        ResolvedJavaType target = type;
+        if (type instanceof HostedType) {
+            // unwrap to analysis type as that is what native libs checks test against
+            target = ((HostedType) target).getWrapped();
+        }
+        if (target instanceof AnalysisType) {
+            assert nativeLibs != null : "No native libs during or after analysis!";
+            return !nativeLibs.isWordBase(target);
+        }
+        return true;
+    }
+
 }

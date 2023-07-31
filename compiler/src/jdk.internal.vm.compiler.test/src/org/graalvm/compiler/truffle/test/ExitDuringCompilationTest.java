@@ -25,11 +25,13 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.junit.Test;
 
 import java.io.IOException;
@@ -45,7 +47,7 @@ public class ExitDuringCompilationTest extends TestWithPolyglotOptions {
         var subprocess = SubprocessTestUtils.executeInSubprocess(ExitDuringCompilationTest.class, () -> {
             try {
                 var cond = new NotifyCompilation();
-                GraalTruffleRuntime.getRuntime().addListener(cond);
+                OptimizedTruffleRuntime.getRuntime().addListener(cond);
                 setupContext("engine.CompileImmediately", "true", "engine.CompilationFailureAction", "ExitVM");
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
                 callTarget.call();
@@ -66,7 +68,7 @@ public class ExitDuringCompilationTest extends TestWithPolyglotOptions {
         }
     }
 
-    private static final class NotifyCompilation implements GraalTruffleRuntimeListener {
+    private static final class NotifyCompilation implements OptimizedTruffleRuntimeListener {
         private final CountDownLatch signal = new CountDownLatch(1);
 
         @Override

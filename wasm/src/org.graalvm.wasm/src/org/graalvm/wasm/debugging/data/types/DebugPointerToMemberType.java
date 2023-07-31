@@ -92,7 +92,7 @@ public class DebugPointerToMemberType extends DebugType {
 
     @Override
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
-        final String name = "*" + context.elementName().orElse("");
+        final String name = "*" + context.elementNameOrEmpty();
         return new DebugConstantObject(name, new DebugConstantDisplayValue(asTypeName()));
     }
 }

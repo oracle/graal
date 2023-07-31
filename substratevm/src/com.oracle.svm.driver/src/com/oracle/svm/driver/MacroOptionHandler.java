@@ -95,6 +95,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         enabledOption.forEachPropertyValue(config,
                         "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Path.of(entry)), PATH_SEPARATOR_REGEX);
+        enabledOption.forEachPropertyValue(config,
+                        "ImageBuilderModulePath", entry -> nativeImage.addImageBuilderModulePath(Path.of(entry)), PATH_SEPARATOR_REGEX);
         boolean explicitImageModulePath = enabledOption.forEachPropertyValue(config,
                         "ImageModulePath", entry -> nativeImage.addImageModulePath(Path.of((entry))), PATH_SEPARATOR_REGEX);
         boolean explicitImageClasspath = enabledOption.forEachPropertyValue(config,

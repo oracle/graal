@@ -114,6 +114,8 @@ public class TruffleTypes {
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
+
+    public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -130,10 +132,11 @@ public class TruffleTypes {
     public static final String InlinedProfile_Name = "com.oracle.truffle.api.profiles.InlinedProfile";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
+    public static final String TruffleFile_FileTypeDetector_Name = "com.oracle.truffle.api.TruffleFile.FileTypeDetector";
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
     public static final String TruffleLanguage_LanguageReference_Name = "com.oracle.truffle.api.TruffleLanguage.LanguageReference";
     public static final String TruffleLanguage_Name = "com.oracle.truffle.api.TruffleLanguage";
-    public static final String TruffleLanguage_Provider_Name = "com.oracle.truffle.api.TruffleLanguage.Provider";
+    public static final String TruffleLanguageProvider_Name = "com.oracle.truffle.api.provider.TruffleLanguageProvider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
@@ -155,6 +158,7 @@ public class TruffleTypes {
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
+    public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
@@ -170,9 +174,10 @@ public class TruffleTypes {
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
+    public final DeclaredType TruffleFile_FileTypeDetector = c.getDeclaredType(TruffleFile_FileTypeDetector_Name);
     public final DeclaredType TruffleLanguage_ContextReference = c.getDeclaredType(TruffleLanguage_ContextReference_Name);
     public final DeclaredType TruffleLanguage_LanguageReference = c.getDeclaredType(TruffleLanguage_LanguageReference_Name);
-    public final DeclaredType TruffleLanguage_Provider = c.getDeclaredType(TruffleLanguage_Provider_Name);
+    public final DeclaredType TruffleLanguageProvider = c.getDeclaredType(TruffleLanguageProvider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);
@@ -304,10 +309,10 @@ public class TruffleTypes {
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
     // Library API
-    public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.EagerExportProvider";
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
-    public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.library.DefaultExportProvider";
+    public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.library.provider.DefaultExportProvider";
     public static final String DynamicDispatchLibrary_Name = "com.oracle.truffle.api.library.DynamicDispatchLibrary";
+    public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.provider.EagerExportProvider";
     public static final String ExportLibrary_Name = "com.oracle.truffle.api.library.ExportLibrary";
     public static final String ExportLibrary_Repeat_Name = "com.oracle.truffle.api.library.ExportLibrary.Repeat";
     public static final String ExportMessage_Ignore_Name = "com.oracle.truffle.api.library.ExportMessage.Ignore";
@@ -323,10 +328,10 @@ public class TruffleTypes {
     public static final String Message_Name = "com.oracle.truffle.api.library.Message";
     public static final String ReflectionLibrary_Name = "com.oracle.truffle.api.library.ReflectionLibrary";
 
-    public final DeclaredType EagerExportProvider = c.getDeclaredType(EagerExportProvider_Name);
     public final DeclaredType CachedLibrary = c.getDeclaredType(CachedLibrary_Name);
     public final DeclaredType DefaultExportProvider = c.getDeclaredType(DefaultExportProvider_Name);
     public final DeclaredType DynamicDispatchLibrary = c.getDeclaredType(DynamicDispatchLibrary_Name);
+    public final DeclaredType EagerExportProvider = c.getDeclaredType(EagerExportProvider_Name);
     public final DeclaredType ExportLibrary = c.getDeclaredType(ExportLibrary_Name);
     public final DeclaredType ExportLibrary_Repeat = c.getDeclaredType(ExportLibrary_Repeat_Name);
     public final DeclaredType ExportMessage = c.getDeclaredType(ExportMessage_Name);
@@ -352,7 +357,7 @@ public class TruffleTypes {
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
     public static final String ProvidedTags_Name = "com.oracle.truffle.api.instrumentation.ProvidedTags";
     public static final String TruffleInstrument_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument";
-    public static final String TruffleInstrument_Provider_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider";
+    public static final String TruffleInstrumentProvider_Name = "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider";
     public static final String TruffleInstrument_Registration_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration";
 
     /*
@@ -367,7 +372,7 @@ public class TruffleTypes {
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);
     public final DeclaredType ProvidedTags = c.getDeclaredTypeOptional(ProvidedTags_Name);
     public final DeclaredType TruffleInstrument = c.getDeclaredTypeOptional(TruffleInstrument_Name);
-    public final DeclaredType TruffleInstrument_Provider = c.getDeclaredTypeOptional(TruffleInstrument_Provider_Name);
+    public final DeclaredType TruffleInstrumentProvider = c.getDeclaredTypeOptional(TruffleInstrumentProvider_Name);
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);
 
     // OM API

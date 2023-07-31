@@ -51,10 +51,9 @@ This provides you with enough time to send it a `SIGUSR1` signal. The applicatio
 
 Follow these steps to build a native executable that will produce a heap dump when it receives a `SIGUSR1` signal.
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ``` 
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2.  Save the following code in a file named _SVMHeapDump.java_:
     ```java
@@ -174,7 +173,7 @@ Follow these steps to build a native executable that will produce a heap dump wh
 
 ## Create a Heap Dump from within a Native Executable
 
-The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) if some condition is met.
+The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#dumpHeap-java.lang.String-boolean-) if some condition is met.
 The condition to create a heap dump is provided as an option on the command line.
 
 1. Save the code below in a file named _SVMHeapDumpAPI.java_.

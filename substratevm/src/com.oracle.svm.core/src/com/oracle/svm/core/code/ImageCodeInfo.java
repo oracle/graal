@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -51,21 +52,21 @@ public class ImageCodeInfo {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
 
-    @UnknownPrimitiveField private CodePointer codeStart;
-    @UnknownPrimitiveField private UnsignedWord entryPointOffset;
-    @UnknownPrimitiveField private UnsignedWord codeSize;
-    @UnknownPrimitiveField private UnsignedWord dataOffset;
-    @UnknownPrimitiveField private UnsignedWord dataSize;
-    @UnknownPrimitiveField private UnsignedWord codeAndDataMemorySize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private CodePointer codeStart;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord entryPointOffset;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeSize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataSize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
 
     private final Object[] objectFields;
-    @UnknownObjectField byte[] codeInfoIndex;
-    @UnknownObjectField byte[] codeInfoEncodings;
-    @UnknownObjectField byte[] referenceMapEncoding;
-    @UnknownObjectField byte[] frameInfoEncodings;
-    @UnknownObjectField Object[] frameInfoObjectConstants;
-    @UnknownObjectField Class<?>[] frameInfoSourceClasses;
-    @UnknownObjectField String[] frameInfoSourceMethodNames;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoIndex;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoEncodings;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] referenceMapEncoding;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] frameInfoEncodings;
+    @UnknownObjectField(availability = AfterCompilation.class) Object[] frameInfoObjectConstants;
+    @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] frameInfoSourceClasses;
+    @UnknownObjectField(availability = AfterCompilation.class) String[] frameInfoSourceMethodNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {

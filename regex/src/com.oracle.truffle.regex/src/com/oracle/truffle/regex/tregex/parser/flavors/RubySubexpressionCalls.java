@@ -60,7 +60,6 @@ public class RubySubexpressionCalls {
         buildCallGraphVisitor.run();
         Map<CallGraphNode, List<CallGraphNode>> callGraph = buildCallGraphVisitor.callGraph;
         Map<CallGraphNode, Integer> inDegree = buildCallGraphVisitor.inDegree;
-        Group[] captureGroups = buildCallGraphVisitor.captureGroups;
 
         CopyVisitor copyVisitor = new CopyVisitor(ast);
 
@@ -75,7 +74,7 @@ public class RubySubexpressionCalls {
             CallGraphNode node = expansionStack.remove(expansionStack.size() - 1);
             if (node instanceof SubexpressionCallNode) {
                 SubexpressionCall subexpressionCall = ((SubexpressionCallNode) node).subexpressionCall;
-                replace(subexpressionCall, captureGroups[subexpressionCall.getGroupNr()], copyVisitor);
+                replace(subexpressionCall, ast.getGroup(subexpressionCall.getGroupNr()), copyVisitor);
             }
             if (callGraph.containsKey(node)) {
                 for (CallGraphNode dependent : callGraph.get(node)) {
@@ -150,14 +149,12 @@ public class RubySubexpressionCalls {
 
         public final Map<CallGraphNode, List<CallGraphNode>> callGraph = new HashMap<>();
         public final Map<CallGraphNode, Integer> inDegree = new HashMap<>();
-        public final Group[] captureGroups;
 
         private final RegexAST ast;
         private final List<Group> enclosingCaptureGroups = new ArrayList<>();
 
         BuildCallGraphVisitor(RegexAST ast) {
             this.ast = ast;
-            this.captureGroups = new Group[ast.getNumberOfCaptureGroups()];
         }
 
         public void run() {
@@ -167,7 +164,6 @@ public class RubySubexpressionCalls {
         @Override
         protected void visit(Group group) {
             if (group.isCapturing()) {
-                captureGroups[group.getGroupNumber()] = group;
                 enclosingCaptureGroups.add(group);
             }
         }

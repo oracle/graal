@@ -26,20 +26,34 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
-public class CompilerLoggingTest extends TruffleCompilerImplTest {
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+public class CompilerLoggingTest extends TestWithPolyglotOptions {
 
     private static final String FORMAT_FAILURE = "Failed to compile %s due to %s";
     private static final String FORMAT_SUCCESS = "Compiled %s";
@@ -48,15 +62,20 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
 
     @Test
     public void testLogging() throws IOException {
+        if (!TruffleOptions.AOT) {
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
+            TruffleCompiler compiler = runtime.newTruffleCompiler();
+            Assume.assumeTrue("Not supported in isolated compiler.", compiler instanceof TruffleCompilerImpl);
+        }
         try (ByteArrayOutputStream logOut = new ByteArrayOutputStream()) {
             setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.MultiTier", "false").option("engine.BackgroundCompilation", "false"));
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             TestListener listener = new TestListener();
             try {
                 runtime.addListener(listener);
                 OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(true).getCallTarget();
                 compilable.call();
-                String logContent = new String(logOut.toByteArray());
+                String logContent = logOut.toString();
                 String expected = String.format(FORMAT_SUCCESS + "%s%s%n", compilable.getName(), MESSAGE_TO_STREAM, MESSAGE_TO_TTY);
                 Assert.assertEquals("Expected " + expected + " in " + logContent, expected, logContent);
             } finally {
@@ -65,7 +84,7 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
         }
     }
 
-    private static final class TestListener implements GraalTruffleRuntimeListener {
+    private static final class TestListener implements OptimizedTruffleRuntimeListener {
 
         @Override
         public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph,
@@ -83,6 +102,127 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
         private static void printCommon() {
             TTY.out().out().print(MESSAGE_TO_STREAM);
             TTY.println(MESSAGE_TO_TTY);
+        }
+    }
+
+    @Test
+    public void testGR46391() throws InterruptedException, BrokenBarrierException, TimeoutException {
+        // Test log stream
+        Context.Builder builder = Context.newBuilder();
+        ByteArrayOutputStream logContent = new ByteArrayOutputStream();
+        builder.logHandler(logContent);
+        testGR46391Impl("stream", builder);
+        assertTrue(logContent.toString().contains(LogAfterEngineClose.BEFORE_CLOSE));
+        assertFalse(logContent.toString().contains(LogAfterEngineClose.AFTER_CLOSE));
+
+        // Test log handler
+        builder = Context.newBuilder();
+        CollectingHandler handler = new CollectingHandler();
+        builder.logHandler(handler);
+        testGR46391Impl("handler", builder);
+        assertTrue(handler.getContent().contains(LogAfterEngineClose.BEFORE_CLOSE));
+        assertFalse(handler.getContent().contains(LogAfterEngineClose.AFTER_CLOSE));
+    }
+
+    private void testGR46391Impl(String testName, Context.Builder builder) throws InterruptedException, BrokenBarrierException, TimeoutException {
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        String rootName = String.format("%s.%s", TestRootNode.class.getName(), testName);
+        OptimizedTruffleRuntimeListener listener = new LogAfterEngineClose(rootName, barrier);
+        var runtime = OptimizedTruffleRuntime.getRuntime();
+        runtime.addListener(listener);
+        try {
+            builder.option("engine.CompileImmediately", "true");
+            builder.option("engine.BackgroundCompilation", "true");
+            builder.option("engine.CompilationFailureAction", "Throw");
+            Context context = setupContext(builder);
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) new TestRootNode(rootName).getCallTarget();
+            callTarget.call();
+            // Wait for TestRootNode compilation
+            barrier.await(2, TimeUnit.MINUTES);
+            context.close();
+            // Signal Engine closed
+            barrier.await(2, TimeUnit.MINUTES);
+            // Wait for logging to the closed Engine's handler finished
+            barrier.await(2, TimeUnit.MINUTES);
+        } finally {
+            runtime.removeListener(listener);
+        }
+    }
+
+    private static final class TestRootNode extends RootNode {
+
+        private final String name;
+
+        TestRootNode(String name) {
+            super(null);
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
+    }
+
+    private static final class LogAfterEngineClose implements OptimizedTruffleRuntimeListener {
+        private static final String BEFORE_CLOSE = String.format("%s#BEFORE CLOSE", LogAfterEngineClose.class.getSimpleName());
+        private static final String AFTER_CLOSE = String.format("%s#AFTER CLOSE", LogAfterEngineClose.class.getSimpleName());
+        private final String expectedRootName;
+        private final CyclicBarrier barrier;
+
+        LogAfterEngineClose(String expectedRootName, CyclicBarrier barrier) {
+            this.expectedRootName = expectedRootName;
+            this.barrier = barrier;
+        }
+
+        @Override
+        public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph) {
+            if (expectedRootName.equals(target.getRootNode().getName())) {
+                target.log(BEFORE_CLOSE);
+                try {
+                    // Signal TestRootNode compilation
+                    barrier.await(30, TimeUnit.SECONDS);
+                    // Wait for Engine close
+                    barrier.await(30, TimeUnit.SECONDS);
+                    target.log(AFTER_CLOSE);
+                    // Signal logging to closed Engine's handler finished
+                    barrier.await(30, TimeUnit.SECONDS);
+                } catch (InterruptedException | BrokenBarrierException | TimeoutException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        }
+    }
+
+    private static final class CollectingHandler extends Handler {
+
+        private boolean closed;
+        private StringBuilder content = new StringBuilder();
+
+        @Override
+        public synchronized void publish(LogRecord record) {
+            if (closed) {
+                throw new IllegalStateException("Handler closed");
+            }
+            content.append(record.getMessage()).append("\n");
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            closed = true;
+        }
+
+        synchronized String getContent() {
+            return content.toString();
         }
     }
 }

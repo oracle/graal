@@ -56,7 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  */
 public final class RegexProfile {
 
-    private static final int EVALUATION_TRIP_POINT = 512;
+    private static final int EVALUATION_TRIP_POINT = 90;
 
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();

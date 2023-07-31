@@ -3,7 +3,9 @@ layout: docs
 toc_group: security-guide
 link_title: Polyglot Sandboxing
 permalink: /security-guide/polyglot-sandbox/
+redirect_from: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
+
 # Polyglot Sandboxing
 
 GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot Embedding API](../reference-manual/embedding/embed-languages.md).
@@ -12,7 +14,7 @@ For example, host code can execute untrusted guest code using the [UNTRUSTED](ht
 Host code can also execute multiple mutually distrusting instances of guest code that will be protected from one another.
 Used this way, polyglot sandboxing supports a multi-tenant scenario:
 
-![](sandbox_security_boundary.png)
+![Sandbox Security Boundary](sandbox_security_boundary.png)
 
 Use cases that benefit from introducing a security boundary are:
 * Usage of third party code, i.e., pulling in a dependency. Third party code is typically trusted and scanned for vulnerabilities before use, but sandboxing them is an additional precaution against supply-chain attacks.

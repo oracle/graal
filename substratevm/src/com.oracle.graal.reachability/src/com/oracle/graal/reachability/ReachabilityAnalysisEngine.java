@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
@@ -50,6 +51,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -105,8 +107,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, otherRoots);
     }
 
     @SuppressWarnings("try")
@@ -144,24 +146,28 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial) {
+    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+        assert otherRoots.length == 0;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod()) {
+                    markMethodImplementationInvoked(method, "root method");
+                }
+            });
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod()) {
+                    markMethodImplementationInvoked(method, "root method");
+                }
+            });
         } else {
-            if (!method.registerAsVirtualRootMethod()) {
-                return method;
-            }
-            markMethodInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsVirtualRootMethod()) {
+                    markMethodInvoked(method, "root method");
+                }
+            });
         }
         return method;
     }
@@ -223,14 +229,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      */
     public void handleEmbeddedConstant(ReachabilityAnalysisMethod method, JavaConstant constant, Object reason) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-            if (scanningPolicy().trackConstant(this, constant)) {
-                BytecodePosition position = new BytecodePosition(null, method, 0);
-                getUniverse().registerEmbeddedRoot(constant, position);
+            BytecodePosition position = new BytecodePosition(null, method, 0);
+            getUniverse().registerEmbeddedRoot(constant, position);
 
-                Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
-                AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
-                registerTypeAsInHeap(type, reason);
-            }
+            AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
+            registerTypeAsInHeap(type, reason);
         }
     }
 

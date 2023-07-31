@@ -35,7 +35,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -111,7 +111,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     protected RuntimeCodeInstaller(SharedRuntimeMethod method, CompilationResult compilation) {
         this.method = method;
         this.compilation = (SubstrateCompilationResult) compilation;
-        this.tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
+        this.tier = compilation.getName().endsWith(TruffleCompilerImpl.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompilerImpl.FIRST_TIER_INDEX : TruffleCompilerImpl.LAST_TIER_INDEX;
         this.debug = new DebugContext.Builder(RuntimeOptionValues.singleton()).build();
     }
 

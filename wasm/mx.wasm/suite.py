@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.27.1",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.1.0",
@@ -234,6 +234,9 @@ suite = {
 
   "distributions" : {
     "WASM" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm",
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm",

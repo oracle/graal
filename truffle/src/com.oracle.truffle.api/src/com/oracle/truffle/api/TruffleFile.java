@@ -2068,7 +2068,8 @@ public final class TruffleFile {
 
     static final class FileSystemContext {
 
-        // instance of PolyglotContextConfig or PolyglotSource.EmbedderFileSystemContext
+        // instance of PolyglotLanguageContext, PolyglotEngineImpl or
+        // PolyglotImpl.EmbedderFileSystemContext
         final Object engineObject;
 
         private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;

@@ -91,6 +91,8 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
 import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
+import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -633,17 +635,32 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-            vzeroupperBeforeCall(this, arguments, info, targetMethod);
+            Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
+            vzeroupperBeforeCall(this, arguments, info, targetMethod);
             if (shouldEmitOnlyIndirectCalls()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL, null));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
-                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
+            }
+        }
+
+        /**
+         * For invokes that have an exception handler, the register used for the incoming exception
+         * is destroyed at the call site even when registers are caller saved. The normal object
+         * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
+         * exception.
+         */
+        private Value getExceptionTemp(boolean hasExceptionEdge) {
+            if (hasExceptionEdge) {
+                return getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
+            } else {
+                return Value.ILLEGAL;
             }
         }
 
@@ -715,6 +732,19 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else {
                 emitMove(result, value);
             }
+        }
+
+        @Override
+        public void emitProcid(AllocatableValue dst) {
+            // GR-43733: Replace string by feature when we remove support for Java 17
+            if (supportsCPUFeature("RDPID")) {
+                append(new AMD64ReadProcid(dst));
+            } else {
+                AMD64ReadTimestampCounterWithProcid procid = new AMD64ReadTimestampCounterWithProcid();
+                append(procid);
+                emitMove(dst, procid.getProcidResult());
+            }
+            getArithmetic().emitAnd(dst, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(0xfff)));
         }
 
         @Override
@@ -816,11 +846,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          * exception.
          */
         private Value getExceptionTemp(CallTargetNode callTarget) {
-            if (callTarget.invoke() instanceof InvokeWithExceptionNode) {
-                return gen.getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
-            } else {
-                return Value.ILLEGAL;
-            }
+            return ((SubstrateAMD64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 
         public BiConsumer<CompilationResultBuilder, Integer> getOffsetRecorder(@SuppressWarnings("unused") IndirectCallTargetNode callTargetNode) {
