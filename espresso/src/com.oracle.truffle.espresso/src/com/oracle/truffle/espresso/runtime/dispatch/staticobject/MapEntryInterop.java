@@ -40,27 +40,32 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class MapEntryInterop extends EspressoInterop {
     @ExportMessage
+    @Shareable
     static boolean hasArrayElements(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
     }
 
     @ExportMessage
+    @Shareable
     static long getArraySize(@SuppressWarnings("unused") StaticObject receiver) {
         return 2;
     }
 
     @ExportMessage
+    @Shareable
     static boolean isArrayElementModifiable(@SuppressWarnings("unused") StaticObject receiver, long index) {
         return index == 1;
     }
 
     @ExportMessage
+    @Shareable
     static boolean isArrayElementReadable(@SuppressWarnings("unused") StaticObject receiver, long index) {
         return index == 0 || index == 1;
     }

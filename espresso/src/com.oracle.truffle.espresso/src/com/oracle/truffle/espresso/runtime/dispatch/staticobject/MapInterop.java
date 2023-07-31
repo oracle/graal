@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -69,6 +70,7 @@ public class MapInterop extends EspressoInterop {
     }
 
     @ExportMessage
+    @Shareable
     public static boolean hasHashEntries(StaticObject receiver) {
         assert InterpreterToVM.instanceOf(receiver, receiver.getKlass().getMeta().java_util_Map);
         return true;

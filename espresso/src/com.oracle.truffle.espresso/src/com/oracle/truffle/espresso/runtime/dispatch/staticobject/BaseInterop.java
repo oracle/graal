@@ -211,7 +211,7 @@ public class BaseInterop {
     }
 
     @ExportMessage
-    public static int identityHashCode(StaticObject object) throws UnsupportedMessageException {
+    public static int identityHashCode(StaticObject object) {
         object.checkNotForeign();
         // Working with espresso objects here, guaranteed to have identity.
         return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);

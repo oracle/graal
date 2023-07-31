@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateInteropNodes
@@ -41,6 +42,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class IteratorInterop extends EspressoInterop {
     @ExportMessage
+    @Shareable
     public static boolean isIterator(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
     }

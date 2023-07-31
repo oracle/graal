@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateInteropNodes
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class ListInterop extends IterableInterop {
 
     @ExportMessage
+    @Shareable
     static boolean hasArrayElements(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
     }

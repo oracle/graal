@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -40,6 +41,7 @@ public class IterableInterop extends EspressoInterop {
     // region ### Iterable
 
     @ExportMessage
+    @Shareable
     public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
     }
