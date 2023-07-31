@@ -87,11 +87,10 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
                      * subclass of ProxyKlass.
                      */
                     if (superKlass == getMeta().polyglot.EspressoForeignList) {
-                        return new ListProxyKlass(superKlass, getContext());
+                        return new WrappedProxyKlass(superKlass, getContext(), superKlass);
                     }
                     return new ProxyKlass(superKlass);
                 }
-
                 return null;
             }
             proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), superKlass, getContext());

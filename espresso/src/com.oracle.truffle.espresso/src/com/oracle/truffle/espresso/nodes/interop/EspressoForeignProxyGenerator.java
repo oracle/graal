@@ -154,8 +154,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     private enum ProxyType {
-        LIST,
-        GENERIC
+        WRAPPED,
+        UNWRAPPED
     }
 
     public static class GeneratedProxyBytes {
@@ -168,15 +168,19 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             this.bytes = bytes;
             this.name = name;
             this.superklass = superKlass;
-            this.proxyType = superKlass == superklass.getMeta().polyglot.EspressoForeignList ? ProxyType.LIST : ProxyType.GENERIC;
+            this.proxyType = getProxyType(superKlass);
+        }
+
+        private static ProxyType getProxyType(ObjectKlass klass) {
+            return klass == klass.getMeta().polyglot.EspressoForeignList ? ProxyType.WRAPPED : ProxyType.UNWRAPPED;
         }
 
         public ProxyKlass getProxyKlass(EspressoContext context, ObjectKlass proxyKlass) {
             switch (proxyType) {
-                case LIST: {
-                    return new ListProxyKlass(proxyKlass, context);
+                case WRAPPED: {
+                    return new WrappedProxyKlass(proxyKlass, context, superklass);
                 }
-                case GENERIC: {
+                case UNWRAPPED: {
                     return new ProxyKlass(proxyKlass);
                 }
                 default:
