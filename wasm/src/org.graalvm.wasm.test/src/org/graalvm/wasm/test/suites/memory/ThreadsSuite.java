@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,21 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.memory;
+package org.graalvm.wasm.test.suites.memory;
 
-import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
-public class WasmMemoryFactory {
-    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared, boolean unsafeMemory) {
-        if (unsafeMemory) {
-            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
-                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
-            } else {
-                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
-            }
-        } else {
-            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
-            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
-        }
+import java.io.IOException;
+
+public class ThreadsSuite extends WasmFileSuite {
+    @Override
+    protected String testResource() {
+        return "threads";
+    }
+
+    @Override
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

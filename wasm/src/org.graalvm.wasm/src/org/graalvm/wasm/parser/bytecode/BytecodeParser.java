@@ -803,6 +803,91 @@ public abstract class BytecodeParser {
                             throw CompilerDirectives.shouldNotReachHere();
                     }
                     break;
+                case Bytecode.ATOMIC:
+                    final int atomicOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    if (atomicOpcode == Bytecode.ATOMIC_FENCE) {
+                        break;
+                    }
+                    switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_I32_LOAD:
+                        case Bytecode.ATOMIC_I64_LOAD:
+                        case Bytecode.ATOMIC_I32_LOAD8_U:
+                        case Bytecode.ATOMIC_I32_LOAD16_U:
+                        case Bytecode.ATOMIC_I64_LOAD8_U:
+                        case Bytecode.ATOMIC_I64_LOAD16_U:
+                        case Bytecode.ATOMIC_I64_LOAD32_U:
+                        case Bytecode.ATOMIC_I32_STORE:
+                        case Bytecode.ATOMIC_I64_STORE:
+                        case Bytecode.ATOMIC_I32_STORE8:
+                        case Bytecode.ATOMIC_I32_STORE16:
+                        case Bytecode.ATOMIC_I64_STORE8:
+                        case Bytecode.ATOMIC_I64_STORE16:
+                        case Bytecode.ATOMIC_I64_STORE32:
+                        case Bytecode.ATOMIC_I32_RMW_ADD:
+                        case Bytecode.ATOMIC_I64_RMW_ADD:
+                        case Bytecode.ATOMIC_I32_RMW8_U_ADD:
+                        case Bytecode.ATOMIC_I32_RMW16_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW8_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW16_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW32_U_ADD:
+                        case Bytecode.ATOMIC_I32_RMW_SUB:
+                        case Bytecode.ATOMIC_I64_RMW_SUB:
+                        case Bytecode.ATOMIC_I32_RMW8_U_SUB:
+                        case Bytecode.ATOMIC_I32_RMW16_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW8_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW16_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW32_U_SUB:
+                        case Bytecode.ATOMIC_I32_RMW_AND:
+                        case Bytecode.ATOMIC_I64_RMW_AND:
+                        case Bytecode.ATOMIC_I32_RMW8_U_AND:
+                        case Bytecode.ATOMIC_I32_RMW16_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW8_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW16_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW32_U_AND:
+                        case Bytecode.ATOMIC_I32_RMW_OR:
+                        case Bytecode.ATOMIC_I64_RMW_OR:
+                        case Bytecode.ATOMIC_I32_RMW8_U_OR:
+                        case Bytecode.ATOMIC_I32_RMW16_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW8_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW16_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW32_U_OR:
+                        case Bytecode.ATOMIC_I32_RMW_XOR:
+                        case Bytecode.ATOMIC_I64_RMW_XOR:
+                        case Bytecode.ATOMIC_I32_RMW8_U_XOR:
+                        case Bytecode.ATOMIC_I32_RMW16_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW8_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW16_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW32_U_XOR:
+                        case Bytecode.ATOMIC_I32_RMW_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW32_U_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
+                        case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            offset += 4;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }

@@ -55,6 +55,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean memory64;
     @CompilationFinal private boolean multiMemory;
     @CompilationFinal private boolean unsafeMemory;
+    @CompilationFinal private boolean threads;
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
@@ -79,6 +80,7 @@ public class WasmContextOptions {
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
         this.memory64 = readBooleanOption(WasmOptions.Memory64);
         this.multiMemory = readBooleanOption(WasmOptions.MultiMemory);
+        this.threads = readBooleanOption(WasmOptions.Threads);
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
@@ -125,6 +127,10 @@ public class WasmContextOptions {
 
     public boolean supportMultiMemory() {
         return multiMemory;
+    }
+
+    public boolean supportThreads() {
+        return threads;
     }
 
     public boolean useUnsafeMemory() {
@@ -187,6 +193,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.multiMemory != other.multiMemory) {
+            return false;
+        }
+        if (this.threads != other.threads) {
             return false;
         }
         if (this.unsafeMemory != other.unsafeMemory) {

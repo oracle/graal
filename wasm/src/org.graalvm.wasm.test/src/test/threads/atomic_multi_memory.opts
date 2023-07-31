@@ -1,0 +1,2 @@
+wasm.MultiMemory=true
+wasm.Threads=true

@@ -56,7 +56,8 @@ import java.util.stream.Collectors;
 
 public class WasmBinaryTools {
     public enum WabtOption {
-        MULTI_MEMORY
+        MULTI_MEMORY,
+        THREADS
     }
 
     private static Supplier<String> asyncReadInputStream(InputStream is) {
@@ -110,6 +111,9 @@ public class WasmBinaryTools {
             switch (option) {
                 case MULTI_MEMORY:
                     commandLine.add("--enable-multi-memory");
+                    break;
+                case THREADS:
+                    commandLine.add("--enable-threads");
                     break;
             }
         }

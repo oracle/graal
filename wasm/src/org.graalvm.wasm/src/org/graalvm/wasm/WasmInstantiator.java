@@ -217,15 +217,18 @@ public class WasmInstantiator {
             final long memoryMinSize = module.memoryInitialSize(memoryIndex);
             final long memoryMaxSize = module.memoryMaximumSize(memoryIndex);
             final boolean memoryIndexType64 = module.memoryHasIndexType64(memoryIndex);
+            final boolean memoryShared = module.memoryIsShared(memoryIndex);
             final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);
             if (memoryDescriptor != null) {
-                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64));
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64,
+                                memoryShared));
             } else {
                 module.addLinkAction((context, instance) -> {
                     final ModuleLimits limits = instance.module().limits();
                     final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
-                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, context.getContextOptions().useUnsafeMemory());
+                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, memoryShared,
+                                    context.getContextOptions().useUnsafeMemory());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);
                     instance.setMemory(memoryIndex, allocatedMemory);
