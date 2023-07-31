@@ -777,6 +777,8 @@ public class ContextPolicyTest {
     public void testReferencesWithCodeMixing() {
         // compile immediately is too much for this test.
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         testReferenceMixing(EXCLUSIVE0, EXCLUSIVE1);
         testReferenceMixing(EXCLUSIVE0, SHARED1);
