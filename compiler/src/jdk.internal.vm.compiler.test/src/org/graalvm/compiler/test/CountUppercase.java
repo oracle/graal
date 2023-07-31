@@ -24,6 +24,12 @@
  */
 package org.graalvm.compiler.test;
 
+/**
+ * A simple program that sums up the upper case letters in some text.
+ *
+ * This is not a compiler test but is located here as a convenient workload that does some
+ * non-trivial compilation. It's used by a number of libgraal gate tests in {@code mx_vm_gate.py}.
+ */
 public class CountUppercase {
 
     static final int ITERATIONS = Math.max(Integer.getInteger("iterations", 1), 1);
