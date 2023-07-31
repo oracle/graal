@@ -30,6 +30,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
@@ -41,7 +42,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DW_RANGES_SECTION_NAME;
+        return DwarfSectionNames.DW_RANGES_SECTION_NAME;
     }
 
     @Override
@@ -120,7 +121,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     /*
      * The debug_ranges section depends on debug_aranges section.
      */
-    private static final String TARGET_SECTION_NAME = DW_ARANGES_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_ARANGES_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

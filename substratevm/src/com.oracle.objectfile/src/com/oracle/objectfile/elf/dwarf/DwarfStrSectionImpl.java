@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
 import org.graalvm.compiler.debug.DebugContext;
 
 /**
@@ -40,7 +41,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DW_STR_SECTION_NAME;
+        return DwarfSectionNames.DW_STR_SECTION_NAME;
     }
 
     @Override
@@ -84,7 +85,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_str section depends on info section.
      */
-    private static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_INFO_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

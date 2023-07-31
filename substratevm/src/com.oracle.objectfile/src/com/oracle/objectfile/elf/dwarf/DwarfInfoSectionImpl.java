@@ -33,6 +33,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.elf.dwarf.constants.DwarfAttributeValues;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcodes;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -93,7 +96,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DW_INFO_SECTION_NAME;
+        return DwarfSectionNames.DW_INFO_SECTION_NAME;
     }
 
     @Override
@@ -130,22 +133,22 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 if ((flags & DebugPrimitiveTypeInfo.FLAG_SIGNED) != 0) {
                     switch (bitCount) {
                         case 8:
-                            return DW_ATE_signed_char;
+                            return DwarfAttributeValues.DW_ATE_signed_char;
                         default:
                             assert bitCount == 16 || bitCount == 32 || bitCount == 64;
-                            return DW_ATE_signed;
+                            return DwarfAttributeValues.DW_ATE_signed;
                     }
                 } else {
                     assert bitCount == 16;
-                    return DW_ATE_unsigned;
+                    return DwarfAttributeValues.DW_ATE_unsigned;
                 }
             } else {
                 assert bitCount == 32 || bitCount == 64;
-                return DW_ATE_float;
+                return DwarfAttributeValues.DW_ATE_float;
             }
         } else {
             assert bitCount == 1;
-            return DW_ATE_boolean;
+            return DwarfAttributeValues.DW_ATE_boolean;
         }
     }
 
@@ -1040,7 +1043,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a signed or unsigned word of the relevant size
-        byte encoding = (isSigned ? DW_ATE_signed : DW_ATE_unsigned);
+        byte encoding = (isSigned ? DwarfAttributeValues.DW_ATE_signed : DwarfAttributeValues.DW_ATE_unsigned);
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);
         String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
@@ -1063,7 +1066,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a signed or unsigned word of the relevant size
-        byte encoding = (isSigned ? DW_ATE_signed : DW_ATE_unsigned);
+        byte encoding = (isSigned ? DwarfAttributeValues.DW_ATE_signed : DwarfAttributeValues.DW_ATE_unsigned);
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);
         String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
@@ -1086,7 +1089,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a float of the relevant size
-        byte encoding = DW_ATE_float;
+        byte encoding = DwarfAttributeValues.DW_ATE_float;
         log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
         pos = writeAttrData1(encoding, buffer, pos);
         String name = uniqueDebugString(size == 4 ? "float" : (size == 8 ? "double" : "long double"));
@@ -1536,7 +1539,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Should pass true only if method is non-private.
          */
         log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag(DW_FLAG_true, buffer, pos);
+        pos = writeFlag(DwarfAttributeValues.DW_FLAG_true, buffer, pos);
         String methodKey = primary.getSymbolName();
         int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
@@ -1781,13 +1784,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         AbbrevCode abbrevCode = AbbrevCode.ABSTRACT_INLINE_METHOD;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     inline  0x%x", pos, DW_INL_inlined);
-        pos = writeAttrData1(DW_INL_inlined, buffer, pos);
+        log(context, "  [0x%08x]     inline  0x%x", pos, DwarfAttributeValues.DW_INL_inlined);
+        pos = writeAttrData1(DwarfAttributeValues.DW_INL_inlined, buffer, pos);
         /*
          * Should pass true only if method is non-private.
          */
         log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag(DW_FLAG_true, buffer, pos);
+        pos = writeFlag(DwarfAttributeValues.DW_FLAG_true, buffer, pos);
         int methodSpecOffset = getMethodDeclarationIndex(method);
         log(context, "  [0x%08x]     specification  0x%x", pos, methodSpecOffset);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
@@ -1842,14 +1845,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     public int writeAttrAccessibility(int modifiers, byte[] buffer, int p) {
         byte access;
         if (Modifier.isPublic(modifiers)) {
-            access = DW_ACCESS_public;
+            access = DwarfAttributeValues.DW_ACCESS_public;
         } else if (Modifier.isProtected(modifiers)) {
-            access = DW_ACCESS_protected;
+            access = DwarfAttributeValues.DW_ACCESS_protected;
         } else if (Modifier.isPrivate(modifiers)) {
-            access = DW_ACCESS_private;
+            access = DwarfAttributeValues.DW_ACCESS_private;
         } else {
             /* Actually package private -- make it public for now. */
-            access = DW_ACCESS_public;
+            access = DwarfAttributeValues.DW_ACCESS_public;
         }
         return writeAttrData1(access, buffer, p);
     }
@@ -1954,40 +1957,40 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeULEB(exprSize, buffer, pos);
         int exprStart = pos;
         if (!useHeapBase) {
-            pos = writeByte(DW_OP_push_object_address, buffer, pos);
-            pos = writeByte((byte) (DW_OP_lit0 + mask), buffer, pos);
-            pos = writeByte(DW_OP_not, buffer, pos);
-            pos = writeByte(DW_OP_and, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_push_object_address, buffer, pos);
+            pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + mask), buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_not, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_and, buffer, pos);
         } else {
-            pos = writeByte(DW_OP_push_object_address, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_push_object_address, buffer, pos);
             /* skip to end if oop is null */
-            pos = writeByte(DW_OP_dup, buffer, pos);
-            pos = writeByte(DW_OP_lit0, buffer, pos);
-            pos = writeByte(DW_OP_eq, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_dup, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_lit0, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_eq, buffer, pos);
             int skipStart = pos + 3; /* offset excludes BR op + 2 operand bytes */
             short offsetToEnd = (short) (exprSize - (skipStart - exprStart));
-            pos = writeByte(DW_OP_bra, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_bra, buffer, pos);
             pos = writeShort(offsetToEnd, buffer, pos);
             /* insert mask or shifts as necessary */
             if (mask != 0) {
-                pos = writeByte((byte) (DW_OP_lit0 + mask), buffer, pos);
-                pos = writeByte(DW_OP_not, buffer, pos);
-                pos = writeByte(DW_OP_and, buffer, pos);
+                pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + mask), buffer, pos);
+                pos = writeByte(DwarfExpressionOpcodes.DW_OP_not, buffer, pos);
+                pos = writeByte(DwarfExpressionOpcodes.DW_OP_and, buffer, pos);
             } else {
                 if (rightShift != 0) {
-                    pos = writeByte((byte) (DW_OP_lit0 + rightShift), buffer, pos);
-                    pos = writeByte(DW_OP_shr, buffer, pos);
+                    pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + rightShift), buffer, pos);
+                    pos = writeByte(DwarfExpressionOpcodes.DW_OP_shr, buffer, pos);
                 }
                 if (leftShift != 0) {
-                    pos = writeByte((byte) (DW_OP_lit0 + leftShift), buffer, pos);
-                    pos = writeByte(DW_OP_shl, buffer, pos);
+                    pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + leftShift), buffer, pos);
+                    pos = writeByte(DwarfExpressionOpcodes.DW_OP_shl, buffer, pos);
                 }
             }
             /* add the resulting offset to the heapbase register */
-            byte regOp = (byte) (DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
+            byte regOp = (byte) (DwarfExpressionOpcodes.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
             pos = writeByte(regOp, buffer, pos);
             pos = writeSLEB(0, buffer, pos); /* 1 byte. */
-            pos = writeByte(DW_OP_plus, buffer, pos);
+            pos = writeByte(DwarfExpressionOpcodes.DW_OP_plus, buffer, pos);
             assert pos == skipStart + offsetToEnd;
 
             /* make sure we added up correctly */
@@ -1999,7 +2002,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_info section depends on loc section.
      */
-    protected static final String TARGET_SECTION_NAME = DW_LOC_SECTION_NAME;
+    protected static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_LOC_SECTION_NAME;
 
     @Override
     public String targetSectionName() {

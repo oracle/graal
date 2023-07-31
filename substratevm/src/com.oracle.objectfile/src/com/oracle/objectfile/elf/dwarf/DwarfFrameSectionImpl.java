@@ -30,6 +30,8 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValues;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.List;
@@ -49,7 +51,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     @Override
     public String getSectionName() {
-        return DW_FRAME_SECTION_NAME;
+        return DwarfSectionNames.DW_FRAME_SECTION_NAME;
     }
 
     @Override
@@ -122,7 +124,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         int lengthPos = pos;
         pos = writeInt(0, buffer, pos);
         pos = writeInt(CFA_CIE_id_default, buffer, pos);
-        pos = writeByte(DW_CFA_CIE_version, buffer, pos);
+        pos = writeByte(DwarfFrameValues.DW_CFA_CIE_version, buffer, pos);
         pos = writeByte((byte) 0, buffer, pos);
         pos = writeULEB(1, buffer, pos);
         pos = writeSLEB(-8, buffer, pos);
@@ -196,21 +198,21 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private int writePaddingNops(byte[] buffer, int p) {
         int pos = p;
         while ((pos & (PADDING_NOPS_ALIGNMENT - 1)) != 0) {
-            pos = writeByte(DW_CFA_nop, buffer, pos);
+            pos = writeByte(DwarfFrameValues.DW_CFA_nop, buffer, pos);
         }
         return pos;
     }
 
     protected int writeDefCFA(int register, int offset, byte[] buffer, int p) {
         int pos = p;
-        pos = writeByte(DW_CFA_def_cfa, buffer, pos);
+        pos = writeByte(DwarfFrameValues.DW_CFA_def_cfa, buffer, pos);
         pos = writeULEB(register, buffer, pos);
         return writeULEB(offset, buffer, pos);
     }
 
     protected int writeDefCFAOffset(int offset, byte[] buffer, int p) {
         int pos = p;
-        pos = writeByte(DW_CFA_def_cfa_offset, buffer, pos);
+        pos = writeByte(DwarfFrameValues.DW_CFA_def_cfa_offset, buffer, pos);
         return writeULEB(offset, buffer, pos);
     }
 
@@ -233,20 +235,20 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     protected int writeAdvanceLoc1(byte offset, byte[] buffer, int p) {
         int pos = p;
-        byte op = DW_CFA_advance_loc1;
+        byte op = DwarfFrameValues.DW_CFA_advance_loc1;
         pos = writeByte(op, buffer, pos);
         return writeByte(offset, buffer, pos);
     }
 
     protected int writeAdvanceLoc2(short offset, byte[] buffer, int p) {
-        byte op = DW_CFA_advance_loc2;
+        byte op = DwarfFrameValues.DW_CFA_advance_loc2;
         int pos = p;
         pos = writeByte(op, buffer, pos);
         return writeShort(offset, buffer, pos);
     }
 
     protected int writeAdvanceLoc4(int offset, byte[] buffer, int p) {
-        byte op = DW_CFA_advance_loc4;
+        byte op = DwarfFrameValues.DW_CFA_advance_loc4;
         int pos = p;
         pos = writeByte(op, buffer, pos);
         return writeInt(offset, buffer, pos);
@@ -268,7 +270,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     @SuppressWarnings("unused")
     protected int writeRegister(int savedReg, int savedToReg, byte[] buffer, int p) {
         int pos = p;
-        pos = writeByte(DW_CFA_register, buffer, pos);
+        pos = writeByte(DwarfFrameValues.DW_CFA_register, buffer, pos);
         pos = writeULEB(savedReg, buffer, pos);
         return writeULEB(savedToReg, buffer, pos);
     }
@@ -283,7 +285,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     /**
      * The debug_frame section depends on debug_line section.
      */
-    private static final String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_LINE_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
@@ -302,16 +304,16 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private static byte offsetOp(int register) {
         assert (register >> 6) == 0;
-        return (byte) ((DW_CFA_offset << 6) | register);
+        return (byte) ((DwarfFrameValues.DW_CFA_offset << 6) | register);
     }
 
     private static byte restoreOp(int register) {
         assert (register >> 6) == 0;
-        return (byte) ((DW_CFA_restore << 6) | register);
+        return (byte) ((DwarfFrameValues.DW_CFA_restore << 6) | register);
     }
 
     private static byte advanceLoc0Op(int offset) {
         assert (offset >= 0 && offset <= 0x3f);
-        return (byte) ((DW_CFA_advance_loc << 6) | offset);
+        return (byte) ((DwarfFrameValues.DW_CFA_advance_loc << 6) | offset);
     }
 }
