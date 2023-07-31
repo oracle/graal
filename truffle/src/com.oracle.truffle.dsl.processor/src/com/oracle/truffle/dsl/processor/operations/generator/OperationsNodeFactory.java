@@ -3973,7 +3973,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
             /*
              * We can handle throwable if it's an AbstractTruffleException or
-             * interceptInternalException(throwable) converts it to one.
+             * interceptInternalException converts it to one.
              */
             b.declaration(abstractTruffleException, "ex");
             b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
@@ -3981,11 +3981,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end().startElseBlock();
             b.startTryBlock(); // nested try
             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-            b.startThrow().string("sneakyThrow($this.interceptInternalException(throwable))").end();
+            b.startThrow().string("sneakyThrow($this.interceptInternalException(throwable, bci))").end();
             b.end().startCatchBlock(abstractTruffleException, "ate");
             b.startAssign("ex").string("ate").end();
             b.end(); // nested try
             b.end(); // else
+
+            b.statement("ex = $this.interceptTruffleException(ex, bci)");
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();

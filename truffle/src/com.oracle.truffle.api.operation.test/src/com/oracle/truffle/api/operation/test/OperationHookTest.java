@@ -1,6 +1,7 @@
 package com.oracle.truffle.api.operation.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.api.operation.test.OperationNodeWithHooks.MyException;
 import com.oracle.truffle.api.operation.test.OperationNodeWithHooks.ThrowStackOverflow;
 
 public class OperationHookTest {
@@ -27,7 +29,7 @@ public class OperationHookTest {
     }
 
     @Test
-    public void testSimple() {
+    public void testSimplePrologEpilog() {
         OperationNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -44,7 +46,7 @@ public class OperationHookTest {
     }
 
     @Test
-    public void testThrow() {
+    public void testThrowPrologEpilog() {
         OperationNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -60,7 +62,7 @@ public class OperationHookTest {
         try {
             root.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
-        } catch (OperationNodeWithHooks.MyException ex) {
+        } catch (MyException ex) {
             assertEquals(123, ex.result);
         }
 
@@ -69,7 +71,7 @@ public class OperationHookTest {
     }
 
     @Test
-    public void testThrowStackOverflow() {
+    public void testInterceptStackOverflow() {
         OperationNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -83,12 +85,107 @@ public class OperationHookTest {
         try {
             root.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
-        } catch (OperationNodeWithHooks.MyException ex) {
+        } catch (MyException ex) {
             assertEquals(ThrowStackOverflow.MESSAGE, ex.result);
         }
 
         assertEquals(42, refs[0]);
         assertEquals(ThrowStackOverflow.MESSAGE, refs[1]);
+    }
+
+    @Test
+    public void testInterceptTruffleExceptionSimple() {
+        OperationNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.beginThrow();
+            b.emitLoadConstant(123);
+            b.endThrow();
+            b.endReturn();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            assertNotEquals(-1, ex.bci);
+        }
+    }
+
+    @Test
+    public void testInterceptTruffleExceptionFromInternal() {
+        // The stack overflow should be intercepted as an internal error and then the converted
+        // exception should be intercepted as a Truffle exception.
+        OperationNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitThrowStackOverflow();
+            b.endReturn();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            assertNotEquals(-1, ex.bci);
+        }
+    }
+
+    @Test
+    public void testInterceptTruffleExceptionPropagated() {
+        // The bci should be overridden when it propagates to the root from child.
+        OperationNodeWithHooks child = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.beginThrow();
+            b.emitLoadConstant(123);
+            b.endThrow();
+            b.endReturn();
+            b.endRoot();
+        });
+        child.setRefs(new Object[2]);
+
+        OperationNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            // insert dummy instructions so the throwing bci is different from the child's.
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.beginInvoke();
+            b.emitLoadConstant(child);
+            b.endInvoke();
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        int childThrowBci = -1;
+        try {
+            child.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            childThrowBci = ex.bci;
+            assertNotEquals(-1, childThrowBci);
+        }
+
+        int rootThrowBci = -1;
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            rootThrowBci = ex.bci;
+            assertNotEquals(-1, rootThrowBci);
+        }
+
+        assertNotEquals(childThrowBci, rootThrowBci);
     }
 }
 
@@ -123,13 +220,22 @@ abstract class OperationNodeWithHooks extends RootNode implements OperationRootN
     }
 
     @Override
-    public Throwable interceptInternalException(Throwable t) {
+    public Throwable interceptInternalException(Throwable t, int bci) {
         return new MyException(t.getMessage());
+    }
+
+    @Override
+    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, int bci) {
+        if (ex instanceof MyException myEx) {
+            myEx.bci = bci;
+        }
+        return ex;
     }
 
     public static final class MyException extends AbstractTruffleException {
         private static final long serialVersionUID = 1L;
         public final Object result;
+        public int bci = -1;
 
         MyException(Object result) {
             super();
@@ -160,6 +266,14 @@ abstract class OperationNodeWithHooks extends RootNode implements OperationRootN
         @Specialization
         public static Object perform() {
             throw new StackOverflowError(MESSAGE);
+        }
+    }
+
+    @Operation
+    public static final class Invoke {
+        @Specialization
+        public static Object perform(VirtualFrame frame, OperationNodeWithHooks callee) {
+            return callee.getCallTarget().call(frame.getArguments());
         }
     }
 }

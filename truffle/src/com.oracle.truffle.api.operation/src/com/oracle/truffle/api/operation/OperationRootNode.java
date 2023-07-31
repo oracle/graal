@@ -102,11 +102,25 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
      * an internal error cannot be converted to a guest exception, it can simply be returned.
      *
      * @param t the internal exception
+     * @param bci the bytecode index of the instruction that caused the exception
      * @return an equivalent guest-language exception or an exception to be rethrown
      */
     @SuppressWarnings("unused")
-    default Throwable interceptInternalException(Throwable t) {
+    default Throwable interceptInternalException(Throwable t, int bci) {
         return t;
+    }
+
+    /**
+     * Optional hook invoked when a Truffle exception is thrown during execution. This hook can be
+     * used to preprocess the exception or replace it with another exception before it is handled.
+     *
+     * @param ex the Truffle exception
+     * @param bci the bytecode index of the instruction that caused the exception
+     * @return the Truffle exception to be handled by guest code
+     */
+    @SuppressWarnings("unused")
+    default AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, int bci) {
+        return ex;
     }
 
     /**

@@ -254,7 +254,6 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         // Extract hook implementations.
         model.executeProlog = ElementUtils.findMethod(typeElement, "executeProlog");
         model.executeEpilog = ElementUtils.findMethod(typeElement, "executeEpilog");
-        model.interceptInternalException = ElementUtils.findMethod(typeElement, "interceptInternalException");
 
         // Detect method implementations that will be overridden by the generated class.
         List<ExecutableElement> overrides = List.of(
