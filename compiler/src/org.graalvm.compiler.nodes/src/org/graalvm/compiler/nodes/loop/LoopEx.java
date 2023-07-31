@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.loop;
 
+import static org.graalvm.compiler.phases.common.util.LoopUtility.isNumericInteger;
+
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -33,6 +35,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -74,6 +77,7 @@ import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopEx {
     protected final Loop<Block> loop;
@@ -430,14 +434,39 @@ public class LoopEx {
     }
 
     /**
-     * Collect all the basic induction variables for the loop and the find any induction variables
-     * which are derived from the basic ones.
+     * Collect all the {@link BasicInductionVariable} variables for the loop and find any induction
+     * variables which are {@link DerivedInductionVariable} from the basic ones. An
+     * <a href="https://en.wikipedia.org/wiki/Induction_variable">induction variable<a/> is a
+     * variable that gets increased/decreased by a fixed != 0 amount every iteration of a loop. The
+     * {@code !=0} portion is guaranteed by {@link BasicInductionVariable#direction()}. More
+     * importantly an induction variable, by definition, guarantees that the value of the IV is
+     * strictly monotonically increasing or decreasing, as long as they don't overflow. A counted
+     * loop's counter will never overflow (guaranteed by {@link CountedLoopInfo#maxTripCountNode()})
+     * other IVs on the same loop might overflow. The extremum computations are correct even in the
+     * presence of overflow
+     *
+     * Typical examples are:
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (basivIV > limit) {
+     *         break;
+     *     }
+     *     int derivedOffsetIV = basicIV + 3;
+     *     int derivedScaledIV = basicIV * 17;
+     *     long derivedConvertedIV = (long) basicIV;
+     *     basicIV = basicIV + 1;
+     *     // and many more
+     * }
+     * </pre>
      *
      * @return a map from node to induction variable
      */
     private EconomicMap<Node, InductionVariable> findInductionVariables() {
         EconomicMap<Node, InductionVariable> currentIvs = EconomicMap.create(Equivalence.IDENTITY);
 
+        // first find basic induction variables
         Queue<InductionVariable> scanQueue = new LinkedList<>();
         LoopBeginNode loopBegin = this.loopBegin();
         AbstractEndNode forwardEnd = loopBegin.forwardEnd();
@@ -446,7 +475,7 @@ public class LoopEx {
             if (backValue == phi) {
                 continue;
             }
-            ValueNode stride = addSub(this, backValue, phi);
+            ValueNode stride = calcOffsetTo(this, backValue, phi, false);
             if (stride != null) {
                 BasicInductionVariable biv = new BasicInductionVariable(this, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (BinaryArithmeticNode<?>) backValue);
                 currentIvs.put(phi, biv);
@@ -454,6 +483,7 @@ public class LoopEx {
             }
         }
 
+        // now compute derived ones
         while (!scanQueue.isEmpty()) {
             InductionVariable baseIv = scanQueue.remove();
             ValueNode baseIvNode = baseIv.valueNode();
@@ -469,13 +499,13 @@ public class LoopEx {
                     continue;
                 }
                 InductionVariable iv = null;
-                ValueNode offset = addSub(this, op, baseIvNode);
+                ValueNode offset = calcOffsetTo(this, op, baseIvNode, true);
                 ValueNode scale;
                 if (offset != null) {
                     iv = new DerivedOffsetInductionVariable(this, baseIv, offset, (BinaryArithmeticNode<?>) op);
                 } else if (op instanceof NegateNode) {
                     iv = new DerivedScaledInductionVariable(this, baseIv, (NegateNode) op);
-                } else if ((scale = mul(this, op, baseIvNode)) != null) {
+                } else if ((scale = calcScaleTo(this, op, baseIvNode)) != null) {
                     iv = new DerivedScaledInductionVariable(this, baseIv, scale, op);
                 } else {
                     boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
@@ -502,19 +532,159 @@ public class LoopEx {
         return currentIvs;
     }
 
-    private static ValueNode addSub(LoopEx loop, ValueNode op, ValueNode base) {
-        if (op.stamp(NodeView.DEFAULT) instanceof IntegerStamp && (op instanceof AddNode || op instanceof SubNode)) {
-            BinaryArithmeticNode<?> aritOp = (BinaryArithmeticNode<?>) op;
-            if (aritOp.getX() == base && loop.isOutsideLoop(aritOp.getY())) {
-                return aritOp.getY();
-            } else if (aritOp.getY() == base && loop.isOutsideLoop(aritOp.getX())) {
-                return aritOp.getX();
+    /**
+     * Determines if {@code op} is using {@code base} as an input. If so, determines if the other
+     * input of {@code op} is loop invariant with respect to {@code loop}. This marks one
+     * fundamental requirement for an offset based induction variable of a loop.
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (basivIV > limit) {
+     *         break;
+     *     }
+     *     basicIV = basicIV + stride;
+     * }
+     * </pre>
+     *
+     * In the example above the {@code PhiNode} basicIV would be {@code base}, the add operation
+     * would be {@code op} and the loop invariant stride would be the other input to {@code op} that
+     * is {@code != base}.
+     *
+     * Note that this method is also used to compute {@code DerivedOffsetInductionVariable} which
+     * are offset of a {@code BasicInductionVariable}.
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (basicIV > limit) {
+     *         break;
+     *     }
+     *     int offsetIV = basicIV + 123;
+     *     basicIV = basicIV + stride;
+     * }
+     * </pre>
+     *
+     * Such an example can be seen in {@code offsetIV} where {@code base} is the {@code basicIV},
+     * i.e., the {@link PhiNode}.
+     *
+     * An offset can be positive or negative as well and involve addition or subtraction. This can
+     * cause some interesting patterns. In general we need to handle the following cases:
+     *
+     * <pre>
+     * int basicIV = 0;
+     *
+     * while (true) {
+     *     if (compare(basicIV, limit)) {
+     *         break;
+     *     }
+     *     // case 1 - addition with positive stride == addition
+     *     basicIV = basicIV + stride;
+     *     // case 2 - addition with negative stride == subtraction
+     *     basicIV = basicIV + (-stride);
+     *     // case 3 - subtraction with positive stride == subtraction
+     *     basicIV = basicIV - stride;
+     *     // case 4 - subtraction with negative stride == addition
+     *     basicIV = basicIV - (-stride);
+     * }
+     * </pre>
+     *
+     * While one might assume that these patterns would be transformed into their canonical form by
+     * {@link CanonicalizerPhase} it is never guaranteed that a full canonicalizer has been run
+     * before loop detection is done. Thus, we have to handle all patterns here.
+     *
+     * Note that while addition is commutative and thus can handle both inputs mirrored, the same is
+     * not true for subtraction.
+     *
+     * For addition the following patterns are all valid IVs
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (compare(basicIV, limit)) {
+     *         break;
+     *     }
+     *     // case 1 - loop invariant input is y input of add
+     *     basicIV = basicIV + stride;
+     *     // case 2 - loop invariant input is x input of add
+     *     basicIV = stride + basicIV;
+     * }
+     * </pre>
+     *
+     * because addition is commutative.
+     *
+     * For subtraction, this is not correct when detecting the basic induction variable.
+     *
+     * Here is an example of a regular down-counted loop, with a subtraction basic IV operation:
+     *
+     * <pre>
+     * int basicIV = init;
+     * while (true) {
+     *     if (basicIV >= 0) {
+     *         break;
+     *     }
+     *     basicIV = basicIV - 2;
+     * }
+     * </pre>
+     *
+     * As can be seen, the IV above has the values [init, init - 2, init - 4, ...].
+     *
+     * In contrast, here is an example of an invalid induction variable:
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (basicIV <= limit) {
+     *         break;
+     *     }
+     *     basicIV = 2 - basicIV;
+     * }
+     * </pre>
+     *
+     * because the IV value is [0,2-0=2,2-2=0,2,0,2,0, etc]. This alternating pattern is by
+     * definition not an induction variable. The reason for this difference is that while addition
+     * is commutative, subtraction is not. Thus we only allow subtraction of the form
+     * {@code base - stride/offset}.
+     *
+     * Derived induction variables with mirrored inputs however are perfectly fine because the base
+     * IV is a regular (non-alternating) one. So the loop
+     *
+     * <pre>
+     * int basicIV = 0;
+     * while (true) {
+     *     if (basicIV >= limit) {
+     *         break;
+     *     }
+     *     int otherIV = 124555 - basicIV;
+     *     basicIV = basicIV + 1;
+     * }
+     * </pre>
+     *
+     * contains the correct IV {@code otherIV} which is an induction variable as per definition: it
+     * increases/decreases its value by a fixed amount every iteration (that amount being the stride
+     * of base IV).
+     */
+    private static ValueNode calcOffsetTo(LoopEx loop, ValueNode opNode, ValueNode base, boolean forDerivedIV) {
+        if (isNumericInteger(opNode) && (opNode instanceof AddNode || opNode instanceof SubNode)) {
+            BinaryArithmeticNode<?> arithOp = (BinaryArithmeticNode<?>) opNode;
+            BinaryOp<?> op = arithOp.getArithmeticOp();
+            if (arithOp.getX() == base && loop.isOutsideLoop(arithOp.getY())) {
+                return arithOp.getY();
+            } else if ((op.isCommutative() || forDerivedIV) && arithOp.getY() == base && loop.isOutsideLoop(arithOp.getX())) {
+                return arithOp.getX();
             }
         }
         return null;
     }
 
-    private static ValueNode mul(LoopEx loop, ValueNode op, ValueNode base) {
+    /**
+     * Determine if the given {@code op} represents a {@code DerivedScaledInductionVariable}
+     * variable with respect to {@code base}.
+     *
+     * See {@link LoopEx#calcOffsetTo(LoopEx, ValueNode, ValueNode, boolean)}. Multiplication is
+     * commutative so the logic of addition applies here.
+     */
+    private static ValueNode calcScaleTo(LoopEx loop, ValueNode op, ValueNode base) {
         if (op instanceof MulNode) {
             MulNode mul = (MulNode) op;
             if (mul.getX() == base && loop.isOutsideLoop(mul.getY())) {
