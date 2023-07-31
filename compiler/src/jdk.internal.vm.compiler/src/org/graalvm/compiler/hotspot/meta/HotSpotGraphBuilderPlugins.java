@@ -85,7 +85,7 @@ import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -659,11 +659,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-              lineStart = 2861,
-              lineEnd   = 2922,
-              commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-              sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/share/opto/library_call.cpp#L2861-L2922",
+              sha1 = "c2d981ab918e2ca607835df010221ba0503a0cb2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
                     ValueNode virtualThread, ValueNode hide) {

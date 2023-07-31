@@ -46,7 +46,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -57,16 +57,10 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 1354,
-          lineEnd   = 1389,
-          commit    = "b3f34039fedd3c49404783ec880e1885dceb296b",
-          sha1      = "12a9844b6c686f0185bb738d9c0758a66b54ba7a")
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp",
-          lineStart = 32,
-          lineEnd   = 233,
-          commit    = "b3f34039fedd3c49404783ec880e1885dceb296b",
-          sha1      = "983fb75958945f5fb6b89327bd807f98b4e8c99c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/b3f34039fedd3c49404783ec880e1885dceb296b/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1354-L1389",
+          sha1 = "12a9844b6c686f0185bb738d9c0758a66b54ba7a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/b3f34039fedd3c49404783ec880e1885dceb296b/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L32-L233",
+          sha1 = "983fb75958945f5fb6b89327bd807f98b4e8c99c")
 // @formatter:on
 public final class AMD64SHA1Op extends AMD64LIRInstruction {
 
