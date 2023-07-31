@@ -82,6 +82,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.SpinWaitNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -2351,6 +2352,13 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
+        r.register(new InvocationPlugin("onSpinWait") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.append(new SpinWaitNode());
+                return true;
+            }
+        });
         if (hasEnsureMaterializedForStackWalk()) {
             r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
                 @Override
