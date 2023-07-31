@@ -54,9 +54,9 @@ public interface DwarfAttributeValues {
     /*
      * DW_AT_Accessibility attribute values.
      */
-    @SuppressWarnings("unused") byte DW_ACCESS_public = 1;
-    @SuppressWarnings("unused") byte DW_ACCESS_protected = 2;
-    @SuppressWarnings("unused") byte DW_ACCESS_private = 3;
+    byte DW_ACCESS_public = 1;
+    byte DW_ACCESS_protected = 2;
+    byte DW_ACCESS_private = 3;
     /*
      * DW_AT_encoding attribute values
      */

@@ -40,7 +40,7 @@ public interface DwarfForms {
     int DW_FORM_ref_addr = 0x10;
     @SuppressWarnings("unused") int DW_FORM_ref1 = 0x11;
     @SuppressWarnings("unused") int DW_FORM_ref2 = 0x12;
-    @SuppressWarnings("unused") int DW_FORM_ref4 = 0x13;
+    int DW_FORM_ref4 = 0x13;
     @SuppressWarnings("unused") int DW_FORM_ref8 = 0x14;
     int DW_FORM_sec_offset = 0x17;
     int DW_FORM_data1 = 0x0b;
