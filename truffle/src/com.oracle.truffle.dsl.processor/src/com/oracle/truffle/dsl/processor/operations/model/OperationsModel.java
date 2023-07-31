@@ -99,7 +99,6 @@ public class OperationsModel extends Template implements InfoDumpable {
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement executeProlog;
     public ExecutableElement executeEpilog;
-    public ExecutableElement interceptInternalException;
 
     public boolean enableBaselineInterpreter;
     public TypeSystemData typeSystem;
