@@ -622,11 +622,11 @@ public final class EspressoContext {
         if (init == null) {
             return systemClassLoader;
         }
-        StaticObject bindingsLoader = k.allocateInstance();
-        init.invokeDirect(bindingsLoader,
+        StaticObject loader = k.allocateInstance();
+        init.invokeDirect(loader,
                         /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
                         /* parent */ systemClassLoader);
-        return bindingsLoader;
+        return loader;
     }
 
     private NativeAccess spawnNativeAccess() {

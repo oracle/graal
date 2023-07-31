@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.nodes.commands;
 
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -63,7 +62,7 @@ public final class AddPathToBindingsCache {
         addUrl = DirectCallNode.create(doLookup(loader.getKlass(), ADD_URL, lookup).getCallTargetForceInit());
     }
 
-    public void execute(StaticObject path) throws UnsupportedTypeException {
+    public void execute(StaticObject path) {
         StaticObject file = fileKlass.allocateInstance();
         newFile.call(file, path);
 

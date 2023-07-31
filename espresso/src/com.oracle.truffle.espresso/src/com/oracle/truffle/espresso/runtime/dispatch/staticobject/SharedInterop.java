@@ -38,12 +38,10 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -80,8 +78,12 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFacto
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class SharedInterop {
     @GenerateUncached
-    static abstract class CallSharedInteropMessage extends EspressoNode {
-        public abstract Object execute(int sourceDispatchId, InteropMessage.Message message, Object[] args);
+    abstract static class CallSharedInteropMessage extends EspressoNode {
+        public final Object call(int sourceDispatchId, InteropMessage.Message message, Object... args) {
+            return execute(sourceDispatchId, message, args);
+        }
+
+        protected abstract Object execute(int sourceDispatchId, InteropMessage.Message message, Object[] args);
 
         static final int LIMIT = InteropKlassesDispatch.DISPATCH_TOTAL;
 
@@ -128,7 +130,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsNull;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsNull);
         if (target != null) {
@@ -145,7 +147,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsBoolean;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsBoolean);
         if (target != null) {
@@ -162,7 +164,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsBoolean;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsBoolean);
         if (target != null) {
@@ -179,7 +181,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsExecutable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsExecutable);
         if (target != null) {
@@ -191,12 +193,12 @@ public class SharedInterop {
     @ExportMessage
     public static Object execute(StaticObject receiver, Object[] arguments,
                     @Cached IndirectCallNode callNode,
-                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.Execute;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, arguments});
+            return sharedCallNode.call(dispatchId, message, receiver, arguments);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.Execute);
         if (target != null) {
@@ -213,7 +215,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasExecutableName;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasExecutableName);
         if (target != null) {
@@ -230,7 +232,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExecutableName;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExecutableName);
         if (target != null) {
@@ -247,7 +249,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasDeclaringMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasDeclaringMetaObject);
         if (target != null) {
@@ -264,7 +266,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetDeclaringMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetDeclaringMetaObject);
         if (target != null) {
@@ -281,7 +283,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsInstantiable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsInstantiable);
         if (target != null) {
@@ -293,12 +295,12 @@ public class SharedInterop {
     @ExportMessage
     public static Object instantiate(StaticObject receiver, Object[] args,
                     @Cached IndirectCallNode callNode,
-                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.Instantiate;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, args});
+            return sharedCallNode.call(dispatchId, message, receiver, args);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.Instantiate);
         if (target != null) {
@@ -315,7 +317,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsString;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsString);
         if (target != null) {
@@ -332,7 +334,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsString;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (String) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (String) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsString);
         if (target != null) {
@@ -350,7 +352,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsTruffleString;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (TruffleString) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (TruffleString) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsTruffleString);
         if (target != null) {
@@ -367,7 +369,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsNumber;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsNumber);
         if (target != null) {
@@ -384,7 +386,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInByte;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInByte);
         if (target != null) {
@@ -401,7 +403,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInShort;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInShort);
         if (target != null) {
@@ -418,7 +420,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInInt;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInInt);
         if (target != null) {
@@ -435,7 +437,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInLong;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInLong);
         if (target != null) {
@@ -452,7 +454,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInFloat;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInFloat);
         if (target != null) {
@@ -469,7 +471,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.FitsInDouble;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInDouble);
         if (target != null) {
@@ -486,7 +488,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsByte;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (byte) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (byte) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsByte);
         if (target != null) {
@@ -503,7 +505,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsShort;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (short) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (short) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsShort);
         if (target != null) {
@@ -520,7 +522,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsInt;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (int) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (int) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsInt);
         if (target != null) {
@@ -537,7 +539,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsLong;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (long) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsLong);
         if (target != null) {
@@ -554,7 +556,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsFloat;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (float) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (float) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsFloat);
         if (target != null) {
@@ -571,7 +573,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsDouble;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (double) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (double) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsDouble);
         if (target != null) {
@@ -588,7 +590,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasMembers;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasMembers);
         if (target != null) {
@@ -605,7 +607,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetMembers;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, includeInternal});
+            return sharedCallNode.call(dispatchId, message, receiver, includeInternal);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetMembers);
         if (target != null) {
@@ -622,7 +624,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberReadable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberReadable);
         if (target != null) {
@@ -639,7 +641,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadMember;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadMember);
         if (target != null) {
@@ -656,7 +658,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberModifiable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberModifiable);
         if (target != null) {
@@ -673,7 +675,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberInsertable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberInsertable);
         if (target != null) {
@@ -690,7 +692,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteMember;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member, value});
+            sharedCallNode.call(dispatchId, message, receiver, member, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteMember);
@@ -709,7 +711,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberRemovable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberRemovable);
         if (target != null) {
@@ -726,7 +728,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.RemoveMember;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            sharedCallNode.call(dispatchId, message, receiver, member);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.RemoveMember);
@@ -745,7 +747,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberInvocable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberInvocable);
         if (target != null) {
@@ -762,7 +764,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.InvokeMember;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member, arguments});
+            return sharedCallNode.call(dispatchId, message, receiver, member, arguments);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.InvokeMember);
         if (target != null) {
@@ -779,7 +781,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMemberInternal;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMemberInternal);
         if (target != null) {
@@ -796,7 +798,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasMemberReadSideEffects;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasMemberReadSideEffects);
         if (target != null) {
@@ -813,7 +815,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasMemberWriteSideEffects;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, member});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, member);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasMemberWriteSideEffects);
         if (target != null) {
@@ -830,7 +832,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasHashEntries;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasHashEntries);
         if (target != null) {
@@ -847,7 +849,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetHashSize;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (long) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetHashSize);
         if (target != null) {
@@ -864,7 +866,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryReadable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryReadable);
         if (target != null) {
@@ -881,7 +883,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadHashValue;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadHashValue);
         if (target != null) {
@@ -899,7 +901,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadHashValueOrDefault;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadHashValueOrDefault);
         if (target != null) {
@@ -920,7 +922,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryModifiable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryModifiable);
         if (target != null) {
@@ -937,7 +939,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryInsertable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryInsertable);
         if (target != null) {
@@ -955,7 +957,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryWritable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryWritable);
         if (target != null) {
@@ -972,7 +974,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteHashEntry;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key, value});
+            sharedCallNode.call(dispatchId, message, receiver, key, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteHashEntry);
@@ -991,7 +993,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryRemovable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryRemovable);
         if (target != null) {
@@ -1008,7 +1010,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.RemoveHashEntry;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            sharedCallNode.call(dispatchId, message, receiver, key);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.RemoveHashEntry);
@@ -1028,7 +1030,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsHashEntryExisting;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, key});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, key);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsHashEntryExisting);
         if (target != null) {
@@ -1040,13 +1042,12 @@ public class SharedInterop {
     @ExportMessage
     public static Object getHashEntriesIterator(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
-                    @Cached CallSharedInteropMessage sharedCallNode,
-                    @CachedLibrary("receiver") InteropLibrary lib) throws UnsupportedMessageException {
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.GetHashEntriesIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetHashEntriesIterator);
         if (target != null) {
@@ -1064,7 +1065,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetHashKeysIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetHashKeysIterator);
         if (target != null) {
@@ -1083,7 +1084,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetHashValuesIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetHashValuesIterator);
         if (target != null) {
@@ -1101,7 +1102,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasArrayElements;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasArrayElements);
         if (target != null) {
@@ -1118,7 +1119,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadArrayElement;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            return sharedCallNode.call(dispatchId, message, receiver, index);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadArrayElement);
         if (target != null) {
@@ -1135,7 +1136,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetArraySize;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (long) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetArraySize);
         if (target != null) {
@@ -1152,7 +1153,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsArrayElementReadable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, index);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsArrayElementReadable);
         if (target != null) {
@@ -1169,7 +1170,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteArrayElement;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index, value});
+            sharedCallNode.call(dispatchId, message, receiver, index, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteArrayElement);
@@ -1188,7 +1189,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.RemoveArrayElement;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            sharedCallNode.call(dispatchId, message, receiver, index);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.RemoveArrayElement);
@@ -1207,7 +1208,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsArrayElementModifiable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, index);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsArrayElementModifiable);
         if (target != null) {
@@ -1224,7 +1225,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsArrayElementInsertable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, index);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsArrayElementInsertable);
         if (target != null) {
@@ -1241,7 +1242,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsArrayElementRemovable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, index});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, index);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsArrayElementRemovable);
         if (target != null) {
@@ -1258,7 +1259,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasBufferElements;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasBufferElements);
         if (target != null) {
@@ -1276,7 +1277,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsBufferWritable;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsBufferWritable);
         if (target != null) {
@@ -1297,7 +1298,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetBufferSize;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (long) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetBufferSize);
         if (target != null) {
@@ -1314,7 +1315,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferByte;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (byte) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, byteOffset});
+            return (byte) sharedCallNode.call(dispatchId, message, receiver, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferByte);
         if (target != null) {
@@ -1331,7 +1332,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferByte;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, byteOffset, value});
+            sharedCallNode.call(dispatchId, message, receiver, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferByte);
@@ -1350,7 +1351,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferShort;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (short) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            return (short) sharedCallNode.call(dispatchId, message, receiver, order, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferShort);
         if (target != null) {
@@ -1367,12 +1368,12 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferShort;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            sharedCallNode.call(dispatchId, message, receiver, order, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferShort);
         if (target != null) {
-            callNode.call(target, receiver, order, byteOffset);
+            callNode.call(target, receiver, order, byteOffset, value);
             return;
         }
         throw unsupported();
@@ -1386,7 +1387,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferInt;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (int) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            return (int) sharedCallNode.call(dispatchId, message, receiver, order, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferInt);
         if (target != null) {
@@ -1403,7 +1404,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferInt;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset, value});
+            sharedCallNode.call(dispatchId, message, receiver, order, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferInt);
@@ -1422,7 +1423,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferLong;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            return (long) sharedCallNode.call(dispatchId, message, receiver, order, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferLong);
         if (target != null) {
@@ -1439,7 +1440,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferLong;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset, value});
+            sharedCallNode.call(dispatchId, message, receiver, order, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferLong);
@@ -1458,7 +1459,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferFloat;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (float) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            return (float) sharedCallNode.call(dispatchId, message, receiver, order, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferFloat);
         if (target != null) {
@@ -1475,7 +1476,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferFloat;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset, value});
+            sharedCallNode.call(dispatchId, message, receiver, order, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferFloat);
@@ -1494,7 +1495,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ReadBufferDouble;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (double) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset});
+            return (double) sharedCallNode.call(dispatchId, message, receiver, order, byteOffset);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferDouble);
         if (target != null) {
@@ -1511,7 +1512,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.WriteBufferDouble;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver, order, byteOffset, value});
+            sharedCallNode.call(dispatchId, message, receiver, order, byteOffset, value);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.WriteBufferDouble);
@@ -1530,7 +1531,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsPointer;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsPointer);
         if (target != null) {
@@ -1547,7 +1548,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsPointer;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (long) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (long) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsPointer);
         if (target != null) {
@@ -1564,7 +1565,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ToNative;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            sharedCallNode.call(dispatchId, message, receiver);
             return;
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ToNative);
@@ -1582,7 +1583,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsInstant;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (Instant) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (Instant) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsInstant);
         if (target != null) {
@@ -1610,7 +1611,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsTimeZone;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsTimeZone);
         if (target != null) {
@@ -1627,7 +1628,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsTimeZone;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (ZoneId) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (ZoneId) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsTimeZone);
         if (target != null) {
@@ -1644,7 +1645,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsDate;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsDate);
         if (target != null) {
@@ -1661,7 +1662,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsDate;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (LocalDate) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (LocalDate) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsDate);
         if (target != null) {
@@ -1678,7 +1679,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsTime;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsTime);
         if (target != null) {
@@ -1695,7 +1696,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsTime;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (LocalTime) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (LocalTime) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsTime);
         if (target != null) {
@@ -1712,7 +1713,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsDuration;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsDuration);
         if (target != null) {
@@ -1729,7 +1730,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.AsDuration;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (Duration) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (Duration) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsDuration);
         if (target != null) {
@@ -1746,7 +1747,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsException;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsException);
         if (target != null) {
@@ -1763,7 +1764,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ThrowException;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (RuntimeException) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (RuntimeException) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ThrowException);
         if (target != null) {
@@ -1780,7 +1781,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExceptionType;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (ExceptionType) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (ExceptionType) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExceptionType);
         if (target != null) {
@@ -1797,7 +1798,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsExceptionIncompleteSource;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsExceptionIncompleteSource);
         if (target != null) {
@@ -1814,7 +1815,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExceptionExitStatus;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (int) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (int) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExceptionExitStatus);
         if (target != null) {
@@ -1831,7 +1832,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasExceptionCause;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasExceptionCause);
         if (target != null) {
@@ -1848,7 +1849,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExceptionCause;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExceptionCause);
         if (target != null) {
@@ -1865,7 +1866,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasExceptionMessage;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasExceptionMessage);
         if (target != null) {
@@ -1882,7 +1883,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExceptionMessage;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExceptionMessage);
         if (target != null) {
@@ -1899,7 +1900,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasExceptionStackTrace;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasExceptionStackTrace);
         if (target != null) {
@@ -1916,7 +1917,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetExceptionStackTrace;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetExceptionStackTrace);
         if (target != null) {
@@ -1941,7 +1942,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasIterator);
         if (target != null) {
@@ -1959,7 +1960,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetIterator);
         if (target != null) {
@@ -1979,7 +1980,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsIterator;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsIterator);
         if (target != null) {
@@ -1996,7 +1997,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasIteratorNextElement;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasIteratorNextElement);
         if (target != null) {
@@ -2013,7 +2014,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetIteratorNextElement;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetIteratorNextElement);
         if (target != null) {
@@ -2030,7 +2031,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasSourceLocation;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasSourceLocation);
         if (target != null) {
@@ -2047,7 +2048,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetSourceLocation;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (SourceSection) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (SourceSection) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetSourceLocation);
         if (target != null) {
@@ -2064,7 +2065,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasLanguage;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasLanguage);
         if (target != null) {
@@ -2082,7 +2083,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetLanguage;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (Class<? extends TruffleLanguage<?>>) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (Class<? extends TruffleLanguage<?>>) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetLanguage);
         if (target != null) {
@@ -2099,7 +2100,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasMetaObject);
         if (target != null) {
@@ -2116,7 +2117,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetMetaObject);
         if (target != null) {
@@ -2133,7 +2134,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.ToDisplayString;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver, allowSideEffects});
+            return sharedCallNode.call(dispatchId, message, receiver, allowSideEffects);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.ToDisplayString);
         if (target != null) {
@@ -2150,7 +2151,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMetaObject;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMetaObject);
         if (target != null) {
@@ -2167,7 +2168,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetMetaQualifiedName;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetMetaQualifiedName);
         if (target != null) {
@@ -2184,7 +2185,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetMetaSimpleName;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetMetaSimpleName);
         if (target != null) {
@@ -2201,7 +2202,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsMetaInstance;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, instance});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, instance);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsMetaInstance);
         if (target != null) {
@@ -2218,7 +2219,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasMetaParents;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasMetaParents);
         if (target != null) {
@@ -2235,7 +2236,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetMetaParents;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetMetaParents);
         if (target != null) {
@@ -2252,7 +2253,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsIdenticalOrUndefined;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (TriState) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, other});
+            return (TriState) sharedCallNode.call(dispatchId, message, receiver, other);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsIdenticalOrUndefined);
         if (target != null) {
@@ -2264,13 +2265,12 @@ public class SharedInterop {
     @Ignore // isIdenticalOrUndefined is protected in InteropLibrary.
     public static boolean isIdentical(StaticObject receiver, Object other, InteropLibrary otherLib,
                     @Cached IndirectCallNode callNode,
-                    @Cached CallSharedInteropMessage sharedCallNode,
-                    @CachedLibrary("receiver") InteropLibrary lib) {
+                    @Cached CallSharedInteropMessage sharedCallNode) {
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.IsIdentical;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver, other, otherLib});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver, other, otherLib);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsIdentical);
         if (target != null) {
@@ -2294,7 +2294,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IdentityHashCode;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (int) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (int) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IdentityHashCode);
         if (target != null) {
@@ -2311,7 +2311,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.IsScope;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.IsScope);
         if (target != null) {
@@ -2328,7 +2328,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.HasScopeParent;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return (boolean) sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.HasScopeParent);
         if (target != null) {
@@ -2345,7 +2345,7 @@ public class SharedInterop {
         InteropMessage.Message message = InteropMessage.Message.GetScopeParent;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
             dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
-            return sharedCallNode.execute(dispatchId, message, new Object[]{receiver});
+            return sharedCallNode.call(dispatchId, message, receiver);
         }
         CallTarget target = getTarget(receiver, InteropMessage.Message.GetScopeParent);
         if (target != null) {

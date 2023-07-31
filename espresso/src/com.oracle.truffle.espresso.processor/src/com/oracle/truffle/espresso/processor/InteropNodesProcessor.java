@@ -149,6 +149,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         }
 
         processedClasses.add(cls);
+        Imports imports = new Imports();
         boolean shareableCls = isShareable(cls, false);
         List<Message> nodes = new ArrayList<>();
         for (Element methodElement : cls.getEnclosedElements()) {
@@ -162,7 +163,7 @@ public class InteropNodesProcessor extends BaseProcessor {
                 }
                 String clsName = ProcessorUtils.capitalize(methodElement.getSimpleName().toString()) + "Node";
                 boolean isShareable = isShareable(methodElement, shareableCls);
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName), targetMessageName, clsName, isShareable));
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName, imports), targetMessageName, clsName, isShareable));
             }
         }
 
@@ -175,15 +176,15 @@ public class InteropNodesProcessor extends BaseProcessor {
                         // public final class [InteropName]InteropNodes extends InteropNodes
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withJavaDoc(new JavadocBuilder().addGeneratedByLine(cls)) //
-                        .withAnnotation(new AnnotationBuilder(COLLECT).withValue("value", interopNodes.getSimpleName().toString() + ".class", false).withValue("getter",
+                        .withAnnotation(new AnnotationBuilder(COLLECT).withValue("value", INTEROP_NODES + ".class", false).withValue("getter",
                                         INSTANCE_GETTER).withLineBreak()) //
                         .withSuperClass(interopNodes.getQualifiedName().toString()) //
                         // Factory declaration
                         .withField(new FieldBuilder(FACTORY_CLASS_NAME, FACTORY_FIELD_NAME).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
-                                        new StatementBuilder().addContent("new ", FACTORY_CLASS_NAME, "(", INTEROP_MESSAGE_FACTORIES, ".dispatchToId(", cls.getSimpleName(), ".class)", ");")))
+                                        new StatementBuilder().addContent("new ", FACTORY_CLASS_NAME, "(", INTEROP_MESSAGE_FACTORIES, ".dispatchToId(", cls.getSimpleName(), ".class)", ")")))
                         // Singleton implementation
                         .withField(new FieldBuilder(interopNodes, INSTANCE).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
-                                        new StatementBuilder().addContent("new " + clsName + "();"))) //
+                                        new StatementBuilder().addContent("new " + clsName + "()"))) //
                         .withMethod(new MethodBuilder(clsName).asConstructor().withModifiers(new ModifierBuilder().asPrivate()).addBodyLine("super(", cls.getSimpleName(), ".class, ", superNodes,
                                         ");")) //
                         .withMethod(new MethodBuilder(INSTANCE_GETTER).withReturnType(interopNodes.toString()).addBodyLine("return " + INSTANCE + ";").withModifiers(
@@ -196,8 +197,8 @@ public class InteropNodesProcessor extends BaseProcessor {
 
         // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
-            registerMessages.addBodyLine(
-                            INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", ProcessorUtils.capitalize(m.targetMessage), ", ", FACTORY_FIELD_NAME, ",", m.isShareable, ");");
+            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", ProcessorUtils.capitalize(m.targetMessage), ", ", FACTORY_FIELD_NAME, ",",
+                            m.isShareable, ");");
             nodesClass.withInnerClass(m.cls);
         }
         nodesClass.withMethod(registerMessages);
@@ -206,8 +207,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         ClassFileBuilder clsFile = new ClassFileBuilder() //
                         .withCopyright() //
                         .withClass(nodesClass) //
-                        .inPackage(pkg) //
-                        .withImportGroup(List.of(COLLECT, INTEROP_NODES, INTEROP_MESSAGE_FACTORIES, CACHED, CACHED_LIBRARY, BIND));
+                        .inPackage(pkg); //
         try {
             FileObject file = processingEnv.getFiler().createSourceFile(pkg + "." + clsName);
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
@@ -219,7 +219,7 @@ public class InteropNodesProcessor extends BaseProcessor {
 
     }
 
-    private ClassBuilder generateFactory(List<Message> nodes, TypeElement sourceDispatch) {
+    private static ClassBuilder generateFactory(List<Message> nodes, TypeElement sourceDispatch) {
         /*-
          static final class Factory implements InteropMessageFactory {
             final int sourceDispatch;
@@ -278,7 +278,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         return classBuilder;
     }
 
-    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String targetMessageName, String clsName) {
+    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String targetMessageName, String clsName, Imports imports) {
         /*- abstract static class [MessageName]Node extends InteropMessage.[messageName] */
         ClassBuilder result = new ClassBuilder(clsName) //
                         .withQualifiers(new ModifierBuilder().asStatic().asAbstract()) //
@@ -308,20 +308,23 @@ public class InteropNodesProcessor extends BaseProcessor {
 
             AnnotationMirror cachedAnnot = getAnnotation(ve, cached.asType());
             if (cachedAnnot != null) {
+                imports.usesCached();
                 String value = getAnnotationValue(cachedAnnot, "value", String.class);
                 // Reuse @Cached annotation
-                declParam.withAnnotation(new AnnotationBuilder("Cached").withValue("value", value));
+                declParam.withAnnotation(new AnnotationBuilder(CACHED).withValue("value", value));
             }
             AnnotationMirror cachedLibraryAnnot = getAnnotation(ve, cachedLibrary.asType());
             if (cachedLibraryAnnot != null) {
+                imports.usesCachedLibrary();
                 // Force dynamic libraries.
-                declParam.withAnnotation(new AnnotationBuilder("CachedLibrary").withValue("limit", "1"));
+                declParam.withAnnotation(new AnnotationBuilder(CACHED_LIBRARY).withValue("limit", "1"));
             }
             AnnotationMirror bindAnnot = getAnnotation(ve, bind.asType());
             if (bindAnnot != null) {
+                imports.usesBind();
                 String value = getAnnotationValue(bindAnnot, "value", String.class);
                 // Reuse @Bind annotation
-                declParam.withAnnotation(new AnnotationBuilder("Bind").withValue("value", value));
+                declParam.withAnnotation(new AnnotationBuilder(BIND).withValue("value", value));
             }
             // Do not reuse @Cached.Shared or @Cached.Exclusive
 
@@ -357,6 +360,24 @@ public class InteropNodesProcessor extends BaseProcessor {
             this.targetMessage = targetMessage;
             this.clsName = clsName;
             this.isShareable = isShareable;
+        }
+    }
+
+    static class Imports {
+        boolean cached;
+        boolean cachedLibrary;
+        boolean bind;
+
+        void usesCached() {
+            cached = true;
+        }
+
+        void usesCachedLibrary() {
+            cachedLibrary = true;
+        }
+
+        void usesBind() {
+            bind = true;
         }
     }
 }

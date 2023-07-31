@@ -26,12 +26,11 @@ package com.oracle.truffle.espresso.runtime.dispatch.messages;
 /**
  * Annotate implementations of interop with this to generate boilerplate code to support shared
  * interop.
- * 
+ * <p>
  * One limitation is that only messages implemented as a single method, rather than a specializing
  * class are supported.
  * 
  * @see com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop
- * @see com.oracle.truffle.espresso.processor.InteropNodesProcessor
  */
 public @interface GenerateInteropNodes {
 }

@@ -40,5 +40,5 @@ public abstract class InteropNodes {
         }
     }
 
-    protected abstract void registerMessages(Class<?> dispatchClass);
+    protected abstract void registerMessages(Class<?> dispatch);
 }
