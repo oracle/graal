@@ -172,7 +172,7 @@ ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['antlr4', 'cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_python_components = llvm_components + ['antlr4', 'bgu', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_fastr_components = ce_components + llvm_components + ['antlr4', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl']
-ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'jss', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
+ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
 
 mx_sdk_vm.register_vm_config('community', ce_components + llvm_components, _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-aarch64')
