@@ -208,6 +208,7 @@ public final class CompilationAlarm implements AutoCloseable {
     public static void resetProgressDetection() {
         lastStackTraceForThread.set(null);
         lastUniqueStackTraceForThread.set(null);
+        lastCounterForThread.set(null);
     }
 
     public static void compilationAlarmExpired(Graph graph) {
