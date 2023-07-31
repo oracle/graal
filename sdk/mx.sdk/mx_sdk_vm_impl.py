@@ -2977,9 +2977,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         self.component = component
         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
         _dependencies = [] if self.jvm_launcher else [GraalVmNativeImage.project_name(self.language_library_config)]
+        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
         super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [],
-            _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True,
-            toolchain='sdk:LLVM_NINJA_TOOLCHAIN')
+            _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True, toolchain=toolchain)
 
     @staticmethod
     def library_launcher_project_name(language_library_config):
@@ -2994,13 +2994,12 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
         _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
-            '-stdlib=libc++',
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
-            _dynamic_cflags += ['-pthread']
+            _dynamic_cflags += ['-stdlib=libc++', '-pthread']
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
@@ -3095,19 +3094,21 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
     @property
     def ldlibs(self):
-        llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
-        libcxx_dir = join(llvm_toolchain, 'lib')
-        if mx.is_linux():
-            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
-            libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
-
-        _dynamic_ldlibs = [
-            '-stdlib=libc++',
-            '-nostdlib++', # avoids to dynamically link libc++
-            join(libcxx_dir, 'libc++.a'),
-            join(libcxx_dir, 'libc++abi.a'),
-        ]
+        _dynamic_ldlibs = []
         if not mx.is_windows():
+            # Link libc++ statically
+            llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
+            libcxx_dir = join(llvm_toolchain, 'lib')
+            if mx.is_linux():
+                libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
+                libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
+            _dynamic_ldlibs += [
+                '-stdlib=libc++',
+                '-nostdlib++', # avoids to dynamically link libc++
+                join(libcxx_dir, 'libc++.a'),
+                join(libcxx_dir, 'libc++abi.a'),
+            ]
+
             _dynamic_ldlibs += ['-ldl']
         if mx.is_darwin():
             _dynamic_ldlibs += ['-framework', 'Foundation']
