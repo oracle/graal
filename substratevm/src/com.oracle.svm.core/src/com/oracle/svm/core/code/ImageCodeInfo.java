@@ -135,6 +135,11 @@ public class ImageCodeInfo {
         return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
     }
 
+    public int getTotalByteArrayCount() {
+        /* codeInfoIndex, codeInfoEncodings, referenceMapEncoding, and frameInfoEncodings. */
+        return 4;
+    }
+
     /**
      * Pure-hosted {@link CodeInfo} to collect and persist image code metadata in
      * {@link ImageCodeInfo} and provide accesses during image generation.
