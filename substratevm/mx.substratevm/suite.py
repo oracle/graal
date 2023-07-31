@@ -1954,6 +1954,10 @@ suite = {
             },
         },
 
+        "SVM_NFI_EMPTY_JAR" : {
+            "description" : "Empty jar for the none NFI backend",
+        },
+
         "SVM_NFI_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
@@ -1969,8 +1973,8 @@ suite = {
                 ],
                 # The following files are intentionally left empty. The "none" backend is actually nothing, but we still
                 # need some files so native-image doesn't complain about missing files on the classpath.
-                "truffle-nfi-none.jar" : "string:",
-                "builder/svm-none.jar" : "string:",
+                "truffle-nfi-none.jar" : "dependency:SVM_NFI_EMPTY_JAR",
+                "builder/svm-none.jar" : "dependency:SVM_NFI_EMPTY_JAR",
                 "builder/clibraries-none/.empty.h" : "file:src/com.oracle.svm.libffi/include/empty.h",
             },
         },
