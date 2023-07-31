@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.common.util;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -153,12 +151,6 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     private static void overflowAction(OptionValues opt, EventCounter counter) {
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            /*
-             * Do not run progress detection in compiler loops when we are building a native image.
-             */
-            return;
-        }
         if (CompilationAlarm.current().hasExpired()) {
             compilationAlarmExpired(opt);
         }
@@ -171,9 +163,18 @@ public final class CompilationAlarm implements AutoCloseable {
      * hang and throw a bailout.
      */
     private static void assertProgress(OptionValues opt, EventCounter counter) {
+        final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+        if (maxNoProgressPeriod == 0D) {
+            /*
+             * Feature is disabled, do nothing.
+             */
+            return;
+        }
+
         StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
         StackTraceElement[] currentStackTrace = Thread.currentThread().getStackTrace();
         EventCounter lastCounter = lastCounterForThread.get();
+
         if (lastStackTrace == null || !Arrays.equals(lastStackTrace, currentStackTrace) || !lastCounter.equals(counter)) {
             lastStackTraceForThread.set(currentStackTrace);
             lastUniqueStackTraceForThread.set(System.currentTimeMillis());
@@ -188,8 +189,6 @@ public final class CompilationAlarm implements AutoCloseable {
             final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
             final long currentTimeStamp = System.currentTimeMillis();
             final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-
-            final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
 
             boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
 
