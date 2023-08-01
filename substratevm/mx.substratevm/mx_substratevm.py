@@ -1018,7 +1018,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'nil'],
-    support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
+    support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image',
@@ -1060,7 +1060,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             headers=False,
         ),
     ],
-    provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
     stability="earlyadopter",
     jlink=False,
@@ -1111,6 +1110,21 @@ llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "a
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
+# Legacy Truffle Macro
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='Truffle Macro',
+    short_name='tflm',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['tfl'],
+    provided_executables=['bin/<cmd:rebuild-images>'],
+    support_distributions=['substratevm:TRUFFLE_GRAALVM_SUPPORT', 'substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
+    stability="supported",
+))
+
+# Truffle Unchained SVM Macro
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=suite,
     name='Truffle SVM Macro',
@@ -1120,7 +1134,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     third_party_license_files=[],
     dependencies=['svmt'],
     priority=0,
-    support_distributions=['truffle:TRUFFLE_SVM_GRAALVM_SUPPORT', 'substratevm:SVM_TRUFFLE_RUNTIME_GRAALVM_SUPPORT'],
+    support_distributions=['substratevm:TRUFFLE_SVM_GRAALVM_SUPPORT', 'substratevm:SVM_TRUFFLE_RUNTIME_GRAALVM_SUPPORT'],
     stability="supported",
 ))
 

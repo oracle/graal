@@ -1321,29 +1321,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     stability="supported",
 ))
 
-# This component is useful only if `SubstrateVM` is included. However, we do
-# not declare a dependency because:
-# - it should be possible to build a GraalVM that includes this macro and not
-#   `SubstrateVM`, which can be installed via `gu`
-# - we prefer to define this component here rather than in the `substratevm`
-#   suite
-# - The `SubstrateVM` component explicitly depends on this macro, to make sure
-#   that it is always present whenever `SubstrateVM` is included
-# Legacy Truffle Macro
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
-    suite=_suite,
-    name='Truffle Macro',
-    short_name='tflm',
-    dir_name='truffle',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['tfl'],
-    support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
-    stability="supported",
-))
-
-# Truffle Unchained SVM Macro is in substratevm suite
-
 # Typically not included in releases
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,

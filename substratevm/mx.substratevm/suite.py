@@ -1529,6 +1529,46 @@ suite = {
             "noMavenJavadoc": True,
         },
 
+        "TRUFFLE_GRAALVM_SUPPORT" : {
+          "native" : True,
+          "description" : "Truffle support distribution for SVM",
+          "layout" : {
+            "native-image.properties" : "file:mx.substratevm/macro-truffle.properties",
+          },
+          "maven" : False,
+        },
+
+        "TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "Native Image support distribution for the GraalVM",
+            "os_arch" : {
+                "windows": {
+                    "<others>" : {
+                        "layout" : {
+                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "layout" : {
+                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+                        },
+                    },
+                },
+            },
+        },
+
+        "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
+          "native" : True,
+          "description" : "Truffle support distribution for SVM",
+          "layout" : {
+            "native-image.properties" : "file:mx.substratevm/macro-truffle-svm.properties",
+          },
+          "maven" : False,
+        },
+
         "GRAAL_HOTSPOT_LIBRARY": {
             "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
@@ -1882,28 +1922,6 @@ suite = {
                 "builder/" : [
                     "extracted-dependency:truffle:LIBFFI_DIST"
                 ],
-            },
-        },
-
-        "NATIVE_IMAGE_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Native Image support distribution for the GraalVM",
-            "os_arch" : {
-                "windows": {
-                    "<others>" : {
-                        "layout" : {
-                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
-                        },
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "layout" : {
-                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                        },
-                    },
-                },
             },
         },
 
