@@ -238,7 +238,7 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
@@ -268,6 +268,8 @@ final class NativeClosure {
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
      */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureBufferRet0(Pointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
@@ -305,7 +307,7 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
@@ -335,6 +337,8 @@ final class NativeClosure {
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
      */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureVoidRet0(WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
@@ -353,7 +357,7 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
@@ -383,6 +387,8 @@ final class NativeClosure {
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
      */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureStringRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
@@ -402,7 +408,7 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
@@ -432,6 +438,8 @@ final class NativeClosure {
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
      */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureObjectRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
