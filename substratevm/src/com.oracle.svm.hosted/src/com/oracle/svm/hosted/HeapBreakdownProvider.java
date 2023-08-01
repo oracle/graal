@@ -26,10 +26,13 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -46,8 +49,6 @@ import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 public class HeapBreakdownProvider {
     private static final String BYTE_ARRAY_PREFIX = "byte[] for ";
@@ -86,20 +87,27 @@ public class HeapBreakdownProvider {
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
 
         long totalObjectSize = 0;
-        long stringByteArrayLength = 0;
-        int stringByteArrayCount = 0;
+        long stringByteArrayTotalLength = 0;
+        int stringByteArrayTotalCount = 0;
+        Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
+        final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
             classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
-            if (reportStringBytes) {
-                JavaConstant javaObject = o.getConstant();
-                if (metaAccess.isInstanceOf(javaObject, String.class)) {
-                    stringByteArrayLength += getInternalByteArrayLength(metaAccess.getUniverse().getSnippetReflection().asObject(String.class, javaObject));
-                    stringByteArrayCount++;
+            if (reportStringBytesConstant) {
+                if (o.getObjectClass() == String.class) {
+                    String string = metaAccess.getUniverse().getSnippetReflection().asObject(String.class, o.getConstant());
+                    byte[] bytes = getInternalByteArray(string);
+                    /* Ensure every byte[] is counted only once. */
+                    if (seenStringByteArrays.add(bytes)) {
+                        stringByteArrayTotalLength += bytes.length;
+                        stringByteArrayTotalCount++;
+                    }
                 }
             }
         }
+        seenStringByteArrays.clear();
 
         /* Prepare to break down byte[] data in more detail. */
         HostedType byteArrayType = metaAccess.lookupJavaType(byte[].class);
@@ -121,8 +129,8 @@ public class HeapBreakdownProvider {
         }
 
         /* Extract byte[] for Strings. */
-        if (stringByteArrayLength > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayLength, stringByteArrayCount);
+        if (stringByteArrayTotalLength > 0) {
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalLength, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
         long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
@@ -167,12 +175,9 @@ public class HeapBreakdownProvider {
         byteArrayEntry.remove(byteSize, count);
     }
 
-    private static int getInternalByteArrayLength(String string) {
-        if (string == null) {
-            return 0;
-        }
+    private static byte[] getInternalByteArray(String string) {
         try {
-            return ((byte[]) STRING_VALUE.get(string)).length;
+            return ((byte[]) STRING_VALUE.get(string));
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
