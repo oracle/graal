@@ -37,6 +37,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
@@ -50,12 +51,14 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public class HeapBreakdownProvider {
     private static final String BYTE_ARRAY_PREFIX = "byte[] for ";
     private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
 
     private boolean reportStringBytes = true;
-    private long graphEncodingByteLength = -1;
+    private int graphEncodingByteLength = -1;
 
     private List<HeapBreakdownEntry> sortedBreakdownEntries;
     private long totalHeapSize = -1;
@@ -81,13 +84,14 @@ public class HeapBreakdownProvider {
         return totalHeapSize;
     }
 
-    void calculate(BeforeImageWriteAccessImpl access) {
+    protected void calculate(BeforeImageWriteAccessImpl access) {
         HostedMetaAccess metaAccess = access.getHostedMetaAccess();
+        ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
 
         long totalObjectSize = 0;
-        long stringByteArrayTotalLength = 0;
+        long stringByteArrayTotalSize = 0;
         int stringByteArrayTotalCount = 0;
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
@@ -97,11 +101,11 @@ public class HeapBreakdownProvider {
             classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
             if (reportStringBytesConstant) {
                 if (o.getObjectClass() == String.class) {
-                    String string = metaAccess.getUniverse().getSnippetReflection().asObject(String.class, o.getConstant());
+                    String string = (String) o.getObject();
                     byte[] bytes = getInternalByteArray(string);
                     /* Ensure every byte[] is counted only once. */
                     if (seenStringByteArrays.add(bytes)) {
-                        stringByteArrayTotalLength += bytes.length;
+                        stringByteArrayTotalSize += objectLayout.getArraySize(JavaKind.Byte, bytes.length, true);
                         stringByteArrayTotalCount++;
                     }
                 }
@@ -129,38 +133,38 @@ public class HeapBreakdownProvider {
         }
 
         /* Extract byte[] for Strings. */
-        if (stringByteArrayTotalLength > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalLength, stringByteArrayTotalCount);
+        if (stringByteArrayTotalSize > 0) {
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalSize, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
-        long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
-        int codeInfoCount = CodeInfoTable.getImageCodeCache().getTotalByteArrayCount();
-        if (codeInfoSize > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoCount);
-        }
+        List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getImageCodeCache().getTotalByteArrayLengths();
+        long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
+        addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
-        long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
+        int metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
         if (metadataByteLength > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataByteLength, 1);
+            long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
         /* Extract byte[] for resources. */
-        long resourcesByteLength = 0;
+        long resourcesByteArraySize = 0;
         int resourcesByteArrayCount = 0;
         for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
             for (byte[] resource : resourceList.getData()) {
-                resourcesByteLength += resource.length;
+                resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
                 resourcesByteArrayCount++;
             }
         }
         ProgressReporter reporter = ProgressReporter.singleton();
-        reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
-        if (resourcesByteLength > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteLength, resourcesByteArrayCount);
+        reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
+        if (resourcesByteArraySize > 0) {
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
         }
         /* Extract byte[] for graph encodings. */
         if (graphEncodingByteLength >= 0) {
-            reporter.recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength, 1);
+            long graphEncodingSize = objectLayout.getArraySize(JavaKind.Byte, graphEncodingByteLength, true);
+            reporter.recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingSize);
+            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "graph encodings", "#glossary-graph-encodings"), graphEncodingSize, 1);
         }
         /* Add remaining byte[]. */
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
