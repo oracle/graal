@@ -220,7 +220,10 @@ def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=Tru
 def slnative(args):
     """build a native image of an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
-    image = _native_image_sl(vm_args, use_optimized_runtime=True)
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True)
+    if not image:
+        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
@@ -231,7 +234,7 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
     if not exists(native_image_path):
         native_image_path = os.path.join(graalvm_home, 'bin', mx.cmd_suffix('native-image'))
         if not exists(native_image_path):
-            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an install native-image command.".format(graalvm_home))
+            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
