@@ -789,7 +789,7 @@ public class FeatureImpl {
         @Override
         public Path getImagePath() {
             if (linkerInvocation == null) {
-                // null in web-image
+                /* Some backends might not use native-linking */
                 return null;
             }
             return linkerInvocation.getOutputFile();
