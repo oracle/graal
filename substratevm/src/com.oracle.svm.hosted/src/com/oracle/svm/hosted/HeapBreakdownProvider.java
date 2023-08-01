@@ -99,15 +99,12 @@ public class HeapBreakdownProvider {
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
             classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
-            if (reportStringBytesConstant) {
-                if (o.getObjectClass() == String.class) {
-                    String string = (String) o.getObject();
-                    byte[] bytes = getInternalByteArray(string);
-                    /* Ensure every byte[] is counted only once. */
-                    if (seenStringByteArrays.add(bytes)) {
-                        stringByteArrayTotalSize += objectLayout.getArraySize(JavaKind.Byte, bytes.length, true);
-                        stringByteArrayTotalCount++;
-                    }
+            if (reportStringBytesConstant && o.getObject() instanceof String string) {
+                byte[] bytes = getInternalByteArray(string);
+                /* Ensure every byte[] is counted only once. */
+                if (seenStringByteArrays.add(bytes)) {
+                    stringByteArrayTotalSize += objectLayout.getArraySize(JavaKind.Byte, bytes.length, true);
+                    stringByteArrayTotalCount++;
                 }
             }
         }
