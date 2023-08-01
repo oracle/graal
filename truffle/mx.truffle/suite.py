@@ -1385,6 +1385,7 @@ suite = {
       # when a JDK boot module exports itself at runtime to a language at runtime.
       # with Truffle unchained we want to use truffle always from the module path
       # and deployement of Truffle the JDK is only there fore legacy support.
+      # See GR-47669
       #"graalvm" : {
       # Deploy the modular jar specified by "moduleInfo.closed"
       #"moduleInfo" : "closed",
