@@ -225,7 +225,7 @@ def slnative(args):
     result = mx.run([image] + sl_args)
     return result
 
-def _native_image_sl(vm_args, use_optimized_runtime=True, use_enterprise=True):
+def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True):
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
     if not exists(native_image_path):
@@ -233,8 +233,7 @@ def _native_image_sl(vm_args, use_optimized_runtime=True, use_enterprise=True):
         if not exists(native_image_path):
             mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an install native-image command.".format(graalvm_home))
             return None
-    temp = tempfile.NamedTemporaryFile(delete=False)
-    target_path = abspath(temp.name)
+    target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
     return target_path
 
@@ -290,7 +289,8 @@ def sl_jvm_gate_tests():
 
 # invoked by vm gate runner in ce-unchained configuration
 def sl_native_optimized_gate_tests():
-    image = _native_image_sl([], use_optimized_runtime=True, use_enterprise=True)
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
 
     def run_native_optimized(test_file):
         return [image] + [test_file, '--disable-launcher-output']
@@ -302,13 +302,14 @@ def sl_native_optimized_gate_tests():
     mx.log("Run SL Native Optimized Immediately Test")
     _run_sl_tests(run_native_optimized_immediately)
 
-    os.unlink(image)
+    shutil.rmtree(target_dir)
 
     # test if the enterprise compiler is in use
     # that everything works fine if truffle-enterprise.jar is not availble
     enterprise = _get_enterprise_truffle()
     if enterprise:
-        image = _native_image_sl([], use_optimized_runtime=True, use_enterprise=False)
+        target_dir = tempfile.mkdtemp()
+        image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=False)
 
         def run_no_enterprise_native_optimized(test_file):
             return [image] + [test_file, '--disable-launcher-output']
@@ -320,11 +321,12 @@ def sl_native_optimized_gate_tests():
         mx.log("Run SL Native Optimized Immediately Test No Truffle Enterprise")
         _run_sl_tests(run_no_enterprise_native_optimized_immediately)
 
-        os.unlink(image)
+        shutil.rmtree(target_dir)
 
 # invoked by vm gate runner in ce-unchained configuration
 def sl_native_fallback_gate_tests():
-    image = _native_image_sl([], use_optimized_runtime=False)
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=False)
 
     def run_native_fallback(test_file):
         return [image] + [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false']
@@ -332,7 +334,7 @@ def sl_native_fallback_gate_tests():
     mx.log("Run SL Native Fallback Test")
     _run_sl_tests(run_native_fallback)
 
-    os.unlink(image)
+    shutil.rmtree(target_dir)
 
 def _run_sl_tests(create_command):
     sl_test = mx.project("com.oracle.truffle.sl.test")
