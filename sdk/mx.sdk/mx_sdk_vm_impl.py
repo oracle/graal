@@ -3102,8 +3102,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             # Link libc++ statically
             llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
             libcxx_dir = join(llvm_toolchain, 'lib')
+            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
             if mx.is_linux():
-                libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
                 libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
             _dynamic_ldlibs += [
                 '-stdlib=libc++',
@@ -3113,8 +3113,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             ]
 
             _dynamic_ldlibs += ['-ldl']
-        if mx.is_darwin():
-            _dynamic_ldlibs += ['-framework', 'Foundation']
+            if mx.is_darwin():
+                _dynamic_ldlibs += ['-framework', 'Foundation']
+
+                default_min_version = {'x86_64': '10.13', 'aarch64': '11.0'}[libcxx_arch]
+                min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
+                _dynamic_ldlibs += ['-mmacosx-version-min=' + min_version]
+
         return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
 
     def default_language_home_relative_libpath(self):
