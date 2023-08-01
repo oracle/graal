@@ -163,24 +163,27 @@ public final class CompilationAlarm implements AutoCloseable {
      * hang and throw a bailout.
      */
     private static void assertProgress(OptionValues opt, EventCounter counter) {
-        final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
-        if (maxNoProgressPeriod == 0D) {
-            /*
-             * Feature is disabled, do nothing.
-             */
-            return;
-        }
-
         StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
         StackTraceElement[] currentStackTrace = Thread.currentThread().getStackTrace();
         EventCounter lastCounter = lastCounterForThread.get();
-
-        if (lastStackTrace == null || !Arrays.equals(lastStackTrace, currentStackTrace) || !lastCounter.equals(counter)) {
+        if (lastStackTrace == null || !lastCounter.equals(counter) || lastStackTrace.length != currentStackTrace.length || !Arrays.equals(lastStackTrace, currentStackTrace)) {
             lastStackTraceForThread.set(currentStackTrace);
             lastUniqueStackTraceForThread.set(System.currentTimeMillis());
             lastCounterForThread.set(counter);
             return;
         } else {
+            /*
+             * We perform this check inside here since its cheaper to take the last stack trace
+             * (last will be null for the first in the current compile) than actually checking the
+             * option below. In normal compiles we dont often get into this branch in the first
+             * place, most is capture above, and the thread local is very fast.
+             */
+            final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+            if (maxNoProgressPeriod == 0D) {
+                // Feature is disabled, do nothing.
+                return;
+            }
+
             assert Arrays.equals(lastStackTrace, currentStackTrace) : "Must only enter this branch if no progress was made";
             /*
              * We have a similar stack trace - fail once the period is longer than the no progress
@@ -189,7 +192,6 @@ public final class CompilationAlarm implements AutoCloseable {
             final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
             final long currentTimeStamp = System.currentTimeMillis();
             final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-
             boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
 
             if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
