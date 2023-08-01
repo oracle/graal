@@ -376,7 +376,7 @@ suite = {
             },
             "description" : "The bridge between truffle tools and the chrome inspector.",
         },
-        "CHROMEINSPECTOR_COMMUNITY_META_POM" : {
+        "CHROMEINSPECTOR_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "CHROMEINSPECTOR",
@@ -429,7 +429,7 @@ suite = {
             },
             "description" : "The Ultimate Insights Gathering Platform",
         },
-        "INSIGHT_COMMUNITY_META_POM" : {
+        "INSIGHT_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "INSIGHT",
@@ -458,7 +458,7 @@ suite = {
             },
             "description" : "Heap Dump for GraalVM Insight",
         },
-        "INSIGHT_HEAP_COMMUNITY_META_POM" : {
+        "INSIGHT_HEAP_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "INSIGHT_HEAP",
@@ -519,7 +519,7 @@ suite = {
             "javadocType" : "api",
             "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
-        "TRUFFLE_PROFILER_COMMUNITY_META_POM" : {
+        "TRUFFLE_PROFILER_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "TRUFFLE_PROFILER",
@@ -528,7 +528,7 @@ suite = {
             "maven" : {
               "artifactId" : "profiler-community",
             },
-            "description" : "The compoment providing the truffle profiler, supporting CPU sampling and tracing and Truffle runtime"
+            "description" : "The component providing the truffle profiler, supporting CPU sampling and tracing and Truffle runtime"
         },
         "TRUFFLE_PROFILER_TEST": {
             "subDir": "src",
@@ -568,7 +568,7 @@ suite = {
             "description" : "Truffle code coverage tool.",
             "javadocType" : "api",
         },
-        "TRUFFLE_COVERAGE_COMMUNITY_META_POM" : {
+        "TRUFFLE_COVERAGE_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "TRUFFLE_COVERAGE",
@@ -577,7 +577,7 @@ suite = {
             "maven" : {
               "artifactId" : "coverage-community",
             },
-            "description" : "The compoment providing Truffle code coverage tool and Truffle runtime"
+            "description" : "The component providing Truffle code coverage tool and Truffle runtime"
         },
         "TRUFFLE_COVERAGE_TEST": {
             "subDir": "src",
@@ -616,7 +616,7 @@ suite = {
             },
             "description" : "Truffle Debug Protocol Server implementation.",
         },
-        "DAP_COMMUNITY_META_POM" : {
+        "DAP_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "DAP",
@@ -625,7 +625,7 @@ suite = {
             "maven" : {
               "artifactId" : "dap-community",
             },
-            "description" : "The compoment providing Truffle Debug Protocol Server implementation and Truffle runtime"
+            "description" : "The component providing Truffle Debug Protocol Server implementation and Truffle runtime"
         },
         "DAP_TEST": {
             "subDir": "src",
@@ -691,7 +691,7 @@ suite = {
             },
             "description" : "Truffle Language Server backend implementation.",
         },
-        "LSP_COMMUNITY_META_POM" : {
+        "LSP_COMMUNITY" : {
             "type":"pom",
             "runtimeDependencies" : [
                 "LSP",
@@ -700,7 +700,7 @@ suite = {
             "maven" : {
               "artifactId" : "lsp-community",
             },
-            "description" : "The compoment providing Truffle Language Server backend implementation and Truffle runtime"
+            "description" : "The component providing Truffle Language Server backend implementation and Truffle runtime"
         },
         "LSP_TEST": {
             "dependencies": ["org.graalvm.tools.lsp.test"],
@@ -716,23 +716,6 @@ suite = {
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-lsp.properties",
             },
-        },
-        "TOOLS_COMMUNITY_META_POM" : {
-            "type":"pom",
-            "runtimeDependencies" : [
-                "INSIGHT_COMMUNITY_META_POM",
-                "INSIGHT_HEAP_COMMUNITY_META_POM",
-                "INSIGHT_HEAP_COMMUNITY_META_POM",
-                "TRUFFLE_PROFILER_COMMUNITY_META_POM",
-                "TRUFFLE_COVERAGE_COMMUNITY_META_POM",
-                "DAP_COMMUNITY_META_POM",
-                "LSP_COMMUNITY_META_POM",
-            ],
-            "maven" : {
-              "groupId" : "org.graalvm.polyglot",
-              "artifactId" : "tools-community",
-            },
-            "description" : "The compoment providing Truffle Language Server backend implementation and Truffle runtime"
         },
     },
 }

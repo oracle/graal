@@ -31,6 +31,7 @@ from __future__ import print_function
 import mx
 import mx_gate
 import mx_jardistribution
+import mx_pomdistribution
 import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
@@ -216,6 +217,55 @@ def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
 
 
+def _register_all_tools_distribution(register_distribution):
+    """
+    If the tools suite is imported, creates a dynamic TOOLS_COMMUNITY meta-POM distribution containing all
+    META-POM distributions from the tools suite.
+    :type register_distribution: (mx.Distribution) -> None
+    """
+    tools_suite = mx.suite('tools', fatalIfMissing=False)
+    if tools_suite:
+        tools_meta_poms = [dist for dist in tools_suite.dists if dist.isPOMDistribution()]
+        attrs = {'maven': {
+            "groupId": "org.graalvm.polyglot",
+            "artifactId": "tools-community",
+        },
+            "description": "Graalvm community tools.",
+        }
+        tools_community = mx_pomdistribution.POMDistribution(_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, None, **attrs)
+        register_distribution(tools_community)
+
+def _register_all_languages_distribution(register_distribution):
+    """
+    Creates a dynamic LANGUAGES_COMMUNITY meta-POM distribution containing all
+    META-POM distributions from imported public language suites.
+    :type register_distribution: (mx.Distribution) -> None
+    """
+    language_suites = [
+        'espresso',
+        'fastr',
+        'graal-js',
+        'graalpython',
+        'sulong',
+        'truffleruby',
+        'wasm',
+    ]
+    languages_meta_poms = []
+    for suite_name in language_suites:
+        language_suite = mx.suite(suite_name, fatalIfMissing=False)
+        if language_suite:
+            languages_meta_poms.extend([dist for dist in language_suite.dists if dist.isPOMDistribution()])
+    if languages_meta_poms:
+        attrs = {'maven': {
+            "groupId": "org.graalvm.polyglot",
+            "artifactId": "languages-community",
+        },
+            "description": "Graalvm community languages.",
+        }
+        languages_community = mx_pomdistribution.POMDistribution(_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, None, **attrs)
+        register_distribution(languages_community)
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     """
     :type register_project: (mx.Project) -> None
@@ -332,6 +382,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     # add jars to the layout of the benchmark distribution
                     _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
+        _register_all_tools_distribution(register_distribution)
+        _register_all_languages_distribution(register_distribution)
 
 
 class GraalVmSymlinks(mx.Project):
