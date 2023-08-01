@@ -28,11 +28,9 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.SecureClassLoader;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 
@@ -146,37 +144,33 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         }
     }
 
-    private static Class<?> loadClass(List<ClassLoader> activeClassLoaders, String name, boolean resolve) throws ClassNotFoundException {
+    private static Class<?> loadClass(ClassLoader loader, String name, boolean resolve) throws ClassNotFoundException {
         ClassNotFoundException classNotFoundException = null;
-        for (ClassLoader loader : activeClassLoaders) {
-            try {
-                /* invoke the "loadClass" method on the current class loader */
-                return ((Class<?>) loadClass.invoke(loader, name, resolve));
-            } catch (Exception e) {
-                if (e.getCause() instanceof ClassNotFoundException) {
-                    classNotFoundException = ((ClassNotFoundException) e.getCause());
-                } else {
-                    String message = String.format("Can not load class: %s, with class loader: %s", name, loader);
-                    VMError.shouldNotReachHere(message, e);
-                }
+        try {
+            /* invoke the "loadClass" method on the current class loader */
+            return ((Class<?>) loadClass.invoke(loader, name, resolve));
+        } catch (Exception e) {
+            if (e.getCause() instanceof ClassNotFoundException) {
+                classNotFoundException = ((ClassNotFoundException) e.getCause());
+            } else {
+                String message = String.format("Can not load class: %s, with class loader: %s", name, loader);
+                VMError.shouldNotReachHere(message, e);
             }
         }
         VMError.guarantee(classNotFoundException != null);
         throw classNotFoundException;
     }
 
-    private static URL findResource(List<ClassLoader> activeClassLoaders, String name) {
-        for (ClassLoader loader : activeClassLoaders) {
-            try {
-                // invoke the "findResource" method on the current class loader
-                Object url = findResource.invoke(loader, name);
-                if (url != null) {
-                    return (URL) url;
-                }
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                String message = String.format("Can not find resource: %s using class loader: %s", name, loader);
-                VMError.shouldNotReachHere(message, e);
+    private static URL findResource(ClassLoader loader, String name) {
+        try {
+            // invoke the "findResource" method on the current class loader
+            Object url = findResource.invoke(loader, name);
+            if (url != null) {
+                return (URL) url;
             }
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            String message = String.format("Can not find resource: %s using class loader: %s", name, loader);
+            VMError.shouldNotReachHere(message, e);
         }
         return null;
     }
@@ -206,24 +200,17 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return loadClass(getActiveClassLoaders(), name, resolve);
+        return loadClass(getActiveClassLoader(), name, resolve);
     }
 
     @Override
     protected URL findResource(String name) {
-        return findResource(getActiveClassLoaders(), name);
+        return findResource(getActiveClassLoader(), name);
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-        List<ClassLoader> activeClassLoaders = getActiveClassLoaders();
-        assert !activeClassLoaders.isEmpty() && activeClassLoaders.size() <= 2;
-        ClassLoader activeClassLoader = activeClassLoaders.get(0);
-        ClassLoader activeClassLoaderParent = activeClassLoaders.size() > 1 ? activeClassLoaders.get(1) : null;
-        if (activeClassLoaderParent != null) {
-            return newCompoundEnumeration(findResources(activeClassLoaderParent, name), findResources(activeClassLoader, name));
-        }
-        return findResources(activeClassLoader, name);
+        return findResources(getActiveClassLoader(), name);
     }
 
     @SuppressWarnings("unchecked")
@@ -237,7 +224,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     public Class<?> forNameOrNull(String name, boolean initialize) {
         try {
-            return Class.forName(name, initialize, getActiveClassLoaders().get(0));
+            return Class.forName(name, initialize, getActiveClassLoader());
         } catch (LinkageError | ClassNotFoundException ignored) {
             return null;
         }
@@ -248,7 +235,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
-        return defineClass(getActiveClassLoaders().get(0), name, array, offset, length);
+        return defineClass(getActiveClassLoader(), name, array, offset, length);
     }
 
     @Override
@@ -260,16 +247,12 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
                         '}';
     }
 
-    private List<ClassLoader> getActiveClassLoaders() {
+    private ClassLoader getActiveClassLoader() {
         ClassLoader activeClassLoader = nativeImageClassLoader;
         if (activeClassLoader != null) {
-            if (activeClassLoader instanceof URLClassLoader) {
-                return List.of(activeClassLoader);
-            } else {
-                return List.of(activeClassLoader, activeClassLoader.getParent());
-            }
+            return activeClassLoader;
         } else {
-            return List.of(defaultSystemClassLoader);
+            return defaultSystemClassLoader;
         }
     }
 
