@@ -698,7 +698,6 @@ def gate_svm_truffle_tck_python(tasks):
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-        import json
         import mx_compiler
         build_options = ['-H:+GenerateBuildArtifactsFile'] + options
         if shared_lib:
