@@ -36,21 +36,21 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
     @Override
     public int getNextInputIndex(VMStorage reg, Klass type) {
         // This depends on order since int and float register are independently allocated
-        assert isInt(type) || isFloat(type);
+        assert isInt(type) || isFloat(type) : platform.toString(reg) + ": " + type;
         if (intIndex < callIntRegs.length && callIntRegs[intIndex].equals(reg)) {
-            assert isInt(type);
+            assert isInt(type) : platform.toString(reg) + ": " + type;
             intIndex++;
             return globalIndex++;
         }
         if (floatIndex < callFloatRegs.length && callFloatRegs[floatIndex].equals(reg)) {
-            assert isFloat(type);
+            assert isFloat(type) : platform.toString(reg) + ": " + type;
             floatIndex++;
             return globalIndex++;
         }
         if (reg.type(platform).isStack()) {
             // TODO validate offset
-            assert !isInt(type) || intIndex == callIntRegs.length;
-            assert !isFloat(type) || floatIndex == callFloatRegs.length;
+            assert !isInt(type) || intIndex == callIntRegs.length : platform.toString(reg) + ": " + type;
+            assert !isFloat(type) || floatIndex == callFloatRegs.length : platform.toString(reg) + ": " + type;
             return globalIndex++;
         }
         return -1;
@@ -59,11 +59,11 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
     @Override
     public boolean checkReturn(VMStorage reg, Klass type) {
         if (intReturn.equals(reg)) {
-            assert isInt(type);
+            assert isInt(type) : platform.toString(reg) + ": " + type;
             return true;
         }
         if (floatReturn.equals(reg)) {
-            assert isFloat(type);
+            assert isFloat(type) : platform.toString(reg) + ": " + type;
             return true;
         }
         return false;

@@ -52,8 +52,8 @@ public class DarwinAArch64ArgumentsCalculator extends DefaultArgumentsCalculator
             isVarArgs = isVarArgsStart(reg, type);
         }
         if (isVarArgs) {
-            assert reg.type(platform).isStack();
-            assert varArgsStackOffset == reg.indexOrOffset();
+            assert reg.type(platform).isStack() : platform.toString(reg) + ": " + type;
+            assert varArgsStackOffset == reg.indexOrOffset() : platform.toString(reg) + ": " + type;
             varArgsStackOffset += 8;
             return globalIndex++;
         }
