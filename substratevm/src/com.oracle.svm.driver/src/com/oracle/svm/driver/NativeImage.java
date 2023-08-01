@@ -425,7 +425,6 @@ public class NativeImage {
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             if (!modulePathBuild) {
                 result.addAll(createTruffleBuilderModulePath());
-                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
             return result;
         }
@@ -640,13 +639,7 @@ public class NativeImage {
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
-                if (config.modulePathBuild) {
-                    /*
-                     * Requires can for compatibility reasons only be interpreted using module
-                     * builds.
-                     */
-                    forEachPropertyValue(properties.get("Requires"), args, (s) -> "--" + s);
-                }
+                forEachPropertyValue(properties.get("Requires"), args, (s) -> "--" + s);
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
