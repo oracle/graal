@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -118,6 +119,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jvmstat.PerfDataSupport;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -2382,6 +2384,36 @@ public final class PolyglotNativeAPI {
         }
     }
 
+    @CEntryPoint(name = "poly_register_log_handler_callbacks", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Registers callbacks for log functions. Note that this is expected to be called exactly once.",
+                    "The API defined in LogHandler is extended so that an additional data pointer is passed back with each action.",
+                    "",
+                    "@param data Value passed back with each action.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/LogHandler.html",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_register_log_handler_callbacks(PolyglotIsolateThread thread, PolyglotNativeAPITypes.PolyglotLogCallback logCallback,
+                    PolyglotNativeAPITypes.PolyglotFlushCallback flushCallback,
+                    PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalErrorCallback, VoidPointer data) {
+        resetErrorState();
+        nullCheck(logCallback, "logCallback");
+        nullCheck(flushCallback, "flushCallback");
+        nullCheck(fatalErrorCallback, "fatalErrorCallback");
+
+        PolyglotNativeLogHandler handler = (PolyglotNativeLogHandler) ImageSingletons.lookup(LogHandler.class);
+        if (handler.log.isNonNull()) {
+            throw reportError("poly_register_log_handler_callbacks called multiple times", poly_generic_failure);
+        }
+        handler.log = logCallback;
+        handler.flush = flushCallback;
+        handler.fatalError = fatalErrorCallback;
+        handler.data = data;
+
+        return poly_ok;
+    }
+
     @CEntryPoint(name = "poly_perf_data_get_address_of_int64_t", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Gets the address of the int64_t value for a performance data entry of type long. Performance data support must be enabled.",
                     "",
@@ -2546,5 +2578,38 @@ public final class PolyglotNativeAPI {
 
         VMRuntime.shutdown();
         return poly_ok;
+    }
+
+    public static class PolyglotNativeLogHandler implements LogHandler {
+        VoidPointer data;
+        PolyglotNativeAPITypes.PolyglotLogCallback log;
+        PolyglotNativeAPITypes.PolyglotFlushCallback flush;
+        PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalError;
+
+        @Override
+        public void log(CCharPointer bytes, UnsignedWord length) {
+            if (log.isNonNull()) {
+                log.invoke(bytes, length, data);
+            }
+        }
+
+        @Override
+        public void flush() {
+            if (flush.isNonNull()) {
+                flush.invoke(data);
+            }
+        }
+
+        @Override
+        public void fatalError() {
+            if (fatalError.isNonNull()) {
+                fatalError.invoke(data);
+            }
+
+            /*
+             * If we reach this point, then we must abort since the execution cannot proceed.
+             */
+            LibC.abort();
+        }
     }
 }

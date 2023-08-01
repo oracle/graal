@@ -35,6 +35,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -51,6 +53,7 @@ public class PolyglotNativeAPIFeature implements Feature {
         if (!NativeImageOptions.getCStandard().compatibleWith(C11)) {
             throw UserError.abort("Polyglot native API supports only the C11 standard. Pass -H:CStandard=C11 on the command line to make the build work.");
         }
+        ImageSingletons.add(LogHandler.class, new PolyglotNativeAPI.PolyglotNativeLogHandler());
     }
 
     @Override
