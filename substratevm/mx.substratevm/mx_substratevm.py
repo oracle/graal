@@ -1018,7 +1018,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'nil'],
-    support_distributions=[],
+    provided_executables=['bin/<cmd:rebuild-images>'],
+    support_distributions=['substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image',
@@ -1119,8 +1120,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     license_files=[],
     third_party_license_files=[],
     dependencies=['tfl'],
-    provided_executables=['bin/<cmd:rebuild-images>'],
-    support_distributions=['substratevm:TRUFFLE_GRAALVM_SUPPORT', 'substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
+    support_distributions=['substratevm:TRUFFLE_GRAALVM_SUPPORT'],
     stability="supported",
 ))
 
