@@ -43,11 +43,6 @@ package com.oracle.truffle.espresso.polyglot.collections;
 import java.util.AbstractCollection;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Spliterator;
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
@@ -121,78 +116,5 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
         } catch (UnsupportedMessageException e) {
             return super.toString();
         }
-    }
-
-    /*
-     * Below are all methods that delegate directly to super. This is done to assist the
-     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
-     * done. This also means that for all of those methods the behavior will be determined by the
-     * guest side rather than the host. As a consequence, any host-side method overriding of these
-     * methods will not take effect when passed to the Espresso guest.
-     */
-
-    @Override
-    public boolean contains(Object o) {
-        return super.contains(o);
-    }
-
-    @Override
-    public void forEach(Consumer<? super T> action) {
-        super.forEach(action);
-    }
-
-    @Override
-    public boolean removeIf(Predicate<? super T> filter) {
-        return super.removeIf(filter);
-    }
-
-    @Override
-    public Spliterator<T> spliterator() {
-        return super.spliterator();
-    }
-
-    @Override
-    public Stream<T> stream() {
-        return super.stream();
-    }
-
-    @Override
-    public Stream<T> parallelStream() {
-        return super.parallelStream();
-    }
-
-    @Override
-    public Object[] toArray() {
-        return super.toArray();
-    }
-
-    @Override
-    public <T1> T1[] toArray(T1[] a) {
-        return super.toArray(a);
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        return super.containsAll(c);
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> c) {
-        return super.addAll(c);
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        return super.retainAll(c);
-    }
-
-    @Override
-    public void clear() {
-        super.clear();
-    }
-
-    @Override
-    public <T1> T1[] toArray(IntFunction<T1[]> generator) {
-        return super.toArray(generator);
     }
 }

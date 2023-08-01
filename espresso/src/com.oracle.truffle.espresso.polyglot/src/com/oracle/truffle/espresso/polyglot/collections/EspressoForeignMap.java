@@ -47,9 +47,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
@@ -369,73 +366,5 @@ public class EspressoForeignMap<K, V> extends AbstractMap<K, V> implements Map<K
         public V setValue(V value) {
             throw new UnsupportedOperationException();
         }
-    }
-
-    /*
-     * Below are all methods that delegate directly to super. This is done to assist the
-     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
-     * done. This also means that for all of those methods the behavior will be determined by the
-     * guest side rather than the host. As a consequence, any host-side method overriding of these
-     * methods will not take effect when passed to the Espresso guest.
-     */
-
-    @Override
-    public void putAll(Map<? extends K, ? extends V> m) {
-        super.putAll(m);
-    }
-
-    @Override
-    public V getOrDefault(Object key, V defaultValue) {
-        return super.getOrDefault(key, defaultValue);
-    }
-
-    @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) {
-        super.forEach(action);
-    }
-
-    @Override
-    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
-        super.replaceAll(function);
-    }
-
-    @Override
-    public V putIfAbsent(K key, V value) {
-        return super.putIfAbsent(key, value);
-    }
-
-    @Override
-    public boolean remove(Object key, Object value) {
-        return super.remove(key, value);
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        return super.replace(key, oldValue, newValue);
-    }
-
-    @Override
-    public V replace(K key, V value) {
-        return super.replace(key, value);
-    }
-
-    @Override
-    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
-        return super.computeIfAbsent(key, mappingFunction);
-    }
-
-    @Override
-    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        return super.computeIfPresent(key, remappingFunction);
-    }
-
-    @Override
-    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        return super.compute(key, remappingFunction);
-    }
-
-    @Override
-    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-        return super.merge(key, value, remappingFunction);
     }
 }

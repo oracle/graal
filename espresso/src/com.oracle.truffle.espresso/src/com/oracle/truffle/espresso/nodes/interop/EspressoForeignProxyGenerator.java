@@ -420,9 +420,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          * First add methods from a potential optimized super class
          */
         if (superKlass != meta.java_lang_Object) {
-            for (Method m : superKlass.getDeclaredMethods()) {
-                addProxyMethod(m, true);
-            }
+            // add all methods implemented by the superclass, and it's transitive super hierarchy
+            addSuperImplementedMethods(superKlass);
         }
 
         /*
@@ -454,6 +453,26 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
 
         return toByteArray();
+    }
+
+    private void addSuperImplementedMethods(ObjectKlass klass) {
+        if (klass == klass.getMeta().java_lang_Object) {
+            return;
+        }
+        for (Method m : klass.getDeclaredMethods()) {
+            if (!m.isAbstract()) {
+                addProxyMethod(m, true);
+            }
+        }
+        for (ObjectKlass itf : klass.getSuperInterfaces()) {
+            for (Method m : itf.getDeclaredMethods()) {
+                if (!m.isAbstract()) {
+                    addProxyMethod(m, true);
+                }
+            }
+            addSuperImplementedMethods(itf);
+        }
+        addSuperImplementedMethods(klass.getSuperKlass());
     }
 
     private void generateToStringMethod() {

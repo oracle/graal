@@ -40,17 +40,16 @@
  */
 package com.oracle.truffle.espresso.polyglot.collections;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.StopIterationException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.function.Consumer;
-
 public class EspressoForeignIterator<E> implements Iterator<E> {
 
-    /* VM creates a instance of EspressoForeignIterator */
+    /* VM creates an instance of EspressoForeignIterator */
     static native <T> Iterator<T> create(Object foreignIterator);
 
     @Override
@@ -83,23 +82,4 @@ public class EspressoForeignIterator<E> implements Iterator<E> {
             return super.toString();
         }
     }
-
-    /*
-     * Below are all methods that delegate directly to super. This is done to assist the
-     * EspressoForeignProxyGenerator so that for those methods, no interop method invocations are
-     * done. This also means that for all of those methods the behavior will be determined by the
-     * guest side rather than the host. As a consequence, any host-side method overriding of these
-     * methods will not take effect when passed to the Espresso guest.
-     */
-
-    @Override
-    public void forEachRemaining(Consumer<? super E> action) {
-        Iterator.super.forEachRemaining(action);
-    }
-
-    @Override
-    public void remove() {
-        Iterator.super.remove();
-    }
-
 }
