@@ -1626,12 +1626,9 @@ public class NativeImage {
             pb.environment().clear();
             listModulesProcess = pb.start();
 
-            List<String> lines = new ArrayList<>();
+            List<String> lines;
             try (var br = new BufferedReader(new InputStreamReader(listModulesProcess.getInputStream()))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    lines.add(line);
-                }
+                lines = br.lines().toList();
             }
             int exitStatus = listModulesProcess.waitFor();
             if (exitStatus != 0) {
