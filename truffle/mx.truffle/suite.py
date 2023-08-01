@@ -1431,7 +1431,6 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_NFI_NATIVE",
       ],
-      #"useModulePath": True,
       "description" : """Native function interface for the Truffle framework.""",
       "allowsJavadocWarnings": True,
     },
@@ -1457,7 +1456,6 @@ suite = {
       "javaProperties" : {
           "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
       },
-      #"useModulePath": True,
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
     },
