@@ -167,12 +167,14 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ResourceStorageEntryBase addEntry(Module module, String resourceName, ResourceStorageEntryBase newEntry, boolean isDirectory, boolean fromJar) {
+    private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         if (m != null) {
             m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
         }
+        var resources = singleton().resources;
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
@@ -180,14 +182,16 @@ public final class Resources {
                 entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
                 updateTimeStamp();
                 resources.put(key, entry);
+            } else {
+                if (key.getLeft() != null) {
+                    // if the entry already exists, and it comes from a module, it is the same entry
+                    // that we registered at some point before
+                    return;
+                }
             }
-            return entry;
-        }
-    }
 
-    private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        ResourceStorageEntryBase entry = addEntry(module, resourceName, null, isDirectory, fromJar);
-        entry.getData().add(data);
+            entry.getData().add(data);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

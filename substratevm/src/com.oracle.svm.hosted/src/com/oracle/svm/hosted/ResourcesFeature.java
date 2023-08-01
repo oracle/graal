@@ -48,6 +48,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -490,6 +491,25 @@ public final class ResourcesFeature implements InternalFeature {
             return conditions;
         }
 
+        private final Set<String> alreadyAddedResources = new HashSet<>();
+
+        private void registerResourceIfNeeded(boolean isDirectory, Object... arguments) {
+            Module module = (Module) arguments[0];
+            String resourceName = (String) arguments[1];
+            // we only do this if we are on the classPath
+            if ((module == null || !module.isNamed()) && !alreadyAddedResources.contains(resourceName)) {
+                if (isDirectory) {
+                    String content = (String) arguments[2];
+                    boolean fromJar = (boolean) arguments[3];
+                    addDirectoryResource(module, resourceName, content, fromJar);
+                } else {
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
+                }
+
+                alreadyAddedResources.add(resourceName);
+            }
+        }
+
         @Override
         public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
             registerResource(debugContext, module, resourceName, resourceStream, fromJar);
@@ -497,7 +517,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> registerResourceIfNeeded(false, module, resourceName), access.findClassByName(condition.getTypeName()));
         }
 
         @Override
@@ -518,7 +538,7 @@ public final class ResourcesFeature implements InternalFeature {
         // TODO if pass all gates - remove
         @Override
         public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
-            access.registerReachabilityHandler(e -> addDirectoryResource(module, dir, content, fromJar), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> registerResourceIfNeeded(true, module, dir, content, fromJar), access.findClassByName(condition.getTypeName()));
         }
     }
 
