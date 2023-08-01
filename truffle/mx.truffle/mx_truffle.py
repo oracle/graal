@@ -302,7 +302,7 @@ def sl_native_optimized_gate_tests():
     mx.log("Run SL Native Optimized Immediately Test")
     _run_sl_tests(run_native_optimized_immediately)
 
-    shutil.rmtree(target_dir)
+    mx.rmtree(target_dir)
 
     # test if the enterprise compiler is in use
     # that everything works fine if truffle-enterprise.jar is not availble
@@ -334,7 +334,7 @@ def sl_native_fallback_gate_tests():
     mx.log("Run SL Native Fallback Test")
     _run_sl_tests(run_native_fallback)
 
-    shutil.rmtree(target_dir)
+    mx.rmtree(target_dir)
 
 def _run_sl_tests(create_command):
     sl_test = mx.project("com.oracle.truffle.sl.test")
