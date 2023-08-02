@@ -85,6 +85,8 @@ final class PolyglotExceptionImpl {
     final PolyglotContextImpl context;
     final Throwable exception;
     final boolean showInternalStackFrames;
+    final boolean printInternalStrackTrace;
+    final Exception creationStackTrace;
     private final List<TruffleStackTraceElement> guestFrames;
 
     private StackTraceElement[] javaStackTrace;
@@ -127,7 +129,13 @@ final class PolyglotExceptionImpl {
         this.exception = original;
         // Note: getStackTrace also materializes host frames.
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
-        this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
+        this.showInternalStackFrames = engine != null && engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
+        this.printInternalStrackTrace = engine != null && engine.engineOptionValues.get(PolyglotEngineOptions.PrintInternalStackTrace);
+        if (engine != null && this.printInternalStrackTrace) {
+            creationStackTrace = new Exception();
+        } else {
+            creationStackTrace = null;
+        }
         Error resourceLimitError = getResourceLimitError(engine, exception);
         String exceptionMessage = null;
         InteropLibrary interop;
@@ -322,9 +330,13 @@ final class PolyglotExceptionImpl {
             if (isHostException()) {
                 s.println(CAUSE_CAPTION + asHostException());
             }
-            if (isInternalError()) {
-                s.println("Original Internal Error: ");
+            if (isInternalError() || printInternalStrackTrace) {
+                s.println("Original " + (isInternalError() ? "Internal " : "") + "Error: ");
                 s.printStackTrace(exception);
+            }
+            if (creationStackTrace != null) {
+                s.println("Polyglot Exception Creation Stacktrace:");
+                s.printStackTrace(creationStackTrace);
             }
         }
     }
