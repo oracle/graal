@@ -37,8 +37,8 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.VMRuntime;
 
+import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -109,9 +109,9 @@ public final class VMInspectionOptions {
 
     public static boolean dumpImageHeap() {
         if (hasHeapDumpSupport()) {
-            String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+            String absoluteHeapDumpPath = HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
             try {
-                VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
+                HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
             } catch (IOException e) {
                 System.err.println("Failed to create heap dump:");
                 e.printStackTrace();

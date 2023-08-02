@@ -31,7 +31,6 @@ import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.Spe
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -825,28 +824,14 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Dump heap to file when java.lang.OutOfMemoryError is thrown.")//
-    public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false, Immutable);
-
-    public static boolean isHeapDumpOnOutOfMemoryError() {
-        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue();
-    }
+    @Option(help = "Dump heap to file (see HeapDumpPath) when the executable throws a java.lang.OutOfMemoryError because it ran out of Java heap.")//
+    public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false);
 
     @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
-    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
-    public static String getHeapDumpPath(String defaultFilename) {
-        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
-        if (heapDumpFilenameOrDirectory.isEmpty()) {
-            return defaultFilename;
-        }
-        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
-        if (Files.isDirectory(targetPath)) {
-            targetPath = targetPath.resolve(defaultFilename);
-        }
-        return targetPath.toFile().getAbsolutePath();
-    }
+    @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
+    public static final HostedOptionKey<String> HeapDumpDefaultFilenamePrefix = new HostedOptionKey<>("svm-heapdump-");
 
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);

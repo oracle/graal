@@ -26,24 +26,29 @@ package com.oracle.svm.core.heapdump;
 
 import java.io.FileOutputStream;
 
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
+import com.oracle.svm.core.heap.dump.HeapDumping;
 
 /* Legacy implementation, only used by other legacy code (see GR-44538). */
-public class HeapDumpSupportImpl implements HeapDumpSupport {
+public class HeapDumpSupportImpl extends HeapDumping {
+    @Override
+    public void initializeDumpHeapOnOutOfMemoryError() {
+        /* Nothing to do. */
+    }
+
+    @Override
+    public void teardownDumpHeapOnOutOfMemoryError() {
+        /* Nothing to do. */
+    }
+
+    @Override
+    public void dumpHeapOnOutOfMemoryError() {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public void dumpHeap(String outputFile, boolean live) throws java.io.IOException {
         try (FileOutputStream fileOutputStream = new FileOutputStream(outputFile)) {
             com.oracle.svm.core.heapdump.HeapDumpWriter.singleton().writeHeapTo(fileOutputStream, live);
         }
-    }
-
-    @Override
-    public void dumpHeapOnOutOfMemoryError() {
-        // No-op
-    }
-
-    @Override
-    public void initHeapDumpOnOutOfMemoryErrorPath() {
-        // No-op
     }
 }

@@ -44,7 +44,4 @@ public interface HeapDumpSupport {
 
     void dumpHeap(String outputFile, boolean live) throws java.io.IOException;
 
-    void dumpHeapOnOutOfMemoryError();
-
-    void initHeapDumpOnOutOfMemoryErrorPath();
 }

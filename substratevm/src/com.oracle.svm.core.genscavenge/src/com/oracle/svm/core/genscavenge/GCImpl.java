@@ -29,14 +29,12 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicBoolean;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -118,8 +116,6 @@ public final class GCImpl implements GC {
     private UnsignedWord collectionEpoch = WordFactory.zero();
     private long lastWholeHeapExaminedTimeMillis = -1;
 
-    private final AtomicBoolean outOfMemoryReported = new AtomicBoolean(false);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
         this.policy = CollectionPolicy.getInitialPolicy();
@@ -154,14 +150,7 @@ public final class GCImpl implements GC {
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
-            reportJavaOutOfMemory();
             throw OutOfMemoryUtil.heapSizeExceeded();
-        }
-    }
-
-    private void reportJavaOutOfMemory() {
-        if (SubstrateOptions.isHeapDumpOnOutOfMemoryError() && outOfMemoryReported.compareAndSet(false, true)) {
-            VMRuntime.dumpHeapOnOutOfMemoryError();
         }
     }
 
@@ -176,7 +165,6 @@ public final class GCImpl implements GC {
         if (!hasNeverCollectPolicy()) {
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                reportJavaOutOfMemory();
                 throw OutOfMemoryUtil.heapSizeExceeded();
             }
         }

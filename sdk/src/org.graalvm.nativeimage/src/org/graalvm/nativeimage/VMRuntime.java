@@ -92,20 +92,6 @@ public final class VMRuntime {
         ImageSingletons.lookup(HeapDumpSupport.class).dumpHeap(outputFile, live);
     }
 
-    /**
-     * Dumps the heap to a predetermined file in case of an @{@link OutOfMemoryError}, in the same format as the hprof heap dump.
-     *
-     * @throws UnsupportedOperationException if this operation is not supported.
-     *
-     * @since 23.1
-     */
-    public static void dumpHeapOnOutOfMemoryError() {
-        if (!ImageSingletons.contains(HeapDumpSupport.class)) {
-            throw new UnsupportedOperationException();
-        }
-        ImageSingletons.lookup(HeapDumpSupport.class).dumpHeapOnOutOfMemoryError();
-    }
-
     private VMRuntime() {
     }
 }

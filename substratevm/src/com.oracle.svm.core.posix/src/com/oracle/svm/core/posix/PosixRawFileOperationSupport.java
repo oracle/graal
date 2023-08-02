@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -55,6 +56,21 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
+    public CCharPointer allocateCPath(String path) {
+        byte[] data = path.getBytes();
+        CCharPointer filename = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(data.length + 1));
+        if (filename.isNull()) {
+            return WordFactory.nullPointer();
+        }
+
+        for (int i = 0; i < data.length; i++) {
+            filename.write(i, data[i]);
+        }
+        filename.write(data.length, (byte) 0);
+        return filename;
+    }
+
+    @Override
     public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
         String path = file.getPath();
         int flags = parseMode(creationMode) | parseMode(accessMode);
@@ -62,14 +78,10 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
         int flags = parseMode(creationMode) | parseMode(accessMode);
         return open0(cPath, flags);
-    }
-
-    private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
-        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
-        return WordFactory.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
     }
 
     @Override
@@ -80,16 +92,22 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public RawFileDescriptor open(CCharPointer cPath, FileAccessMode mode) {
         int flags = parseMode(mode);
         return open0(cPath, flags);
     }
 
     private static RawFileDescriptor open0(String path, int flags) {
-        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
         try (CTypeConversion.CCharPointerHolder cPath = CTypeConversion.toCString(path)) {
-            return WordFactory.signed(Fcntl.NoTransitions.open(cPath.get(), flags, permissions));
+            return open0(cPath.get(), flags);
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
+        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
+        return WordFactory.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -172,6 +190,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int parseMode(FileCreationMode mode) {
         switch (mode) {
             case CREATE:
@@ -183,6 +202,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int parseMode(FileAccessMode mode) {
         switch (mode) {
             case READ:

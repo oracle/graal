@@ -51,7 +51,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * </ul>
  * <p>
  * In some situations (e.g., during a serial GC or if it is guaranteed that all involved objects are
- * not yet visible to other threads), the methods in this class may also be used for objects the
+ * not yet visible to other threads), the methods in this class may also be used for objects that
  * live in the Java heap. However, those usages should be kept to a minimum.
  */
 public final class UnmanagedMemoryUtil {
