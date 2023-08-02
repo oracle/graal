@@ -97,7 +97,6 @@ public final class SpecializationData extends TemplateMethod {
     private Double localActivationProbability;
 
     private boolean aotReachable;
-    private boolean hasCachedExpression;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
                     boolean reportPolymorphism, boolean reportMegamorphism) {
@@ -1019,13 +1018,4 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
     }
-
-    public void setHasCachedExpression(boolean b) {
-        this.hasCachedExpression = b;
-    }
-
-    public boolean hasCachedExpression() {
-        return hasCachedExpression;
-    }
-
 }

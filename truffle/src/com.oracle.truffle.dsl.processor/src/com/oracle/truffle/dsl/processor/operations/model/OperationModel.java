@@ -49,7 +49,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
-public class OperationModel extends MessageContainer implements InfoDumpable {
+public class OperationModel extends MessageContainer implements PrettyPrintable {
     public enum OperationKind {
         ROOT,
         BLOCK,
@@ -169,9 +169,10 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         return parent;
     }
 
-    public void dump(Dumper dumper) {
-        dumper.print("Operation %s", name);
-        dumper.field("kind", kind);
+    @Override
+    public void pp(PrettyPrinter printer) {
+        printer.print("Operation %s", name);
+        printer.field("kind", kind);
     }
 
     public boolean isSourceOnly() {

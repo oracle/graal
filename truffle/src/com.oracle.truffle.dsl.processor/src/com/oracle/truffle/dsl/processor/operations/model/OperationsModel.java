@@ -69,7 +69,7 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Immedi
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 
-public class OperationsModel extends Template implements InfoDumpable {
+public class OperationsModel extends Template implements PrettyPrintable {
 
     private final ProcessorContext context;
     public final TypeElement templateType;
@@ -313,9 +313,10 @@ public class OperationsModel extends Template implements InfoDumpable {
         return null;
     }
 
-    public void dump(Dumper dumper) {
-        dumper.field("operations", operations);
-        dumper.field("instructions", instructions);
+    @Override
+    public void pp(PrettyPrinter printer) {
+        printer.field("operations", operations);
+        printer.field("instructions", instructions);
     }
 
     public boolean hasBoxingElimination() {

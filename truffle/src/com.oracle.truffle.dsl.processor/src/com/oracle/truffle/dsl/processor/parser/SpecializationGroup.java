@@ -407,9 +407,6 @@ public final class SpecializationGroup {
             return lastChild.hasFallthrough();
         }
 
-        if (specialization != null) {
-            return specialization.hasCachedExpression();
-        }
         return false;
     }
 

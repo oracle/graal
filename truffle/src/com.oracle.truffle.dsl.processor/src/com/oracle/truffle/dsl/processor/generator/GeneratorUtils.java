@@ -43,9 +43,7 @@ package com.oracle.truffle.dsl.processor.generator;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.fromTypeMirror;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
-import static javax.lang.model.element.Modifier.FINAL;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,8 +83,6 @@ import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
-import sun.misc.Unsafe;
-
 public class GeneratorUtils {
 
     public static void pushEncapsulatingNode(CodeTreeBuilder builder, CodeTree nodeRef) {
@@ -103,33 +99,10 @@ public class GeneratorUtils {
         builder.startStatement().string("encapsulating_.set(prev_)").end();
     }
 
-    private static ThreadLocal<Boolean> hookTransferToInterpreter = ThreadLocal.withInitial(() -> false);
-
-    public static void setHookTransferToInterpreter(boolean value) {
-        hookTransferToInterpreter.set(value);
-    }
-
     public static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement();
-        if (hookTransferToInterpreter.get()) {
-            builder.startCall("hook_transferToInterpreterAndInvalidate").string("$this").end();
-        } else {
-            builder.startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end();
-        }
-        builder.end();
-        return builder.build();
-    }
-
-    public static CodeTree createPartialEvaluationConstant(VariableElement variable) {
-        return createPartialEvaluationConstant(variable.getSimpleName().toString());
-    }
-
-    public static CodeTree createPartialEvaluationConstant(String variable) {
-        ProcessorContext context = ProcessorContext.getInstance();
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").string(variable).end().end();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
         return builder.build();
     }
 
@@ -235,18 +208,6 @@ public class GeneratorUtils {
         if (!mergedWarnings.isEmpty()) {
             ((CodeElement<?>) element).getAnnotationMirrors().add(mirror);
         }
-    }
-
-    public static CodeExecutableElement createSuperConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
-        CodeExecutableElement method = new CodeExecutableElement(superConstructor.getModifiers(), null, clazz.getSimpleName().toString());
-
-        for (VariableElement parameter : superConstructor.getParameters()) {
-            method.addParameter(CodeVariableElement.clone(parameter));
-        }
-
-        method.createBuilder().startStatement().startCall("super").variables(method.getParameters()).end(2);
-
-        return method;
     }
 
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor) {
@@ -432,10 +393,6 @@ public class GeneratorUtils {
         return result;
     }
 
-    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
-        return overrideImplement((TypeElement) type.asElement(), methodName);
-    }
-
     public static CodeExecutableElement createGetter(Set<Modifier> modifiers, VariableElement field) {
         CodeExecutableElement setter = new CodeExecutableElement(modifiers, field.asType(), "get" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
 
@@ -457,7 +414,8 @@ public class GeneratorUtils {
         return setter;
     }
 
-    public static CodeExecutableElement overrideImplement(TypeElement typeElement, String methodName) {
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
+        TypeElement typeElement = (TypeElement) type.asElement();
         ExecutableElement method = ElementUtils.findMethod(typeElement, methodName);
         if (method == null) {
             return null;
@@ -477,40 +435,5 @@ public class GeneratorUtils {
             }
             executable.addThrownType(thrownType);
         }
-    }
-
-    public static List<Element> createUnsafeSingleton() {
-        ProcessorContext context = ProcessorContext.getInstance();
-        TypeMirror unsafeType = context.getDeclaredType(Unsafe.class);
-
-        CodeVariableElement unsafeSingleton = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), unsafeType, "UNSAFE");
-        unsafeSingleton.createInitBuilder().startCall("getUnsafe").end();
-
-        CodeExecutableElement getUnsafeMethod = new CodeExecutableElement(Set.of(PRIVATE, STATIC), unsafeType, "getUnsafe");
-        CodeTreeBuilder b = getUnsafeMethod.createBuilder();
-        b.startTryBlock();
-
-        // return Unsafe.getUnsafe()
-        b.startReturn().startStaticCall(unsafeType, "getUnsafe").end(2);
-
-        b.end().startCatchBlock(context.getDeclaredType(SecurityException.class), "e1");
-
-        // if that fails, access theUnsafe using reflection
-        b.startTryBlock();
-
-        CodeTree getTheUnsafe = CodeTreeBuilder.createBuilder().startCall("Unsafe.class.getDeclaredField").string("\"theUnsafe\"").end().build();
-        b.declaration(context.getDeclaredType(Field.class), "theUnsafeInstance", getTheUnsafe);
-        b.startStatement().startCall("theUnsafeInstance", "setAccessible").string("true").end(2);
-        b.startReturn().cast(unsafeType).startCall("theUnsafeInstance", "get").string("Unsafe.class").end(2);
-
-        b.end().startCatchBlock(context.getDeclaredType(Exception.class), "e2");
-
-        b.startThrow().startNew(context.getDeclaredType(RuntimeException.class)).string("\"exception while trying to get Unsafe.theUnsafe via reflection:\"").string("e2").end(2);
-
-        b.end(); // inner catch
-
-        b.end(); // outer catch
-
-        return List.of(unsafeSingleton, getUnsafeMethod);
     }
 }
