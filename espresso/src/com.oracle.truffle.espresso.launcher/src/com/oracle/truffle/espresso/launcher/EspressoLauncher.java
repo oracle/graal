@@ -622,7 +622,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String javaVersion = system.invokeMember("getProperty", "java.version").asString();
         String javaVersionDate = system.invokeMember("getProperty", "java.version.date").asString();
         String debugLevel = system.invokeMember("getProperty", "jdk.debug", "release").asString();
-        String vendorVersion = system.invokeMember("getProperty", "java.vendor.version").asString();
+        String vendorVersion = system.invokeMember("getProperty", "java.vendor.version", "").asString();
         String javaRuntimeName = system.invokeMember("getProperty", "java.runtime.name").asString();
         String javaRuntimeVersion = system.invokeMember("getProperty", "java.runtime.version").asString();
         boolean isLTS = javaRuntimeVersion.contains("LTS");
