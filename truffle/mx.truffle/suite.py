@@ -1487,6 +1487,7 @@ suite = {
       ],
       "description" : """Implementation of the Truffle NFI using CLinker from project panama.""",
       "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,  # the maven deploy job refuses to build javadoc if javaCompliance is higher than 17
     },
 
     "TRUFFLE_NFI_NATIVE" : {
