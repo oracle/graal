@@ -2969,7 +2969,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
-                        'exclude': excluded_paths,
+                        'exclude': [],
                         'path': None,
                     })
                     self.jvm_libs.append(lib_dist)
