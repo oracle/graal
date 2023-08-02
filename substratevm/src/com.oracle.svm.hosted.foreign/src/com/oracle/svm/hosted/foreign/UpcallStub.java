@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.foreign;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -15,11 +17,15 @@ import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -31,6 +37,7 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
@@ -44,7 +51,8 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
+import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
@@ -96,7 +104,7 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  * 
  * with the following arguments being passed using special registers:
  * <ul>
- * <li>The {@link MethodHandle} to call in {@link AbiUtils#trampolineIndexRegister()}</li>
+ * <li>The {@link MethodHandle} to call in {@link AbiUtils#upcallSpecialArgumentsRegisters()}</li>
  * <li>The {@link org.graalvm.nativeimage.IsolateThread} to enter in
  * {@link ReservedRegisters#getThreadRegister}</li>
  * </ul>
@@ -122,18 +130,35 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
         /*
          * Read all relevant values, i.e. the MH to call, the current Isolate, the
          * function-preserved registers and function's arguments
+         *
+         * The special arguments read from specific registers were set up by the trampoline
          */
-        ValueNode mh = kit.bindRegister(AbiUtils.singleton().trampolineIndexRegister(), JavaKind.Object);
-        // TODO change, as register might have been used by native
-        ValueNode isolateThread = kit.append(ReadReservedRegister.createReadIsolateThreadNode(kit.getGraph()));
+        AbiUtils.Registers registers = AbiUtils.singleton().upcallSpecialArgumentsRegisters();
+        ValueNode mh = kit.bindRegister(registers.methodHandle(), JavaKind.Object);
+        ValueNode isolate = kit.append(kit.bindRegister(registers.isolate(), JavaKind.Long));
         List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         /*
          * Prologue: save function-preserved registers, allocate return space if needed, transition
          * from native to Java
          */
+        assert !savedRegisters.asList().contains(registers.methodHandle());
+        assert !savedRegisters.asList().contains(registers.isolate());
         var save = kit.saveRegisters(savedRegisters);
-        kit.append(CEntryPointEnterNode.enter(isolateThread));
+        ValueNode enterResult = kit.append(CEntryPointEnterNode.enterByIsolate(isolate));
+
+        kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
+                        ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));
+        kit.thenPart();
+        // Fast path: isolate successfully entered
+        kit.elsePart();
+        // Slow path: stop execution
+        CStringConstant cst = new CStringConstant("Could not enter isolate.");
+        ValueNode msg = ConstantNode.forConstant(StampFactory.pointer(), cst, kit.getMetaAccess());
+        kit.append(new CEntryPointUtilityNode(CEntryPointUtilityNode.UtilityAction.FailFatally, enterResult, msg));
+        kit.append(new DeadEndNode());
+        kit.endIf();
+
         StackValueNode returnBuffer = null;
         if (jep.buffersReturn()) {
             assert jep.javaMethodType().returnType().equals(void.class) : getName();
@@ -146,8 +171,8 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
         }
 
         /*
-         * Transfers to the java-side stub; note that exceptions should be handled there (if they
-         * are handled...)
+         * Transfers to the java-side stub; note that exceptions should be handled int the Java stub
+         * (if they are handled...)
          */
         arguments.add(0, mh);
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, javaSide, arguments.toArray(ValueNode.EMPTY_ARRAY));
@@ -241,7 +266,8 @@ class UpcallStubJava extends UpcallStub {
          * Per documentation, it is the user's responsibility to not throw exceptions from upcalls
          * (e.g. by using MethodHandles#catchException).
          */
-        kit.append(new DeadEndNode());
+        kit.append(new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.ExceptionAbort, kit.exceptionObject()));
+        kit.append(new LoweredDeadEndNode());
         kit.endInvokeWithException();
 
         var unboxedReturn = kit.unbox(returnValue, jep.cMethodType());

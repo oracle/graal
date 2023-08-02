@@ -548,6 +548,8 @@ public class MethodTypeFlowBuilder {
                     Constant constant = node.getValue();
                     if (node.asJavaConstant() == null && constant instanceof VMConstant) {
                         // do nothing
+                    } else if (node.asJavaConstant() == null && node.stamp(NodeView.DEFAULT).isPointerStamp()) {
+                        // do nothing ?
                     } else if (node.asJavaConstant().isNull()) {
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
                             ConstantTypeFlow constantSource = new ConstantTypeFlow(AbstractAnalysisEngine.sourcePosition(node), null, TypeState.forNull());

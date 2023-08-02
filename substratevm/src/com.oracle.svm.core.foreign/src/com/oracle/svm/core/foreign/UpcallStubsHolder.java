@@ -58,12 +58,12 @@ public final class UpcallStubsHolder {
         MethodType type = java ? jep.javaMethodType() : jep.cMethodType();
 
         StringBuilder builder = new StringBuilder("upcall");
-        builder.append(java ? "_java" : "_c");
-        builder.append("_(");
+        builder.append(java ? "Java" : "C");
+        builder.append("_");
         for (var param : type.parameterArray()) {
             builder.append(JavaKind.fromJavaClass(param).getTypeChar());
         }
-        builder.append(")");
+        builder.append("_");
         builder.append(JavaKind.fromJavaClass(type.returnType()).getTypeChar());
 
         if (jep.buffersReturn()) {

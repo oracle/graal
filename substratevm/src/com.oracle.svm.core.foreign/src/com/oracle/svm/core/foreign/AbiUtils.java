@@ -53,15 +53,16 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -348,7 +349,10 @@ public abstract class AbiUtils {
     @Platforms(Platform.HOSTED_ONLY.class)
     public abstract Map<String, MemoryLayout> canonicalLayouts();
 
-    public abstract Register trampolineIndexRegister();
+    public record Registers(Register methodHandle, Register isolate) {
+    }
+
+    public abstract Registers upcallSpecialArgumentsRegisters();
 
     public abstract int trampolineSize();
 
@@ -402,7 +406,7 @@ class ABIs {
         }
 
         @Override
-        public Register trampolineIndexRegister() {
+        public Registers upcallSpecialArgumentsRegisters() {
             return fail();
         }
 
@@ -618,8 +622,8 @@ class ABIs {
         }
 
         @Override
-        public Register trampolineIndexRegister() {
-            return AMD64.r10;
+        public Registers upcallSpecialArgumentsRegisters() {
+            return new Registers(AMD64.r10, AMD64.r11);
         }
 
         @Override
@@ -635,11 +639,16 @@ class ABIs {
 
                 // Generate the trampoline
                 AMD64Assembler asm = new AMD64Assembler(ConfigurationValues.getTarget());
+
                 Word mhPointer = methodHandlesArray.addressOfArrayElement(i);
                 Word stubPointer = stubsArray.addressOfArrayElement(i);
-                Register mhRegister = AbiUtils.singleton().trampolineIndexRegister();
+                Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
 
-                assert SubstrateOptions.SpawnIsolates.getValue();
+                WordBase isolate = CurrentIsolate.getIsolate();
+                Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
+
+                /* Store isolate in the assigned register */
+                asm.movq(isolateRegister, isolate.rawValue());
                 /* r10 points in the mh array */
                 asm.movq(mhRegister, mhPointer.rawValue());
                 /* r10 contains the method handle */
@@ -649,6 +658,7 @@ class ABIs {
                 /* executes the stub */
                 asm.jmp(new AMD64Address(rax, 0));
 
+                assert trampolineSize() - asm.position() >= 0;
                 asm.nop(trampolineSize() - asm.position());
 
                 byte[] assembly = asm.close(true);
