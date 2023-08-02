@@ -171,7 +171,7 @@ public abstract class PartialEvaluator {
                         throw new IllegalStateException("PartialEvaluator is not yet initialized");
                     }
                     long[] accessTable = new long[instrumentationCfg.instrumentationTableSize];
-                    instrumentation = new InstrumentPhase.Instrumentation(accessTable);
+                    instrumentation = new InstrumentPhase.Instrumentation(types, accessTable);
                 }
             }
         }

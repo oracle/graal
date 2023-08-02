@@ -147,6 +147,7 @@ public class NativeImage {
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
+
         return null;
     }
 
@@ -422,6 +423,9 @@ public class NativeImage {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "graal", "enterprise-graal"));
             }
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+            if (!modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
+            }
             return result;
         }
 
@@ -548,11 +552,29 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
             if (modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
             return result;
+        }
+
+        private List<Path> createTruffleBuilderModulePath() {
+            List<Path> jars = getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-runtime", "truffle-enterprise");
+            if (!jars.isEmpty()) {
+                /*
+                 * If Truffle is installed as part of the JDK we always add the builder modules of
+                 * Truffle to the builder module path. This is legacy support and should in the
+                 * future no longer be needed.
+                 */
+                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
+                Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
+                if (Files.exists(builderPath)) {
+                    jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
+                }
+            }
+
+            return jars;
         }
 
         /**
@@ -1575,8 +1597,8 @@ public class NativeImage {
      *
      * @see #callListModules(String, List)
      */
-    private static Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
-        if (modulePath.isEmpty()) {
+    private Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+        if (modulePath.isEmpty() || !config.modulePathBuild) {
             return Map.of();
         }
         String modulePathEntries = modulePath.stream()
@@ -1602,25 +1624,24 @@ public class NativeImage {
             pb.command().add("--list-modules");
             pb.environment().clear();
             listModulesProcess = pb.start();
+
+            List<String> lines;
             try (var br = new BufferedReader(new InputStreamReader(listModulesProcess.getInputStream()))) {
-                while (true) {
-                    var line = br.readLine();
-                    if (line == null) {
-                        break;
-                    }
-                    String[] splitString = StringUtil.split(line, " ", 3);
-                    String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
-                    Path externalPath = null;
-                    if (splitString.length > 1) {
-                        String pathURI = splitString[1]; // url: file://path/to/file
-                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
-                    }
-                    result.put(splitModuleNameAndVersion[0], externalPath);
-                }
+                lines = br.lines().toList();
             }
             int exitStatus = listModulesProcess.waitFor();
             if (exitStatus != 0) {
-                throw showError("Determining image-builder observable modules failed (Exit status %d).".formatted(exitStatus));
+                throw showError("Determining image-builder observable modules failed (Exit status %d). Process output: %n%s".formatted(exitStatus, String.join(System.lineSeparator(), lines)));
+            }
+            for (String line : lines) {
+                String[] splitString = StringUtil.split(line, " ", 3);
+                String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
+                Path externalPath = null;
+                if (splitString.length > 1) {
+                    String pathURI = splitString[1]; // url: file://path/to/file
+                    externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
+                }
+                result.put(splitModuleNameAndVersion[0], externalPath);
             }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());

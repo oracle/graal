@@ -426,6 +426,8 @@ class GraalVmJdkComponent(GraalVmComponent):
 class GraalVmJreComponent(GraalVmComponent):
     pass
 
+class GraalVmTruffleLibrary(GraalVmJreComponent):
+    pass
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):

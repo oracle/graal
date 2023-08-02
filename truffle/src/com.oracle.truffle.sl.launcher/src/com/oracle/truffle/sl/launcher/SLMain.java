@@ -64,8 +64,11 @@ public final class SLMain {
         Source source;
         Map<String, String> options = new HashMap<>();
         String file = null;
+        boolean launcherOutput = true;
         for (String arg : args) {
-            if (parseOption(options, arg)) {
+            if (arg.equals("--disable-launcher-output")) {
+                launcherOutput = false;
+            } else if (parseOption(options, arg)) {
                 continue;
             } else {
                 if (file == null) {
@@ -76,25 +79,28 @@ public final class SLMain {
 
         if (file == null) {
             // @formatter:off
-            source = Source.newBuilder(SL, new InputStreamReader(System.in), "<stdin>").build();
+            source = Source.newBuilder(SL, new InputStreamReader(System.in), "<stdin>").interactive(!launcherOutput).build();
             // @formatter:on
         } else {
-            source = Source.newBuilder(SL, new File(file)).build();
+            source = Source.newBuilder(SL, new File(file)).interactive(!launcherOutput).build();
         }
 
-        System.exit(executeSource(source, System.in, System.out, options));
+        System.exit(executeSource(source, System.in, System.out, options, launcherOutput));
     }
 
-    private static int executeSource(Source source, InputStream in, PrintStream out, Map<String, String> options) {
+    private static int executeSource(Source source, InputStream in, PrintStream out, Map<String, String> options, boolean launcherOutput) {
         Context context;
         PrintStream err = System.err;
         try {
-            context = Context.newBuilder(SL).in(in).out(out).options(options).build();
+            context = Context.newBuilder(SL).in(in).out(out).options(options).allowAllAccess(true).build();
         } catch (IllegalArgumentException e) {
             err.println(e.getMessage());
             return 1;
         }
-        out.println("== running on " + context.getEngine());
+
+        if (launcherOutput) {
+            out.println("== running on " + context.getEngine());
+        }
 
         try {
             Value result = context.eval(source);
@@ -102,7 +108,7 @@ public final class SLMain {
                 err.println("No function main() defined in SL source file.");
                 return 1;
             }
-            if (!result.isNull()) {
+            if (launcherOutput && !result.isNull()) {
                 out.println(result.toString());
             }
             return 0;

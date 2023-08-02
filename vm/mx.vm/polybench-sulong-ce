@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
-COMPONENTS=antlr4,cmp,lg,llrc,llrl,llrn,nfi-libffi,ni,nil,pbm,pbi,sdk,sdkl,svm,svmnfi,svmsl,tfl,tfla,tflm
+COMPONENTS=antlr4,cmp,lg,llrc,llrl,llrn,nfi-libffi,ni,nil,pbm,pbi,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm
 EXCLUDE_COMPONENTS=libpoly
 NATIVE_IMAGES=lib:jvmcicompiler,polybench
 DISABLE_INSTALLABLES=False

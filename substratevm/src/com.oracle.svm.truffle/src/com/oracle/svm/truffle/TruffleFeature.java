@@ -194,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Enables compilation of Truffle ASTs to machine code";
+        return "Provides support for Truffle runtime compilation";
     }
 
     public static class Options {
@@ -257,13 +257,20 @@ public class TruffleFeature implements InternalFeature {
         return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
     }
 
+    /*
+     * Duplicated from SafepointSamplingProfilingFeature. Make sure it is in sync.
+     */
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return isInConfiguration();
     }
 
     public static boolean isInConfiguration() {
-        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
+        String property = System.getProperty("truffle.TruffleRuntime");
+        if (property != null) {
+            return property.equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+        }
+        return false;
     }
 
     @Override
@@ -357,7 +364,6 @@ public class TruffleFeature implements InternalFeature {
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, partialEvaluator.getTypes());
-        TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 

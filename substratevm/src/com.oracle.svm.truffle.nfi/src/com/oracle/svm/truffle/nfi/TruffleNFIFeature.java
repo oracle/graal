@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.truffle.TruffleBaseFeature;
 
 /**
@@ -42,7 +41,6 @@ import com.oracle.svm.truffle.TruffleBaseFeature;
  * re-implementations of the original NFI functions with the C interface of Substrate VM. If this
  * feature is enabled, the image is statically linked with libffi.
  */
-@AutomaticallyRegisteredFeature
 public final class TruffleNFIFeature implements InternalFeature {
 
     public static class IsEnabled implements BooleanSupplier {
@@ -50,6 +48,11 @@ public final class TruffleNFIFeature implements InternalFeature {
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleNFIFeature.class);
         }
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFILanguage") != null;
     }
 
     @Override

@@ -51,7 +51,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 
 final class ModuleUtils {
 
@@ -69,6 +68,7 @@ final class ModuleUtils {
         if (isExportedTo(clientModule)) {
             return;
         }
+
         ModuleLayer layer = clientModule.getLayer();
         Module truffleModule = Truffle.class.getModule();
         Set<Module> targetModules = new HashSet<>();
@@ -152,7 +152,12 @@ final class ModuleUtils {
 
     private static boolean isExportedTo(Module clientModule) {
         Module truffleModule = Truffle.class.getModule();
-        return truffleModule.isExported(TruffleLanguage.class.getPackageName(), clientModule);
+        for (String pack : truffleModule.getPackages()) {
+            if (!truffleModule.isExported(pack, clientModule)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void exportFromTo(Module clientModule) {

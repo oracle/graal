@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -69,10 +70,12 @@ import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.BackgroundCompileQueue;
 import com.oracle.truffle.runtime.CompilationTask;
+import com.oracle.truffle.runtime.EngineCacheSupport;
 import com.oracle.truffle.runtime.EngineData;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -104,6 +107,16 @@ class SubstrateTruffleOptions {
 }
 
 public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
+
+    static {
+        ModuleLayer layer = SubstrateTruffleRuntime.class.getModule().getLayer();
+        if (layer != null) {
+            Module enterpriseModule = layer.findModule("com.oracle.truffle.enterprise.svm").orElse(null);
+            if (enterpriseModule != null) {
+                ModulesSupport.exportJVMCI(enterpriseModule);
+            }
+        }
+    }
 
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
@@ -158,6 +171,17 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     @Override
+    protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
+        /*
+         * On SVM we initialize engine caching support when the TruffleFeature is initialized. We
+         * cannot do it reliably here as the SubstrateTruffleRuntime might already be initialized
+         * when the TruffleBaseFeature is initialized, this is when the TruffleSupport is not yet
+         * installed.
+         */
+        return null;
+    }
+
+    @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         return super.getPartialEvaluationMethodInfo(method);
@@ -195,6 +219,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         SubstrateTruffleCompiler compiler = (SubstrateTruffleCompiler) newTruffleCompiler();
         truffleCompiler = compiler;
         return compiler;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateTruffleCompiler getPreinitializedTruffleCompiler() {
+        assert truffleCompiler != null;
+        return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {

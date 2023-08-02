@@ -1,6 +1,6 @@
 # mx --dynamicimports=/vm,/substratevm --components="Espresso Launcher,LibGraal,SubstrateVM,Java on Truffle LLVM Java libraries,suite:tools" --native-images=lib:jvmcicompiler --disable-installables=true graalvm-show
 
 DYNAMIC_IMPORTS=/vm,/substratevm
-COMPONENTS=Espresso Launcher,LibGraal,SubstrateVM,Java on Truffle LLVM Java libraries,suite:tools
+COMPONENTS=Espresso Launcher,LibGraal,SubstrateVM,Java on Truffle LLVM Java libraries,suite:tools,tflm
 NATIVE_IMAGES=lib:jvmcicompiler
 DISABLE_INSTALLABLES=true

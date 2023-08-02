@@ -154,6 +154,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType CompilationState = lookupType("com.oracle.truffle.runtime.CompilationState");
 
     public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
+    public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callDirect = findMethod(OptimizedCallTarget, "callDirect", Node, Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callInlined = findMethod(OptimizedCallTarget, "callInlined", Node, Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callIndirect = findMethod(OptimizedCallTarget, "callIndirect", Node, Object_Array);

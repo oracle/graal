@@ -445,7 +445,7 @@ public final class SubprocessUtil {
     }
 
     private static boolean hasArg(String optionName) {
-        if (optionName.equals("-cp") || optionName.equals("-classpath")) {
+        if (optionName.equals("-cp") || optionName.equals("-classpath") || optionName.equals("-p")) {
             return true;
         }
         if (optionName.equals("--version") ||
