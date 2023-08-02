@@ -37,8 +37,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAttributeValues;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfConstants;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
 import org.graalvm.collections.EconomicMap;
 
 /**
@@ -46,7 +45,7 @@ import org.graalvm.collections.EconomicMap;
  * DWARF sections. It groups common data and behaviours for use by the various subclasses of class
  * DwarfSectionImpl that take responsibility for generating content for a specific section type.
  */
-public class DwarfDebugInfo extends DebugInfoBase implements DwarfConstants {
+public class DwarfDebugInfo extends DebugInfoBase {
 
     public static final String HEAP_BEGIN_NAME = "__svm_heap_begin";
 
@@ -113,7 +112,7 @@ public class DwarfDebugInfo extends DebugInfoBase implements DwarfConstants {
      * This field defines the value used for the DW_AT_language attribute of compile units.
      *
      */
-    public static final byte LANG_ENCODING = DwarfAttributeValues.DW_LANG_Java;
+    public static final DwarfLanguage LANG_ENCODING = DwarfLanguage.DW_LANG_Java;
 
     /* Register constants for AArch64. */
     public static final byte rheapbase_aarch64 = (byte) 27;

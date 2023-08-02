@@ -26,27 +26,25 @@
 
 package com.oracle.objectfile.elf.dwarf.constants;
 
-/**
- * Constants that appear in CIE and FDE frame section entries.
+/*
+ * Values for DW_AT_inline attribute.
  */
-public interface DwarfFrameValues {
-    byte DW_CFA_CIE_version = 1;
-    /* Values encoded in high 2 bits. */
-    byte DW_CFA_advance_loc = 0x1;
-    byte DW_CFA_offset = 0x2;
-    byte DW_CFA_restore = 0x3;
-    /* Values encoded in low 6 bits. */
-    byte DW_CFA_nop = 0x0;
-    @SuppressWarnings("unused") byte DW_CFA_set_loc1 = 0x1;
-    byte DW_CFA_advance_loc1 = 0x2;
-    byte DW_CFA_advance_loc2 = 0x3;
-    byte DW_CFA_advance_loc4 = 0x4;
-    @SuppressWarnings("unused") byte DW_CFA_offset_extended = 0x5;
-    @SuppressWarnings("unused") byte DW_CFA_restore_extended = 0x6;
-    @SuppressWarnings("unused") byte DW_CFA_undefined = 0x7;
-    @SuppressWarnings("unused") byte DW_CFA_same_value = 0x8;
-    byte DW_CFA_register = 0x9;
-    byte DW_CFA_def_cfa = 0xc;
-    @SuppressWarnings("unused") byte DW_CFA_def_cfa_register = 0xd;
-    byte DW_CFA_def_cfa_offset = 0xe;
+public enum DwarfInline {
+    @SuppressWarnings("unused")
+    DW_INL_not_inlined((byte) 0),
+    DW_INL_inlined((byte) 1),
+    @SuppressWarnings("unused")
+    DW_INL_declared_not_inlined((byte) 2),
+    @SuppressWarnings("unused")
+    DW_INL_declared_inlined((byte) 3);
+
+    byte value;
+
+    DwarfInline(byte b) {
+        value = b;
+    }
+
+    public byte value() {
+        return value;
+    }
 }

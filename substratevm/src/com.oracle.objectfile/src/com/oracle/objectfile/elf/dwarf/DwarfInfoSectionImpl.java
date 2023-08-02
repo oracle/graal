@@ -33,13 +33,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAttributeValues;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcodes;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfAccess;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfEncoding;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfInline;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.debug.DebugContext;
 
-import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
@@ -62,6 +63,23 @@ import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
+
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_and;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_bra;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_dup;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_eq;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_lit0;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_not;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_plus;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_push_object_address;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_shl;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_shr;
+
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfFlag.DW_FLAG_false;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfFlag.DW_FLAG_true;
+
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_INFO_SECTION;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LOC_SECTION;
 
 /**
  * Section generator for debug_info section.
@@ -87,16 +105,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int cuStart;
 
     public DwarfInfoSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
+        // debug_info section depends on loc section
+        super(dwarfSections, DW_INFO_SECTION, DW_LOC_SECTION);
         // initialize to an invalid value
         voidOffset = -1;
         // initialize CU start to an invalid value
         cuStart = -1;
-    }
-
-    @Override
-    public String getSectionName() {
-        return DwarfSectionNames.DW_INFO_SECTION_NAME;
     }
 
     @Override
@@ -126,29 +140,29 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert pos == size;
     }
 
-    byte computeEncoding(int flags, int bitCount) {
+    DwarfEncoding computeEncoding(int flags, int bitCount) {
         assert bitCount > 0;
         if ((flags & DebugPrimitiveTypeInfo.FLAG_NUMERIC) != 0) {
             if (((flags & DebugPrimitiveTypeInfo.FLAG_INTEGRAL) != 0)) {
                 if ((flags & DebugPrimitiveTypeInfo.FLAG_SIGNED) != 0) {
                     switch (bitCount) {
                         case 8:
-                            return DwarfAttributeValues.DW_ATE_signed_char;
+                            return DwarfEncoding.DW_ATE_signed_char;
                         default:
                             assert bitCount == 16 || bitCount == 32 || bitCount == 64;
-                            return DwarfAttributeValues.DW_ATE_signed;
+                            return DwarfEncoding.DW_ATE_signed;
                     }
                 } else {
                     assert bitCount == 16;
-                    return DwarfAttributeValues.DW_ATE_unsigned;
+                    return DwarfEncoding.DW_ATE_unsigned;
                 }
             } else {
                 assert bitCount == 32 || bitCount == 64;
-                return DwarfAttributeValues.DW_ATE_float;
+                return DwarfEncoding.DW_ATE_float;
             }
         } else {
             assert bitCount == 1;
-            return DwarfAttributeValues.DW_ATE_boolean;
+            return DwarfEncoding.DW_ATE_boolean;
         }
     }
 
@@ -184,9 +198,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         String name = uniqueDebugString("JAVA");
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
@@ -246,9 +260,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         byte bitCount = (byte) primitiveTypeEntry.getBitCount();
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
-        byte encoding = computeEncoding(primitiveTypeEntry.getFlags(), bitCount);
-        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
-        pos = writeAttrData1(encoding, buffer, pos);
+        DwarfEncoding encoding = computeEncoding(primitiveTypeEntry.getFlags(), bitCount);
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding.value());
+        pos = writeAttrEncoding(encoding, buffer, pos);
         String name = primitiveTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         return writeStrSectionOffset(name, buffer, pos);
@@ -392,9 +406,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         String name = classEntry.getFullFileName();
         if (name == null) {
             name = classEntry.getTypeName().replace('.', '/') + ".java";
@@ -509,9 +523,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     accessibility public static final", pos);
         pos = writeAttrAccessibility(Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL, buffer, pos);
         log(context, "  [0x%08x]     external(true)", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         log(context, "  [0x%08x]     definition(true)", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         /*
          * We need to force encoding of this location as a heap base relative relocatable address
          * rather than an offset from the heapbase register.
@@ -684,9 +698,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Static fields are only declared here and are external. */
         if (isStatic) {
             log(context, "  [0x%08x]     external(true)", pos);
-            pos = writeFlag((byte) 1, buffer, pos);
+            pos = writeFlag(DW_FLAG_true, buffer, pos);
             log(context, "  [0x%08x]     definition(true)", pos);
-            pos = writeFlag((byte) 1, buffer, pos);
+            pos = writeFlag(DW_FLAG_true, buffer, pos);
         }
         return pos;
     }
@@ -717,7 +731,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         String name = uniqueDebugString(method.methodName());
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
@@ -739,11 +753,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());
         pos = writeInfoSectionOffset(retTypeIdx, buffer, pos);
         log(context, "  [0x%08x]     artificial %s", pos, method.isDeopt() ? "true" : "false");
-        pos = writeFlag((method.isDeopt() ? (byte) 1 : (byte) 0), buffer, pos);
+        pos = writeFlag((method.isDeopt() ? DW_FLAG_true : DW_FLAG_false), buffer, pos);
         log(context, "  [0x%08x]     accessibility %s", pos, "public");
         pos = writeAttrAccessibility(modifiers, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         int typeIdx = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     containing_type 0x%x (%s)", pos, typeIdx, classEntry.getTypeName());
         pos = writeAttrRef4(typeIdx, buffer, pos);
@@ -818,10 +832,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         if (abbrevCode == AbbrevCode.METHOD_PARAMETER_DECLARATION_1) {
             log(context, "  [0x%08x]     artificial true", pos);
-            pos = writeFlag((byte) 1, buffer, pos);
+            pos = writeFlag(DW_FLAG_true, buffer, pos);
         }
         log(context, "  [0x%08x]     declaration true", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         return pos;
     }
 
@@ -864,7 +878,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramType.getTypeName());
         pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         return pos;
     }
 
@@ -1043,9 +1057,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a signed or unsigned word of the relevant size
-        byte encoding = (isSigned ? DwarfAttributeValues.DW_ATE_signed : DwarfAttributeValues.DW_ATE_unsigned);
-        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
-        pos = writeAttrData1(encoding, buffer, pos);
+        DwarfEncoding encoding = (isSigned ? DwarfEncoding.DW_ATE_signed : DwarfEncoding.DW_ATE_unsigned);
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding.value());
+        pos = writeAttrEncoding(encoding, buffer, pos);
         String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         return writeStrSectionOffset(name, buffer, pos);
@@ -1066,9 +1080,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a signed or unsigned word of the relevant size
-        byte encoding = (isSigned ? DwarfAttributeValues.DW_ATE_signed : DwarfAttributeValues.DW_ATE_unsigned);
-        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
-        pos = writeAttrData1(encoding, buffer, pos);
+        DwarfEncoding encoding = (isSigned ? DwarfEncoding.DW_ATE_signed : DwarfEncoding.DW_ATE_unsigned);
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding.value());
+        pos = writeAttrEncoding(encoding, buffer, pos);
         String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         return writeStrSectionOffset(name, buffer, pos);
@@ -1089,9 +1103,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
         pos = writeAttrData1(bitCount, buffer, pos);
         // treat the layout as a float of the relevant size
-        byte encoding = DwarfAttributeValues.DW_ATE_float;
-        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
-        pos = writeAttrData1(encoding, buffer, pos);
+        DwarfEncoding encoding = DwarfEncoding.DW_ATE_float;
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding.value());
+        pos = writeAttrEncoding(encoding, buffer, pos);
         String name = uniqueDebugString(size == 4 ? "float" : (size == 8 ? "double" : "long double"));
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         return writeStrSectionOffset(name, buffer, pos);
@@ -1280,9 +1294,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
-        pos = writeFlag((byte) 1, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         String name = uniqueDebugString("JAVA");
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
@@ -1539,7 +1553,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Should pass true only if method is non-private.
          */
         log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag(DwarfAttributeValues.DW_FLAG_true, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         String methodKey = primary.getSymbolName();
         int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
@@ -1784,13 +1798,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         AbbrevCode abbrevCode = AbbrevCode.ABSTRACT_INLINE_METHOD;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     inline  0x%x", pos, DwarfAttributeValues.DW_INL_inlined);
-        pos = writeAttrData1(DwarfAttributeValues.DW_INL_inlined, buffer, pos);
+        log(context, "  [0x%08x]     inline  0x%x", pos, DwarfInline.DW_INL_inlined.value());
+        pos = writeAttrInline(DwarfInline.DW_INL_inlined, buffer, pos);
         /*
          * Should pass true only if method is non-private.
          */
         log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag(DwarfAttributeValues.DW_FLAG_true, buffer, pos);
+        pos = writeFlag(DW_FLAG_true, buffer, pos);
         int methodSpecOffset = getMethodDeclarationIndex(method);
         log(context, "  [0x%08x]     specification  0x%x", pos, methodSpecOffset);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
@@ -1829,7 +1843,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* CU length. */
         pos = writeInt(0, buffer, pos);
         /* DWARF version. */
-        pos = writeShort(DW_VERSION_4, buffer, pos);
+        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_4, buffer, pos);
         /* Abbrev offset. */
         pos = writeAbbrevSectionOffset(0, buffer, pos);
         /* Address size. */
@@ -1842,19 +1856,32 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeUTF8StringBytes(value, buffer, pos);
     }
 
+    public int writeAttrLanguage(DwarfLanguage language, byte[] buffer, int p) {
+        int pos = p;
+        return writeByte(language.value(), buffer, pos);
+    }
+
+    public int writeAttrEncoding(DwarfEncoding encoding, byte[] buffer, int p) {
+        return writeByte(encoding.value(), buffer, p);
+    }
+
+    public int writeAttrInline(DwarfInline inline, byte[] buffer, int p) {
+        return writeByte(inline.value(), buffer, p);
+    }
+
     public int writeAttrAccessibility(int modifiers, byte[] buffer, int p) {
-        byte access;
+        DwarfAccess access;
         if (Modifier.isPublic(modifiers)) {
-            access = DwarfAttributeValues.DW_ACCESS_public;
+            access = DwarfAccess.DW_ACCESS_public;
         } else if (Modifier.isProtected(modifiers)) {
-            access = DwarfAttributeValues.DW_ACCESS_protected;
+            access = DwarfAccess.DW_ACCESS_protected;
         } else if (Modifier.isPrivate(modifiers)) {
-            access = DwarfAttributeValues.DW_ACCESS_private;
+            access = DwarfAccess.DW_ACCESS_private;
         } else {
             /* Actually package private -- make it public for now. */
-            access = DwarfAttributeValues.DW_ACCESS_public;
+            access = DwarfAccess.DW_ACCESS_public;
         }
-        return writeAttrData1(access, buffer, p);
+        return writeByte(access.value(), buffer, p);
     }
 
     public int writeIndirectOopConversionExpression(boolean isHub, byte[] buffer, int p) {
@@ -1957,65 +1984,44 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeULEB(exprSize, buffer, pos);
         int exprStart = pos;
         if (!useHeapBase) {
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_push_object_address, buffer, pos);
-            pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + mask), buffer, pos);
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_not, buffer, pos);
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_and, buffer, pos);
+            pos = writeExprOpcode(DW_OP_push_object_address, buffer, pos);
+            pos = writeExprOpcodeLiteral(mask, buffer, pos);
+            pos = writeExprOpcode(DW_OP_not, buffer, pos);
+            pos = writeExprOpcode(DW_OP_and, buffer, pos);
         } else {
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_push_object_address, buffer, pos);
+            pos = writeExprOpcode(DW_OP_push_object_address, buffer, pos);
             /* skip to end if oop is null */
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_dup, buffer, pos);
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_lit0, buffer, pos);
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_eq, buffer, pos);
+            pos = writeExprOpcode(DW_OP_dup, buffer, pos);
+            pos = writeExprOpcode(DW_OP_lit0, buffer, pos);
+            pos = writeExprOpcode(DW_OP_eq, buffer, pos);
             int skipStart = pos + 3; /* offset excludes BR op + 2 operand bytes */
             short offsetToEnd = (short) (exprSize - (skipStart - exprStart));
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_bra, buffer, pos);
+            pos = writeExprOpcode(DW_OP_bra, buffer, pos);
             pos = writeShort(offsetToEnd, buffer, pos);
             /* insert mask or shifts as necessary */
             if (mask != 0) {
-                pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + mask), buffer, pos);
-                pos = writeByte(DwarfExpressionOpcodes.DW_OP_not, buffer, pos);
-                pos = writeByte(DwarfExpressionOpcodes.DW_OP_and, buffer, pos);
+                pos = writeExprOpcodeLiteral(mask, buffer, pos);
+                pos = writeExprOpcode(DW_OP_not, buffer, pos);
+                pos = writeExprOpcode(DW_OP_and, buffer, pos);
             } else {
                 if (rightShift != 0) {
-                    pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + rightShift), buffer, pos);
-                    pos = writeByte(DwarfExpressionOpcodes.DW_OP_shr, buffer, pos);
+                    pos = writeExprOpcodeLiteral(rightShift, buffer, pos);
+                    pos = writeExprOpcode(DW_OP_shr, buffer, pos);
                 }
                 if (leftShift != 0) {
-                    pos = writeByte((byte) (DwarfExpressionOpcodes.DW_OP_lit0 + leftShift), buffer, pos);
-                    pos = writeByte(DwarfExpressionOpcodes.DW_OP_shl, buffer, pos);
+                    pos = writeExprOpcodeLiteral(leftShift, buffer, pos);
+                    pos = writeExprOpcode(DW_OP_shl, buffer, pos);
                 }
             }
             /* add the resulting offset to the heapbase register */
-            byte regOp = (byte) (DwarfExpressionOpcodes.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
-            pos = writeByte(regOp, buffer, pos);
+            pos = writeExprOpcodeBReg(dwarfSections.getHeapbaseRegister(), buffer, pos);
             pos = writeSLEB(0, buffer, pos); /* 1 byte. */
-            pos = writeByte(DwarfExpressionOpcodes.DW_OP_plus, buffer, pos);
+            pos = writeExprOpcode(DW_OP_plus, buffer, pos);
             assert pos == skipStart + offsetToEnd;
 
             /* make sure we added up correctly */
             assert pos == exprStart + exprSize;
         }
         return pos;
-    }
-
-    /**
-     * The debug_info section depends on loc section.
-     */
-    protected static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_LOC_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 }

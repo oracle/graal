@@ -27,21 +27,20 @@
 package com.oracle.objectfile.elf.dwarf.constants;
 
 /**
- * An interface that provides definitions for a variety of constants defined by the DWARF standard,
- * employing the same names and types. The primary reference for these constants is the DWARF
- * Debugging Information Format Version 4 Specification published at dwarfstd.org.
- * <p/>
- *
- * Note that this is not an exhaustive list of all DWARF constants. It merely includes constants
- * that are needed by GraalVM.
+ * DW_FORM_flag only has two possible attribute values.
  */
-public interface DwarfConstants extends DwarfAttributes, DwarfAttributeValues, DwarfExpressionOpcodes, DwarfForms, DwarfFrameValues, DwarfLineOpcodes, DwarfSectionNames, DwarfTags {
+public enum DwarfFlag {
+    @SuppressWarnings("unused")
+    DW_FLAG_false((byte) 0),
+    DW_FLAG_true((byte) 1);
 
-    /**
-     * Currently generated debug info relies on DWARF spec version 4. However, some sections may
-     * still need to be generated as version 2.
-     */
-    short DW_VERSION_2 = 2;
-    short DW_VERSION_4 = 4;
+    byte value;
 
+    DwarfFlag(byte b) {
+        value = b;
+    }
+
+    public byte value() {
+        return value;
+    }
 }

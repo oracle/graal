@@ -30,8 +30,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcodes;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
@@ -42,10 +41,32 @@ import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debugentry.range.SubRange;
 
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNE_define_file;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNE_end_sequence;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNE_set_address;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_advance_line;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_advance_pc;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_const_add_pc;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_copy;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_extended_prefix;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_fixed_advance_pc;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_negate_stmt;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_set_basic_block;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_set_column;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode.DW_LNS_set_file;
+
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LINE_SECTION;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_STR_SECTION;
+
 /**
  * Section generator for debug_line section.
  */
 public class DwarfLineSectionImpl extends DwarfSectionImpl {
+    /**
+     * 0 is used to indicate an invalid opcode.
+     */
+    private static final int LN_undefined = 0;
+
     /**
      * Line header section always contains fixed number of bytes.
      */
@@ -64,12 +85,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     private static final int LN_OPCODE_BASE = 13;
 
     DwarfLineSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-    }
-
-    @Override
-    public String getSectionName() {
-        return DwarfSectionNames.DW_LINE_SECTION_NAME;
+        // line section depends on string section
+        super(dwarfSections, DW_LINE_SECTION, DW_STR_SECTION);
     }
 
     @Override
@@ -242,7 +259,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 2 ubyte version is always 2.
          */
-        pos = writeShort(DW_VERSION_4, buffer, pos);
+        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_4, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
@@ -472,7 +489,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * Check if we can advance line and/or address in one byte with a special opcode.
              */
             byte opcode = isSpecialOpcode(addressDelta, lineDelta);
-            if (opcode != DwarfLineOpcodes.DW_LNS_undefined) {
+            if (opcode != LN_undefined) {
                 /*
                  * Ignore pointless write when addressDelta == lineDelta == 0.
                  */
@@ -491,7 +508,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                      * line delta.
                      */
                     opcode = isSpecialOpcode(remainder, lineDelta);
-                    if (opcode != DwarfLineOpcodes.DW_LNS_undefined) {
+                    if (opcode != LN_undefined) {
                         /*
                          * Address remainder and line now fit.
                          */
@@ -502,7 +519,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                          * remainder.
                          */
                         opcode = isSpecialOpcode(remainder, 0);
-                        assert opcode != DwarfLineOpcodes.DW_LNS_undefined;
+                        assert opcode != LN_undefined;
                         pos = writeAdvanceLineOp(context, lineDelta, buffer, pos);
                         pos = writeSpecialOpcode(context, opcode, buffer, pos);
                     }
@@ -576,7 +593,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeCopyOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_copy;
+        byte opcode = DW_LNS_copy.value();
         int pos = p;
         debugCopyCount++;
         verboseLog(context, "  [0x%08x] Copy %d", pos, debugCopyCount);
@@ -584,7 +601,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAdvancePCOp(DebugContext context, long uleb, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_advance_pc;
+        byte opcode = DW_LNS_advance_pc.value();
         int pos = p;
         debugAddress += uleb;
         verboseLog(context, "  [0x%08x] Advance PC by %d to 0x%08x", pos, uleb, debugAddress);
@@ -593,7 +610,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAdvanceLineOp(DebugContext context, long sleb, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_advance_line;
+        byte opcode = DW_LNS_advance_line.value();
         int pos = p;
         debugLine += sleb;
         verboseLog(context, "  [0x%08x] Advance Line by %d to %d", pos, sleb, debugLine);
@@ -602,7 +619,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeSetFileOp(DebugContext context, String file, long uleb, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_set_file;
+        byte opcode = DW_LNS_set_file.value();
         int pos = p;
         verboseLog(context, "  [0x%08x] Set File Name to entry %d in the File Name Table (%s)", pos, uleb, file);
         pos = writeByte(opcode, buffer, pos);
@@ -611,7 +628,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @SuppressWarnings("unused")
     private int writeSetColumnOp(DebugContext context, long uleb, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_set_column;
+        byte opcode = DW_LNS_set_column.value();
         int pos = p;
         pos = writeByte(opcode, buffer, pos);
         return writeULEB(uleb, buffer, pos);
@@ -619,20 +636,20 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @SuppressWarnings("unused")
     private int writeNegateStmtOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_negate_stmt;
+        byte opcode = DW_LNS_negate_stmt.value();
         int pos = p;
         return writeByte(opcode, buffer, pos);
     }
 
     private int writeSetBasicBlockOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_set_basic_block;
+        byte opcode = DW_LNS_set_basic_block.value();
         int pos = p;
         verboseLog(context, "  [0x%08x] Set basic block", pos);
         return writeByte(opcode, buffer, pos);
     }
 
     private int writeConstAddPCOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_const_add_pc;
+        byte opcode = DW_LNS_const_add_pc.value();
         int pos = p;
         int advance = opcodeAddress((byte) 255);
         debugAddress += advance;
@@ -641,7 +658,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeFixedAdvancePCOp(DebugContext context, short arg, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNS_fixed_advance_pc;
+        byte opcode = DW_LNS_fixed_advance_pc.value();
         int pos = p;
         debugAddress += arg;
         verboseLog(context, "  [0x%08x] Fixed advance Address by %d to 0x%08x", pos, arg, debugAddress);
@@ -650,13 +667,13 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeEndSequenceOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNE_end_sequence;
+        byte opcode = DW_LNE_end_sequence.value();
         int pos = p;
         verboseLog(context, "  [0x%08x] Extended opcode 1: End sequence", pos);
         debugAddress = debugTextBase;
         debugLine = 1;
         debugCopyCount = 0;
-        pos = writeByte(DwarfLineOpcodes.DW_LNS_extended_prefix, buffer, pos);
+        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
         /*
          * Insert extended insn byte count as ULEB.
          */
@@ -665,11 +682,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeSetAddressOp(DebugContext context, long arg, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNE_set_address;
+        byte opcode = DW_LNE_set_address.value();
         int pos = p;
         debugAddress = debugTextBase + (int) arg;
         verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, debugAddress);
-        pos = writeByte(DwarfLineOpcodes.DW_LNS_extended_prefix, buffer, pos);
+        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
         /*
          * Insert extended insn byte count as ULEB.
          */
@@ -680,7 +697,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @SuppressWarnings("unused")
     private int writeDefineFileOp(DebugContext context, String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int p) {
-        byte opcode = DwarfLineOpcodes.DW_LNE_define_file;
+        byte opcode = DW_LNE_define_file.value();
         int pos = p;
         /*
          * Calculate bytes needed for opcode + args.
@@ -692,7 +709,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         insnBytes += writeULEB(uleb2, scratch, 0);
         insnBytes += writeULEB(uleb3, scratch, 0);
         verboseLog(context, "  [0x%08x] Extended opcode 3: Define File %s idx %d ts1 %d ts2 %d", pos, file, uleb1, uleb2, uleb3);
-        pos = writeByte(DwarfLineOpcodes.DW_LNS_extended_prefix, buffer, pos);
+        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
         /*
          * Insert insn length as uleb.
          */
@@ -739,7 +756,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static byte isSpecialOpcode(long addressDelta, long lineDelta) {
         if (addressDelta < 0) {
-            return DwarfLineOpcodes.DW_LNS_undefined;
+            return LN_undefined;
         }
         if (lineDelta >= LN_LINE_BASE) {
             long offsetLineDelta = lineDelta - LN_LINE_BASE;
@@ -759,7 +776,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Answer no by returning an invalid opcode.
          */
-        return DwarfLineOpcodes.DW_LNS_undefined;
+        return LN_undefined;
     }
 
     private static int isConstAddPC(long addressDelta) {
@@ -775,25 +792,5 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static boolean isFixedAdvancePC(long addressDiff) {
         return addressDiff >= 0 && addressDiff < 0xffff;
-    }
-
-    /**
-     * The debug_line section depends on debug_str section.
-     */
-    private static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_STR_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE,
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 }

@@ -26,19 +26,20 @@
 
 package com.oracle.objectfile.elf.dwarf.constants;
 
-/**
- * Names of the different ELF sections created by GraalVM in reverse dependency order. The sequence
- * starts with the name of the text section (not defined in the DWARF spec and not created by debug
- * info code).
+/*
+ * Compile unit DIE header has_children attribute values.
  */
-public interface DwarfSectionNames {
-    String TEXT_SECTION_NAME = ".text";
-    String DW_STR_SECTION_NAME = ".debug_str";
-    String DW_LINE_SECTION_NAME = ".debug_line";
-    String DW_FRAME_SECTION_NAME = ".debug_frame";
-    String DW_ABBREV_SECTION_NAME = ".debug_abbrev";
-    String DW_INFO_SECTION_NAME = ".debug_info";
-    String DW_LOC_SECTION_NAME = ".debug_loc";
-    String DW_ARANGES_SECTION_NAME = ".debug_aranges";
-    String DW_RANGES_SECTION_NAME = ".debug_ranges";
+public enum DwarfHasChildren {
+    DW_CHILDREN_no((byte) 0),
+    DW_CHILDREN_yes((byte) 1);
+
+    byte value;
+
+    DwarfHasChildren(byte b) {
+        value = b;
+    }
+
+    public byte value() {
+        return value;
+    }
 }
