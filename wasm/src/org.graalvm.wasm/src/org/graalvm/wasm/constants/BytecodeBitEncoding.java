@@ -87,8 +87,8 @@ public class BytecodeBitEncoding {
 
     public static final int DATA_SEG_HAS_MEMORY_INDEX_ZERO = 0b0010_0000;
 
-    public static final int DATA_SEG_GLOBAL_INDEX_OR_OFFSET_MASK = 0b0001_0000;
-    public static final int DATA_SEG_GLOBAL_INDEX = 0b0000_0000;
+    public static final int DATA_SEG_BYTECODE_OR_OFFSET_MASK = 0b0001_0000;
+    public static final int DATA_SEG_BYTECODE = 0b0000_0000;
     public static final int DATA_SEG_OFFSET = 0b0001_0000;
 
     public static final int DATA_SEG_VALUE_MASK = 0b0000_1110;
@@ -129,11 +129,11 @@ public class BytecodeBitEncoding {
     public static final int ELEM_SEG_TABLE_INDEX_U16 = 0b0010_0000;
     public static final int ELEM_SEG_TABLE_INDEX_I32 = 0b0011_0000;
 
-    public static final int ELEM_SEG_GLOBAL_INDEX_MASK = 0b0000_1100;
-    public static final int ELEM_SEG_GLOBAL_INDEX_UNDEFINED = 0b0000_0000;
-    public static final int ELEM_SEG_GLOBAL_INDEX_U8 = 0b0000_0100;
-    public static final int ELEM_SEG_GLOBAL_INDEX_U16 = 0b0000_1000;
-    public static final int ELEM_SEG_GLOBAL_INDEX_I32 = 0b0000_1100;
+    public static final int ELEM_SEG_OFFSET_BYTECODE_MASK = 0b0000_1100;
+    public static final int ELEM_SEG_OFFSET_BYTECODE_UNDEFINED = 0b0000_0000;
+    public static final int ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8 = 0b0000_0100;
+    public static final int ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16 = 0b0000_1000;
+    public static final int ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32 = 0b0000_1100;
 
     public static final int ELEM_SEG_OFFSET_ADDRESS_MASK = 0b0000_0011;
     public static final int ELEM_SEG_OFFSET_ADDRESS_UNDEFINED = 0b0000_0000;
