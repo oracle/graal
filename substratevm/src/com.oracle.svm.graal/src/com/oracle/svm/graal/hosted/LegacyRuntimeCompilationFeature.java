@@ -81,7 +81,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -489,7 +489,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             }
         }
 
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.setMethodsImplementations();

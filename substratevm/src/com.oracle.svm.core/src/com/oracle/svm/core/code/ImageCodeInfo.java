@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.List;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -131,8 +133,8 @@ public class ImageCodeInfo {
         return hostedImageCodeInfo;
     }
 
-    public long getTotalByteArraySize() {
-        return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
+    public List<Integer> getTotalByteArrayLengths() {
+        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length);
     }
 
     /**

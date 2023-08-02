@@ -245,7 +245,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     }
 
     @Override
-    public long getMetadataByteLength() {
+    public int getMetadataByteLength() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
@@ -307,7 +307,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     StringIndex name
      * }
      * </pre>
-     * 
+     *
      * Negative query field encoding.
      *
      * <pre>
@@ -466,7 +466,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
-     * 
+     *
      * Negative query constructor encoding.
      *
      * <pre>

@@ -31,11 +31,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
@@ -46,8 +49,29 @@ public class ProgressReporterFeature implements InternalFeature {
     protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            ImageSingletons.add(HeapBreakdownProvider.class, new HeapBreakdownProvider());
+        }
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reporter.reportStageProgress();
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            ImageSingletons.add(CodeBreakdownProvider.class, new CodeBreakdownProvider(((AfterCompilationAccessImpl) access).getCompilationTasks()));
+        }
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            HeapBreakdownProvider.singleton().calculate(((BeforeImageWriteAccessImpl) access));
+        }
     }
 
     protected void appendGraalSuffix(@SuppressWarnings("unused") DirectPrinter graalLine) {
