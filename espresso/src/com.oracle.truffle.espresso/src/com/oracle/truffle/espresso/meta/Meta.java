@@ -864,6 +864,21 @@ public final class Meta extends ContextAccessImpl {
         java_util_Iterator_remove = java_util_Iterator.requireDeclaredMethod(Name.remove, Signature._void);
         assert java_util_Iterator.isInterface();
 
+        java_util_Collection = knownKlass(Type.java_util_Collection);
+
+        java_util_Optional = knownKlass(Type.java_util_Optional);
+        java_util_Optional_EMPTY = java_util_Optional.requireDeclaredField(Name.EMPTY, Type.java_util_Optional);
+        java_util_Optional_value = java_util_Optional.requireDeclaredField(Name.value, Type.java_lang_Object);
+
+        java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
+        java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
+
+        java_math_BigDecimal = knownKlass(Type.java_math_BigDecimal);
+        java_math_BigDecimal_init = java_math_BigDecimal.requireDeclaredMethod(Name._init_, Signature._void_BigInteger_int_MathContext);
+
+        java_math_MathContext = knownKlass(Type.java_math_MathContext);
+        java_math_MathContext_init = java_math_MathContext.requireDeclaredMethod(Name._init_, Signature._void_int);
+
         java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
 
         jdk_internal_misc_UnsafeConstants = diff() //
@@ -1546,6 +1561,21 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_Iterator_hasNext;
     public final Method java_util_Iterator_remove;
 
+    public final ObjectKlass java_util_Collection;
+
+    public final ObjectKlass java_util_Optional;
+    public final Field java_util_Optional_value;
+    public final Field java_util_Optional_EMPTY;
+
+    public final ObjectKlass java_math_BigInteger;
+    public final Method java_math_BigInteger_init;
+
+    public final ObjectKlass java_math_BigDecimal;
+    public final Method java_math_BigDecimal_init;
+
+    public final ObjectKlass java_math_MathContext;
+    public final Method java_math_MathContext_init;
+
     public final ObjectKlass java_util_NoSuchElementException;
 
     public final ObjectKlass jdk_internal_misc_UnsafeConstants;
@@ -1629,6 +1659,14 @@ public final class Meta extends ContextAccessImpl {
         public final ObjectKlass VMHelper;
         public final Method VMHelper_getDynamicModuleDescriptor;
 
+        public final ObjectKlass EspressoForeignList;
+        public final Field EspressoForeignList_foreignObject;
+        public final ObjectKlass EspressoForeignCollection;
+        public final ObjectKlass EspressoForeignIterable;
+        public final ObjectKlass EspressoForeignIterator;
+        public final ObjectKlass EspressoForeignMap;
+        public final ObjectKlass EspressoForeignSet;
+
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
@@ -1689,6 +1727,14 @@ public final class Meta extends ContextAccessImpl {
 
             VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
+
+            EspressoForeignList = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList);
+            EspressoForeignList_foreignObject = EspressoForeignList.requireDeclaredField(Name.foreignObject, Type.java_lang_Object);
+            EspressoForeignCollection = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection);
+            EspressoForeignIterable = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable);
+            EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);
+            EspressoForeignMap = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap);
+            EspressoForeignSet = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,23 +29,23 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 @GenerateUncached
-public abstract class LookupTypeConverterNode extends EspressoNode {
+public abstract class LookupInternalTypeConverterNode extends EspressoNode {
     static final int LIMIT = 3;
 
-    public abstract PolyglotTypeMappings.TypeConverter execute(String metaName) throws ClassCastException;
+    public abstract PolyglotTypeMappings.InternalTypeConverter execute(String metaName) throws ClassCastException;
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedMetaName.equals(metaName)"}, limit = "LIMIT")
-    PolyglotTypeMappings.TypeConverter doCached(String metaName,
+    PolyglotTypeMappings.InternalTypeConverter doCached(String metaName,
                     @Cached("metaName") String cachedMetaName,
-                    @Cached("doUncached(metaName)") PolyglotTypeMappings.TypeConverter converter) throws ClassCastException {
+                    @Cached("doUncached(metaName)") PolyglotTypeMappings.InternalTypeConverter converter) throws ClassCastException {
         assert converter == doUncached(metaName);
         return converter;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
-    PolyglotTypeMappings.TypeConverter doUncached(String metaName) throws ClassCastException {
-        return getContext().getPolyglotTypeMappings().mapTypeConversion(metaName);
+    PolyglotTypeMappings.InternalTypeConverter doUncached(String metaName) throws ClassCastException {
+        return getContext().getPolyglotTypeMappings().mapInternalTypeConversion(metaName);
     }
 }
