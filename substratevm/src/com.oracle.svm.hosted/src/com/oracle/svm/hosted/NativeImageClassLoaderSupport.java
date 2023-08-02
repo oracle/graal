@@ -653,9 +653,6 @@ public class NativeImageClassLoaderSupport {
                     }
                 }
                 for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
-                    if ("Module1".equals(moduleReference.descriptor().name())) {
-                        continue;
-                    }
                     initModule(moduleReference);
                 }
 

@@ -85,7 +85,7 @@ import jdk.internal.module.Resources;
  * @see ModuleLayer#defineModulesWithManyLoaders
  */
 
-public final class NativeImageClassLoader extends SecureClassLoader {
+final class NativeImageClassLoader extends SecureClassLoader {
 
     static {
         ClassLoader.registerAsParallelCapable();
@@ -151,7 +151,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
      *
      * @throws IllegalArgumentException If two or more modules have the same package
      */
-    public NativeImageClassLoader(List<Path> classpath, Collection<ResolvedModule> modules, ClassLoader parent) {
+    NativeImageClassLoader(List<Path> classpath, Collection<ResolvedModule> modules, ClassLoader parent) {
         super(parent);
 
         this.parent = parent;
@@ -164,8 +164,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
             nameToModule.put(descriptor.name(), mref);
             descriptor.packages().forEach(pn -> {
                 LoadedModule lm = new LoadedModule(mref);
-                if (localPackageToModule.put(pn, lm) != null)
+                if (localPackageToModule.put(pn, lm) != null) {
                     throw new IllegalArgumentException("Package " + pn + " in more than one module");
+                }
             });
         }
         this.nameToModule = nameToModule;
@@ -223,8 +224,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
                     // boot loader
                     assert layer.findModule(mn).isPresent();
                     loader = layer.findLoader(mn);
-                    if (loader == null)
+                    if (loader == null) {
                         loader = ClassLoaders.platformClassLoader();
+                    }
                 }
 
                 // find the packages that are exported to the target module
@@ -287,8 +289,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     @Override
     protected URL findResource(String mn, String name) throws IOException {
         ModuleReference mref = (mn != null) ? nameToModule.get(mn) : null;
-        if (mref == null)
+        if (mref == null) {
             return null;   // not defined to this class loader
+        }
 
         // locate resource
         URL url = null;
@@ -327,8 +330,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
             for (ModuleReference mref : nameToModule.values()) {
                 try {
                     URL url = findResource(mref.descriptor().name(), name);
-                    if (url != null)
+                    if (url != null) {
                         return url;
+                    }
                 } catch (IOException ioe) {
                     // ignore
                 }
@@ -434,10 +438,12 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     protected Class<?> findClass(String cn) throws ClassNotFoundException {
         Class<?> c = null;
         LoadedModule loadedModule = findLoadedModule(cn);
-        if (loadedModule != null)
+        if (loadedModule != null) {
             c = findClassInModuleOrNull(loadedModule, cn);
-        if (c == null)
+        }
+        if (c == null) {
             throw new ClassNotFoundException(cn);
+        }
         return c;
     }
 
@@ -536,8 +542,12 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     private Package definePackage(String name, Manifest man, URL url) {
-        String specTitle = null, specVersion = null, specVendor = null;
-        String implTitle = null, implVersion = null, implVendor = null;
+        String specTitle = null;
+        String specVersion = null;
+        String specVendor = null;
+        String implTitle = null;
+        String implVersion = null;
+        String implVendor = null;
         String sealed = null;
         URL sealBase = null;
 
@@ -606,8 +616,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     protected Class<?> findClass(String mn, String cn) {
         Class<?> c = null;
         LoadedModule loadedModule = findLoadedModule(cn);
-        if (loadedModule != null && loadedModule.name().equals(mn))
+        if (loadedModule != null && loadedModule.name().equals(mn)) {
             c = findClassInModuleOrNull(loadedModule, cn);
+        }
         return c;
     }
 
@@ -652,11 +663,13 @@ public final class NativeImageClassLoader extends SecureClassLoader {
                 }
             }
 
-            if (c == null)
+            if (c == null) {
                 throw new ClassNotFoundException(cn);
+            }
 
-            if (resolve)
+            if (resolve) {
                 resolveClass(c);
+            }
 
             return c;
         }
@@ -710,8 +723,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         PermissionCollection perms = super.getPermissions(cs);
 
         URL url = cs.getLocation();
-        if (url == null)
+        if (url == null) {
             return perms;
+        }
 
         // add the permission to access the resource
         try {
@@ -744,24 +758,15 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         return pn.isEmpty() ? null : localPackageToModule.get(pn);
     }
 
-    /**
-     * Returns the package name for the given class name
-     */
     private String packageName(String cn) {
         int pos = cn.lastIndexOf('.');
         return (pos < 0) ? "" : cn.substring(0, pos);
     }
 
-    /**
-     * Returns the ModuleReader for the given module.
-     */
     private ModuleReader moduleReaderFor(ModuleReference mref) {
         return moduleToReader.computeIfAbsent(mref, m -> createModuleReader(mref));
     }
 
-    /**
-     * Creates a ModuleReader for the given module.
-     */
     private ModuleReader createModuleReader(ModuleReference mref) {
         try {
             return mref.open();
@@ -772,9 +777,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         }
     }
 
-    /**
-     * A ModuleReader that doesn't read any resources.
-     */
     private static class NullModuleReader implements ModuleReader {
         @Override
         public Optional<URI> find(String name) {
@@ -792,16 +794,11 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         }
     }
 
-    /**
-     * Returns true if the given module opens the given package unconditionally.
-     *
-     * @implNote This method currently iterates over each of the open packages. This will be
-     *           replaced once the ModuleDescriptor.Opens API is updated.
-     */
     private boolean isOpen(ModuleReference mref, String pn) {
         ModuleDescriptor descriptor = mref.descriptor();
-        if (descriptor.isOpen() || descriptor.isAutomatic())
+        if (descriptor.isOpen() || descriptor.isAutomatic()) {
             return true;
+        }
         for (ModuleDescriptor.Opens opens : descriptor.opens()) {
             String source = opens.source();
             if (!opens.isQualified() && source.equals(pn)) {
