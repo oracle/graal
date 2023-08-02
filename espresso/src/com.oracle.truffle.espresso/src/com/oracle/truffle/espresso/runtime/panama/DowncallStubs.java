@@ -141,15 +141,24 @@ public final class DowncallStubs {
                     default -> throw EspressoError.unimplemented(inputReg.getStubLocation(platform).toString());
                 }
             } else {
-                if (nativeVarArgsIndex < 0 && argsCalc.isVarArgsStart(inputReg, pType)) {
+                VMStorage nextInputReg;
+                Klass nextPType;
+                if (i + 1 < pTypes.length) {
+                    nextInputReg = inputRegs[i + 1];
+                    nextPType = pTypes[i + 1];
+                } else {
+                    nextInputReg = null;
+                    nextPType = null;
+                }
+                if (nativeVarArgsIndex < 0 && argsCalc.isVarArg(inputReg, pType, nextInputReg, nextPType)) {
                     nativeVarArgsIndex = nativeIndex;
                 }
-                int index = argsCalc.getNextInputIndex(inputReg, pType);
+                int index = argsCalc.getNextInputIndex(inputReg, pType, nextInputReg, nextPType);
                 if (index >= 0) {
                     shuffle[nativeIndex] = i;
                     nativeParamTypes[nativeIndex] = inputReg.asNativeType(platform, pType);
                     nativeIndex++;
-                } else if (!platform.ignoreDownCallArgument(inputReg)) {
+                } else if (index != ArgumentsCalculator.SKIP && !platform.ignoreDownCallArgument(inputReg)) {
                     throw EspressoError.shouldNotReachHere("Cannot understand argument " + i + " in downcall: " + inputReg + " for type " + pType + " calc: " + argsCalc);
                 }
             }

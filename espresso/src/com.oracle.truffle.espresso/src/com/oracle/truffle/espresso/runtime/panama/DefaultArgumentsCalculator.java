@@ -34,7 +34,7 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
     }
 
     @Override
-    public int getNextInputIndex(VMStorage reg, Klass type) {
+    public int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         // This depends on order since int and float register are independently allocated
         assert isInt(type) || isFloat(type) : platform.toString(reg) + ": " + type;
         if (intIndex < callIntRegs.length && callIntRegs[intIndex].equals(reg)) {
@@ -70,7 +70,7 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
     }
 
     @Override
-    public boolean isVarArgsStart(VMStorage reg, Klass type) {
+    public boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         return false;
     }
 

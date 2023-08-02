@@ -88,12 +88,21 @@ public class UpcallStubs {
                     default -> throw EspressoError.unimplemented(argReg.getStubLocation(platform).toString());
                 }
             } else {
-                int index = argsCalc.getNextInputIndex(argReg, pType);
+                VMStorage nextInputReg;
+                Klass nextPType;
+                if (nativeArgIndex + 1 < nativeParamTypes.length) {
+                    nextInputReg = argRegs[nativeArgIndex + 1];
+                    nextPType = javaPTypes[javaArgIndex + 1];
+                } else {
+                    nextInputReg = null;
+                    nextPType = null;
+                }
+                int index = argsCalc.getNextInputIndex(argReg, pType, nextInputReg, nextPType);
                 if (index >= 0) {
                     shuffle[javaArgIndex - 1] = index;
                     nativeParamTypes[nativeIndex] = argReg.asNativeType(platform, pType);
                     nativeIndex++;
-                } else if (!platform.ignoreDownCallArgument(argReg)) {
+                } else if (index != ArgumentsCalculator.SKIP && !platform.ignoreDownCallArgument(argReg)) {
                     throw EspressoError.shouldNotReachHere("Cannot understand argument " + nativeArgIndex + " in upcall: " + argReg + " for type " + pType + " calc: " + argsCalc);
                 }
             }

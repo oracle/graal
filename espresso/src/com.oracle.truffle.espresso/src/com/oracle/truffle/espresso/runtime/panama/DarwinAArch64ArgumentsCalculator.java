@@ -34,7 +34,7 @@ public class DarwinAArch64ArgumentsCalculator extends DefaultArgumentsCalculator
     }
 
     @Override
-    public boolean isVarArgsStart(VMStorage reg, Klass type) {
+    public boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         if (reg.type(platform).isStack()) {
             if (isInt(type)) {
                 return intIndex < callIntRegs.length;
@@ -43,13 +43,13 @@ public class DarwinAArch64ArgumentsCalculator extends DefaultArgumentsCalculator
                 return floatIndex < callFloatRegs.length;
             }
         }
-        return super.isVarArgsStart(reg, type);
+        return super.isVarArg(reg, type, nextReg, nextType);
     }
 
     @Override
-    public int getNextInputIndex(VMStorage reg, Klass type) {
+    public int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         if (!isVarArgs) {
-            isVarArgs = isVarArgsStart(reg, type);
+            isVarArgs = isVarArg(reg, type, nextReg, nextType);
         }
         if (isVarArgs) {
             assert reg.type(platform).isStack() : platform.toString(reg) + ": " + type;
@@ -57,6 +57,6 @@ public class DarwinAArch64ArgumentsCalculator extends DefaultArgumentsCalculator
             varArgsStackOffset += 8;
             return globalIndex++;
         }
-        return super.getNextInputIndex(reg, type);
+        return super.getNextInputIndex(reg, type, nextReg, nextType);
     }
 }
