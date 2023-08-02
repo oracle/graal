@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -172,6 +174,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             if (!CompilationFailureAction.hasBeenSet(values)) {
                 // Automatically exit on failure during bootstrap.
                 if (compiler.getGraalRuntime().isBootstrapping()) {
+                    return ExitVM;
+                }
+                // Automatically exit on failure when assertions are enabled in libgraal
+                if (IS_IN_NATIVE_IMAGE && cause instanceof AssertionError && Assertions.assertionsEnabled()) {
                     return ExitVM;
                 }
             }
