@@ -106,11 +106,11 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64CountPositivesOp;
 import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
 import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.amd64.AMD64HaltOp;
-import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64MD5Op;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -785,9 +785,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+    public Variable emitCountPositives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64HasNegativesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, asAllocatable(array), asAllocatable(length)));
+        append(new AMD64CountPositivesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, getAVX3Threshold(), result, asAllocatable(array), asAllocatable(length)));
         return result;
     }
 

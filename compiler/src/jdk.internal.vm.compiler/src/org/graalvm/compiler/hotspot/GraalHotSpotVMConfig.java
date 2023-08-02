@@ -224,6 +224,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
     public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, JDK >= 21 ? "size_t" : "int");
 
+    public final int softwarePrefetchHintDistance = getFlag("SoftwarePrefetchHintDistance", Integer.class, -1, "aarch64".equals(osArch));
+
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 

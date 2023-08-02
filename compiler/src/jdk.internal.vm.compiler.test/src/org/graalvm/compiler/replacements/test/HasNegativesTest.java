@@ -34,7 +34,7 @@ import org.junit.Test;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports("java.base/java.lang")
-public class HasNegativeTest extends GraalCompilerTest {
+public class HasNegativesTest extends GraalCompilerTest {
 
     protected final String[] testData = new String[]{
                     "A", "\uFF21", "AB", "A", "a", "Ab", "AA", "\uFF21",

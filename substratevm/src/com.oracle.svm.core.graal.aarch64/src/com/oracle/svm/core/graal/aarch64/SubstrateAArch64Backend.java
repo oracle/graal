@@ -663,6 +663,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public Register getHeapBaseRegister() {
             return ReservedRegisters.singleton().getHeapBaseRegister();
         }
+
+        @Override
+        protected int getVMPageSize() {
+            return SubstrateOptions.getPageSize();
+        }
     }
 
     public class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {

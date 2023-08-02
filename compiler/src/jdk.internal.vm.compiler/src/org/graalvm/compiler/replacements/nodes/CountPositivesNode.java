@@ -42,24 +42,24 @@ import org.graalvm.word.Pointer;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Intrinsification for {@code java.lang.StringCoding.hasNegatives}. It tests if a byte array
+ * Intrinsification for {@code java.lang.StringCoding.countPositives}. It tests if a byte array
  * contain a negative value.
  */
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-public final class HasNegativesNode extends PureFunctionStubIntrinsicNode {
-    public static final NodeClass<HasNegativesNode> TYPE = NodeClass.create(HasNegativesNode.class);
+public final class CountPositivesNode extends PureFunctionStubIntrinsicNode {
+    public static final NodeClass<CountPositivesNode> TYPE = NodeClass.create(CountPositivesNode.class);
 
-    public static final ForeignCallDescriptor STUB = ForeignCalls.pureFunctionForeignCallDescriptor("stringCodingHasNegatives", boolean.class, Pointer.class, int.class);
+    public static final ForeignCallDescriptor STUB = ForeignCalls.pureFunctionForeignCallDescriptor("stringCodingCountPositives", int.class, Pointer.class, int.class);
 
     @Input protected ValueNode array;
     @Input protected ValueNode len;
 
-    public HasNegativesNode(ValueNode array, ValueNode len) {
+    public CountPositivesNode(ValueNode array, ValueNode len) {
         this(array, len, null);
     }
 
-    public HasNegativesNode(ValueNode array, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+    public CountPositivesNode(ValueNode array, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(TYPE, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         this.array = array;
         this.len = len;
     }
@@ -76,13 +76,13 @@ public final class HasNegativesNode extends PureFunctionStubIntrinsicNode {
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitHasNegatives(runtimeCheckedCPUFeatures, gen.operand(array), gen.operand(len)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitCountPositives(runtimeCheckedCPUFeatures, gen.operand(array), gen.operand(len)));
     }
 
     @NodeIntrinsic
     @GenerateStub
-    public static native boolean stringCodingHasNegatives(Pointer array, int len);
+    public static native int stringCodingCountPositives(Pointer array, int len);
 
     @NodeIntrinsic
-    public static native boolean stringCodingHasNegatives(Pointer array, int len, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    public static native int stringCodingCountPositives(Pointer array, int len, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 }

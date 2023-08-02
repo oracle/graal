@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,25 +39,31 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-@Opcode("AMD64_HAS_NEGATIVES")
-public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
-    public static final LIRInstructionClass<AMD64HasNegativesOp> TYPE = LIRInstructionClass.create(AMD64HasNegativesOp.class);
+// @formatter:off
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/46fbedb2be98a9b8aba042fa9f90c3b25c312cd6/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3821-L4083",
+          sha1 = "3b48e8dac29e4f52f708d9e667eb596fca146c9a")
+// @formatter:on
+@Opcode("AMD64_COUNT_POSITIVES")
+public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
+    public static final LIRInstructionClass<AMD64CountPositivesOp> TYPE = LIRInstructionClass.create(AMD64CountPositivesOp.class);
 
     @Def({REG}) private Value resultValue;
     @Alive({REG}) private Value originArrayValue;
@@ -67,6 +73,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value lenValue;
 
     @Temp({REG}) private Value tmpValue1;
+    @Temp({REG}) private Value tmpValue3;
 
     @Temp({REG}) private Value vecValue1;
     @Temp({REG}) private Value vecValue2;
@@ -74,8 +81,12 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) protected Value maskValue1;
     @Temp({REG, ILLEGAL}) protected Value maskValue2;
 
-    public AMD64HasNegativesOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value array, Value length) {
+    private final int useAVX3Threshold;
+
+    public AMD64CountPositivesOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, AllocatableValue result, AllocatableValue array, Value length) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? ZMM : YMM);
+
+        this.useAVX3Threshold = useAVX3Threshold;
 
         this.resultValue = result;
         this.originArrayValue = array;
@@ -85,6 +96,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         this.lenValue = tool.newVariable(length.getValueKind());
 
         this.tmpValue1 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
+        this.tmpValue3 = tool.newVariable(length.getValueKind());
 
         LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
         this.vecValue1 = tool.newVariable(lirKind);
@@ -101,9 +113,10 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        Label labelTrue = new Label();
-        Label labelFalse = new Label();
+        Label labelTailAdjust = new Label();
         Label labelDone = new Label();
+        Label labelTailStart = new Label();
+        Label labelCharAdjust = new Label();
         Label labelCompareChar = new Label();
         Label labelCompareVectors = new Label();
         Label labelCompareByte = new Label();
@@ -119,14 +132,16 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         Register vec1 = asRegister(vecValue1);
         Register vec2 = asRegister(vecValue2);
 
+        masm.movl(result, len);
         // len == 0
-        masm.testlAndJcc(len, len, ConditionFlag.Zero, labelFalse, false);
+        masm.testlAndJcc(len, len, ConditionFlag.Zero, labelDone, false);
 
-        if (supportsAVX512VLBWAndZMM() && supports(CPUFeature.BMI2)) {
+        if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM() && supports(CPUFeature.BMI2)) {
             Label labelTest64Loop = new Label();
             Label labelTestTail = new Label();
+            Label labelBreakLoop = new Label();
 
-            Register tmp3Aliased = len;
+            Register tmp3Aliased = asRegister(tmpValue3);
             Register mask1 = asRegister(maskValue1);
             Register mask2 = asRegister(maskValue2);
 
@@ -144,13 +159,13 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
             // Check whether our 64 elements of size byte contain negatives
             masm.evpcmpgtb(mask1, vec2, new AMD64Address(ary1, len, Stride.S1));
             masm.kortestq(mask1, mask1);
-            masm.jcc(ConditionFlag.NotZero, labelTrue);
+            masm.jcc(ConditionFlag.NotZero, labelBreakLoop);
 
             masm.addqAndJcc(len, 64, ConditionFlag.NotZero, labelTest64Loop, true);
 
             masm.bind(labelTestTail);
             // bail out when there is nothing to be done
-            masm.testlAndJcc(tmp1, -1, ConditionFlag.Zero, labelFalse, false);
+            masm.testlAndJcc(tmp1, -1, ConditionFlag.Zero, labelDone, false);
 
             // ~(~0 << len) applied up to two times (for 32-bit scenario)
             masm.movq(tmp3Aliased, 0xFFFFFFFF_FFFFFFFFL);
@@ -161,22 +176,30 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
 
             masm.evpcmpgtb(mask1, mask2, vec2, new AMD64Address(ary1, 0));
             masm.ktestq(mask1, mask2);
-            masm.jcc(ConditionFlag.NotZero, labelTrue);
-            masm.jmp(labelFalse);
-        } else {
-            masm.movl(result, len);
+            masm.jcc(ConditionFlag.Zero, labelDone);
 
+            masm.bind(labelBreakLoop);
+            // At least one byte in the last 64 bytes is negative.
+            // Set up to look at the last 64 bytes as if they were a tail
+            masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
+            masm.addq(result, len);
+            // Ignore the very last byte: if all others are positive,
+            // it must be negative, so we can skip right to the 2+1 byte
+            // end comparison at this point
+            masm.orl(result, 63);
+            masm.movl(len, 63);
+            // Fallthru to tail compare
+        } else {
             if (supportsAVX2AndYMM()) {
                 // With AVX2, use 32-byte vector compare
                 Label labelCompareWideVectors = new Label();
-                Label labelCompareTail = new Label();
+                Label labelBreakLoop = new Label();
 
                 // Compare 32-byte vectors
-                // tail count (in bytes)
-                masm.andl(result, 0x0000001f);
-                // vector count (in bytes)
-                masm.andlAndJcc(len, 0xffffffe0, ConditionFlag.Zero, labelCompareTail, true);
+                // len contains vector count (in bytes)
+                masm.testlAndJcc(len, 0xffffffe0, ConditionFlag.Zero, labelTailStart, true);
 
+                masm.andl(len, 0xffffffe0);
                 masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
                 masm.negq(len);
 
@@ -187,30 +210,40 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 masm.bind(labelCompareWideVectors);
                 masm.vmovdqu(vec1, new AMD64Address(ary1, len, Stride.S1));
                 masm.vptest(vec1, vec2, AVXKind.AVXSize.YMM);
-                masm.jcc(ConditionFlag.NotZero, labelTrue);
-                masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, false);
+                masm.jccb(ConditionFlag.NotZero, labelBreakLoop);
+                masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, true);
 
-                masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
+                masm.testlAndJcc(result, 0x0000001f, ConditionFlag.Zero, labelDone, false);
 
-                masm.vmovdqu(vec1, new AMD64Address(ary1, result, Stride.S1, -32));
-                masm.vptest(vec1, vec2, AVXKind.AVXSize.YMM);
-                masm.jccb(ConditionFlag.NotZero, labelTrue);
-                masm.jmp(labelFalse);
-
-                masm.bind(labelCompareTail); // len is zero
+                // Quick test using the already prepared vector mask
                 masm.movl(len, result);
+                masm.andl(len, 0x0000001f);
+                masm.vmovdqu(vec1, new AMD64Address(ary1, len, Stride.S1, -32));
+                masm.vptest(vec1, vec2, AVXKind.AVXSize.YMM);
+                masm.jcc(ConditionFlag.Zero, labelDone);
+                masm.jmp(labelTailStart);
+
+                masm.bind(labelBreakLoop); // len is zero
+                // At least one byte in the last 32-byte vector is negative.
+                // Set up to look at the last 32 bytes as if they were a tail
+                masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
+                masm.addq(result, len);
+                // Ignore the very last byte: if all others are positive,
+                // it must be negative, so we can skip right to the 2+1 byte
+                // end comparison at this point
+                masm.orl(result, 31);
+                masm.movl(len, 31);
                 // Fallthru to tail compare
             } else if (masm.supports(CPUFeature.SSE4_2)) {
                 // With SSE4.2, use double quad vector compare
                 Label labelCompareWideVectors = new Label();
-                Label labelCompareTail = new Label();
+                Label labelBreakLoop = new Label();
 
                 // Compare 16-byte vectors
-                // tail count (in bytes)
-                masm.andl(result, 0x0000000f);
-                // vector count (in bytes)
-                masm.andlAndJcc(len, 0xfffffff0, ConditionFlag.Zero, labelCompareTail, false);
+                // len contains vector count (in bytes)
+                masm.testlAndJcc(len, 0xfffffff0, ConditionFlag.Zero, labelTailStart, false);
 
+                masm.andl(len, 0xfffffff0);
                 masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
                 masm.negq(len);
 
@@ -221,21 +254,34 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 masm.bind(labelCompareWideVectors);
                 masm.movdqu(vec1, new AMD64Address(ary1, len, Stride.S1));
                 masm.ptest(vec1, vec2);
-                masm.jcc(ConditionFlag.NotZero, labelTrue);
-                masm.addqAndJcc(len, 16, ConditionFlag.NotZero, labelCompareWideVectors, false);
+                masm.jccb(ConditionFlag.NotZero, labelBreakLoop);
+                masm.addqAndJcc(len, 16, ConditionFlag.NotZero, labelCompareWideVectors, true);
 
-                masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
+                masm.testlAndJcc(result, 0x0000000f, ConditionFlag.Zero, labelDone, false);
 
-                masm.movdqu(vec1, new AMD64Address(ary1, result, Stride.S1, -16));
-                masm.ptest(vec1, vec2);
-                masm.jccb(ConditionFlag.NotZero, labelTrue);
-                masm.jmp(labelFalse);
-
-                masm.bind(labelCompareTail); // len is zero
+                // Quick test using the already prepared vector mask
                 masm.movl(len, result);
+                masm.andl(len, 0x0000000f); // tail count (in bytes)
+                masm.movdqu(vec1, new AMD64Address(ary1, len, Stride.S1, -16));
+                masm.ptest(vec1, vec2);
+                masm.jcc(ConditionFlag.Zero, labelDone);
+                masm.jmpb(labelTailStart);
+
+                masm.bind(labelBreakLoop); // len is zero
+                // At least one byte in the last 16-byte vector is negative.
+                // Set up and look at the last 16 bytes as if they were a tail
+                masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
+                masm.addq(result, len);
+                // Ignore the very last byte: if all others are positive,
+                // it must be negative, so we can skip right to the 2+1 byte
+                // end comparison at this point
+                masm.orl(result, 15);
+                masm.movl(len, 15);
                 // Fallthru to tail compare
             }
         }
+
+        masm.bind(labelTailStart);
         // Compare 4-byte vectors
         // vector count (in bytes)
         masm.andlAndJcc(len, 0xfffffffc, ConditionFlag.Zero, labelCompareChar, true);
@@ -245,29 +291,41 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
 
         masm.bind(labelCompareVectors);
         masm.movl(tmp1, new AMD64Address(ary1, len, Stride.S1));
-        masm.andlAndJcc(tmp1, 0x80808080, ConditionFlag.NotZero, labelTrue, true);
-        masm.addqAndJcc(len, 4, ConditionFlag.NotZero, labelCompareVectors, false);
+        masm.andlAndJcc(tmp1, 0x80808080, ConditionFlag.NotZero, labelTailAdjust, true);
+        masm.addqAndJcc(len, 4, ConditionFlag.NotZero, labelCompareVectors, true);
 
-        // Compare trailing char (final 2 bytes), if any
+        // Compare trailing char (final 2-3 bytes), if any
         masm.bind(labelCompareChar);
+
         masm.testlAndJcc(result, 0x2, ConditionFlag.Zero, labelCompareByte, true); // tail char
         masm.movzwl(tmp1, new AMD64Address(ary1, 0));
-        masm.andlAndJcc(tmp1, 0x00008080, ConditionFlag.NotZero, labelTrue, true);
-        masm.subq(result, 2);
+        masm.andlAndJcc(tmp1, 0x00008080, ConditionFlag.NotZero, labelCharAdjust, true);
         masm.leaq(ary1, new AMD64Address(ary1, 2));
 
         masm.bind(labelCompareByte);
-        masm.testlAndJcc(result, 0x1, ConditionFlag.Zero, labelFalse, true); // tail byte
+        masm.testlAndJcc(result, 0x1, ConditionFlag.Zero, labelDone, true); // tail byte
         masm.movzbl(tmp1, new AMD64Address(ary1, 0));
-        masm.andlAndJcc(tmp1, 0x00000080, ConditionFlag.NotEqual, labelTrue, true);
-        masm.jmpb(labelFalse);
-
-        masm.bind(labelTrue);
-        masm.movl(result, 1); // return true
+        masm.testlAndJcc(tmp1, 0x00000080, ConditionFlag.Zero, labelDone, true);
+        masm.subq(result, 1);
         masm.jmpb(labelDone);
 
-        masm.bind(labelFalse);
-        masm.xorl(result, result); // return false
+        masm.bind(labelTailAdjust);
+
+        // there are negative bits in the last 4 byte block.
+        // Adjust result and check the next three bytes
+        masm.addq(result, len);
+        masm.orl(result, 3);
+        masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
+        masm.jmpb(labelCompareChar);
+
+        masm.bind(labelCharAdjust);
+        // We are looking at a char + optional byte tail, and found that one
+        // of the bytes in the char is negative. Adjust the result, check the
+        // first byte and readjust if needed.
+        masm.andl(result, 0xfffffffc);
+        // little-endian, so lowest byte comes first
+        masm.testlAndJcc(tmp1, 0x00000080, ConditionFlag.NotZero, labelDone, true);
+        masm.addq(result, 1);
 
         // That's it
         masm.bind(labelDone);
