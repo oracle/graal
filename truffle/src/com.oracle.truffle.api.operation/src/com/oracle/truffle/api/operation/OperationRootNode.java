@@ -54,6 +54,13 @@ import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Base interface to be implemented by the root node of an Operations interpreter. Such a root node
+ * should extend {@link com.oracle.truffle.api.nodes.RootNode} and be annotated with
+ * {@link GenerateOperations @GenerateOperations}.
+ *
+ * @see GenerateOperations
+ */
 public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospection.Provider {
 
     /**
@@ -98,6 +105,10 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
      * a guest-language equivalent exception that the guest code understands.
      *
      * <p>
+     * If the return value is an {@link AbstractTruffleException}, it will be forwarded to the guest
+     * code for handling. The exception will also be intercepted by
+     * {@link #interceptTruffleException}.
+     *
      * If the return value is not an {@link AbstractTruffleException}, it will be rethrown. Thus, if
      * an internal error cannot be converted to a guest exception, it can simply be returned.
      *
