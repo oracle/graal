@@ -63,9 +63,9 @@ final class PreopenedDirectoryFd extends DirectoryFd {
 
     private final String virtualPath;
 
-    PreopenedDirectoryFd(FdManager fdManager, TruffleFile hostFile, TruffleFile virtualFile) {
+    PreopenedDirectoryFd(FdManager fdManager, TruffleFile hostFile, TruffleFile virtualFile, String virtualPath) {
         super(fdManager, virtualFile, new PreopenedDirectory(hostFile, virtualFile), FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
-        virtualPath = virtualFile.getPath();
+        this.virtualPath = virtualPath;
     }
 
     @Override
