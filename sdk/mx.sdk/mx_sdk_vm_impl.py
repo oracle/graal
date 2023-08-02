@@ -2823,19 +2823,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     else:
                         dependency = GraalVmLibrary.project_name(library_config)
                         layout.setdefault(library_dest, []).append({
-                            'source_type': 'dependency',
+                            'source_type': 'skip' if _skip_libraries(library_config) else 'dependency',
                             'dependency': dependency,
                             'exclude': [],
                             'path': None,
                         })
-                        # additional JDK libraries need to be in the library's directory
-                        layout.setdefault(dirname(library_dest) + '/', []).append({
-                            'source_type': 'dependency',
-                            'dependency': dependency,
-                            'exclude': [],
-                            'path': 'jdk_libraries/*',
-                            'optional': True,
-                        })
+                        if not _skip_libraries(library_config):
+                            # additional JDK libraries need to be in the library's directory
+                            layout.setdefault(dirname(library_dest) + '/', []).append({
+                                'source_type': 'dependency',
+                                'dependency': dependency,
+                                'exclude': [],
+                                'path': 'jdk_libraries/*',
+                                'optional': True,
+                            })
                     if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
                         for executable in library_config.launchers:
                             layout.setdefault(path_prefix + executable, []).append({
