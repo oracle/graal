@@ -58,9 +58,9 @@ public final class WasiModule extends BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
         if (context.getContextOptions().supportMemory64()) {
-            importMemory(instance, "main", "memory", 0, MAX_MEMORY_64_DECLARATION_SIZE, true);
+            importMemory(instance, "main", "memory", 0, MAX_MEMORY_64_DECLARATION_SIZE, true, false);
         } else {
-            importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE, false);
+            importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE, false, false);
         }
         defineFunction(instance, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, instance));
         defineFunction(instance, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, instance));

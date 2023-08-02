@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -186,5 +186,286 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     @Override
     public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         UNSAFE.putDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getByteVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        UNSAFE.putByteVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getShortVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        UNSAFE.putShortVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getIntVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        UNSAFE.putIntVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getLongVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
+    public void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        UNSAFE.putLongVolatile(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public byte getAndAddByte(byte[] buffer, long byteOffset, byte delta) throws IndexOutOfBoundsException {
+        byte v;
+        do {
+            v = getByteVolatile(buffer, byteOffset);
+        } while (compareAndExchangeByte(buffer, byteOffset, v, (byte) (v + delta)) != v);
+        return v;
+    }
+
+    @Override
+    public short getAndAddShort(byte[] buffer, long byteOffset, short delta) throws IndexOutOfBoundsException {
+        short v;
+        do {
+            v = getShortVolatile(buffer, byteOffset);
+        } while (compareAndExchangeShort(buffer, byteOffset, v, (short) (v + delta)) != v);
+        return v;
+    }
+
+    @Override
+    public int getAndAddInt(byte[] buffer, long byteOffset, int delta) throws IndexOutOfBoundsException {
+        return UNSAFE.getAndAddInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, delta);
+    }
+
+    @Override
+    public long getAndAddLong(byte[] buffer, long byteOffset, long delta) throws IndexOutOfBoundsException {
+        return UNSAFE.getAndAddLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, delta);
+    }
+
+    @Override
+    public byte getAndBitwiseAndByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        byte v;
+        do {
+            v = getByteVolatile(buffer, byteOffset);
+        } while (compareAndExchangeByte(buffer, byteOffset, v, (byte) (v & mask)) != v);
+        return v;
+    }
+
+    @Override
+    public short getAndBitwiseAndShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        short v;
+        do {
+            v = getShortVolatile(buffer, byteOffset);
+        } while (compareAndExchangeShort(buffer, byteOffset, v, (short) (v & mask)) != v);
+        return v;
+    }
+
+    @Override
+    public int getAndBitwiseAndInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        int v;
+        do {
+            v = getIntVolatile(buffer, byteOffset);
+        } while (compareAndExchangeInt(buffer, byteOffset, v, v & mask) != v);
+        return v;
+    }
+
+    @Override
+    public long getAndBitwiseAndLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        long v;
+        do {
+            v = getLongVolatile(buffer, byteOffset);
+        } while (compareAndExchangeLong(buffer, byteOffset, v, v & mask) != v);
+        return v;
+    }
+
+    @Override
+    public byte getAndBitwiseOrByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        byte v;
+        do {
+            v = getByteVolatile(buffer, byteOffset);
+        } while (compareAndExchangeByte(buffer, byteOffset, v, (byte) (v | mask)) != v);
+        return v;
+    }
+
+    @Override
+    public short getAndBitwiseOrShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        short v;
+        do {
+            v = getShortVolatile(buffer, byteOffset);
+        } while (compareAndExchangeShort(buffer, byteOffset, v, (short) (v | mask)) != v);
+        return v;
+    }
+
+    @Override
+    public int getAndBitwiseOrInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        int v;
+        do {
+            v = getIntVolatile(buffer, byteOffset);
+        } while (compareAndExchangeInt(buffer, byteOffset, v, v | mask) != v);
+        return v;
+    }
+
+    @Override
+    public long getAndBitwiseOrLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        long v;
+        do {
+            v = getLongVolatile(buffer, byteOffset);
+        } while (compareAndExchangeLong(buffer, byteOffset, v, v | mask) != v);
+        return v;
+    }
+
+    @Override
+    public byte getAndBitwiseXorByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException {
+        byte v;
+        do {
+            v = getByteVolatile(buffer, byteOffset);
+        } while (compareAndExchangeByte(buffer, byteOffset, v, (byte) (v ^ mask)) != v);
+        return v;
+    }
+
+    @Override
+    public short getAndBitwiseXorShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException {
+        short v;
+        do {
+            v = getShortVolatile(buffer, byteOffset);
+        } while (compareAndExchangeShort(buffer, byteOffset, v, (short) (v ^ mask)) != v);
+        return v;
+    }
+
+    @Override
+    public int getAndBitwiseXorInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException {
+        int v;
+        do {
+            v = getIntVolatile(buffer, byteOffset);
+        } while (compareAndExchangeInt(buffer, byteOffset, v, v ^ mask) != v);
+        return v;
+    }
+
+    @Override
+    public long getAndBitwiseXorLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException {
+        long v;
+        do {
+            v = getLongVolatile(buffer, byteOffset);
+        } while (compareAndExchangeLong(buffer, byteOffset, v, v ^ mask) != v);
+        return v;
+    }
+
+    @Override
+    public byte getAndSetByte(byte[] buffer, long byteOffset, byte newValue) throws IndexOutOfBoundsException {
+        byte v;
+        do {
+            v = getByteVolatile(buffer, byteOffset);
+        } while (compareAndExchangeByte(buffer, byteOffset, v, newValue) != v);
+        return v;
+    }
+
+    @Override
+    public short getAndSetShort(byte[] buffer, long byteOffset, short newValue) throws IndexOutOfBoundsException {
+        short v;
+        do {
+            v = getShortVolatile(buffer, byteOffset);
+        } while (compareAndExchangeShort(buffer, byteOffset, v, newValue) != v);
+        return v;
+    }
+
+    @Override
+    public int getAndSetInt(byte[] buffer, long byteOffset, int newValue) throws IndexOutOfBoundsException {
+        return UNSAFE.getAndSetInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, newValue);
+    }
+
+    @Override
+    public long getAndSetLong(byte[] buffer, long byteOffset, long newValue) throws IndexOutOfBoundsException {
+        return UNSAFE.getAndSetLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, newValue);
+    }
+
+    @Override
+    public byte compareAndExchangeByte(byte[] buffer, long byteOffset, byte expected, byte x) {
+        long wordOffset = byteOffset & ~3;
+        int shift = (int) (byteOffset & 3) << 3;
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            shift = 24 - shift;
+        }
+        int mask = 0xFF << shift;
+        int maskedExpected = (expected & 0xFF) << shift;
+        int maskedX = (x & 0xFF) << shift;
+        int fullWord;
+        do {
+            fullWord = getIntVolatile(buffer, wordOffset);
+            if ((fullWord & mask) != maskedExpected) {
+                return (byte) ((fullWord & mask) >> shift);
+            }
+        } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
+                        fullWord, (fullWord & ~mask) | maskedX));
+        return expected;
+    }
+
+    @Override
+    public short compareAndExchangeShort(byte[] buffer, long byteOffset, short expected, short x) {
+        if ((byteOffset & 3) == 3) {
+            throw new IllegalArgumentException("Update spans the word, not supported");
+        }
+        long wordOffset = byteOffset & ~3;
+        int shift = (int) (byteOffset & 3) << 3;
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            shift = 16 - shift;
+        }
+        int mask = 0xFFFF << shift;
+        int maskedExpected = (expected & 0xFFFF) << shift;
+        int maskedX = (x & 0xFFFF) << shift;
+        int fullWord;
+        do {
+            fullWord = getIntVolatile(buffer, wordOffset);
+            if ((fullWord & mask) != maskedExpected) {
+                return (short) ((fullWord & mask) >> shift);
+            }
+        } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset,
+                        fullWord, (fullWord & ~mask) | maskedX));
+        return expected;
+    }
+
+    @Override
+    public int compareAndExchangeInt(byte[] buffer, long byteOffset, int expected, int x) throws IndexOutOfBoundsException {
+        if ((byteOffset & 3) != 0) {
+            throw new IllegalArgumentException("Update spans the word, not supported");
+        }
+        long wordOffset = byteOffset & ~3;
+        int fullWord;
+        do {
+            fullWord = getIntVolatile(buffer, wordOffset);
+            if (fullWord != expected) {
+                return fullWord;
+            }
+        } while (!UNSAFE.compareAndSwapInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset, fullWord, x));
+        return expected;
+    }
+
+    @Override
+    public long compareAndExchangeLong(byte[] buffer, long byteOffset, long expected, long x) throws IndexOutOfBoundsException {
+        if ((byteOffset & 7) != 0) {
+            throw new IllegalArgumentException("Update spans the word, not supported");
+        }
+        long wordOffset = byteOffset & ~7;
+        long fullWord;
+        do {
+            fullWord = getLongVolatile(buffer, wordOffset);
+            if (fullWord != expected) {
+                return fullWord;
+            }
+        } while (!UNSAFE.compareAndSwapLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset, fullWord, x));
+        return expected;
     }
 }

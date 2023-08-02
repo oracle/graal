@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
@@ -49,8 +51,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.core.thread.PlatformThreads;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -226,7 +226,7 @@ public class JfrThreadLocal implements ThreadListener {
      * This method excludes/includes a thread from JFR (emitting events and sampling). At the
      * moment, only the current thread may be excluded/included. See GR-44616.
      */
-    public void setExcluded(Thread thread, boolean excluded) {
+    public static void setExcluded(Thread thread, boolean excluded) {
         if (thread == null || !thread.equals(Thread.currentThread())) {
             return;
         }
@@ -248,7 +248,7 @@ public class JfrThreadLocal implements ThreadListener {
      * for the case where {@link Thread#currentThread()} returns null.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
+    public static boolean isCurrentThreadExcluded() {
         if (Thread.currentThread() == null) {
             return true;
         }
@@ -256,8 +256,19 @@ public class JfrThreadLocal implements ThreadListener {
         return tjlt.jfrExcluded;
     }
 
-    public Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        return javaEventWriter.get();
+    public static Target_jdk_jfr_internal_EventWriter getEventWriter() {
+        Target_jdk_jfr_internal_EventWriter eventWriter = javaEventWriter.get();
+        /*
+         * EventWriter objects cache various thread-specific values. Virtual threads use the
+         * EventWriter object of their carrier thread, so we need to update all cached values so
+         * that they match the virtual thread.
+         */
+        if (eventWriter != null && eventWriter.threadID != SubstrateJVM.getCurrentThreadId()) {
+            eventWriter.threadID = SubstrateJVM.getCurrentThreadId();
+            Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+            eventWriter.excluded = tjlt.jfrExcluded;
+        }
+        return eventWriter;
     }
 
     /**

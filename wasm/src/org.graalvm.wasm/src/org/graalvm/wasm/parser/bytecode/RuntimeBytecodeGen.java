@@ -253,6 +253,32 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
+     * Adds an atomic memory access instruction to the bytecode.
+     *
+     * @param opcode The atomic memory opcode
+     * @param offset The offset value
+     * @param indexType64 If the accessed memory has index type 64.
+     */
+    public void addAtomicMemoryInstruction(int opcode, int memoryIndex, long offset, boolean indexType64) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        if (!indexType64) {
+            assert fitsIntoUnsignedInt(offset) : "offset does not fit into int";
+            add1(opcode);
+            add1(0);
+            add4(memoryIndex);
+            add4(offset);
+        } else {
+            add1(opcode);
+            final int location = location();
+            add1(0);
+            add4(memoryIndex);
+            add8(offset);
+            final int flags = BytecodeBitEncoding.MEMORY_64_FLAG;
+            set(location, (byte) flags);
+        }
+    }
+
+    /**
      * Adds a branch label to the bytecode.
      *
      * @param resultCount The number of results of the block.

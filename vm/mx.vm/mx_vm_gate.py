@@ -24,6 +24,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import json
 import shutil
 
 import mx
@@ -448,6 +449,12 @@ def gate_body(args, tasks):
         if t:
             mx_sdk_vm.verify_graalvm_configs(suites=['vm', 'vm-enterprise'])
 
+    with Task('Vm: ce-release-artifacts.json', tasks, tags=['style']) as t:
+        if t:
+            with open(join(_suite.dir, 'ce-release-artifacts.json'), 'r') as f:
+                # check that this file can be read as json
+                json.load(f)
+
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
             # 1. the build must be a GraalVM
@@ -691,7 +698,6 @@ def gate_svm_truffle_tck_python(tasks):
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-        import json
         import mx_compiler
         build_options = ['-H:+GenerateBuildArtifactsFile'] + options
         if shared_lib:

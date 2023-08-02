@@ -163,8 +163,8 @@ suite = {
             "digest" : "sha512:3c15573d19cb84aab1aea9ac5e1052b24002d9d46109b496cdd2f3d605177c1592e7fed5a7ba0ee7de1c4aed91e0fdc50c53d5018d364c61f5792d7e8f00bb2c",
           },
           "riscv64": {
-            "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
-            "digest" : "sha512:7f9b0645be46810b8b6fe41f74151357cbe4f4a3748a8fec5c290a9c686478c54022c28410eee96e35cc104073054fbe057a1683afde8678e2f5a2bf69ce461f",
+            "urls" : ["{host}/llvm-llvmorg-16.0.1-4-gad8c248269-bge4d99266a2-linux-riscv64.tar.gz"],
+            "digest" : "sha512:9186a20d4b657f8a4c86c6730d713c6f8f223a8e9ecceb88d8b5cd3c072e8e0159b810663e57076c0ddcdcd57a819b35b42b543e6633f012175b5f78a6d8de92",
           },
         },
         "darwin" : {

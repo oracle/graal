@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,9 @@ package com.oracle.truffle.api.memory;
  *
  * <h2>Thread safety</h2>
  * <p>
- * The methods of this class are <em>not</em> safe for use by multiple concurrent threads. If a byte
- * array is to be used by more than one thread then access to the byte array should be controlled by
- * appropriate synchronization.
+ * The methods of this class are <em>not</em> safe for use by multiple concurrent threads, unless
+ * otherwise stated. If a byte array is to be used by more than one thread then access to the byte
+ * array should be controlled by appropriate synchronization.
  *
  * <h2>Alignment</h2>
  * <p>
@@ -428,4 +428,400 @@ public abstract class ByteArraySupport {
      * @since 22.2
      */
     public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #getByte(byte[], long)}.
+     *
+     * @since 23.1
+     */
+    public abstract byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #putByte(byte[], long, byte)}.
+     *
+     * @since 23.1
+     */
+    public abstract void putByteVolatile(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #getShort(byte[], long)}.
+     *
+     * @since 23.1
+     */
+    public abstract short getShortVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #putShort(byte[], long, short)}.
+     *
+     * @since 23.1
+     */
+    public abstract void putShortVolatile(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #getInt(byte[], long)}.
+     *
+     * @since 23.1
+     */
+    public abstract int getIntVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #putInt(byte[], long, int)}.
+     *
+     * @since 23.1
+     */
+    public abstract void putIntVolatile(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #getLong(byte[], long)}.
+     *
+     * @since 23.1
+     */
+    public abstract long getLongVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Volatile version of {@link #putLong(byte[], long, long)}.
+     *
+     * @since 23.1
+     */
+    public abstract void putLongVolatile(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically adds the given byte to the current byte at the given byte offset from the start of
+     * the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param delta the byte value to add
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte getAndAddByte(byte[] buffer, long byteOffset, byte delta) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically adds the given short to the current short at the given byte offset from the start
+     * of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param delta the short value to add
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short getAndAddShort(byte[] buffer, long byteOffset, short delta) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically adds the given int to the current int at the given byte offset from the start of
+     * the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param delta the int value to add
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int getAndAddInt(byte[] buffer, long byteOffset, int delta) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically adds the given long to the current long at the given byte offset from the start of
+     * the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param delta the long value to add
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long getAndAddLong(byte[] buffer, long byteOffset, long delta) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ANDs the given byte to the current byte at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param mask the byte value to bitwise-AND
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte getAndBitwiseAndByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ANDs the given short to the current short at the given byte offset from
+     * the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param mask the short value to bitwise-AND
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short getAndBitwiseAndShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ANDs the given int to the current int at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param mask the int value to bitwise-AND
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int getAndBitwiseAndInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ANDs the given long to the current long at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param mask the long value to bitwise-AND
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long getAndBitwiseAndLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ORs the given byte to the current byte at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param mask the byte value to bitwise-OR
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte getAndBitwiseOrByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ORs the given short to the current short at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param mask the short value to bitwise-OR
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short getAndBitwiseOrShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ORs the given int to the current int at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param mask the int value to bitwise-OR
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int getAndBitwiseOrInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-ORs the given long to the current long at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param mask the long value to bitwise-OR
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long getAndBitwiseOrLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-XORs the given byte to the current byte at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param mask the byte value to bitwise-XOR
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte getAndBitwiseXorByte(byte[] buffer, long byteOffset, byte mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-XORs the given short to the current short at the given byte offset from
+     * the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param mask the short value to bitwise-XOR
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short getAndBitwiseXorShort(byte[] buffer, long byteOffset, short mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-XORs the given int to the current int at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param mask the int value to bitwise-XOR
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int getAndBitwiseXorInt(byte[] buffer, long byteOffset, int mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically bitwise-XORs the given long to the current long at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param mask the long value to bitwise-XOR
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long getAndBitwiseXorLong(byte[] buffer, long byteOffset, long mask) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given byte with the current byte at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param newValue the new byte value
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte getAndSetByte(byte[] buffer, long byteOffset, byte newValue) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given short with the current short at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param newValue the new short value
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short getAndSetShort(byte[] buffer, long byteOffset, short newValue) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given int with the current int at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param newValue the new int value
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int getAndSetInt(byte[] buffer, long byteOffset, int newValue) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given long with the current long at the given byte offset from the
+     * start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param newValue the new long value
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long getAndSetLong(byte[] buffer, long byteOffset, long newValue) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given byte with the current byte at the given byte offset from the
+     * start of the buffer, if and only if the current byte equals the expected byte.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read and written to
+     * @param expected the expected byte value
+     * @param x the replacement byte value
+     * @return the previous byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 23.1
+     */
+    public abstract byte compareAndExchangeByte(byte[] buffer, long byteOffset, byte expected, byte x) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given short with the current short at the given byte offset from the
+     * start of the buffer, if and only if the current short equals the expected short.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the short will be read and written to
+     * @param expected the expected short value
+     * @param x the replacement short value
+     * @return the previous short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 23.1
+     */
+    public abstract short compareAndExchangeShort(byte[] buffer, long byteOffset, short expected, short x) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given int with the current int at the given byte offset from the
+     * start of the buffer, if and only if the current int equals the expected int.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the int will be read and written to
+     * @param expected the expected int value
+     * @param x the replacement int value
+     * @return the previous int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 23.1
+     */
+    public abstract int compareAndExchangeInt(byte[] buffer, long byteOffset, int expected, int x) throws IndexOutOfBoundsException;
+
+    /**
+     * Atomically exchanges the given long with the current long at the given byte offset from the
+     * start of the buffer, if and only if the current long equals the expected long.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the long will be read and written to
+     * @param expected the expected long value
+     * @param x the replacement long value
+     * @return the previous long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 23.1
+     */
+    public abstract long compareAndExchangeLong(byte[] buffer, long byteOffset, long expected, long x) throws IndexOutOfBoundsException;
 }

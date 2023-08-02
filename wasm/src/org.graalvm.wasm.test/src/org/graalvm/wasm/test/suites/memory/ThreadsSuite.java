@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
+package org.graalvm.wasm.test.suites.memory;
 
-import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
-/**
- * Checks whether a given term contains capture groups. To be used instead of
- * {@link RegexASTNode#hasCaptureGroups()} before {@link CalcASTPropsVisitor} was run.
- */
-public class HasCaptureGroupsVisitor extends DepthFirstTraversalRegexASTVisitor {
+import java.io.IOException;
 
-    private boolean result;
-
-    public boolean hasCaptureGroups(RegexASTNode node) {
-        result = false;
-        run(node);
-        return result;
+public class ThreadsSuite extends WasmFileSuite {
+    @Override
+    protected String testResource() {
+        return "threads";
     }
 
     @Override
-    protected void visit(Group group) {
-        if (group.isCapturing()) {
-            result = true;
-            done();
-        }
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

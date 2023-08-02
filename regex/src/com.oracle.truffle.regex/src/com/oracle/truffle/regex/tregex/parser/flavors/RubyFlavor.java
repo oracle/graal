@@ -225,11 +225,11 @@ public final class RubyFlavor extends RegexFlavor {
 
     private RubyFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK |
-                        HAS_CONDITIONAL_BACKREFERENCES | HAS_SUBEXPRESSION_CALLS);
+                        HAS_CONDITIONAL_BACKREFERENCES);
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
         return RubyRegexParser.createValidator(source);
     }
 

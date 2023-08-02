@@ -29,18 +29,15 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/aarch64.ad",
-          lineStart = 14131,
-          lineEnd   = 14155,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "5e7655c00a9d610fa3c992305c0f6aeba32b2d6c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/83d92672d4c2637fc37ddd873533c85a9b083904/src/hotspot/cpu/aarch64/aarch64.ad#L14131-L14155",
+          sha1 = "5e7655c00a9d610fa3c992305c0f6aeba32b2d6c")
 // @formatter:on
 public class AArch64BitSwapOp extends AArch64LIRInstruction {
 

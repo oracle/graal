@@ -50,10 +50,12 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOError;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -246,7 +248,28 @@ final class InternalResourceCache {
             Path userHome = Paths.get(userHomeValue);
             Path container = switch (InternalResource.OS.getCurrent()) {
                 case DARWIN -> userHome.resolve(Path.of("Library", "Caches"));
-                case LINUX -> userHome.resolve(".cache");
+                case LINUX -> {
+                    Path userCacheDir = null;
+                    String xdgCacheValue = System.getenv("XDG_CACHE_HOME");
+                    if (xdgCacheValue != null) {
+                        try {
+                            Path xdgCacheDir = Path.of(xdgCacheValue);
+                            // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
+                            // $HOME/.cache.
+                            if (xdgCacheDir.isAbsolute()) {
+                                userCacheDir = xdgCacheDir;
+                            } else {
+                                emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not an absolute path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
+                            }
+                        } catch (InvalidPathException notPath) {
+                            emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not a valid path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
+                        }
+                    }
+                    if (userCacheDir == null) {
+                        userCacheDir = userHome.resolve(".cache");
+                    }
+                    yield userCacheDir;
+                }
                 case WINDOWS -> userHome.resolve(Path.of("AppData", "Local"));
             };
             Path cache = container.resolve("org.graalvm.polyglot");
@@ -255,6 +278,11 @@ final class InternalResourceCache {
             cacheRoot = res;
         }
         return res.getLeft();
+    }
+
+    private static void emitWarning(String message, Object... args) {
+        PrintStream out = System.err;
+        out.printf(message + "%n", args);
     }
 
     private static Path findCacheRootOnNativeImage() {

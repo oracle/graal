@@ -30,7 +30,7 @@ local devkits = graal_common.devkits;
 
   common_vm_linux: self.common_vm + {
     packages+: {
-      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
     },
   },
 
@@ -586,7 +586,7 @@ local devkits = graal_common.devkits;
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
-    timelimit: '1:45:00',
+    timelimit: '2:00:00',
   },
 
   deploy_graalvm_ruby(os, arch, java_version): {
