@@ -25,7 +25,9 @@
 package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -43,6 +45,7 @@ import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -143,6 +146,25 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
             hostVM.recordFieldStore(field, method);
             super.genStoreField(receiver, field, value);
+        }
+
+        @Override
+        protected FrameStateBuilder createFrameStateForExceptionHandling(int bci) {
+            var dispatchState = super.createFrameStateForExceptionHandling(bci);
+            if (SubstrateOptions.parseOnce()) {
+                /*
+                 * It is beneficial to eagerly clear all non-live locals on the exception object
+                 * before entering the dispatch target. This helps us prune unneeded values from the
+                 * graph, which can positively impact our analysis. Since deoptimization is not
+                 * possible, then there is no risk in clearing the unneeded locals.
+                 */
+                AnalysisMethod aMethod = (AnalysisMethod) method;
+                if (aMethod.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(aMethod)) {
+                    BciBlockMapping.BciBlock dispatchBlock = getDispatchBlock(bci);
+                    clearNonLiveLocals(dispatchState, dispatchBlock, true);
+                }
+            }
+            return dispatchState;
         }
     }
 }

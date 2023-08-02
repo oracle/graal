@@ -729,6 +729,9 @@ public final class FrameStateBuilder implements SideEffectsState {
         return false;
     }
 
+    /**
+     * @param liveIn true if live in, false if live out
+     */
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
         /*
          * Non-live local clearing is mandatory for the entry block of an OSR compilation so that
