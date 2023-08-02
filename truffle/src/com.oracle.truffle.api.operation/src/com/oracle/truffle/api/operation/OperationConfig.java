@@ -40,10 +40,23 @@
  */
 package com.oracle.truffle.api.operation;
 
+/**
+ * The configuration to use while generating bytecode. To reduce interpreter footprint, source
+ * sections and instrumentation information can be lazily re-parsed when it is needed.
+ */
 public final class OperationConfig {
 
+    /**
+     * Retain no sources or instrumentation information.
+     */
     public static final OperationConfig DEFAULT = new OperationConfig(false, false);
+    /**
+     * Retain source information.
+     */
     public static final OperationConfig WITH_SOURCE = new OperationConfig(true, false);
+    /**
+     * Retain source and instrumentation information.
+     */
     public static final OperationConfig COMPLETE = new OperationConfig(true, true);
 
     private final boolean withSource;
@@ -66,6 +79,9 @@ public final class OperationConfig {
         return withInstrumentation;
     }
 
+    /**
+     * Builder to generate a {@link OperationConfig} programmatically.
+     */
     public static class Builder {
         private boolean withSource;
         private boolean withInstrumentation;

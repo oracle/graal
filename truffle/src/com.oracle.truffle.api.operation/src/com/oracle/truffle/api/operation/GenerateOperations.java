@@ -46,39 +46,107 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.RootNode;
 
+/**
+ * Generates a bytecode interpreter using the Operation DSL. The Operation DSL automatically
+ * produces an optimizing bytecode interpreter from a set of Node-like "operations". The following
+ * is an example of an operation interpreter with a single {@code Add} operation.
+ *
+ * <pre>
+ * &#64;GenerateOperations(languageClass = MyLanguage.class)
+ * public abstract class MyOperationRootNode extends RootNode implements OperationRootNode {
+ *     &#64;Operation
+ *     public static final class Add {
+ *         &#64;Specialization
+ *         public static int doInts(int lhs, int rhs) {
+ *             return lhs + rhs;
+ *         }
+ *
+ *         &#64;Specialization
+ *         &#64;TruffleBoundary
+ *         public static String doStrings(String lhs, String rhs) {
+ *             return lhs + rhs;
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * The DSL generates a node suffixed with {@code Gen} (e.g., {@code MyOperationRootNodeGen} that
+ * contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
+ * {@code Builder} class to generate and validate bytecode automatically.
+ *
+ * A node can opt in to additional features, like a baseline interpreter, serialization and
+ * deserialization, coroutines, and support for quickened instructions and superinstructions. This
+ * annotation controls which features are included in the generated code.
+ *
+ * For information about using the Operation DSL, please consult the
+ * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/OperationDSL.md">tutorial</a>
+ * and the <a href=
+ * "https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/operation/package-summary.html">Javadoc</a>.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateOperations {
-    // The TruffleLanguage for this node.
+    /**
+     * The {@link TruffleLanguage} class associated with this node.
+     */
     Class<? extends TruffleLanguage<?>> languageClass();
 
-    // Whether to generate a yield operation to support coroutines.
-    boolean enableYield() default false;
-
-    // Whether to generate serialization/deserialization logic.
-    boolean enableSerialization() default false;
-
-    // Whether to generate a baseline interpreter that does not use specialization.
-    // The node will transition to a specializing interpreter when it is hot enough.
+    /**
+     * Whether to generate a baseline interpreter. The baseline interpreter improves start-up
+     * performance by executing {@link com.oracle.truffle.api.dsl.GenerateUncached uncached} nodes
+     * rather than specializing nodes.
+     *
+     * The node will transition to a specializing interpreter after enough invocations/back-edges
+     * (as determined by the {@link OperationRootNode#setBaselineInterpreterThreshold baseline
+     * interpreter threshold}).
+     */
     boolean enableBaselineInterpreter() default false;
 
-    // Path to a file containing optimization decisions. This file is generated using tracing on a
-    // representative corpus of code.
+    /**
+     * Whether the generated interpreter should support serialization and deserialization.
+     */
+    boolean enableSerialization() default false;
+
+    /**
+     * Whether to use Unsafe array accesses. Unsafe accesses are faster, but they do not perform
+     * array bounds checks.
+     */
+    boolean allowUnsafe() default false;
+
+    /**
+     * Whether the generated interpreter should support coroutines via a {@code yield} operation.
+     */
+    boolean enableYield() default false;
+
+    /**
+     * Path to a file containing optimization decisions. This file is generated using tracing on a
+     * representative corpus of code.
+     */
     String decisionsFile() default "";
 
-    // Path to files with manually-provided optimization decisions.
+    /**
+     * Path to files with manually-provided optimization decisions. These files can be used to
+     * encode optimizations that are not generated automatically via tracing.
+     */
     String[] decisionOverrideFiles() default {};
 
-    // Whether to build the interpreter with tracing. Can also be set with the
-    // truffle.dsl.OperationsEnableTracing option.
+    /**
+     * Whether to build the interpreter with tracing. Can also be configured using the
+     * {@code truffle.dsl.OperationsEnableTracing} option during compilation.
+     *
+     * Note that this is a debug option that should not be used in production. Also note that this
+     * field only affects code generation: whether tracing is actually performed at run time is
+     * still controlled by the aforementioned option.
+     */
     boolean forceTracing() default false;
 
-    // Types the interpreter should attempt to avoid boxing.
+    /**
+     * Primitive types for which the interpreter should attempt to avoid boxing.
+     */
     Class<?>[] boxingEliminationTypes() default {};
-
-    // Whether to use Unsafe array accesses. Unsafe accesses are optimized, since they do not
-    // perform array bounds checks.
-    boolean allowUnsafe() default false;
 
 }

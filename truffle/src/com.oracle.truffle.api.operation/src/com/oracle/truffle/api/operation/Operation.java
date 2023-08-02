@@ -45,6 +45,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Declares a class to be an operation. The class should be a {@code static final class} nested
+ * inside an {@link OperationRootNode}. An operation class can declare
+ * {@code Specialization specializations} using the same DSL as regular Truffle AST nodes.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface Operation {
