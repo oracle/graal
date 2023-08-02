@@ -43,7 +43,7 @@ package com.oracle.truffle.dsl.processor.operations.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OptimizationDecisionsModel implements InfoDumpable {
+public class OptimizationDecisionsModel implements PrettyPrintable {
 
     public static class QuickenDecision {
         public String id;
@@ -67,9 +67,10 @@ public class OptimizationDecisionsModel implements InfoDumpable {
     public List<SuperInstructionDecision> superInstructionDecisions = new ArrayList<>();
     public List<CommonInstructionDecision> commonInstructionDecisions = new ArrayList<>();
 
-    public void dump(Dumper dumper) {
-        dumper.field("quickens", quickenDecisions);
-        dumper.field("superInstructions", superInstructionDecisions);
-        dumper.field("commonInstructions", commonInstructionDecisions);
+    @Override
+    public void pp(PrettyPrinter printer) {
+        printer.field("quickens", quickenDecisions);
+        printer.field("superInstructions", superInstructionDecisions);
+        printer.field("commonInstructions", commonInstructionDecisions);
     }
 }

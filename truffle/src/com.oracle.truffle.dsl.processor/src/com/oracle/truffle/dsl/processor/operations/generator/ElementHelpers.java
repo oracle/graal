@@ -64,14 +64,6 @@ interface ElementHelpers {
         return ProcessorContext.getInstance().getType(t);
     }
 
-    static DeclaredType declaredType(Class<?> t) {
-        return ProcessorContext.getInstance().getDeclaredType(t);
-    }
-
-    static DeclaredType declaredType(TypeMirror t) {
-        return (DeclaredType) t;
-    }
-
     static TypeElement element(Class<?> t) {
         TypeElement type = ElementUtils.castTypeElement(ProcessorContext.getInstance().getDeclaredType(t));
         if (type == null) {
@@ -82,10 +74,6 @@ interface ElementHelpers {
 
     static ArrayType arrayOf(TypeMirror t) {
         return new CodeTypeMirror.ArrayCodeTypeMirror(t);
-    }
-
-    static ArrayType arrayOf(Class<?> t) {
-        return arrayOf(type(t));
     }
 
     static TypeElement element(TypeMirror t) {
@@ -124,18 +112,6 @@ interface ElementHelpers {
         return new CodeTypeMirror.DeclaredCodeTypeMirror(element(type), List.of(types(genericTypes)));
     }
 
-    static CodeTree tree(Class<?> type, String s) {
-        return new CodeTreeBuilder(null).type(type(type)).string(s).build();
-    }
-
-    static CodeTree tree(TypeMirror type, String s) {
-        return new CodeTreeBuilder(null).type(type).string(s).build();
-    }
-
-    static CodeTree tree(String s1, String s2) {
-        return CodeTreeBuilder.createBuilder().string(s1).string(s2).build();
-    }
-
     static CodeVariableElement addField(CodeElement<? super Element> e, Set<Modifier> modifiers, TypeMirror type, String name) {
         CodeVariableElement var = new CodeVariableElement(modifiers, type, name);
         e.getEnclosedElements().add(var);
@@ -146,16 +122,13 @@ interface ElementHelpers {
         return addField(e, modifiers, type(type), name);
     }
 
-    static CodeVariableElement addField(CodeElement<? super Element> e, Set<Modifier> modifiers, Class<?> type, String name, CodeTree init) {
+    static CodeVariableElement addField(CodeElement<? super Element> e, Set<Modifier> modifiers, Class<?> type, String name, String initString) {
+        CodeTree init = CodeTreeBuilder.singleString(initString);
         CodeVariableElement var = e.add(new CodeVariableElement(modifiers, ProcessorContext.getInstance().getType(type), name));
         if (init != null) {
             var.createInitBuilder().tree(init);
         }
         return var;
-    }
-
-    static CodeVariableElement addField(CodeElement<? super Element> e, Set<Modifier> modifiers, Class<?> type, String name, String init) {
-        return addField(e, modifiers, type, name, CodeTreeBuilder.singleString(init));
     }
 
 }

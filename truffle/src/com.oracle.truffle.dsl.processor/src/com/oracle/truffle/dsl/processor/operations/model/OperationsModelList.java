@@ -10,8 +10,6 @@ import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 public class OperationsModelList extends Template {
-    // TODO: do we need to forward messages or anything?
-
     private final List<OperationsModel> models;
 
     public OperationsModelList(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, List<OperationsModel> models) {

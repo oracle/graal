@@ -1632,7 +1632,6 @@ public class FlatNodeGenFactory {
         }
 
         reset.getModifiers().remove(ABSTRACT);
-
         builder = reset.createBuilder();
 
         for (BitSet set : multiState.all) {
@@ -2505,7 +2504,6 @@ public class FlatNodeGenFactory {
         ExecutableTypeData executableType = node.findAnyGenericExecutableType(context, -1);
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PRIVATE), getType(boolean.class), createFallbackName());
-
         FrameState frameState = FrameState.load(this, NodeExecutionMode.FALLBACK_GUARD, method);
         if (!frameUsed) {
             frameState.removeValue(FRAME_VALUE);
@@ -3457,7 +3455,6 @@ public class FlatNodeGenFactory {
 
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
-
         CodeTreeBuilder builder = method.createBuilder();
 
         /*
@@ -3485,7 +3482,6 @@ public class FlatNodeGenFactory {
         parentBuilder.startCall(method.getSimpleName().toString());
         multiState.addReferencesTo(frameState, parentBuilder);
         frameState.addReferencesTo(parentBuilder, FRAME_VALUE);
-
         parentBuilder.end();
         parentBuilder.end();
         return parentBuilder.build();
@@ -6069,7 +6065,6 @@ public class FlatNodeGenFactory {
             if (useSpecializationClass) {
                 method.addParameter(new CodeVariableElement(specializationType, specializationLocalName));
             }
-
             CodeTreeBuilder builder = method.createBuilder();
             if (!useSpecializationClass || !specialization.hasMultipleInstances()) {
                 // single instance remove
@@ -6139,7 +6134,6 @@ public class FlatNodeGenFactory {
         if (useSpecializationClass) {
             builder.string(specializationLocalName);
         }
-
         builder.end().end();
         builder.tree(createCallExecuteAndSpecialize(forType, frameState));
         return builder.build();

@@ -145,10 +145,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     private final CodeTypeElement instructionsElement = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Instructions");
     private final CodeTypeElement operationsElement = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Operations");
 
-    // The interpreters store additional instruction data (e.g. branches, inline caches) in an
-    // Object[] indexed by bci.
-    // The following classes represent default data objects that can be stored in the array.
-
     // Interface representing data objects that can have a specified boxing state.
     private final CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
 
@@ -181,7 +177,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     public CodeTypeElement create() {
 
         // Print a summary of the model in a docstring at the start.
-        operationNodeGen.createDocBuilder().startDoc().lines(model.infodump()).end();
+        operationNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
 
         // Define the interpreter implementations.
         if (model.enableBaselineInterpreter) {
@@ -3787,7 +3783,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 }
 
                 b.startDoc();
-                b.lines(instr.infodump());
+                b.lines(instr.pp());
                 b.end();
 
                 b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
@@ -3987,7 +3983,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(); // nested try
             b.end(); // else
 
-            b.statement("ex = $this.interceptTruffleException(ex, bci)");
+            b.statement("ex = $this.interceptTruffleException(ex, frame, bci)");
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();

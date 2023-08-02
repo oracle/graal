@@ -119,7 +119,7 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
      * @return the Truffle exception to be handled by guest code
      */
     @SuppressWarnings("unused")
-    default AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, int bci) {
+    default AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, int bci) {
         return ex;
     }
 

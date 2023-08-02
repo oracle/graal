@@ -106,7 +106,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return callImplictMethodFlat(typeSystem, type, expectImplicitTypeMethodName(typeSystem, type), value, state);
     }
 
-    public static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, String content) {
+    static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, String content) {
         return cast(typeSystem, type, CodeTreeBuilder.singleString(content));
     }
 
@@ -122,7 +122,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    public static CodeTree expect(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
+    static CodeTree expect(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
         if (ElementUtils.isObject(type) || ElementUtils.isVoid(type)) {
             return content;
         }
@@ -161,7 +161,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return new GeneratedTypeMirror(ElementUtils.getPackageName(typeSystem.getTemplateType()), typeName(typeSystem));
     }
 
-    public static CodeTree check(TypeSystemData typeSystem, TypeMirror type, String content) {
+    private static CodeTree check(TypeSystemData typeSystem, TypeMirror type, String content) {
         return check(typeSystem, type, CodeTreeBuilder.singleString(content));
     }
 

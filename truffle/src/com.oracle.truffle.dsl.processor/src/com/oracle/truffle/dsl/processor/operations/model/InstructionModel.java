@@ -50,7 +50,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 
-public class InstructionModel implements InfoDumpable {
+public class InstructionModel implements PrettyPrintable {
     public enum InstructionKind {
         BRANCH,
         BRANCH_BACKWARD,
@@ -193,15 +193,16 @@ public class InstructionModel implements InfoDumpable {
         this.name = name;
     }
 
-    public void dump(Dumper dumper) {
-        dumper.print("Instruction %s", name);
-        dumper.field("kind", kind);
-        dumper.field("encoding", prettyPrintEncoding());
+    @Override
+    public void pp(PrettyPrinter printer) {
+        printer.print("Instruction %s", name);
+        printer.field("kind", kind);
+        printer.field("encoding", prettyPrintEncoding());
         if (nodeType != null) {
-            dumper.field("nodeType", nodeType.getSimpleName());
+            printer.field("nodeType", nodeType.getSimpleName());
         }
         if (signature != null) {
-            dumper.field("signature", signature);
+            printer.field("signature", signature);
         }
     }
 

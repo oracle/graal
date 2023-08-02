@@ -45,20 +45,17 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public interface InfoDumpable {
+public interface PrettyPrintable {
 
-    static List<String> dump(Object obj) {
-        if (obj instanceof InfoDumpable) {
-            Dumper d = new Dumper();
-            ((InfoDumpable) obj).dump(d);
-            return d.lines;
-        } else {
-            return List.of("" + obj);
-        }
+    default List<String> pp() {
+        PrettyPrinter printer = new PrettyPrinter();
+        pp(printer);
+        return printer.lines;
     }
 
-    class Dumper {
+    void pp(PrettyPrinter printer);
 
+    final class PrettyPrinter {
         private String nextIndent = "";
         private String indent = "";
         private final List<String> lines = new ArrayList<>();
@@ -72,31 +69,9 @@ public interface InfoDumpable {
             print(String.format(format, args));
         }
 
-        public void field(String fieldName, Object fieldValue) {
-            if (fieldValue instanceof InfoDumpable) {
-                print("%s:", fieldName);
-                String old = indent;
-                indent += "  ";
-                ((InfoDumpable) fieldValue).dump(this);
-                indent = old;
-            } else if (fieldValue instanceof Collection<?>) {
-                print("%s:", fieldName);
-                for (Object obj : (Collection<?>) fieldValue) {
-                    nextIndent = nextIndent + "  - ";
-                    String old = indent;
-                    indent += "    ";
-                    print(obj);
-                    indent = old;
-                    nextIndent = indent;
-                }
-            } else {
-                print("%s: %s", fieldName, fieldValue);
-            }
-        }
-
         public void print(Object obj) {
-            if (obj instanceof InfoDumpable) {
-                ((InfoDumpable) obj).dump(this);
+            if (obj instanceof PrettyPrintable) {
+                ((PrettyPrintable) obj).pp(this);
             } else if (obj instanceof Collection<?>) {
                 for (Object elem : (Collection<?>) obj) {
                     nextIndent = nextIndent + "  - ";
@@ -109,11 +84,27 @@ public interface InfoDumpable {
                 print(Objects.toString(obj));
             }
         }
-    }
 
-    void dump(Dumper dumper);
-
-    default List<String> infodump() {
-        return dump(this);
+        public void field(String fieldName, Object fieldValue) {
+            if (fieldValue instanceof PrettyPrintable field) {
+                print("%s:", fieldName);
+                String old = indent;
+                indent += "  ";
+                field.pp(this);
+                indent = old;
+            } else if (fieldValue instanceof Collection<?> collection) {
+                print("%s:", fieldName);
+                for (Object obj : collection) {
+                    nextIndent = nextIndent + "  - ";
+                    String old = indent;
+                    indent += "    ";
+                    print(obj);
+                    indent = old;
+                    nextIndent = indent;
+                }
+            } else {
+                print("%s: %s", fieldName, fieldValue);
+            }
+        }
     }
 }

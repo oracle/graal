@@ -225,7 +225,7 @@ abstract class OperationNodeWithHooks extends RootNode implements OperationRootN
     }
 
     @Override
-    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, int bci) {
+    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, int bci) {
         if (ex instanceof MyException myEx) {
             myEx.bci = bci;
         }

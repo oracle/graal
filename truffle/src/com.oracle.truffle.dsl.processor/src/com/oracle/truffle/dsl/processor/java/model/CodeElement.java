@@ -71,7 +71,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     private Element generatorElement;
     private AnnotationMirror generatorAnnotationMirror;
     private CodeTree docTree;
-    private boolean highPriority;
 
     public CodeElement(Set<Modifier> modifiers) {
         this.modifiers = new LinkedHashSet<>(modifiers);
@@ -223,14 +222,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
             s = ElementUtils.printException(t);
         }
         return s;
-    }
-
-    public boolean isHighPriority() {
-        return highPriority;
-    }
-
-    public void setHighPriority(boolean highPriority) {
-        this.highPriority = highPriority;
     }
 
     private static class StringBuilderCodeWriter extends AbstractCodeWriter {
