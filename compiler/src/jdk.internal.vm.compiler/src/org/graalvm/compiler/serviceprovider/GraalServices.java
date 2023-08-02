@@ -63,7 +63,7 @@ public final class GraalServices {
 
     static {
         Method lookupMethodWithCaller = null;
-        Method lookupMethodWithResolve = null;
+        Method lookupConstantWithResolve = null;
 
         try {
             lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
@@ -71,11 +71,11 @@ public final class GraalServices {
         }
 
         try {
-            lookupMethodWithResolve = ConstantPool.class.getDeclaredMethod("lookupConstant", Integer.TYPE, Boolean.TYPE);
+            lookupConstantWithResolve = ConstantPool.class.getDeclaredMethod("lookupConstant", Integer.TYPE, Boolean.TYPE);
         } catch (NoSuchMethodException e) {
         }
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
-        constantPoolLookupConstantWithResolve = lookupMethodWithResolve;
+        constantPoolLookupConstantWithResolve = lookupConstantWithResolve;
     }
 
     private GraalServices() {
