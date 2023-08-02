@@ -96,7 +96,7 @@ public final class FdManager implements Closeable {
                 throw WasmException.create(Failure.INVALID_WASI_DIRECTORIES_MAPPING);
             }
 
-            put(fd, new PreopenedDirectoryFd(this, hostDir, virtualDir));
+            put(fd, new PreopenedDirectoryFd(this, hostDir, virtualDir, virtualDirPath));
             ++fd;
         }
     }
