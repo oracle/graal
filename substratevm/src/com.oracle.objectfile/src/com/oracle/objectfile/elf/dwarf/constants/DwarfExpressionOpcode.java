@@ -27,44 +27,36 @@
 package com.oracle.objectfile.elf.dwarf.constants;
 
 /**
- * Pre-defined value ranges appropriate to a specific attribute or form.
+ * Values used to build DWARF expressions and locations.
  */
-public interface DwarfAttributeValues {
-    /*
-     * Compile unit DIE header has_children attribute values.
-     */
-    byte DW_CHILDREN_no = 0;
-    byte DW_CHILDREN_yes = 1;
-    /*
-     * DW_FORM_flag haas two possible attribute values.
-     */
-    @SuppressWarnings("unused") byte DW_FLAG_false = 0;
-    byte DW_FLAG_true = 1;
-    /*
-     * DW_AT_language attribute with form DATA1 has a range of pre-defined values.
-     */
-    byte DW_LANG_Java = 0xb;
-    /*
-     * Values for DW_AT_inline attribute with form DATA1.
-     */
-    @SuppressWarnings("unused") byte DW_INL_not_inlined = 0;
-    byte DW_INL_inlined = 1;
-    @SuppressWarnings("unused") byte DW_INL_declared_not_inlined = 2;
-    @SuppressWarnings("unused") byte DW_INL_declared_inlined = 3;
-    /*
-     * DW_AT_Accessibility attribute values.
-     */
-    byte DW_ACCESS_public = 1;
-    byte DW_ACCESS_protected = 2;
-    byte DW_ACCESS_private = 3;
-    /*
-     * DW_AT_encoding attribute values
-     */
-    @SuppressWarnings("unused") byte DW_ATE_address = 0x1;
-    byte DW_ATE_boolean = 0x2;
-    byte DW_ATE_float = 0x4;
-    byte DW_ATE_signed = 0x5;
-    byte DW_ATE_signed_char = 0x6;
-    byte DW_ATE_unsigned = 0x7;
-    @SuppressWarnings("unused") byte DW_ATE_unsigned_char = 0x8;
+public enum DwarfExpressionOpcode {
+    DW_OP_addr((byte) 0x03),
+    @SuppressWarnings("unused")
+    DW_OP_deref((byte) 0x06),
+    DW_OP_dup((byte) 0x12),
+    DW_OP_and((byte) 0x1a),
+    DW_OP_not((byte) 0x20),
+    DW_OP_plus((byte) 0x22),
+    DW_OP_shl((byte) 0x24),
+    DW_OP_shr((byte) 0x25),
+    DW_OP_bra((byte) 0x28),
+    DW_OP_eq((byte) 0x29),
+    DW_OP_lit0((byte) 0x30),
+    DW_OP_reg0((byte) 0x50),
+    DW_OP_breg0((byte) 0x70),
+    DW_OP_regx((byte) 0x90),
+    DW_OP_bregx((byte) 0x92),
+    DW_OP_push_object_address((byte) 0x97),
+    DW_OP_implicit_value((byte) 0x9e),
+    DW_OP_stack_value((byte) 0x9f);
+
+    byte value;
+
+    DwarfExpressionOpcode(byte b) {
+        value = b;
+    }
+
+    public byte value() {
+        return value;
+    }
 }

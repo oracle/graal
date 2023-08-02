@@ -29,76 +29,85 @@ package com.oracle.objectfile.elf.dwarf.constants;
 /**
  * Standard line section opcodes defined by Dwarf 4.
  */
-public interface DwarfLineOpcodes {
-    /*
-     * 0 can be returned to indicate an invalid opcode.
-     */
-    byte DW_LNS_undefined = 0;
+public enum DwarfLineOpcode {
     /*
      * 0 can be inserted as a prefix for extended opcodes.
      */
-    byte DW_LNS_extended_prefix = 0;
+    DW_LNS_extended_prefix((byte) 0),
     /*
      * Append current state as matrix row 0 args.
      */
-    byte DW_LNS_copy = 1;
+    DW_LNS_copy((byte) 1),
     /*
      * Increment address 1 uleb arg.
      */
-    byte DW_LNS_advance_pc = 2;
+    DW_LNS_advance_pc((byte) 2),
     /*
      * Increment line 1 sleb arg.
      */
-    byte DW_LNS_advance_line = 3;
+    DW_LNS_advance_line((byte) 3),
     /*
      * Set file 1 uleb arg.
      */
-    byte DW_LNS_set_file = 4;
+    DW_LNS_set_file((byte) 4),
     /*
      * sSet column 1 uleb arg.
      */
-    byte DW_LNS_set_column = 5;
+    DW_LNS_set_column((byte) 5),
     /*
      * Flip is_stmt 0 args.
      */
-    byte DW_LNS_negate_stmt = 6;
+    DW_LNS_negate_stmt((byte) 6),
     /*
      * Set end sequence and copy row 0 args.
      */
-    byte DW_LNS_set_basic_block = 7;
+    DW_LNS_set_basic_block((byte) 7),
     /*
      * Increment address as per opcode 255 0 args.
      */
-    byte DW_LNS_const_add_pc = 8;
+    DW_LNS_const_add_pc((byte) 8),
     /*
      * Increment address 1 ushort arg.
      */
-    byte DW_LNS_fixed_advance_pc = 9;
+    DW_LNS_fixed_advance_pc((byte) 9),
     /*
      * Increment address 1 ushort arg.
      */
-    @SuppressWarnings("unused") byte DW_LNS_set_prologue_end = 10;
+    @SuppressWarnings("unused")
+    DW_LNS_set_prologue_end((byte) 10),
     /*
      * Increment address 1 ushort arg.
      */
-    @SuppressWarnings("unused") byte DW_LNS_set_epilogue_begin = 11;
+    @SuppressWarnings("unused")
+    DW_LNS_set_epilogue_begin((byte) 11),
     /*
      * Extended line section opcodes defined by DWARF 2.
      */
     /*
      * There is no extended opcode 0.
      */
-    @SuppressWarnings("unused") byte DW_LNE_undefined = 0;
+    @SuppressWarnings("unused")
+    DW_LNE_undefined((byte) 0),
     /*
      * End sequence of addresses.
      */
-    byte DW_LNE_end_sequence = 1;
+    DW_LNE_end_sequence((byte) 1),
     /*
      * Set address as explicit long argument.
      */
-    byte DW_LNE_set_address = 2;
+    DW_LNE_set_address((byte) 2),
     /*
      * Set file as explicit string argument.
      */
-    byte DW_LNE_define_file = 3;
+    DW_LNE_define_file((byte) 3);
+
+    byte value;
+
+    DwarfLineOpcode(byte b) {
+        value = b;
+    }
+
+    public byte value() {
+        return value;
+    }
 }

@@ -30,19 +30,17 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionNames;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
 
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_ARANGES_SECTION;
+import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_RANGES_SECTION;
+
 public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     public DwarfRangesSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-    }
-
-    @Override
-    public String getSectionName() {
-        return DwarfSectionNames.DW_RANGES_SECTION_NAME;
+        // debug_ranges section depends on debug_aranges section
+        super(dwarfSections, DW_RANGES_SECTION, DW_ARANGES_SECTION);
     }
 
     @Override
@@ -116,25 +114,5 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         });
 
         assert cursor.get() == size;
-    }
-
-    /*
-     * The debug_ranges section depends on debug_aranges section.
-     */
-    private static final String TARGET_SECTION_NAME = DwarfSectionNames.DW_ARANGES_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 }
