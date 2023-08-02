@@ -23,54 +23,40 @@
 
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
-
-import sun.misc.Unsafe;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 public class VolatileArrayAccess {
-    private static final Unsafe U = UnsafeAccess.get();
+    private static final VarHandle REF_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(Object[].class);
+    private static final VarHandle BYTE_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(byte[].class);
+    private static final VarHandle INT_ARRAY_HANDLE = MethodHandles.arrayElementVarHandle(int[].class);
 
     public static void volatileWrite(byte[] array, int index, byte value) {
-        U.putByteVolatile(array, offsetFor(array, index), value);
+        BYTE_ARRAY_HANDLE.setVolatile(array, index, value);
     }
 
     public static byte volatileRead(byte[] array, int index) {
-        return U.getByteVolatile(array, offsetFor(array, index));
+        return (byte) BYTE_ARRAY_HANDLE.getVolatile(array, index);
     }
 
     public static void volatileWrite(int[] array, int index, int value) {
-        U.putIntVolatile(array, offsetFor(array, index), value);
+        INT_ARRAY_HANDLE.setVolatile(array, index, value);
     }
 
     public static int volatileRead(int[] array, int index) {
-        return U.getIntVolatile(array, offsetFor(array, index));
+        return (int) INT_ARRAY_HANDLE.getVolatile(array, index);
     }
 
     public static <T> void volatileWrite(T[] array, int index, T value) {
-        U.putObjectVolatile(array, offsetFor(array, index), value);
+        REF_ARRAY_HANDLE.setVolatile(array, index, value);
     }
 
     @SuppressWarnings("unchecked")
     public static <T> T volatileRead(T[] array, int index) {
-        return (T) U.getObjectVolatile(array, offsetFor(array, index));
+        return (T) REF_ARRAY_HANDLE.getVolatile(array, index);
     }
 
     public static <T> boolean compareAndSet(T[] array, int index, T expected, T value) {
-        return U.compareAndSwapObject(array, offsetFor(array, index), expected, value);
-    }
-
-    @SuppressWarnings("unused")
-    private static long offsetFor(byte[] array, int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + ((long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-    }
-
-    @SuppressWarnings("unused")
-    private static long offsetFor(int[] array, int index) {
-        return Unsafe.ARRAY_INT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_INT_INDEX_SCALE);
-    }
-
-    @SuppressWarnings("unused")
-    private static <T> long offsetFor(T[] array, int index) {
-        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+        return REF_ARRAY_HANDLE.compareAndSet(array, index, expected, value);
     }
 }
