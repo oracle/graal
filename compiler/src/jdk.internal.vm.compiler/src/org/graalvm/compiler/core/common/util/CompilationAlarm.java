@@ -194,8 +194,9 @@ public final class CompilationAlarm implements AutoCloseable {
             final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
             boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
 
-            if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
-                TTY.printf("CompilationAlarm: Progress detection; no progress for %s seconds - progress %s - max no progress period %s %n", timeDiff / 1000, noProgressForPeriod, maxNoProgressPeriod);
+            if (Options.CompilationAlarmLogProgressDetection.getValue(opt) && timeDiff / 1000 > 0) {
+                TTY.printf("CompilationAlarm: Progress detection %s; no progress for %s seconds - progress %s - max no progress period %s %n", lastCounter, timeDiff / 1000, noProgressForPeriod,
+                                maxNoProgressPeriod);
             }
 
             if (noProgressForPeriod) {
