@@ -74,7 +74,7 @@ public final class JfrEventWriterAccess {
         long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true, isCurrentThreadExcluded);
+            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
         } else {
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
         }

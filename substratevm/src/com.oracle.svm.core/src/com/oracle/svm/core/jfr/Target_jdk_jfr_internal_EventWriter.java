@@ -50,6 +50,6 @@ public final class Target_jdk_jfr_internal_EventWriter {
     @Alias
     @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK19OrLater.class)
-    Target_jdk_jfr_internal_EventWriter(long committedPos, long maxPos, long committedPosAddress, long threadID, boolean valid, boolean excluded) {
+    Target_jdk_jfr_internal_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
     }
 }
