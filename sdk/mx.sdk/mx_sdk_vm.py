@@ -891,6 +891,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                      The choices are:
                        "create" - an empty module is created
                         "error" - raise an error
+                         "warn" - raise a warning
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
@@ -942,9 +943,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
-            if missing_export_target_action == 'error':
-                mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
-            assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+            if missing_export_target_action in ('error', 'warn'):
+                mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
+            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
             for name, requires in sorted(target_requires.items()):
                 module_jar = join(build_dir, name + '.jar')

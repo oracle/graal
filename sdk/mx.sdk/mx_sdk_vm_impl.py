@@ -1628,12 +1628,13 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, default_to_jvmci=False, **kw_args):
+    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, default_to_jvmci=False, missing_export_target_action='create', **kw_args):
         super(GraalVmJImage, self).__init__(suite=suite, name=name, subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
                                             default_to_jvmci=default_to_jvmci, **kw_args)
         self.jimage_ignore_jars = jimage_ignore_jars or []
         self.default_to_jvmci = default_to_jvmci
+        self.missing_export_target_action = missing_export_target_action
 
     def isPlatformDependent(self):
         return True
@@ -1677,7 +1678,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
                                  with_source=with_source,
                                  vendor_info=vendor_info,
                                  use_upgrade_module_path=use_upgrade_module_path,
-                                 default_to_jvmci=self.subject.default_to_jvmci)
+                                 default_to_jvmci=self.subject.default_to_jvmci,
+                                 missing_export_target_action=self.subject.missing_export_target_action)
         else:
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
             if exists(out_dir):
@@ -2743,7 +2745,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             if self.is_jvm:
                 if comp.jvmci_parent_jars:
-                    mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\nComponent '{}' adds '{}', which is skipped".format(comp.name, comp.jvmci_parent_jars))
+                    mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{}' adds '{}', which is skipped".format(comp.name, comp.jvmci_parent_jars))
 
                 for jar_dist in comp.jar_distributions:
                     layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
@@ -2910,7 +2912,22 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             main_component_dependencies = GraalVmLayoutDistribution._add_dependencies([component], excluded_components)
             for main_component_dependency in main_component_dependencies:
                 if main_component_dependency not in added_components:
-                    add_files_from_component(main_component_dependency, is_main=False, path_prefix=default_jvm_modules_dir, excluded_paths=['native-image.properties'])
+                    jar_dists = main_component_dependency.jar_distributions
+                    if main_component_dependency.jvmci_parent_jars:
+                        if isinstance(main_component_dependency, mx_sdk_vm.GraalVmTruffleLibrary):
+                            jar_dists += main_component_dependency.jvmci_parent_jars
+                        else:
+                            mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{}' adds '{}', which is skipped".format(main_component_dependency.name, main_component_dependency.jvmci_parent_jars))
+                    for boot_jar in main_component_dependency.boot_jars:
+                        mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' {} standalone".format(main_component_dependency.name, boot_jar, 'java' if self.is_jvm else 'native', name))
+                    for jar_dist in jar_dists:
+                        layout.setdefault(default_jvm_modules_dir, []).append({
+                            'source_type': 'dependency',
+                            'dependency': jar_dist,
+                            'exclude': [],
+                            'path': None,
+                        })
+                        self.jvm_modules.append(jar_dist)
                     added_components.append(main_component_dependency)
 
             # Add the JVM.
@@ -2996,12 +3013,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         Components that, for now, must be included in the JDK.
         @rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        assert mx.suite('truffle', fatalIfMissing=True)
-        import mx_truffle
-        return [
-            mx_sdk.graal_sdk_component,
-            mx_truffle.truffle_api_component,
-        ] + [c for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent)]
+        return [mx_sdk.graal_sdk_component]
 
     @staticmethod
     def thin_launcher_components():
@@ -3525,6 +3537,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
             workingSets=None,
             defaultBuild=False,
+            missing_export_target_action='warn',
         )
         standalone_deps_names.append(java_standalone_jimage.name)
         register_project(java_standalone_jimage)
