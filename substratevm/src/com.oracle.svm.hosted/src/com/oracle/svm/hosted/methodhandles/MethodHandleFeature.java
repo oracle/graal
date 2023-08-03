@@ -30,6 +30,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Optional;
@@ -39,7 +40,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -81,9 +81,6 @@ import sun.invoke.util.Wrapper;
 @SuppressWarnings("unused")
 public class MethodHandleFeature implements InternalFeature {
 
-    private Class<?> memberNameClass;
-    private Method memberNameGetDeclaringClass;
-    private Method memberNameGetName;
     private Method memberNameIsMethod;
     private Method memberNameIsConstructor;
     private Method memberNameIsField;
@@ -106,9 +103,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        memberNameClass = access.findClassByName("java.lang.invoke.MemberName");
-        memberNameGetDeclaringClass = ReflectionUtil.lookupMethod(memberNameClass, "getDeclaringClass");
-        memberNameGetName = ReflectionUtil.lookupMethod(memberNameClass, "getName");
+        Class<?> memberNameClass = access.findClassByName("java.lang.invoke.MemberName");
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
@@ -126,8 +121,6 @@ public class MethodHandleFeature implements InternalFeature {
         Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
         runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
         concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
-
-        access.registerObjectReplacer(this::registerSeenObject);
     }
 
     @Override
@@ -313,25 +306,7 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-    private Object registerSeenObject(Object obj) {
-        if (!BuildPhaseProvider.isAnalysisFinished()) {
-            if (obj instanceof MethodType mt) {
-                registerMethodType(mt);
-            } else if (memberNameClass.isInstance(obj)) {
-                /*
-                 * We used to register only MemberName instances which are reachable from a
-                 * MethodHandle, but optimizations can eliminate a MethodHandle object in code which
-                 * we might never see otherwise and leave a MemberName object behind which is still
-                 * used for a call. Therefore, we register all MemberName instances in the image
-                 * heap, which should only be reachable via MethodHandle objects, in any case.
-                 */
-                registerMemberName(obj);
-            }
-        }
-        return obj;
-    }
-
-    private void registerMethodType(MethodType methodType) {
+    public void registerHeapMethodType(MethodType methodType) {
         try {
             concurrentWeakInternSetAdd.invoke(runtimeMethodTypeInternTable, methodType);
         } catch (ReflectiveOperationException e) {
@@ -339,13 +314,20 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-    private void registerMemberName(Object memberName) {
+    public void registerHeapMemberName(Member memberName) {
+        /*
+         * We used to register only MemberName instances which are reachable from MethodHandle
+         * objects, but code optimizations can eliminate a MethodHandle object which might never
+         * become reachable otherwise and leave a MemberName object behind which is still used for a
+         * call or field access. Therefore, we register all MemberName instances in the image heap,
+         * which should only come into existence via MethodHandle objects, in any case.
+         */
         try {
-            Class<?> declaringClass = (Class<?>) memberNameGetDeclaringClass.invoke(memberName);
+            Class<?> declaringClass = memberName.getDeclaringClass();
             boolean isMethod = (boolean) memberNameIsMethod.invoke(memberName);
             boolean isConstructor = (boolean) memberNameIsConstructor.invoke(memberName);
             boolean isField = (boolean) memberNameIsField.invoke(memberName);
-            String name = (isMethod || isField) ? (String) memberNameGetName.invoke(memberName) : null;
+            String name = (isMethod || isField) ? memberName.getName() : null;
             Class<?>[] paramTypes = null;
             if (isMethod || isConstructor) {
                 MethodType methodType = (MethodType) memberNameGetMethodType.invoke(memberName);

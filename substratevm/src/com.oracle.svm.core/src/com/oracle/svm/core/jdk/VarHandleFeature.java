@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -76,11 +77,10 @@ import jdk.internal.misc.Unsafe;
  * unsafe accessed so that our static analysis is correct, and 2) recompute the field offsets from
  * the hosted offsets to the runtime offsets. Luckily, we have all information to reconstruct the
  * original {@link Field} (see {@link #findVarHandleField}). The registration for unsafe access
- * happens in an object replacer: the method {@link #processVarHandle} is called for every object
- * (and therefore every VarHandle) that is reachable in the image heap. The field offset
- * recomputations are registered for all classes manually (a bit of code duplication on our side),
- * but all recomputations use the same custom field value recomputation handler:
- * {@link VarHandleFieldOffsetComputer}.
+ * happens in {@link #processReachableHandle} which is called for every relevant object once it
+ * becomes reachable and so part of the image heap. The field offset recomputations are registered
+ * for all classes manually (a bit of code duplication on our side), but all recomputations use the
+ * same custom field value recomputation handler: {@link VarHandleFieldOffsetComputer}.
  *
  * For static fields, also the base of the Unsafe access needs to be changed to the static field
  * holder arrays defined in {@link StaticFieldsSupport}. We cannot do a recomputation to the actual
@@ -188,11 +188,6 @@ public class VarHandleFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::processVarHandle);
-    }
-
-    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
     }
@@ -202,13 +197,21 @@ public class VarHandleFeature implements InternalFeature {
         markAsUnsafeAccessed = null;
     }
 
+    public void registerHeapVarHandle(VarHandle varHandle) {
+        processReachableHandle(varHandle);
+    }
+
+    public void registerHeapMethodHandle(MethodHandle directMethodHandle) {
+        processReachableHandle(directMethodHandle);
+    }
+
     /**
      * Register all fields accessed by a VarHandle for an instance field or a static field as unsafe
      * accessed, which is necessary for correctness of the static analysis. We want to process every
-     * VarHandle only once, therefore we mark all VarHandle that were already processed in in
+     * VarHandle only once, therefore we mark all VarHandle that were already processed in
      * {@link #processedVarHandles}.
      */
-    private Object processVarHandle(Object obj) {
+    private Object processReachableHandle(Object obj) {
         VarHandleInfo info = infos.get(obj.getClass());
         if (info != null && processedVarHandles.putIfAbsent(obj, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New VarHandle found after static analysis");
