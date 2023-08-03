@@ -104,16 +104,16 @@ exit /b %errorlevel%
     set "args=%*"
     :: Without early exit on empty contents, substitutions fail.
     if "!args!"=="" exit /b 0
-    set "args=%args:,=##GRAAL_ESCAPE_COMMA##%"
-    set "args=%args:;=##GRAAL_ESCAPE_SEMI##%"
+    set "args=%args:,=##GR_ESC_COMMA##%"
+    set "args=%args:;=##GR_ESC_SEMI##%"
     :: Temporarily, so that args are split on '=' only.
-    set "args=%args: =##GRAAL_ESCAPE_SPACE##%"
+    set "args=%args: =##GR_ESC_SPACE##%"
     :: Temporarily, otherwise we won't split on '=' inside quotes.
-    set "args=%args:"=##GRAAL_ESCAPE_QUOTE##%"
+    set "args=%args:"=##GR_ESC_QUOTE##%"
     :: We can't replace equal using the variable substitution syntax.
     call :replace_equals %args%
-    set "args=%args:##GRAAL_ESCAPE_SPACE##= %"
-    set "args=%args:##GRAAL_ESCAPE_QUOTE##="%"
+    set "args=%args:##GR_ESC_SPACE##= %"
+    set "args=%args:##GR_ESC_QUOTE##="%"
     exit /b 0
 
 :replace_equals
@@ -127,7 +127,7 @@ exit /b %errorlevel%
     :loop_replace_equals
         set "arg=%1"
         if "!arg!"=="" goto :end_replace_equals
-        set "args=%args%##GRAAL_ESCAPE_EQUAL##%arg%"
+        set "args=%args%##GR_ESC_EQUAL##%arg%"
         shift
         goto :loop_replace_equals
     :end_replace_equals
@@ -136,9 +136,9 @@ exit /b %errorlevel%
 
 :unescape_arg
     set "arg=%*"
-    set "arg=%arg:##GRAAL_ESCAPE_COMMA##=,%"
-    set "arg=%arg:##GRAAL_ESCAPE_SEMI##=;%"
-    set "arg=%arg:##GRAAL_ESCAPE_EQUAL##==%"
+    set "arg=%arg:##GR_ESC_COMMA##=,%"
+    set "arg=%arg:##GR_ESC_SEMI##=;%"
+    set "arg=%arg:##GR_ESC_EQUAL##==%"
     exit /b 0
 
 :is_quoted
