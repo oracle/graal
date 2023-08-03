@@ -50,7 +50,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     /**
      * Result type flow returned by the callee.
      */
-    protected ActualReturnTypeFlow actualReturn;
+    protected volatile ActualReturnTypeFlow actualReturn;
 
     protected final InvokeTypeFlow originalInvoke;
 
@@ -270,6 +270,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
+        /*
+         * If actualReturn is null, then there is no linking necessary. Later, if a typeflow is
+         * created for the return, then {@code setActualReturn} will perform all necessary linking.
+         */
         if (actualReturn != null && bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
             if (bb.optimizeReturnedParameter()) {
                 int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
@@ -338,6 +342,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     @Override
     public abstract Collection<AnalysisMethod> getAllCallees();
+
+    /**
+     * Returns all callees which have been computed for this method. It is possible that these
+     * callees have yet to have their typeflow created and also they may not be fully linked.
+     */
+    public abstract Collection<AnalysisMethod> getAllComputedCallees();
 
     @Override
     public BytecodePosition getPosition() {
