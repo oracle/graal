@@ -28,8 +28,11 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodType;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -134,6 +137,13 @@ public abstract class AbiUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public abstract void checkLibrarySupport();
+
+    /**
+     * Backport the {@link Linker} method of the same name introduced in JDK22. TODO: replace by
+     * said method once possible
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract Map<String, MemoryLayout> canonicalLayouts();
 }
 
 class ABIs {
@@ -176,6 +186,11 @@ class ABIs {
         @Override
         public void checkLibrarySupport() {
             fail();
+        }
+
+        @Override
+        public Map<String, MemoryLayout> canonicalLayouts() {
+            return fail();
         }
     }
 
@@ -331,6 +346,36 @@ class ABIs {
 
             return storages;
         }
+
+        protected static Map<String, MemoryLayout> canonicalLayouts(ValueLayout longLayout, ValueLayout sizetLayout, ValueLayout wchartLayout) {
+            return Map.ofEntries(
+                            // specified canonical layouts
+                            Map.entry("bool", ValueLayout.JAVA_BOOLEAN),
+                            Map.entry("char", ValueLayout.JAVA_BYTE),
+                            Map.entry("short", ValueLayout.JAVA_SHORT),
+                            Map.entry("int", ValueLayout.JAVA_INT),
+                            Map.entry("float", ValueLayout.JAVA_FLOAT),
+                            Map.entry("long", longLayout),
+                            Map.entry("long long", ValueLayout.JAVA_LONG),
+                            Map.entry("double", ValueLayout.JAVA_DOUBLE),
+                            Map.entry("void*", ValueLayout.ADDRESS),
+                            Map.entry("size_t", sizetLayout),
+                            Map.entry("wchar_t", wchartLayout),
+                            // unspecified size-dependent layouts
+                            Map.entry("int8_t", ValueLayout.JAVA_BYTE),
+                            Map.entry("int16_t", ValueLayout.JAVA_SHORT),
+                            Map.entry("int32_t", ValueLayout.JAVA_INT),
+                            Map.entry("int64_t", ValueLayout.JAVA_LONG),
+                            // unspecified JNI layouts
+                            Map.entry("jboolean", ValueLayout.JAVA_BOOLEAN),
+                            Map.entry("jchar", ValueLayout.JAVA_CHAR),
+                            Map.entry("jbyte", ValueLayout.JAVA_BYTE),
+                            Map.entry("jshort", ValueLayout.JAVA_SHORT),
+                            Map.entry("jint", ValueLayout.JAVA_INT),
+                            Map.entry("jlong", ValueLayout.JAVA_LONG),
+                            Map.entry("jfloat", ValueLayout.JAVA_FLOAT),
+                            Map.entry("jdouble", ValueLayout.JAVA_DOUBLE));
+        }
     }
 
     static final class SysV extends X86_64 {
@@ -351,6 +396,11 @@ class ABIs {
         public void checkLibrarySupport() {
             String name = "SystemV (Linux AMD64)";
             VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on " + name);
+        }
+
+        @Override
+        public Map<String, MemoryLayout> canonicalLayouts() {
+            return canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
         }
     };
 
@@ -427,6 +477,11 @@ class ABIs {
             String name = "Win64 (Windows AMD64)";
             VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on" + name);
             VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on" + name);
+        }
+
+        @Override
+        public Map<String, MemoryLayout> canonicalLayouts() {
+            return canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
         }
     };
 }
