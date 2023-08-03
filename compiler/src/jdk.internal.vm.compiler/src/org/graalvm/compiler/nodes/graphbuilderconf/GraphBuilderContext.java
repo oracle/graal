@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -91,7 +92,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *
      * @param kind the kind to use when type checking this operation
      * @param value the value to push to the stack. The value must already have been
-     *            {@linkplain #append(ValueNode) appended}.
+     *            {@linkplain #append(Node) appended}.
      */
     void push(JavaKind kind, ValueNode value);
 
@@ -122,12 +123,22 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *            type checking this operation.
      * @return a node equivalent to {@code value} in the graph
      */
-    default <T extends ValueNode> T add(T value) {
+    default <T extends Node> T add(T value) {
         if (value.graph() != null) {
             assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
             return value;
         }
         return setStateAfterIfNecessary(this, append(value));
+    }
+
+    /**
+     * Maybe performs canonicalization on the provided node. Either the result of the
+     * canonicalization, or the original node if canonicalization is not possible, is added to the
+     * graph and returned. Note that the return value can be null when canonicalization determines
+     * that the node can be deleted.
+     */
+    default Node canonicalizeAndAdd(Node value) {
+        return add(value);
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
@@ -537,7 +548,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
-    static <T extends ValueNode> T setStateAfterIfNecessary(GraphBuilderContext b, T value) {
+    static <T extends Node> T setStateAfterIfNecessary(GraphBuilderContext b, T value) {
         if (value instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) value;
             FrameState oldState = stateSplit.stateAfter();

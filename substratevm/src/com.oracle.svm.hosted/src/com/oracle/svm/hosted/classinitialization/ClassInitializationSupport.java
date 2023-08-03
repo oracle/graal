@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
@@ -305,4 +306,18 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     abstract boolean checkDelayedInitialization();
 
     abstract void doLateInitialization(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess);
+
+    public static EconomicSet<Class<?>> allInterfaces(Class<?> clazz) {
+        EconomicSet<Class<?>> result = EconomicSet.create();
+        addAllInterfaces(clazz, result);
+        return result;
+    }
+
+    private static void addAllInterfaces(Class<?> clazz, EconomicSet<Class<?>> result) {
+        for (var interf : clazz.getInterfaces()) {
+            if (result.add(interf)) {
+                addAllInterfaces(interf, result);
+            }
+        }
+    }
 }

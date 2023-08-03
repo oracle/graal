@@ -71,6 +71,6 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     private static void emitEnsureClassInitialized(GraphBuilderContext builder, JavaConstant hubConstant, FrameState frameState) {
         ValueNode hub = ConstantNode.forConstant(hubConstant, builder.getMetaAccess(), builder.getGraph());
         EnsureClassInitializedNode node = new EnsureClassInitializedNode(hub, frameState);
-        builder.add(node);
+        builder.canonicalizeAndAdd(node);
     }
 }

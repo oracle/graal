@@ -2866,7 +2866,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     @Override
-    public <T extends ValueNode> T append(T v) {
+    public <T extends Node> T append(T v) {
         assert !graph.trackNodeSourcePosition() || graph.currentNodeSourcePosition() != null || currentBlock == blockMap.getUnwindBlock() || currentBlock instanceof ExceptionDispatchBlock;
         if (v.graph() != null) {
             return v;
@@ -2878,7 +2878,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return added;
     }
 
-    private <T extends ValueNode> void updateLastInstruction(T v) {
+    private <T extends Node> void updateLastInstruction(T v) {
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             if (lastInstr != null) {
