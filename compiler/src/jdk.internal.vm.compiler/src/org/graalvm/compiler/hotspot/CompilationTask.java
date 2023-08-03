@@ -174,10 +174,12 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             if (!CompilationFailureAction.hasBeenSet(values)) {
                 // Automatically exit on failure during bootstrap.
                 if (compiler.getGraalRuntime().isBootstrapping()) {
+                    TTY.println("Treating CompilationFailureAction as ExitVM due to exception throw during bootstrap: " + cause);
                     return ExitVM;
                 }
                 // Automatically exit on failure when assertions are enabled in libgraal
                 if (IS_IN_NATIVE_IMAGE && cause instanceof AssertionError && Assertions.assertionsEnabled()) {
+                    TTY.println("Treating CompilationFailureAction as ExitVM due to assertion failure in libgraal: " + cause);
                     return ExitVM;
                 }
             }
