@@ -53,14 +53,11 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -356,7 +353,82 @@ public abstract class AbiUtils {
 
     public abstract int trampolineSize();
 
-    public abstract void writeTrampolines(Pointer to, CFunctionPointer[] trampolines, PinnedObject methodHandlesArray, PinnedObject stubsArray);
+    record TrampolineTemplate(byte[] assemblyTemplate, int isolateOffset, int methodHandleOffset, int stubOffset) {
+        public Pointer write(Pointer at, Isolate isolate, Word methodHandle, Word stubPointer) {
+            for (int i = 0; i < assemblyTemplate.length; ++i) {
+                at.writeByte(i, assemblyTemplate[i]);
+            }
+            at.writeWord(isolateOffset, isolate);
+            at.writeWord(methodHandleOffset, methodHandle);
+            at.writeWord(stubOffset, stubPointer);
+
+            return at.add(assemblyTemplate.length);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract TrampolineTemplate generateTrampolineTemplate();
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class TrampolineTemplateHelper {
+    private static final byte isolatePattern = (byte) 0xFF;
+    private static final byte mhPattern = (byte) 0xEE;
+    private static final byte stubPattern = (byte) 0xDD;
+
+    interface TrampolineGenerator {
+        public byte[] generate(Word isolate, Word methodHandle, Word stubPointer);
+    }
+
+    private static Word repeat(byte byt) {
+        long b = byt & 0xFFL;
+        return WordFactory.unsigned(
+                        (b << 56) | (b << 48) | (b << 40) | (b << 32) | (b << 24) | (b << 16) | (b << 8) | (b << 0));
+    }
+
+    /**
+     * Generate two trampolines which are then compared to infer the location (i.e. offset) of the
+     * address parameters in the assembly.
+     */
+    public static AbiUtils.TrampolineTemplate fromGeneratorDiff(TrampolineGenerator generator) {
+        byte[] baseAsm = generator.generate(WordFactory.zero(), WordFactory.zero(), WordFactory.zero());
+        byte[] patternedAsm = generator.generate(repeat(isolatePattern), repeat(mhPattern), repeat(stubPattern));
+        assert baseAsm.length == patternedAsm.length;
+
+        int isolateOffset = -1;
+        int mhOffset = -1;
+        int stubOffset = -1;
+
+        for (int i = 0; i < baseAsm.length; ++i) {
+            if (baseAsm[i] != patternedAsm[i]) {
+                assert baseAsm[i] == 0;
+
+                switch (patternedAsm[i]) {
+                    case isolatePattern -> {
+                        assert isolateOffset == -1;
+                        isolateOffset = i;
+                    }
+                    case mhPattern -> {
+                        assert mhOffset == -1;
+                        mhOffset = i;
+                    }
+                    case stubPattern -> {
+                        assert stubOffset == -1;
+                        stubOffset = i;
+                    }
+                    default -> throw new AssertionError(patternedAsm[i]);
+                }
+
+                for (int j = 0; j < 7; ++j) {
+                    i += 1;
+                    assert patternedAsm[i] == patternedAsm[i - 1];
+                }
+            }
+        }
+
+        assert isolateOffset != -1 && mhOffset != -1 && stubOffset != -1;
+        return new AbiUtils.TrampolineTemplate(baseAsm, isolateOffset, mhOffset, stubOffset);
+    }
 }
 
 class ABIs {
@@ -416,8 +488,8 @@ class ABIs {
         }
 
         @Override
-        public void writeTrampolines(Pointer to, CFunctionPointer[] trampolines, PinnedObject methodHandlesArray, PinnedObject stubsArray) {
-            fail();
+        public TrampolineTemplate generateTrampolineTemplate() {
+            return fail();
         }
     }
 
@@ -631,26 +703,20 @@ class ABIs {
             return 128;
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
         @Override
-        public void writeTrampolines(Pointer to, CFunctionPointer[] trampolines, PinnedObject methodHandlesArray, PinnedObject stubsArray) {
-            for (int i = 0; i < trampolines.length; ++i) {
-                // Store the trampoline address
-                trampolines[i] = WordFactory.pointer(to.rawValue());
-
+        public TrampolineTemplate generateTrampolineTemplate() {
+            return TrampolineTemplateHelper.fromGeneratorDiff((isolate, methodHandle, stubPointer) -> {
                 // Generate the trampoline
                 AMD64Assembler asm = new AMD64Assembler(ConfigurationValues.getTarget());
 
-                Word mhPointer = methodHandlesArray.addressOfArrayElement(i);
-                Word stubPointer = stubsArray.addressOfArrayElement(i);
                 Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
-
-                WordBase isolate = CurrentIsolate.getIsolate();
                 Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
 
                 /* Store isolate in the assigned register */
                 asm.movq(isolateRegister, isolate.rawValue());
                 /* r10 points in the mh array */
-                asm.movq(mhRegister, mhPointer.rawValue());
+                asm.movq(mhRegister, methodHandle.rawValue());
                 /* r10 contains the method handle */
                 asm.movq(mhRegister, new AMD64Address(mhRegister));
                 /* rax contains the stub address */
@@ -663,12 +729,8 @@ class ABIs {
 
                 byte[] assembly = asm.close(true);
                 assert assembly.length == trampolineSize();
-
-                for (byte b : assembly) {
-                    to.writeByte(0, b);
-                    to = to.add(1);
-                }
-            }
+                return assembly;
+            });
         }
     }
 

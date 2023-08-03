@@ -30,6 +30,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -53,7 +55,6 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.foreign.abi.CapturableState;
 
 public class ForeignFunctionsRuntime {
@@ -62,14 +63,19 @@ public class ForeignFunctionsRuntime {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
+    private final AbiUtils.TrampolineTemplate trampolineTemplate;
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
-
     private final List<TrampolineSet> trampolines = new LinkedList<>();
+
+    public ForeignFunctionsRuntime(AbiUtils.TrampolineTemplate trampolineTemplate) {
+        this.trampolineTemplate = trampolineTemplate;
+    }
 
     private class TrampolineSet {
         private int assigned;
-        private final CFunctionPointer[] trampolines;
+        private int trampolineCount;
+        private final Pointer trampolines;
 
         private final PinnedObject methodHandlesPin;
         private final PinnedObject stubsPin;
@@ -84,21 +90,20 @@ public class ForeignFunctionsRuntime {
 
         public TrampolineSet() {
             assert VirtualMemoryProvider.get().getGranularity().rawValue() % AbiUtils.singleton().trampolineSize() == 0;
-            int trampolineCount = (int) (VirtualMemoryProvider.get().getGranularity().rawValue() / AbiUtils.singleton().trampolineSize());
             this.assigned = 0;
+            this.trampolineCount = (int) (VirtualMemoryProvider.get().getGranularity().rawValue() / AbiUtils.singleton().trampolineSize());
 
             this.methodHandlesPin = PinnedObject.create(new PointerBase[trampolineCount]);
             this.stubsPin = PinnedObject.create(new CFunctionPointer[trampolineCount]);
-            this.trampolines = generateTrampolines(this.methodHandlesPin, this.stubsPin, trampolineCount);
-            assert this.trampolines.length == trampolineCount;
+            this.trampolines = generateTrampolines(this.methodHandlesPin, this.stubsPin);
         }
 
         public boolean hasFreeTrampolines() {
-            assert 0 <= assigned && assigned <= trampolines.length;
-            return assigned != trampolines.length;
+            assert 0 <= assigned && assigned <= trampolineCount;
+            return assigned != trampolineCount;
         }
 
-        public CFunctionPointer assignTrampoline(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+        public Pointer assignTrampoline(MethodHandle methodHandle, JavaEntryPointInfo jep) {
             assert hasFreeTrampolines();
 
             var pinned = PinnedObject.create(methodHandle);
@@ -108,28 +113,31 @@ public class ForeignFunctionsRuntime {
             methodHandles()[id] = pinned.addressOfObject();
             stubs()[id] = stub;
 
-            return trampolines[id];
+            return trampolines.add(id * AbiUtils.singleton().trampolineSize());
         }
 
-        private static CFunctionPointer[] generateTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, int trampolineCount) {
+        private Pointer generateTrampolines(PinnedObject mhsArray, PinnedObject stubsArray) {
             VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
             UnsignedWord pageSize = memoryProvider.getGranularity();
             Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE);
+            Pointer it = page;
+            Pointer end = page.add(pageSize);
 
             if (page.isNull()) {
                 OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Could not allocate memory for trampolines.");
                 throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }
 
-            CFunctionPointer[] trampolines = new CFunctionPointer[trampolineCount];
-            AbiUtils.singleton().writeTrampolines(page, trampolines, mhsArray, stubsArray);
+            int i = 0;
+            while (it.belowThan(end)) {
+                it = trampolineTemplate.write(it, CurrentIsolate.getIsolate(), mhsArray.addressOfArrayElement(i), stubsArray.addressOfArrayElement(i));
+                i += 1;
+            }
+            assert it.equal(end);
             memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE);
 
-            return trampolines;
+            return page;
         }
-    }
-
-    public ForeignFunctionsRuntime() {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -168,7 +176,7 @@ public class ForeignFunctionsRuntime {
         }
     }
 
-    public CFunctionPointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+    public Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
         if (trampolines.isEmpty() || !trampolines.get(0).hasFreeTrampolines()) {
             trampolines.add(0, new TrampolineSet());
         }

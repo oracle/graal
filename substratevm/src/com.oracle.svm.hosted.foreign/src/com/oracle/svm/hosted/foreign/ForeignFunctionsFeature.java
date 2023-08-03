@@ -139,7 +139,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(AbiUtils.class, AbiUtils.create());
-        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
+        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime(AbiUtils.singleton().generateTrampolineTemplate()));
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
 
