@@ -314,7 +314,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod();
-                    pointsToMethod.registerAsImplementationInvoked("root method");
+                    pointsToMethod.registerAsImplementationInvoked("static root method");
                     MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
                         AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);

@@ -62,20 +62,20 @@ public class AnalysisReportsOptions {
     @Option(help = "Print image object hierarchy.")//
     public static final OptionKey<Boolean> PrintImageObjectTree = new OptionKey<>(false);
 
-    @Option(help = "Override the default suppression of specified roots. See: Reports.md.")//
+    @Option(help = "Override the default suppression of specified roots. See: StaticAnalysisReports.md.")//
     public static final OptionKey<String> ImageObjectTreeExpandRoots = new OptionKey<>("");
 
-    @Option(help = "Suppress the expansion of specified roots. See: Reports.md.")//
+    @Option(help = "Suppress the expansion of specified roots. See: StaticAnalysisReports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressRoots = new OptionKey<>("");
 
-    @Option(help = "Override the default suppression of specified types. See: Reports.md.")//
+    @Option(help = "Override the default suppression of specified types. See: StaticAnalysisReports.md.")//
     public static final OptionKey<String> ImageObjectTreeExpandTypes = new OptionKey<>("");
 
-    @Option(help = "Suppress the expansion of specified types. See: Reports.md.")//
+    @Option(help = "Suppress the expansion of specified types. See: StaticAnalysisReports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressTypes = new OptionKey<>("");
 
     enum CallTreeType {
         TXT,
-        CSV;
+        CSV
     }
 }

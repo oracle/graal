@@ -56,6 +56,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -816,11 +817,13 @@ public class NativeImageGenerator {
             OnAnalysisExitAccess onExitConfig = new OnAnalysisExitAccessImpl(featureHandler, loader, bb, debug);
             featureHandler.forEachFeature(feature -> feature.onAnalysisExit(onExitConfig));
 
+            String reportsPath = SubstrateOptions.reportsPath();
             /*
              * Execute analysis reporting here. This code is executed even if unsupported features
              * are reported or the analysis fails due to any other reasons.
              */
-            AnalysisReporter.printAnalysisReports(imageName, options, SubstrateOptions.reportsPath(), bb);
+            AnalysisReporter.printAnalysisReports(imageName, options, reportsPath, bb);
+            ReachabilityTracePrinter.report(imageName, options, reportsPath, bb);
         }
         if (NativeImageOptions.ReturnAfterAnalysis.getValue()) {
             return true;
