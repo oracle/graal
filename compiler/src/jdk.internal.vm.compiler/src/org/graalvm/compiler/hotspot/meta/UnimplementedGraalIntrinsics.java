@@ -401,11 +401,6 @@ public final class UnimplementedGraalIntrinsics {
             );
         }
 
-        if (arch instanceof AArch64) {
-            add(toBeInvestigated,
-                            "java/lang/Thread.onSpinWait()V");
-        }
-
         if (JAVA_SPEC >= 20) {
             // This reuses the intrinsic for java/lang/StringCoding.hasNegatives with minor changes
             add(toBeInvestigated,

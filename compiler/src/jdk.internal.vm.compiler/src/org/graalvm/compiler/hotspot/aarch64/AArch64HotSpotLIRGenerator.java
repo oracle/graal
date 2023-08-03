@@ -34,12 +34,14 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
@@ -76,6 +78,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
+import org.graalvm.compiler.lir.aarch64.AArch64SpinWaitOp;
 import org.graalvm.compiler.lir.gen.BarrierSetLIRGenerator;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.MoveFactory;
@@ -466,6 +469,25 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         boolean useDcZva = !isDcZvaProhibited && flags.contains(AArch64.Flag.UseBlockZeroing);
 
         emitZeroMemory(address, length, isAligned, useDcZva, zvaLength);
+    }
+
+    private Consumer<AArch64MacroAssembler> onSpinWaitInst() {
+        return switch (config.onSpinWaitInst) {
+            case "nop" -> AArch64MacroAssembler::nop;
+            case "isb" -> AArch64MacroAssembler::isb;
+            case "yield" -> AArch64MacroAssembler::pause;
+            default -> throw GraalError.shouldNotReachHere("Unknown OnSpinWaitInst " + config.onSpinWaitInst);
+        };
+    }
+
+    @Override
+    public void emitSpinWait() {
+        if ("none".equals(config.onSpinWaitInst)) {
+            // do nothing
+        } else {
+            GraalError.guarantee(config.onSpinWaitInstCount > 0, "illegal onSpinWaitInstCount");
+            append(new AArch64SpinWaitOp(onSpinWaitInst(), config.onSpinWaitInstCount));
+        }
     }
 
     @Override

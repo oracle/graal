@@ -47,7 +47,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompressBitsNode;
@@ -115,7 +114,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerThreadPlugins(invocationPlugins, arch);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, arch, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
                 registerFloatDoublePlugins(invocationPlugins, JavaKind.Float, arch, replacements);
@@ -131,19 +129,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
                 registerArraysSupportPlugins(invocationPlugins, arch, replacements);
-            }
-        });
-    }
-
-    private static void registerThreadPlugins(InvocationPlugins plugins, AMD64 arch) {
-        // Pause instruction introduced with SSE2
-        assert (arch.getFeatures().contains(AMD64.CPUFeature.SSE2));
-        Registration r = new Registration(plugins, Thread.class);
-        r.register(new InvocationPlugin("onSpinWait") {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.append(new PauseNode());
-                return true;
             }
         });
     }

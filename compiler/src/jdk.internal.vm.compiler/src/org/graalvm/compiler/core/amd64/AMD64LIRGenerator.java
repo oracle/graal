@@ -1013,6 +1013,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitSpinWait() {
+        append(new AMD64PauseOp());
+    }
+
+    @Override
     public void emitHalt() {
         append(new AMD64HaltOp());
     }

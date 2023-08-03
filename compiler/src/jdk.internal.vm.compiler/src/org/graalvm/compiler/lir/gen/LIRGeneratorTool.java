@@ -528,6 +528,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitPause();
 
+    /**
+     * Perform no operation by default. See also {@link Thread#onSpinWait()}.
+     */
+    default void emitSpinWait() {
+    }
+
     void emitPrefetchAllocate(Value address);
 
     Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull);
