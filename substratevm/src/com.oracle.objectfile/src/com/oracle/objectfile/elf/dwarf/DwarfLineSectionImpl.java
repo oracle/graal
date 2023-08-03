@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -593,111 +594,111 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeCopyOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DW_LNS_copy.value();
+        DwarfLineOpcode opcode = DW_LNS_copy;
         int pos = p;
         debugCopyCount++;
         verboseLog(context, "  [0x%08x] Copy %d", pos, debugCopyCount);
-        return writeByte(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, pos);
     }
 
     private int writeAdvancePCOp(DebugContext context, long uleb, byte[] buffer, int p) {
-        byte opcode = DW_LNS_advance_pc.value();
+        DwarfLineOpcode opcode = DW_LNS_advance_pc;
         int pos = p;
         debugAddress += uleb;
         verboseLog(context, "  [0x%08x] Advance PC by %d to 0x%08x", pos, uleb, debugAddress);
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeULEB(uleb, buffer, pos);
     }
 
     private int writeAdvanceLineOp(DebugContext context, long sleb, byte[] buffer, int p) {
-        byte opcode = DW_LNS_advance_line.value();
+        DwarfLineOpcode opcode = DW_LNS_advance_line;
         int pos = p;
         debugLine += sleb;
         verboseLog(context, "  [0x%08x] Advance Line by %d to %d", pos, sleb, debugLine);
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeSLEB(sleb, buffer, pos);
     }
 
     private int writeSetFileOp(DebugContext context, String file, long uleb, byte[] buffer, int p) {
-        byte opcode = DW_LNS_set_file.value();
+        DwarfLineOpcode opcode = DW_LNS_set_file;
         int pos = p;
         verboseLog(context, "  [0x%08x] Set File Name to entry %d in the File Name Table (%s)", pos, uleb, file);
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeULEB(uleb, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     private int writeSetColumnOp(DebugContext context, long uleb, byte[] buffer, int p) {
-        byte opcode = DW_LNS_set_column.value();
+        DwarfLineOpcode opcode = DW_LNS_set_column;
         int pos = p;
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeULEB(uleb, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     private int writeNegateStmtOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DW_LNS_negate_stmt.value();
+        DwarfLineOpcode opcode = DW_LNS_negate_stmt;
         int pos = p;
-        return writeByte(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, pos);
     }
 
     private int writeSetBasicBlockOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DW_LNS_set_basic_block.value();
+        DwarfLineOpcode opcode = DW_LNS_set_basic_block;
         int pos = p;
         verboseLog(context, "  [0x%08x] Set basic block", pos);
-        return writeByte(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, pos);
     }
 
     private int writeConstAddPCOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DW_LNS_const_add_pc.value();
+        DwarfLineOpcode opcode = DW_LNS_const_add_pc;
         int pos = p;
         int advance = opcodeAddress((byte) 255);
         debugAddress += advance;
         verboseLog(context, "  [0x%08x] Advance PC by constant %d to 0x%08x", pos, advance, debugAddress);
-        return writeByte(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, pos);
     }
 
     private int writeFixedAdvancePCOp(DebugContext context, short arg, byte[] buffer, int p) {
-        byte opcode = DW_LNS_fixed_advance_pc.value();
+        DwarfLineOpcode opcode = DW_LNS_fixed_advance_pc;
         int pos = p;
         debugAddress += arg;
         verboseLog(context, "  [0x%08x] Fixed advance Address by %d to 0x%08x", pos, arg, debugAddress);
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeShort(arg, buffer, pos);
     }
 
     private int writeEndSequenceOp(DebugContext context, byte[] buffer, int p) {
-        byte opcode = DW_LNE_end_sequence.value();
+        DwarfLineOpcode opcode = DW_LNE_end_sequence;
         int pos = p;
         verboseLog(context, "  [0x%08x] Extended opcode 1: End sequence", pos);
         debugAddress = debugTextBase;
         debugLine = 1;
         debugCopyCount = 0;
-        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
+        pos = writePrefixOpcode(buffer, pos);
         /*
          * Insert extended insn byte count as ULEB.
          */
         pos = writeULEB(1, buffer, pos);
-        return writeByte(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, pos);
     }
 
     private int writeSetAddressOp(DebugContext context, long arg, byte[] buffer, int p) {
-        byte opcode = DW_LNE_set_address.value();
+        DwarfLineOpcode opcode = DW_LNE_set_address;
         int pos = p;
         debugAddress = debugTextBase + (int) arg;
         verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, debugAddress);
-        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
+        pos = writePrefixOpcode(buffer, pos);
         /*
          * Insert extended insn byte count as ULEB.
          */
         pos = writeULEB(9, buffer, pos);
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         return writeRelocatableCodeOffset(arg, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     private int writeDefineFileOp(DebugContext context, String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int p) {
-        byte opcode = DW_LNE_define_file.value();
+        DwarfLineOpcode opcode = DW_LNE_define_file;
         int pos = p;
         /*
          * Calculate bytes needed for opcode + args.
@@ -709,7 +710,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         insnBytes += writeULEB(uleb2, scratch, 0);
         insnBytes += writeULEB(uleb3, scratch, 0);
         verboseLog(context, "  [0x%08x] Extended opcode 3: Define File %s idx %d ts1 %d ts2 %d", pos, file, uleb1, uleb2, uleb3);
-        pos = writeByte(DW_LNS_extended_prefix.value(), buffer, pos);
+        pos = writePrefixOpcode(buffer, pos);
         /*
          * Insert insn length as uleb.
          */
@@ -717,11 +718,19 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Insert opcode and args.
          */
-        pos = writeByte(opcode, buffer, pos);
+        pos = writeLineOpcode(opcode, buffer, pos);
         pos = writeUTF8StringBytes(file, buffer, pos);
         pos = writeULEB(uleb1, buffer, pos);
         pos = writeULEB(uleb2, buffer, pos);
         return writeULEB(uleb3, buffer, pos);
+    }
+
+    private int writePrefixOpcode(byte[] buffer, int p) {
+        return writeLineOpcode(DW_LNS_extended_prefix, buffer, p);
+    }
+
+    private int writeLineOpcode(DwarfLineOpcode opcode, byte[] buffer, int p) {
+        return writeByte(opcode.value(), buffer, p);
     }
 
     private static int opcodeId(byte opcode) {
