@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.TreeSet;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -53,12 +53,22 @@ public final class JDKConfigFiles {
         configFiles = new ConcurrentHashMap<>();
     }
 
-    public void register(String configFile) {
-        Path configPath = Path.of(configFile.startsWith("/") ? configFile.substring(1) : configFile).normalize();
+    public void register(String firstPathPart, String... morePathParts) {
+        validateConfigPart(firstPathPart);
+        for (String part : morePathParts) {
+            validateConfigPart(part);
+        }
+        Path configPath = Path.of(firstPathPart, morePathParts);
         Path jdkConfigPath = jdkHomeDir.resolve(configPath).normalize();
         VMError.guarantee(jdkConfigPath.startsWith(jdkHomeDir), "Unable to register files outside of java.home: %s", jdkConfigPath);
-        VMError.guarantee(Files.isRegularFile(jdkConfigPath), "File does not exist: %s", jdkConfigPath);
+        VMError.guarantee(Files.isRegularFile(jdkConfigPath), "JDK config file does not exist: %s", jdkConfigPath);
         configFiles.putIfAbsent(configPath, jdkConfigPath);
+    }
+
+    private static void validateConfigPart(String part) {
+        VMError.guarantee(!part.contains(".."), "JDK config file path cannot refer to parent directories: %s", part);
+        VMError.guarantee(!part.contains("/"), "JDK config file path cannot contain '/': %s", part);
+        VMError.guarantee(!part.contains("\\"), "JDK config file path cannot contains '\\': %s", part);
     }
 }
 
@@ -71,9 +81,7 @@ final class JDKConfigFilesFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        TreeSet<Map.Entry<Path, Path>> entries = new TreeSet<>(Map.Entry.comparingByKey());
-        entries.addAll(JDKConfigFiles.singleton().configFiles.entrySet());
-        for (var entry : entries) {
+        for (var entry : new TreeMap<>(JDKConfigFiles.singleton().configFiles).entrySet()) {
             Path configPath = entry.getKey();
             Path jdkConfigPath = entry.getValue();
             Path imageConfigPath = access.getImagePath().resolveSibling(configPath);
