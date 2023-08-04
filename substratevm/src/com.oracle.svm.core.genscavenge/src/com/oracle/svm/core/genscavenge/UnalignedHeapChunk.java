@@ -176,10 +176,5 @@ public final class UnalignedHeapChunk {
         public boolean isAligned(UnalignedHeapChunk.UnalignedHeader heapChunk) {
             return false;
         }
-
-        @Override
-        public UnsignedWord getAllocationStart(UnalignedHeapChunk.UnalignedHeader heapChunk) {
-            return getObjectStart(heapChunk);
-        }
     }
 }

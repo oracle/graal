@@ -80,21 +80,6 @@ public final class MemoryWalker {
         /** Return the size of the heap chunk. */
         UnsignedWord getSize(T heapChunk);
 
-        /** Return the address where allocation starts within the heap chunk. */
-        UnsignedWord getAllocationStart(T heapChunk);
-
-        /**
-         * Return the address where allocation has ended within the heap chunk. This is the first
-         * address past the end of allocated space within the heap chunk.
-         */
-        UnsignedWord getAllocationEnd(T heapChunk);
-
-        /**
-         * Return the name of the region that contains the heap chunk. E.g., "young", "old", "free",
-         * etc.
-         */
-        String getRegion(T heapChunk);
-
         /** Return true if the heap chunk is an aligned heap chunk, else false. */
         boolean isAligned(T heapChunk);
     }

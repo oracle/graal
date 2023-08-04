@@ -344,6 +344,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static long setRememberedSetBit(long headerBytes) {
+        return headerBytes | REMEMBERED_SET_BIT.rawValue();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
         return header.and(REMEMBERED_SET_BIT).notEqual(0);
     }
@@ -357,11 +362,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
         return header.and(FORWARDED_BIT).notEqual(0);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr) {
-        return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -391,6 +391,24 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         UnsignedWord forwardHeader = getForwardHeader(copy);
         ObjectAccess.writeLong(original, getHubOffset(), forwardHeader.rawValue());
         assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+    }
+
+    /**
+     * The original header are the 8 bytes at the hub offset (regardless if compressed references
+     * are used or not).
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    Object installForwardingPointerParallel(Object original, long eightHeaderBytes, Object copy) {
+        UnsignedWord forwardHeader = getForwardHeader(copy);
+        /* Try installing the new header. */
+        Pointer originalPtr = Word.objectToUntrackedPointer(original);
+        long value = originalPtr.compareAndSwapLong(getHubOffset(), eightHeaderBytes, forwardHeader.rawValue(), LocationIdentity.ANY_LOCATION);
+        assert isPointerToForwardedObject(originalPtr);
+        if (value != eightHeaderBytes) {
+            return getForwardedObject(originalPtr, WordFactory.unsigned(value));
+        }
+        return copy;
     }
 
     @AlwaysInline("GC performance")

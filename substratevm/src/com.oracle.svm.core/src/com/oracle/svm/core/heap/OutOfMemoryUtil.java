@@ -29,6 +29,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public class OutOfMemoryUtil {
@@ -39,9 +40,18 @@ public class OutOfMemoryUtil {
         return reportOutOfMemoryError(OUT_OF_MEMORY_ERROR);
     }
 
-    @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate while out of memory.")
     public static OutOfMemoryError reportOutOfMemoryError(OutOfMemoryError error) {
+        if (VMOperation.isGCInProgress()) {
+            /* An OutOfMemoryError during a GC is always a fatal error. */
+            throw VMError.shouldNotReachHere(error);
+        }
+        throw reportOutOfMemoryError0(error);
+    }
+
+    @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
+    private static OutOfMemoryError reportOutOfMemoryError0(OutOfMemoryError error) {
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {
             if (LibC.isSupported()) {
                 Log.log().string("Terminating due to java.lang.OutOfMemoryError: ").string(JDKUtils.getRawMessage(error)).newline();

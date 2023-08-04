@@ -63,6 +63,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -126,6 +127,8 @@ public final class GCImpl implements GC {
     public String getName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return "Epsilon GC";
+        } else if (SubstrateOptions.UseParallelGC.getValue()) {
+            return "Parallel GC";
         } else {
             return "Serial GC";
         }
@@ -195,6 +198,10 @@ public final class GCImpl implements GC {
     private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(data.getRequestingEpoch());
+
+        if (ParallelGC.isEnabled()) {
+            ParallelGC.singleton().initialize();
+        }
 
         timers.mutator.closeAt(data.getRequestingNanoTime());
         startCollectionOrExit();
@@ -1071,6 +1078,8 @@ public final class GCImpl implements GC {
         try {
             if (isIncremental) {
                 scanGreyObjectsLoop();
+            } else if (ParallelGC.isEnabled()) {
+                ParallelGC.singleton().waitForIdle();
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
             }
@@ -1093,20 +1102,23 @@ public final class GCImpl implements GC {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @SuppressWarnings("static-method")
     Object promoteObject(Object original, UnsignedWord header) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
         Header<?> originalChunk = getChunk(original, isAligned);
+
+        /* If the parallel GC is used, then the space may be outdated or null. */
         Space originalSpace = HeapChunk.getSpace(originalChunk);
-        if (!originalSpace.isFromSpace()) {
+        assert originalSpace != null || ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase();
+        if (originalSpace == null || !originalSpace.isFromSpace()) {
+            /* Object was already promoted or is currently being promoted. */
             return original;
         }
 
         Object result = null;
         if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
-                result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+                result = heap.getYoungGeneration().promoteAlignedObject(original, originalSpace);
             } else {
                 result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
@@ -1114,11 +1126,13 @@ public final class GCImpl implements GC {
                 accounting.onSurvivorOverflowed();
             }
         }
-        if (result == null) { // complete collection, tenuring age reached, or survivor space full
+
+        /* Complete collection, tenuring age reached, or survivor space full. */
+        if (result == null) {
             if (isAligned) {
-                result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+                result = heap.getOldGeneration().promoteAlignedObject(original, originalSpace);
             } else {
-                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk);
             }
             assert result != null : "promotion failure in old generation must have been handled";
         }
@@ -1152,7 +1166,7 @@ public final class GCImpl implements GC {
                     }
                 }
                 if (!promoted) {
-                    heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+                    heap.getOldGeneration().promoteChunk(originalChunk, isAligned);
                 }
             }
         }
@@ -1241,7 +1255,7 @@ public final class GCImpl implements GC {
     }
 
     @Fold
-    GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
+    public GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
         return greyToBlackObjectVisitor;
     }
 

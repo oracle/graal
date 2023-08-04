@@ -34,6 +34,7 @@ import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapAccounting;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfLongConstant;
 import com.oracle.svm.core.jvmstat.PerfLongCounter;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.jvmstat.PerfUnit;
 /**
  * Performance data for our serial GC.
  */
+// TODO (chaeubl): rename this class
 public class SerialGCPerfData implements PerfDataHolder {
     private final PerfDataGCPolicy gcPolicy;
     private final PerfDataCollector youngCollector;
@@ -78,7 +80,9 @@ public class SerialGCPerfData implements PerfDataHolder {
         gcPolicy.allocate();
 
         youngCollector.allocate("Serial young collection pauses");
-        oldCollector.allocate("Serial full collection pauses");
+
+        String oldCollectorName = ParallelGC.isEnabled() ? "Parallel" : "Serial";
+        oldCollector.allocate(oldCollectorName + " full collection pauses");
 
         youngGen.allocate("young");
         youngGen.spaces[0].allocate("eden");

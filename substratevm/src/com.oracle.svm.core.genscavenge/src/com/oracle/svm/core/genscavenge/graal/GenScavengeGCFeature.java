@@ -48,6 +48,7 @@ import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.UseSerialOrEpsilonGC;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -74,7 +75,7 @@ import com.sun.management.GarbageCollectorMXBean;
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return new com.oracle.svm.core.genscavenge.UseSerialOrEpsilonGC().getAsBoolean();
+        return new UseSerialOrEpsilonGC().getAsBoolean();
     }
 
     @Override
@@ -171,7 +172,7 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static PerfDataHolder createPerfData() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialOrParallelGC()) {
             return new SerialGCPerfData();
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();
