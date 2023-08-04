@@ -964,4 +964,7 @@ public class SubstrateOptions {
 
     @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
+    public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 }
