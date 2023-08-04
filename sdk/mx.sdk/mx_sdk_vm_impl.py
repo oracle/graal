@@ -1734,12 +1734,14 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         # always updated when the JDK is rebuilt.
         src_jimage = mx.TimeStampFile(join(_src_jdk.home, 'lib', 'modules'))
         return [
-            'components: {}'.format(', '.join(sorted(_components_set()))),
-            'include sources: {}'.format(_include_sources_str()),
-            'strip jars: {}'.format(mx.get_opts().strip_jars),
-            'vendor-version: {}'.format(graalvm_vendor_version()),
-            'source jimage: {}'.format(src_jimage),
-            'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
+            f'components: {", ".join(sorted(_components_set()))}',
+            f'include sources: {_include_sources_str()}',
+            f'strip jars: {mx.get_opts().strip_jars}',
+            f'vendor-version: {graalvm_vendor_version()}',
+            f'source jimage: {src_jimage}',
+            f'use_upgrade_module_path: {mx.get_env("GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH", None)}',
+            f'default_to_jvmci: {self.subject.default_to_jvmci}',
+            f'missing_export_target_action: {self.subject.missing_export_target_action}',
         ]
 
     def _config_file(self):
@@ -3530,6 +3532,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             workingSets=None,
             defaultBuild=False,
             missing_export_target_action='warn',
+            default_to_jvmci=bool(mx.suite('substratevm', fatalIfMissing=False)),
         )
         standalone_deps_names.append(java_standalone_jimage.name)
         register_project(java_standalone_jimage)
