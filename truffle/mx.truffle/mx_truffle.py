@@ -1032,7 +1032,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
 
 
-truffle_api_component = mx_sdk_vm.GraalVmTruffleLibrary(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
     short_name='tfla',
@@ -1047,8 +1047,7 @@ truffle_api_component = mx_sdk_vm.GraalVmTruffleLibrary(
         'truffle:TRUFFLE_RUNTIME',
     ],
     stability="supported",
-)
-mx_sdk_vm.register_graalvm_component(truffle_api_component)
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
