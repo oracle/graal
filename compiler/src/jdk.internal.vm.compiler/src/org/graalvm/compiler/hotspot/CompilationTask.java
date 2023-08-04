@@ -49,6 +49,7 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -178,7 +179,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     return ExitVM;
                 }
                 // Automatically exit on failure when assertions are enabled in libgraal
-                if (IS_IN_NATIVE_IMAGE && cause instanceof AssertionError && Assertions.assertionsEnabled()) {
+                if (IS_IN_NATIVE_IMAGE && (cause instanceof AssertionError || cause instanceof GraalError) && Assertions.assertionsEnabled()) {
                     TTY.println("Treating CompilationFailureAction as ExitVM due to assertion failure in libgraal: " + cause);
                     return ExitVM;
                 }
