@@ -197,7 +197,10 @@ public class CompileQueue {
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
 
-    private final ConcurrentMap<HostedMethod, CompilationGraph> unpublishedGraphs = new ConcurrentHashMap<>();
+    public record UnpublishedTrivialMethods(CompilationGraph unpublishedGraph, boolean isTrivial) {
+    }
+
+    private final ConcurrentMap<HostedMethod, UnpublishedTrivialMethods> unpublishedTrivialMethods = new ConcurrentHashMap<>();
 
     public abstract static class CompileReason {
         /**
@@ -701,7 +704,6 @@ public class CompileQueue {
 
     private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(graph)) {
-            method.compilationInfo.setTrivialMethod(true);
             return true;
         } else {
             return false;
@@ -728,10 +730,13 @@ public class CompileQueue {
                     });
                 });
             }
-            for (Map.Entry<HostedMethod, CompilationGraph> entry : unpublishedGraphs.entrySet()) {
-                entry.getKey().compilationInfo.setCompilationGraph(entry.getValue());
+            for (Map.Entry<HostedMethod, UnpublishedTrivialMethods> entry : unpublishedTrivialMethods.entrySet()) {
+                entry.getKey().compilationInfo.setCompilationGraph(entry.getValue().unpublishedGraph);
+                if (entry.getValue().isTrivial) {
+                    entry.getKey().compilationInfo.setTrivialMethod(true);
+                }
             }
-            unpublishedGraphs.clear();
+            unpublishedTrivialMethods.clear();
         } while (inliningProgress);
     }
 
@@ -836,9 +841,11 @@ public class CompileQueue {
                      * non-deterministic. This is why we are saving graphs to be published at the
                      * end of each round.
                      */
-                    unpublishedGraphs.put(method, CompilationGraph.encode(graph));
                     if (checkTrivial(method, graph)) {
+                        unpublishedTrivialMethods.put(method, new UnpublishedTrivialMethods(CompilationGraph.encode(graph), true));
                         inliningProgress = true;
+                    } else {
+                        unpublishedTrivialMethods.put(method, new UnpublishedTrivialMethods(CompilationGraph.encode(graph), false));
                     }
                 }
             }
@@ -1065,7 +1072,9 @@ public class CompileQueue {
                 assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
                 method.compilationInfo.setCompileOptions(getCustomizedOptions(method, debug));
-                checkTrivial(method, graph);
+                if (checkTrivial(method, graph)) {
+                    method.compilationInfo.setTrivialMethod(true);
+                }
 
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
