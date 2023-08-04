@@ -27,7 +27,6 @@ package com.oracle.svm.graal;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,6 +72,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -86,7 +86,6 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -128,11 +127,6 @@ public class GraalSupport {
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
-
-    private static final Field graphEncodingField = ReflectionUtil.lookupField(GraalSupport.class, "graphEncoding");
-    private static final Field graphObjectsField = ReflectionUtil.lookupField(GraalSupport.class, "graphObjects");
-    private static final Field graphNodeTypesField = ReflectionUtil.lookupField(GraalSupport.class, "graphNodeTypes");
-    private static final Field methodsToCompileField = ReflectionUtil.lookupField(GraalSupport.class, "methodsToCompile");
 
     private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
 
@@ -234,7 +228,7 @@ public class GraalSupport {
         GraalSupport support = get();
         if (!Arrays.equals(support.methodsToCompile, methodsToCompile)) {
             support.methodsToCompile = methodsToCompile;
-            GraalSupport.rescan(config, support, methodsToCompileField);
+            GraalSupport.rescan(config, methodsToCompile);
             result = true;
         }
         return result;
@@ -274,26 +268,36 @@ public class GraalSupport {
         boolean result = false;
         if (!Arrays.equals(support.graphEncoding, graphEncoding)) {
             support.graphEncoding = graphEncoding;
-            GraalSupport.rescan(a, support, graphEncodingField);
             result = true;
         }
         if (!Arrays.deepEquals(support.graphObjects, graphObjects)) {
             support.graphObjects = graphObjects;
-            GraalSupport.rescan(a, support, graphObjectsField);
+            GraalSupport.rescan(a, graphObjects);
             result = true;
         }
         if (!Arrays.equals(support.graphNodeTypes, graphNodeTypes)) {
             support.graphNodeTypes = graphNodeTypes;
-            GraalSupport.rescan(a, support, graphNodeTypesField);
+            GraalSupport.rescan(a, graphNodeTypes);
             result = true;
         }
         return result;
     }
 
-    private static void rescan(FeatureAccess a, GraalSupport support, Field field) {
-        if (a instanceof DuringAnalysisAccessImpl) {
-            ((DuringAnalysisAccessImpl) a).rescanField(support, field);
+    private static void rescan(FeatureAccess a, Object object) {
+        if (a instanceof DuringAnalysisAccessImpl access) {
+            rescan(access.getUniverse(), object);
         }
+    }
+
+    /**
+     * Rescan Graal objects during analysis. The fields that point to these objects are annotated
+     * with {@link UnknownObjectField} so their value is not processed during analysis, only their
+     * declared type is injected in the type flow graphs. Their eventual value becomes available
+     * after analysis. Later when the field is read the lazy value supplier scans the final value
+     * and patches the shadow heap.
+     */
+    public static void rescan(AnalysisUniverse universe, Object object) {
+        universe.getHeapScanner().rescanObject(object);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

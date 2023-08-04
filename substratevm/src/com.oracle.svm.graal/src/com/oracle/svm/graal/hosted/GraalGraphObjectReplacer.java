@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.graal.hosted;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,6 +55,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -107,11 +107,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
     private final HostedStringDeduplication stringTable;
 
-    private final Field substrateFieldTypeField;
-    private final Field substrateFieldDeclaringClassField;
-    private final Field dynamicHubMetaTypeField;
-    private final Field substrateTypeRawAllInstanceFieldsField;
-
     private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
 
     /**
@@ -125,10 +120,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         this.sProviders = sProviders;
         this.universeFactory = universeFactory;
         this.stringTable = HostedStringDeduplication.singleton();
-        substrateFieldTypeField = ReflectionUtil.lookupField(SubstrateField.class, "type");
-        substrateFieldDeclaringClassField = ReflectionUtil.lookupField(SubstrateField.class, "declaringClass");
-        dynamicHubMetaTypeField = ReflectionUtil.lookupField(DynamicHub.class, "metaType");
-        substrateTypeRawAllInstanceFieldsField = ReflectionUtil.lookupField(SubstrateType.class, "rawAllInstanceFields");
     }
 
     public void setGraalRuntime(SubstrateGraalRuntime sGraalRuntime) {
@@ -289,8 +280,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 sField = newField;
 
                 sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
-                aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
-                aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
+                GraalSupport.rescan(aUniverse, sField.getType());
+                GraalSupport.rescan(aUniverse, sField.getDeclaringClass());
             }
         }
         return sField;
@@ -338,10 +329,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             if (sType == null) {
                 sType = newType;
                 hub.setMetaType(sType);
-                aUniverse.getHeapScanner().rescanField(hub, dynamicHubMetaTypeField);
+                GraalSupport.rescan(aUniverse, hub.getMetaType());
 
                 sType.setRawAllInstanceFields(createAllInstanceFields(aType));
-                aUniverse.getHeapScanner().rescanField(sType, substrateTypeRawAllInstanceFieldsField);
+                GraalSupport.rescan(aUniverse, sType.getRawAllInstanceFields());
                 createType(aType.getSuperclass());
                 createType(aType.getComponentType());
                 for (AnalysisType aInterface : aType.getInterfaces()) {
