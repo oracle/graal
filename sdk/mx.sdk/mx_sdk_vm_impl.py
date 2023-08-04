@@ -2730,6 +2730,22 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 # Ignore components without a valid installable id.
                 home_paths[comp.installable_id] = base_dir + dependency_path
 
+        def add_jars_from_component(comp, force_modules_as_jars=False):
+            jar_dists = comp.jar_distributions
+            if isinstance(comp, mx_sdk_vm.GraalVmTruffleLibrary):
+                jar_dists += comp.jvmci_parent_jars
+            elif comp.jvmci_parent_jars:
+                raise mx.warn(f"JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{comp.name}' adds '{comp.jvmci_parent_jars}', which is skipped")
+
+            for jar_dist in jar_dists:
+                layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
+                    'source_type': 'dependency',
+                    'dependency': jar_dist,
+                    'exclude': [],
+                    'path': None,
+                })
+                (self.jvm_jars if force_modules_as_jars else self.jvm_modules).append(jar_dist)
+
         def add_files_from_component(comp, is_main, path_prefix, excluded_paths, force_modules_as_jars=False):
             """
             Add to the layout relevant files of a component.
@@ -2744,17 +2760,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             library_configs = _get_library_configs(comp)
 
             if self.is_jvm:
-                if comp.jvmci_parent_jars:
-                    mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{}' adds '{}', which is skipped".format(comp.name, comp.jvmci_parent_jars))
-
-                for jar_dist in comp.jar_distributions:
-                    layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
-                        'source_type': 'dependency',
-                        'dependency': jar_dist,
-                        'exclude': [],
-                        'path': None,
-                    })
-                    (self.jvm_jars if force_modules_as_jars else self.jvm_modules).append(jar_dist)
+                add_jars_from_component(comp, force_modules_as_jars)
 
                 for lib_dist in comp.support_libraries_distributions:
                     layout.setdefault(default_jvm_libs_dir, []).append({
@@ -2912,22 +2918,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             main_component_dependencies = GraalVmLayoutDistribution._add_dependencies([component], excluded_components)
             for main_component_dependency in main_component_dependencies:
                 if main_component_dependency not in added_components:
-                    jar_dists = main_component_dependency.jar_distributions
-                    if main_component_dependency.jvmci_parent_jars:
-                        if isinstance(main_component_dependency, mx_sdk_vm.GraalVmTruffleLibrary):
-                            jar_dists += main_component_dependency.jvmci_parent_jars
-                        else:
-                            mx.warn("JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{}' adds '{}', which is skipped".format(main_component_dependency.name, main_component_dependency.jvmci_parent_jars))
+                    add_jars_from_component(main_component_dependency)
                     for boot_jar in main_component_dependency.boot_jars:
                         mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' {} standalone".format(main_component_dependency.name, boot_jar, 'java' if self.is_jvm else 'native', name))
-                    for jar_dist in jar_dists:
-                        layout.setdefault(default_jvm_modules_dir, []).append({
-                            'source_type': 'dependency',
-                            'dependency': jar_dist,
-                            'exclude': [],
-                            'path': None,
-                        })
-                        self.jvm_modules.append(jar_dist)
                     added_components.append(main_component_dependency)
 
             # Add the JVM.
@@ -2980,7 +2973,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
             # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
-            # Example: `TRUFFLE_RUNTIME_ATTACH_SUPPORT`, a support_libraries_distributions` of `Truffle API`.
             # For the other component dependencies, this is done as part of `add_files_from_component()`.
             for jdk_component in GraalVmStandaloneComponent.jdk_components():
                 for lib_dist in jdk_component.support_libraries_distributions:
