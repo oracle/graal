@@ -1611,13 +1611,17 @@ suite = {
 
     "TRUFFLE_SL_LAUNCHER" : {
       "subDir" : "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sl_launcher",
+      },
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.sl.launcher",
       ],
       "distDependencies" : [
           "sdk:POLYGLOT",
-      ],
+      ], 
+      "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
     },
