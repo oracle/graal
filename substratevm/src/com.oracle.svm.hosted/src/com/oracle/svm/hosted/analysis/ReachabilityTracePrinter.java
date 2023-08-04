@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.analysis;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.compiler.debug.MethodFilter;
@@ -45,6 +46,8 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 
 public final class ReachabilityTracePrinter {
+    public static final String PATH_MESSAGE_PREFIX = "See the generated report for a complete reachability trace: ";
+
     public static class Options {
         @Option(help = "Print a trace and abort the build process if any type matching the specified pattern becomes reachable.")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
@@ -67,11 +70,10 @@ public final class ReachabilityTracePrinter {
             int count = ReachabilityTracePrinter.printTraceForTypesImpl(typePatterns, bb, new PrintWriter(stringWriter));
             if (count > 0) {
                 String trace = stringWriter.toString();
-                ReportUtils.report("trace for types", reportsPath, "trace_types_" + baseImageName, "txt",
+                Path path = ReportUtils.report("trace for types", reportsPath, "trace_types_" + baseImageName, "txt",
                                 writer -> writer.print(trace));
                 String abortOnTypeReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnTypeReachable, String.join(",", typePatterns));
-                String message = "Image building is interrupted as the types specified via " + abortOnTypeReachableOption +
-                                " are reachable. See the generated report for a complete reachability trace.";
+                String message = "Image building is interrupted as the types specified via " + abortOnTypeReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
                 consoleMessageBuilder.append(message);
             }
         }
@@ -82,11 +84,10 @@ public final class ReachabilityTracePrinter {
             int count = ReachabilityTracePrinter.printTraceForMethodsImpl(methodPatterns, bb, new PrintWriter(stringWriter));
             if (count > 0) {
                 String trace = stringWriter.toString();
-                ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + baseImageName, "txt",
+                Path path = ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + baseImageName, "txt",
                                 writer -> writer.print(trace));
                 String abortOnMethodReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnMethodReachable, String.join(",", methodPatterns));
-                String message = "Image building is interrupted as the methods specified via " + abortOnMethodReachableOption +
-                                " are reachable. See the generated report for a complete reachability trace.";
+                String message = "Image building is interrupted as the methods specified via " + abortOnMethodReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
                 consoleMessageBuilder.append(message);
             }
         }
@@ -97,11 +98,10 @@ public final class ReachabilityTracePrinter {
             int count = ReachabilityTracePrinter.printTraceForFieldsImpl(fieldPatterns, bb, new PrintWriter(stringWriter));
             if (count > 0) {
                 String trace = stringWriter.toString();
-                ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + baseImageName, "txt",
+                Path path = ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + baseImageName, "txt",
                                 writer -> writer.print(trace));
                 String abortOnFieldReachableOption = SubstrateOptionsParser.commandArgument(Options.AbortOnFieldReachable, String.join(",", fieldPatterns));
-                String message = "Image building is interrupted as the fields specified via " + abortOnFieldReachableOption +
-                                " are reachable. See the generated report for a complete reachability trace.";
+                String message = "Image building is interrupted as the fields specified via " + abortOnFieldReachableOption + " are reachable. " + PATH_MESSAGE_PREFIX + path;
                 consoleMessageBuilder.append(message);
             }
         }
