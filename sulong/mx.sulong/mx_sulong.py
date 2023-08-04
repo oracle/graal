@@ -460,9 +460,10 @@ class ToolchainConfig(object):
                 main_class=self._tool_to_main(tool),
                 build_args=[
                     '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
-                    '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                     '--gc=epsilon',
-                ],
+                ] + mx_sdk_vm_impl.svm_experimental_options([
+                    '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                ]),
                 is_main_launcher=False,
                 default_symlinks=False,
                 links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],

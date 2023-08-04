@@ -103,11 +103,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         jar_distributions=['vm:POLYBENCH'],
         main_class='org.graalvm.polybench.PolyBenchLauncher',
         build_args=[
-            '-H:-ParseRuntimeOptions',
-            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--features=org.graalvm.launcher.PolyglotLauncherFeature',
             '--initialize-at-build-time=org.graalvm.polybench',
             '--tool:all',
-        ],
+        ] + mx_sdk_vm_impl.svm_experimental_options([
+            '-H:-ParseRuntimeOptions',
+        ]),
         is_main_launcher=True,
         default_symlinks=True,
         is_sdk_launcher=True,
