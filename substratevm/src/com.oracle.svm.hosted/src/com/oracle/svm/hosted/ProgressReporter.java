@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,7 +73,10 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -241,8 +247,7 @@ public class ProgressReporter {
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
 
         printFeatures(features);
-
-        l().printLineSeparator();
+        printExperimentalOptions();
         printResourceInfo();
     }
 
@@ -273,6 +278,68 @@ public class ProgressReporter {
         printer.println();
     }
 
+    record ExperimentalOptionDetails(String origin, String alternatives) {
+    }
+
+    private void printExperimentalOptions() {
+        Map<String, ExperimentalOptionDetails> experimentalOptions = new HashMap<>();
+        var hostedOptionValues = HostedOptionValues.singleton().getMap();
+
+        for (OptionKey<?> option : hostedOptionValues.getKeys()) {
+            if (option == SubstrateOptions.UnlockExperimentalVMOptions) {
+                continue;
+            }
+            if (option instanceof HostedOptionKey<?> hok && option.getDescriptor().getStability() == OptionStability.EXPERIMENTAL) {
+                String optionPrefix = "-H:";
+                String originText;
+                String alternatives = null;
+                Object value = option.getValueOrDefault(hostedOptionValues);
+                if (value instanceof LocatableMultiOptionValue<?> lmov) {
+                    if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
+                        continue;
+                    } else {
+                        originText = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith("-H:"))
+                                        .collect(Collectors.joining(", "));
+                    }
+                } else {
+                    OptionOrigin origin = hok.getLastOrigin();
+                    if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
+                        continue;
+                    }
+                    originText = origin.toString();
+                    String valueString;
+                    if (hok.getDescriptor().getOptionValueType() == Boolean.class) {
+                        valueString = Boolean.valueOf(value.toString()) ? "+" : "-";
+                        optionPrefix += valueString;
+                    } else {
+                        valueString = value.toString();
+                    }
+
+                    String command = SubstrateOptionsParser.commandArgument(hok, valueString);
+                    if (!command.startsWith("-H:")) {
+                        alternatives = command;
+                    }
+                }
+
+                experimentalOptions.put(optionPrefix + hok.getName(), new ExperimentalOptionDetails(originText, alternatives));
+            }
+        }
+        if (experimentalOptions.isEmpty()) {
+            return;
+        }
+        l().printLineSeparator();
+        l().yellowBold().a(" ").a(experimentalOptions.size()).a(" ").doclink("Experimental option(s)", "#glossary-experimental-options").a(" in use:").reset().println();
+        for (var optionToOriginEntry : experimentalOptions.entrySet()) {
+            l().a(" ").a(optionToOriginEntry.getKey()).println();
+            ExperimentalOptionDetails details = optionToOriginEntry.getValue();
+            l().a("   Origin: ").a(details.origin).println();
+            if (details.alternatives != null) {
+                l().a("   Alternative API option(s): " + details.alternatives).println();
+            }
+        }
+    }
+
     private void printResourceInfo() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
@@ -300,7 +367,8 @@ public class ProgressReporter {
             maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(NativeImageOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
         }
 
-        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().printLineSeparator();
+        l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
         l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
                         ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
