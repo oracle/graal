@@ -477,8 +477,8 @@ public abstract class ImageHeapScanner {
         }
     }
 
-    public boolean isValueAvailable(@SuppressWarnings("unused") AnalysisField field) {
-        return true;
+    public boolean isValueAvailable(AnalysisField field) {
+        return field.isValueAvailable();
     }
 
     protected String formatReason(String message, ScanReason reason) {

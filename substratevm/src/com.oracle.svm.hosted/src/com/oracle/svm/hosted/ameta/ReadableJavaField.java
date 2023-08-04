@@ -38,6 +38,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
 
+    static boolean isValueAvailable(AnalysisField field) {
+        if (field.wrapped instanceof ReadableJavaField readableField) {
+            return readableField.isValueAvailable();
+        }
+        return field.isValueAvailable();
+    }
+
     static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
         assert !(field instanceof AnalysisField) && !(field instanceof HostedField) : "must have been unwrapped";
 

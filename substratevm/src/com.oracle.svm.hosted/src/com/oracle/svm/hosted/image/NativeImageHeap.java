@@ -504,7 +504,12 @@ public final class NativeImageHeap implements ImageHeap {
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
                     boolean fieldRelocatable = false;
-                    if (field.isRead() &&
+                    /*
+                     * Fields that are only available after heap layout, such as
+                     * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
+                     * not be processed.
+                     */
+                    if (field.isRead() && field.isValueAvailable() &&
                                     !field.equals(hybridArrayField) &&
                                     !field.equals(hybridTypeIDSlotsField)) {
                         if (field.getJavaKind() == JavaKind.Object) {

@@ -111,11 +111,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     public boolean isValueAvailable(AnalysisField field) {
-        if (field.wrapped instanceof ReadableJavaField) {
-            ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
-            return readableField.isValueAvailable();
-        }
-        return super.isValueAvailable(field);
+        return ReadableJavaField.isValueAvailable(field);
     }
 
     @Override
