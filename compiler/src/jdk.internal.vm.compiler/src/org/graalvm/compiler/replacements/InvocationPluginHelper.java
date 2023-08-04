@@ -455,7 +455,6 @@ public class InvocationPluginHelper implements DebugCloseable {
                 GraalError.guarantee(!(returnValue instanceof FixedNode), "unexpected FixedNode");
                 returnValue = b.add(returnValue);
             }
-            GraalError.guarantee(!returnValue.isUnregistered(), returnValue.toString());
         }
         returns.add(new ReturnData(end, returnValue));
     }
