@@ -781,7 +781,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     """
     Gets the argument for the jlink ``--add-options`` flag.
 
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+                    When set to 'lib' ensure the JVMCI compiler library is used.
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
@@ -810,6 +811,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+                if default_to_jvmci == 'lib':
+                    vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
@@ -897,7 +900,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
                      them via --upgrade-module-path at image runtime
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules.
+                     When set to 'lib' ensure the JVMCI compiler library is used.
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)

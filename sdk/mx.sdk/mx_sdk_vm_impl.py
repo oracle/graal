@@ -3532,7 +3532,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             workingSets=None,
             defaultBuild=False,
             missing_export_target_action='warn',
-            default_to_jvmci=bool(mx.suite('substratevm', fatalIfMissing=False)),
+            default_to_jvmci='lib' if mx.suite('substratevm', fatalIfMissing=False) else False,
         )
         standalone_deps_names.append(java_standalone_jimage.name)
         register_project(java_standalone_jimage)
