@@ -33,8 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Set;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,17 +45,20 @@ public final class JDKConfigFiles {
         return ImageSingletons.lookup(JDKConfigFiles.class);
     }
 
-    final Set<String> configFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Path jdkHomeDir;
+    final Map<Path, Path> configFiles;
 
     JDKConfigFiles() {
+        jdkHomeDir = Path.of(System.getProperty("java.home")).normalize();
+        configFiles = new ConcurrentHashMap<>();
     }
 
     public void register(String configFile) {
-        if (configFile.startsWith("/")) {
-            configFiles.add(configFile.substring(1));
-        } else {
-            configFiles.add(configFile);
-        }
+        Path configPath = Path.of(configFile.startsWith("/") ? configFile.substring(1) : configFile).normalize();
+        Path jdkConfigPath = jdkHomeDir.resolve(configPath).normalize();
+        VMError.guarantee(jdkConfigPath.startsWith(jdkHomeDir), "Unable to register files outside of java.home: %s", jdkConfigPath);
+        VMError.guarantee(Files.isRegularFile(jdkConfigPath), "File does not exist: %s", jdkConfigPath);
+        configFiles.putIfAbsent(configPath, jdkConfigPath);
     }
 }
 
@@ -69,17 +71,18 @@ final class JDKConfigFilesFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        Path jdkHomeDir = Path.of(System.getProperty("java.home")).normalize();
-        for (String configFile : new TreeSet<>(JDKConfigFiles.singleton().configFiles)) {
-            Path jdkConfigPath = jdkHomeDir.resolve(configFile).normalize();
-            VMError.guarantee(jdkConfigPath.startsWith(jdkHomeDir));
-            Path imageConfigPath = access.getImagePath().resolveSibling(configFile);
+        TreeSet<Map.Entry<Path, Path>> entries = new TreeSet<>(Map.Entry.comparingByKey());
+        entries.addAll(JDKConfigFiles.singleton().configFiles.entrySet());
+        for (var entry : entries) {
+            Path configPath = entry.getKey();
+            Path jdkConfigPath = entry.getValue();
+            Path imageConfigPath = access.getImagePath().resolveSibling(configPath);
             try {
                 Files.createDirectories(imageConfigPath.getParent());
                 Files.copy(jdkConfigPath, imageConfigPath, REPLACE_EXISTING);
                 BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.JDK_CONFIG_FILE, imageConfigPath);
             } catch (IOException e) {
-                VMError.shouldNotReachHere(e);
+                VMError.shouldNotReachHere("Failed to copy JDK configuration files", e);
             }
         }
     }
