@@ -405,11 +405,11 @@ public class InvocationPluginHelper implements DebugCloseable {
      *
      * This will add the return value to the graph if necessary. If the return value is a
      * {@link StateSplit}, it should <em>not</em> be added to the graph using
-     * {@link GraphBuilderContext#add(ValueNode)} before calling this method.
+     * {@link GraphBuilderContext#add} before calling this method.
      */
     public void emitFinalReturn(JavaKind kind, ValueNode returnValue) {
-        assert !emittedReturn : "must only have one final return";
-        assert kind == returnKind : "mismatch in return kind";
+        GraalError.guarantee(!emittedReturn, "must only have one final return");
+        GraalError.guarantee(kind == returnKind, "mismatch in return kind");
         if (kind != JavaKind.Void) {
             b.addPush(kind, returnValue);
         }
@@ -448,14 +448,14 @@ public class InvocationPluginHelper implements DebugCloseable {
      */
     protected void addReturnValue(EndNode end, JavaKind kind, ValueNode returnValueInput) {
         assert b.canMergeIntrinsicReturns();
-        assert kind == returnKind : "mismatch in return kind";
+        GraalError.guarantee(kind == returnKind, "mismatch in return kind");
         ValueNode returnValue = returnValueInput;
         if (kind != JavaKind.Void) {
             if (returnValue.isUnregistered()) {
-                assert !(returnValue instanceof FixedNode);
+                GraalError.guarantee(!(returnValue instanceof FixedNode), "unexpected FixedNode");
                 returnValue = b.add(returnValue);
             }
-            assert !returnValue.isUnregistered() : returnValue;
+            GraalError.guarantee(!returnValue.isUnregistered(), returnValue.toString());
         }
         returns.add(new ReturnData(end, returnValue));
     }
