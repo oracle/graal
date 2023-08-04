@@ -56,7 +56,7 @@ module org.graalvm.sl {
   requires java.logging;
   requires jdk.unsupported;
   requires org.antlr.antlr4.runtime;
-  requires org.graalvm.sdk;
+  requires org.graalvm.polyglot;
   requires org.graalvm.truffle;
   provides  com.oracle.truffle.api.provider.TruffleLanguageProvider with
     com.oracle.truffle.sl.SLLanguageProvider;

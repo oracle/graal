@@ -82,7 +82,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -243,7 +243,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,

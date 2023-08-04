@@ -114,9 +114,22 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='graalvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['sdkni'],
+    jar_distributions=[],
+    boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK Native Image',
+    short_name='sdkni',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK'],
+    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS', 'sdk:NATIVEIMAGE'],
     stability="supported",
 ))
 

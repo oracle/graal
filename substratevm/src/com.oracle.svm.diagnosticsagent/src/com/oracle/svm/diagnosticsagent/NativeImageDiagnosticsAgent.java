@@ -290,7 +290,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
                 JNIObjectHandle moduleName = Support.callObjectMethod(jni, module, moduleGetName);
                 String name = Support.fromJniString(jni, moduleName);
-                if (name != null && name.equals("org.graalvm.sdk")) {
+                if (name != null && name.equals("org.graalvm.nativeimage")) {
                     clinitTrackingSupportModule = module;
                     break;
                 }

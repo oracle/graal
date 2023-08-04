@@ -115,6 +115,7 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "sdk:POLYGLOT",
                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "requires": [
@@ -241,7 +242,8 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
+                "sdk:POLYGLOT",
+                "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "maven" : False,
         },
