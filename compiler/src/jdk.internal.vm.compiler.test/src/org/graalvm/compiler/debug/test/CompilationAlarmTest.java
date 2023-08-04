@@ -128,29 +128,30 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         GraalDirectives.sideEffect();
     }
 
-    private static OptionValues getOptionsWithTimeOut(int seconds) {
-        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationNoProgressPeriod, (double) seconds);
+    private static OptionValues getOptionsWithTimeOut(int seconds, int secondsStartDetection) {
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationNoProgressPeriod, (double) seconds,
+                        CompilationAlarm.Options.CompilationNoProgressStartTrackingProgressPeriod, (double) secondsStartDetection);
         return opt;
     }
 
     @Test
     public void testSingleThreadNoTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3), null);
+        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t1.join();
     }
 
     @Test
     public void testSingleThreadTimeOut() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3), "Observed identical stack traces for 3 seconds");
+        Thread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
         t1.start();
         t1.join();
     }
 
     @Test
     public void testMultiThreadNoTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3), null);
-        Thread t2 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3), null);
+        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        Thread t2 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t2.start();
         t1.join();
@@ -159,22 +160,22 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testMultiThreadOneTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3), null);
+        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t1.join();
 
-        Thread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3), "Observed identical stack traces for 3 seconds");
+        Thread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
         t2.start();
         t2.join();
     }
 
     @Test
     public void testMultiThreadMultiTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(9), "Observed identical stack traces for 9 seconds");
+        Thread t1 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for 9 seconds");
         t1.start();
         t1.join();
 
-        Thread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(5), "Observed identical stack traces for 5 seconds");
+        Thread t2 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for 5 seconds");
         t2.start();
         t2.join();
     }
