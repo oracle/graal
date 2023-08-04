@@ -430,6 +430,10 @@ suite = {
       "name" : "Unicode/ICU License",
       "url" : "https://raw.githubusercontent.com/unicode-org/icu/main/LICENSE",
     },
+    "GPLv2" : {
+      "name" : "GNU General Public License, version 2",
+      "url" : "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
+    },
 },
 
   # ------------- Distributions -------------
