@@ -3176,7 +3176,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         self.language_library_config = language_library_config
         self.jvm_standalone = jvm_standalone
         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
-        _dependencies = [] if self.jvm_launcher else [GraalVmNativeImage.project_name(self.language_library_config)]
+        _dependencies = [] if (self.jvm_launcher or self.jvm_standalone) else [GraalVmNativeImage.project_name(self.language_library_config)]
         if self.jvm_standalone is not None:
             self.jre_base = join(get_final_graalvm_distribution().string_substitutions.substitute(self.component.standalone_dir_name_enterprise if has_component('cmpee') else self.component.standalone_dir_name), 'jvm')
         else:
