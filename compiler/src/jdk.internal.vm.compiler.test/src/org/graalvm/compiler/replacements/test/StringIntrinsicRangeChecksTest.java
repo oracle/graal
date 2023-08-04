@@ -197,7 +197,6 @@ public class StringIntrinsicRangeChecksTest extends GraalCompilerTest {
                     boolean srcOverflowB = (2 * srcOff + 2 * len) > SIZE;
                     boolean dstOverflow = (dstOff + len) > SIZE;
                     boolean dstOverflowB = (2 * dstOff + 2 * len) > SIZE;
-                    boolean getCharsOver = (srcOff < len) && ((2 * (len - 1) >= SIZE) || ((dstOff + len - srcOff) > SIZE));
                     // Check if an exception is thrown and bail out if result is inconsistent with
                     // above assumptions (for example, an exception was not thrown although an
                     // overflow happened).
@@ -206,7 +205,13 @@ public class StringIntrinsicRangeChecksTest extends GraalCompilerTest {
                     check(inflateByte, srcOverflow || dstOverflowB, byteArray, srcOff, SIZE, dstOff, len);
                     check(inflateChar, srcOverflow || dstOverflow, byteArray, srcOff, SIZE, dstOff, len);
                     check(toBytes, srcOverflow, charArray, srcOff, len);
-                    check(getChars, getCharsOver, byteArray, srcOff, len, SIZE, dstOff);
+
+                    int srcEnd = len; // len is actually srcEnd in getChars
+                    // getChars only does work if srcOff is below srcEnd. Overflow might occur in
+                    // the copy loop if the scaled srcEnd is larger than the source array or if the
+                    // amount to be copied is larger than the dest array.
+                    boolean getCharsOver = (srcOff < srcEnd) && ((2 * (srcEnd - 1) >= SIZE) || ((dstOff + srcEnd - srcOff) > SIZE));
+                    check(getChars, getCharsOver, byteArray, srcOff, srcEnd, SIZE, dstOff);
                 }
             }
         }

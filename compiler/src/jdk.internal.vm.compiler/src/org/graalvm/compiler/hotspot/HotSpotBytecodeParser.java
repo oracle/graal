@@ -63,9 +63,15 @@ public class HotSpotBytecodeParser extends BytecodeParser {
 
     @Override
     public GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
-        // On HotSpot it's simplest to always deoptimize. We could dispatch to the fallback code
-        // instead but that will greatly expand what's emitted for the intrinsic since it will have
-        // both the fast and slow versions inline.
+        /*
+         * On HotSpot it's simplest to always deoptimize. We could dispatch to the fallback code
+         * instead but that will greatly expand what's emitted for the intrinsic since it will have
+         * both the fast and slow versions inline. Actually deoptimizing here is unlikely as the
+         * most common uses of this method are in plugins for JDK internal methods. Those methods
+         * are generally unlikely to have arguments that lead to exceptions. The deopt action of
+         * None also keeps this guard from turning into a floating so it will stay fixed in the
+         * control flow.
+         */
         return add(new FixedGuardNode(condition, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.None, !negated));
     }
 }
