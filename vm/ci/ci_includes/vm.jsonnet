@@ -75,27 +75,16 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
     ],
     requireArtifacts: [
-      {name: 'post-merge-deploy-vm-java17-linux-amd64'},
       {name: 'post-merge-deploy-vm-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-java17-linux-aarch64'},
       {name: 'daily-deploy-vm-java21-linux-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
       {name: 'daily-deploy-vm-base-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
       {name: 'daily-deploy-vm-installable-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
       {name: 'daily-deploy-vm-installable-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-windows-amd64'},
       {name: 'daily-deploy-vm-base-java21-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java21-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-linux-amd64'},
       {name: 'daily-deploy-vm-ruby-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-darwin-amd64'},
       {name: 'daily-deploy-vm-ruby-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-darwin-aarch64'},
       {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64'},
     ],
     targets+: ['daily'],
@@ -207,39 +196,28 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     #
 
     # Linux/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_amd64),
 
     # Linux/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_aarch64),
 
     # Darwin/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_amd64),
 
     # Darwin/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_aarch64),
 
     # Windows/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby )
     #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_aarch64),
 
     # Trigger the releaser service
