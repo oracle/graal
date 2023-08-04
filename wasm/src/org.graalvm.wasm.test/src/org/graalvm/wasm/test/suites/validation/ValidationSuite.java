@@ -207,7 +207,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.MALFORMED),
                         binaryCase(
                                         "Global - type mismatch",
-                                        "type mismatch: 0x7F should = 0x7E",
+                                        "Expected result types [i32], but got [i64].",
                                         "00 61 73 6D 01 00 00 00 06 06 01 7F 00 42 00 0B",
                                         Failure.Type.INVALID),
                         // ## Modules

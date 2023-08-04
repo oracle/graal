@@ -48,7 +48,6 @@ import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -70,7 +69,6 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
-import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 /**
  * Allows to parse the runtime bytecode and reset modules.
@@ -88,20 +86,13 @@ public abstract class BytecodeParser {
             final int address = instance.globalAddress(i);
             final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
-                if (module.globalFunctionOrNull(i)) {
+                if (module.globalIsReference(i)) {
                     globals.storeReference(address, WasmConstant.NULL);
                 } else {
                     globals.storeLong(address, value);
                 }
             } else {
-                if (module.globalFunctionOrNull(i)) {
-                    final int functionIndex = (int) value;
-                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
-                    globals.storeReference(address, function);
-                } else {
-                    final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
-                    globals.storeLong(address, globals.loadAsLong(existingAddress));
-                }
+                Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
             }
         }
     }
@@ -326,7 +317,7 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
+                linker.immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
             } else if (elemMode == SegmentMode.PASSIVE) {
                 linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
             }

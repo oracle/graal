@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,13 +39,17 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func))
-  (import "runtime" "hb" (global (;0;) i32))
-  (import "runtime" "boffs" (global (;1;) i32))
-  (import "runtime" "bwords" (global (;2;) i32))
-  (import "runtime" "wordsize" (global (;3;) i32))
-  (global (;4;) i32 (i32.mul (global.get 2) (global.get 3)))
-  (export "heap_base" (global 0))
-  (export "block_offset" (global 1))
-  (export "block_size" (global 4))
+  (type $int_func (func (result i32)))
+  (import "runtime" "heap" (memory (;0;) 4))
+  (import "runtime" "heap_base" (global $heap_base i32))
+  (import "constant-pools" "string_constants_offset" (global $string_constants_offset i32))
+  (global $string_constants_base i32 (i32.add (global.get $heap_base) (global.get $string_constants_offset)))
+  (func (export "_main") (type $int_func) (local $acc i32)
+    (local.set $acc (i32.load8_u (global.get $string_constants_base)))
+    (local.set $acc (i32.add (local.get $acc)
+                             (i32.load8_u (i32.add (global.get $string_constants_base)
+                                                   (i32.const 1)))))
+    (i32.add (local.get $acc)
+             (i32.load8_u (i32.add (global.get $string_constants_base)
+                                   (i32.const 2)))))
 )

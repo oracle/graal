@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,13 +39,13 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func))
-  (import "runtime" "hb" (global (;0;) i32))
-  (import "runtime" "boffs" (global (;1;) i32))
-  (import "runtime" "bwords" (global (;2;) i32))
-  (import "runtime" "wordsize" (global (;3;) i32))
-  (global (;4;) i32 (i32.mul (global.get 2) (global.get 3)))
-  (export "heap_base" (global 0))
-  (export "block_offset" (global 1))
-  (export "block_size" (global 4))
+  (type $unary_func (func (param i32) (result i32)))
+  (import "runtime" "function-table" (table 6 funcref))
+  (import "runtime" "function-base" (global $function_base i32))
+  (import "runtime" "lib-function-offset" (global $lib_function_offset i32))
+  (func $mul2 (export "mul2") (type $unary_func) (param $x i32) (result i32)
+    (i32.mul (i32.const 2) (local.get $x)))
+  (func $mul5 (export "mul5") (type $unary_func) (param $x i32) (result i32)
+    (i32.mul (i32.const 5) (local.get $x)))
+  (elem (offset (i32.add (global.get $function_base) (global.get $lib_function_offset))) $mul2 $mul5)
 )

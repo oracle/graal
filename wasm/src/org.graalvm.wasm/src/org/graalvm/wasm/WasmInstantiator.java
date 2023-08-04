@@ -150,8 +150,8 @@ public class WasmInstantiator {
                 module.addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
             } else {
                 final boolean initialized = module.globalInitialized(globalIndex);
-                final boolean functionOrNull = module.globalFunctionOrNull(globalIndex);
-                final int existingIndex = module.globalExistingIndex(globalIndex);
+                final boolean isReference = module.globalIsReference(globalIndex);
+                final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
                 final long initialValue = module.globalInitialValue(globalIndex);
                 module.addLinkAction((context, instance) -> {
                     final GlobalRegistry registry = context.globals();
@@ -162,7 +162,7 @@ public class WasmInstantiator {
                     final GlobalRegistry registry = context.globals();
                     final int address = instance.globalAddress(globalIndex);
                     if (initialized) {
-                        if (functionOrNull) {
+                        if (isReference) {
                             // Only null is possible
                             registry.storeReference(address, WasmConstant.NULL);
                         } else {
@@ -170,11 +170,7 @@ public class WasmInstantiator {
                         }
                         context.linker().resolveGlobalInitialization(instance, globalIndex);
                     } else {
-                        if (functionOrNull) {
-                            context.linker().resolveGlobalFunctionInitialization(context, instance, globalIndex, (int) initialValue);
-                        } else {
-                            context.linker().resolveGlobalInitialization(context, instance, globalIndex, existingIndex);
-                        }
+                        context.linker().resolveGlobalInitialization(context, instance, globalIndex, initBytecode);
                     }
                 });
             }

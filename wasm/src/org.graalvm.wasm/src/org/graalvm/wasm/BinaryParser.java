@@ -1998,8 +1998,9 @@ public class BinaryParser extends BinaryStreamParser {
         final ParserState state = new ParserState(bytecode);
 
         final LongArrayList stack = new LongArrayList();
-        boolean initialized = true;
+        boolean calculable = true;
 
+        state.enterFunction(new byte[]{resultType});
         int opcode;
         while ((opcode = read1() & 0xFF) != Instructions.END) {
             switch (opcode) {
@@ -2007,28 +2008,36 @@ public class BinaryParser extends BinaryStreamParser {
                     final int value = readSignedInt32();
                     state.push(I32_TYPE);
                     state.addSignedInstruction(Bytecode.I32_CONST_I8, value);
-                    stack.add(value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
                     break;
                 }
                 case Instructions.I64_CONST: {
                     final long value = readSignedInt64();
                     state.push(I64_TYPE);
                     state.addSignedInstruction(Bytecode.I64_CONST_I8, value);
-                    stack.add(value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
                     break;
                 }
                 case Instructions.F32_CONST: {
                     final int value = readFloatAsInt32();
                     state.push(F32_TYPE);
                     state.addInstruction(Bytecode.F32_CONST, value);
-                    stack.add(value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
                     break;
                 }
                 case Instructions.F64_CONST: {
                     final long value = readFloatAsInt64();
                     state.push(F64_TYPE);
                     state.addInstruction(Bytecode.F64_CONST, value);
-                    stack.add(value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
                     break;
                 }
                 case Instructions.REF_NULL:
@@ -2036,7 +2045,9 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte type = readRefType();
                     state.push(type);
                     state.addInstruction(Bytecode.REF_NULL);
-                    stack.add(0);
+                    if (calculable) {
+                        stack.add(0);
+                    }
                     break;
                 case Instructions.REF_FUNC:
                     checkBulkMemoryAndRefTypesSupport(opcode);
@@ -2044,19 +2055,20 @@ public class BinaryParser extends BinaryStreamParser {
                     module.addFunctionReference(functionIndex);
                     state.push(FUNCREF_TYPE);
                     state.addInstruction(Bytecode.REF_FUNC, functionIndex);
-                    initialized = false;
+                    calculable = false;
                     break;
                 case Instructions.GLOBAL_GET: {
                     final int index = readGlobalIndex();
                     if (onlyImportedGlobals) {
                         // The current WebAssembly spec says constant expressions can only refer to
                         // imported globals. We can easily remove this restriction in the future.
-                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNSPECIFIED_MALFORMED, "The initializer for global " + index + " in module '" + module.name() + "' refers to a non-imported global.");
+                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNSPECIFIED_MALFORMED,
+                                        "The initializer for global " + index + " in module '" + module.name() + "' refers to a non-imported global.");
                     }
                     assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     state.push(module.symbolTable().globalValueType(index));
                     state.addUnsignedInstruction(Bytecode.GLOBAL_GET_U8, index);
-                    initialized = false;
+                    calculable = false;
                     break;
                 }
                 case Instructions.I32_ADD:
@@ -2066,12 +2078,14 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(I32_TYPE);
                     state.push(I32_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
-                    stack.add(switch (opcode) {
-                        case Instructions.I32_ADD -> (int) stack.popBack() + (int) stack.popBack();
-                        case Instructions.I32_SUB -> (int) stack.popBack() - (int) stack.popBack();
-                        case Instructions.I32_MUL -> (int) stack.popBack() * (int) stack.popBack();
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    });
+                    if (calculable) {
+                        stack.add(switch (opcode) {
+                            case Instructions.I32_ADD -> (int) stack.popBack() + (int) stack.popBack();
+                            case Instructions.I32_SUB -> (int) stack.popBack() - (int) stack.popBack();
+                            case Instructions.I32_MUL -> (int) stack.popBack() * (int) stack.popBack();
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
                     break;
                 case Instructions.I64_ADD:
                 case Instructions.I64_SUB:
@@ -2080,24 +2094,26 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(I64_TYPE);
                     state.push(I64_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
-                    stack.add(switch (opcode) {
-                        case Instructions.I64_ADD -> stack.popBack() + stack.popBack();
-                        case Instructions.I64_SUB -> stack.popBack() - stack.popBack();
-                        case Instructions.I64_MUL -> stack.popBack() * stack.popBack();
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    });
+                    if (calculable) {
+                        stack.add(switch (opcode) {
+                            case Instructions.I64_ADD -> stack.popBack() + stack.popBack();
+                            case Instructions.I64_SUB -> stack.popBack() - stack.popBack();
+                            case Instructions.I64_MUL -> stack.popBack() * stack.popBack();
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
                     break;
                 default:
                     fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
-        state.popChecked(resultType);
-        assertIntEqual(state.valueStackSize(), 0, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
-        if (initialized) {
+        assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
+        state.exit(multiValue);
+        if (calculable) {
             return Pair.create(stack.popBack(), null);
         } else {
-            return Pair.create(-1l, bytecode.toArray());
+            return Pair.create(-1L, bytecode.toArray());
         }
     }
 
@@ -2335,8 +2351,6 @@ public class BinaryParser extends BinaryStreamParser {
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
                     context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
-                    // we should also cover these cases:
-                    // context.linker().resolveGlobalFunctionInitialization(context, instance, currentGlobalIndex, initBytecode);
                 }
             });
         }

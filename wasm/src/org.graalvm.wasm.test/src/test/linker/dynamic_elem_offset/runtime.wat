@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,13 +39,14 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func))
-  (import "runtime" "hb" (global (;0;) i32))
-  (import "runtime" "boffs" (global (;1;) i32))
-  (import "runtime" "bwords" (global (;2;) i32))
-  (import "runtime" "wordsize" (global (;3;) i32))
-  (global (;4;) i32 (i32.mul (global.get 2) (global.get 3)))
-  (export "heap_base" (global 0))
-  (export "block_offset" (global 1))
-  (export "block_size" (global 4))
+  (type $binary_func (func (param i32 i32) (result i32)))
+  (global $function_base (export "function-base") i32 (i32.const 0))
+  (global $runtime_function_offset (export "runtime-function-offset") i32 (i32.const 0))
+  (global $lib_function_offset (export "lib-function-offset") i32 (i32.const 1))
+  (table (export "function-table") 6 6 funcref)
+  (func $max (export "max") (type $binary_func) (param $x i32) (param $y i32) (result i32)
+    (select (local.get $x)
+            (local.get $y)
+            (i32.gt_s (local.get $x) (local.get $y))))
+  (elem (offset (i32.add (global.get $function_base) (global.get $runtime_function_offset))) $max)
 )

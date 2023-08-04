@@ -91,6 +91,12 @@ import static org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
+import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
+import static org.graalvm.wasm.WasmType.F32_TYPE;
+import static org.graalvm.wasm.WasmType.F64_TYPE;
+import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I64_TYPE;
 
 public class Linker {
     public enum LinkState {
@@ -286,35 +292,34 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveGlobalInitialization(WasmContext context, WasmInstance instance, int globalIndex, int sourceGlobalIndex) {
-        final Runnable resolveAction = () -> {
-            final int sourceAddress = instance.globalAddress(sourceGlobalIndex);
-            final int address = instance.globalAddress(globalIndex);
-            final GlobalRegistry globals = context.globals();
-            if (WasmType.isNumberType(instance.module().globalValueType(sourceGlobalIndex))) {
-                globals.storeLong(address, globals.loadAsLong(sourceAddress));
-            } else {
-                globals.storeReference(address, globals.loadAsReference(sourceAddress));
-            }
-        };
-        final Sym[] dependencies = new Sym[]{new InitializeGlobalSym(instance.name(), sourceGlobalIndex)};
-        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);
+    public static void initializeGlobal(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
+        Object initValue = evalConstantExpression(context, instance, initBytecode);
+        final int address = instance.globalAddress(globalIndex);
+        final GlobalRegistry globals = context.globals();
+        switch (instance.module().globalValueType(globalIndex)) {
+            case I32_TYPE:
+                globals.storeInt(address, (int) initValue);
+                break;
+            case I64_TYPE:
+                globals.storeLong(address, (long) initValue);
+                break;
+            case F32_TYPE:
+                globals.storeInt(address, Float.floatToIntBits((float) initValue));
+                break;
+            case F64_TYPE:
+                globals.storeLong(address, Double.doubleToLongBits((double) initValue));
+                break;
+            case FUNCREF_TYPE:
+            case EXTERNREF_TYPE:
+                globals.storeReference(address, initValue);
+                break;
+        }
     }
 
-    void resolveGlobalFunctionInitialization(WasmContext context, WasmInstance instance, int globalIndex, int functionIndex) {
-        final WasmFunction function = instance.module().function(functionIndex);
-        final Runnable resolveAction = () -> {
-            final int address = instance.globalAddress(globalIndex);
-            final GlobalRegistry globals = context.globals();
-            globals.storeReference(address, instance.functionInstance(function));
-        };
-        final Sym[] dependencies;
-        if (function.importDescriptor() != null) {
-            dependencies = new Sym[]{new ImportFunctionSym(instance.name(), function.importDescriptor(), functionIndex)};
-        } else {
-            dependencies = ResolutionDag.NO_DEPENDENCIES;
-        }
-        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);
+    void resolveGlobalInitialization(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
+        final Runnable resolveAction = () -> initializeGlobal(context, instance, globalIndex, initBytecode);
+        final List<Sym> dependencies = dependenciesOfConstantExpression(instance, initBytecode);
+        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
     void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function) {
@@ -412,13 +417,14 @@ public class Linker {
 
     private static Object lookupGlobal(WasmContext context, WasmInstance instance, int index) {
         final int globalAddress = instance.globalAddress(index);
-        assertTrue(globalAddress != SymbolTable.UNINITIALIZED_ADDRESS, "The global variable '" + index + " referenced in a constant expression in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
+        assertTrue(globalAddress != SymbolTable.UNINITIALIZED_ADDRESS,
+                        "The global variable '" + index + " referenced in a constant expression in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
         byte type = instance.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
-            case WasmType.I32_TYPE:
+            case I32_TYPE:
                 return context.globals().loadAsInt(globalAddress);
-            case WasmType.F32_TYPE:
+            case F32_TYPE:
                 return Float.intBitsToFloat(context.globals().loadAsInt(globalAddress));
             case WasmType.I64_TYPE:
                 return context.globals().loadAsLong(globalAddress);
@@ -432,7 +438,7 @@ public class Linker {
         }
     }
 
-    private static Object evalConstantExpression(WasmContext context, WasmInstance instance, byte[] bytecode) {
+    public static Object evalConstantExpression(WasmContext context, WasmInstance instance, byte[] bytecode) {
         int offset = 0;
         List<Object> stack = new ArrayList<>();
         while (offset < bytecode.length) {
@@ -534,8 +540,8 @@ public class Linker {
         return stack.get(0);
     }
 
-    private static List<Integer> globalsReferencedInConstantExpression(byte[] bytecode) {
-        List<Integer> referencedGlobals = new ArrayList<>();
+    private static List<Sym> dependenciesOfConstantExpression(WasmInstance instance, byte[] bytecode) {
+        List<Sym> dependencies = new ArrayList<>();
         int offset = 0;
         while (offset < bytecode.length) {
             int opcode = rawPeekU8(bytecode, offset);
@@ -544,13 +550,13 @@ public class Linker {
                 case Bytecode.GLOBAL_GET_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    referencedGlobals.add(index);
+                    dependencies.add(new InitializeGlobalSym(instance.name(), index));
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    referencedGlobals.add(index);
+                    dependencies.add(new InitializeGlobalSym(instance.name(), index));
                     break;
                 }
                 case Bytecode.I32_CONST_I8:
@@ -566,6 +572,11 @@ public class Linker {
                     offset += 8;
                     break;
                 case Bytecode.REF_FUNC:
+                    final int functionIndex = rawPeekI32(bytecode, offset);
+                    final WasmFunction function = instance.symbolTable().function(functionIndex);
+                    if (function.importDescriptor() != null) {
+                        dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), functionIndex));
+                    }
                     offset += 4;
                     break;
                 case Bytecode.REF_NULL:
@@ -581,7 +592,7 @@ public class Linker {
                     break;
             }
         }
-        return referencedGlobals;
+        return dependencies;
     }
 
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
@@ -616,9 +627,7 @@ public class Linker {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
         }
         if (offsetBytecode != null) {
-            for (int globalIndex : globalsReferencedInConstantExpression(offsetBytecode)) {
-                dependencies.add(new InitializeGlobalSym(instance.name(), globalIndex));
-            }
+            dependencies.addAll(dependenciesOfConstantExpression(instance, offsetBytecode));
         }
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
@@ -777,7 +786,7 @@ public class Linker {
     }
 
     void resolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset, int elementCount) {
-        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, tableIndex, elemSegmentId, offsetAddress, offsetBytecode, bytecodeOffset, elementCount);
+        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, bytecodeOffset, elementCount);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedTable(tableIndex) != null) {
             dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable(tableIndex)));
@@ -786,15 +795,13 @@ public class Linker {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
         }
         if (offsetBytecode != null) {
-            for (int globalIndex : globalsReferencedInConstantExpression(offsetBytecode)) {
-                dependencies.add(new InitializeGlobalSym(instance.name(), globalIndex));
-            }
+            dependencies.addAll(dependenciesOfConstantExpression(instance, offsetBytecode));
         }
         addElemItemDependencies(instance, bytecodeOffset, elementCount, dependencies);
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    public void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset,
+    public void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset,
                     int elementCount) {
         if (context.getContextOptions().memoryOverheadMode()) {
             // Do not initialize the element segment when in memory overhead mode.

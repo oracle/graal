@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,13 +39,38 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func))
-  (import "runtime" "hb" (global (;0;) i32))
-  (import "runtime" "boffs" (global (;1;) i32))
-  (import "runtime" "bwords" (global (;2;) i32))
-  (import "runtime" "wordsize" (global (;3;) i32))
-  (global (;4;) i32 (i32.mul (global.get 2) (global.get 3)))
-  (export "heap_base" (global 0))
-  (export "block_offset" (global 1))
-  (export "block_size" (global 4))
+  (type $unary_func (func (param i32) (result i32)))
+  (type $binary_func (func (param i32 i32) (result i32)))
+  (type $int_func (func (result i32)))
+  (import "runtime" "function-table" (table 6 funcref))
+  (import "runtime" "function-base" (global $function_base i32))
+  (import "runtime" "runtime-function-offset" (global $runtime_function_offset i32))
+  (import "runtime" "lib-function-offset" (global $lib_function_offset i32))
+  (func (export "_main") (type $int_func)
+    ;; Multiply 7 by 2.
+    i32.const 7
+    global.get $function_base
+    global.get $lib_function_offset
+    i32.add
+    i32.const 0
+    i32.add
+    call_indirect (type $unary_func)
+
+    ;; Multiply the result by 5.
+    global.get $function_base
+    global.get $lib_function_offset
+    i32.add
+    i32.const 1
+    i32.add
+    call_indirect (type $unary_func)
+
+    ;; Take the maximum of the result and 50.
+    i32.const 50
+    global.get $function_base
+    global.get $runtime_function_offset
+    i32.add
+    i32.const 0
+    i32.add
+    call_indirect (type $binary_func)
+  )
 )

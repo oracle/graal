@@ -41,12 +41,10 @@
 
 package org.graalvm.wasm.test.suites.bytecode;
 
-import com.oracle.truffle.api.ArrayUtils;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
-import org.graalvm.wasm.parser.validation.ParserState;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -534,28 +532,28 @@ public class BytecodeSuite {
     public void testActiveDataHeaderMaxU8OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[255];
         test(b -> b.addDataHeader(1, offsetBytecode, -1, -1),
-                byteArrayConcat(new byte[]{0x42, 0x01, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x42, 0x01, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testActiveDataHeaderMinU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[256];
         test(b -> b.addDataHeader(1, offsetBytecode, -1, -1),
-                byteArrayConcat(new byte[]{0x44, 0x01, 0x00, 0x01}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x44, 0x01, 0x00, 0x01}, offsetBytecode));
     }
 
     @Test
     public void testActiveDataHeaderMaxU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65535];
         test(b -> b.addDataHeader(1, offsetBytecode, -1, -1),
-                byteArrayConcat(new byte[]{0x44, 0x01, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x44, 0x01, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testActiveDataHeaderMinI32OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65536];
         test(b -> b.addDataHeader(1, offsetBytecode, -1, -1),
-                byteArrayConcat(new byte[]{0x46, 0x01, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x46, 0x01, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
     }
 
     @Test
@@ -590,7 +588,7 @@ public class BytecodeSuite {
 
     @Test
     public void testActiveDataHeaderGlobalIndexAndOffsetAddress() {
-        testAssertion(b -> b.addDataHeader(1, new byte[]{ Bytecode.GLOBAL_GET_U8, 1 }, 1, -1), "data header does not allow global index and offset address");
+        testAssertion(b -> b.addDataHeader(1, new byte[]{Bytecode.GLOBAL_GET_U8, 1}, 1, -1), "data header does not allow offset bytecode and offset address");
     }
 
     @Test
@@ -722,35 +720,35 @@ public class BytecodeSuite {
     public void testElemHeaderMinU8OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[0];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                byteArrayConcat(new byte[]{0x44, 0x10, 0x00, 0x00}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x44, 0x10, 0x00, 0x00}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMaxU8OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[255];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                byteArrayConcat(new byte[]{0x44, 0x10, 0x00, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x44, 0x10, 0x00, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMinU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[256];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                byteArrayConcat(new byte[]{0x48, 0x10, 0x00, 0x00, 0x01}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x48, 0x10, 0x00, 0x00, 0x01}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMaxU16OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65535];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                byteArrayConcat(new byte[]{0x48, 0x10, 0x00, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x48, 0x10, 0x00, (byte) 0xFF, (byte) 0xFF}, offsetBytecode));
     }
 
     @Test
     public void testElemHeaderMinI32OffsetBytecodeLength() {
         byte[] offsetBytecode = new byte[65536];
         test(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, offsetBytecode, -1),
-                byteArrayConcat(new byte[]{0x4C, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
+                        byteArrayConcat(new byte[]{0x4C, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00}, offsetBytecode));
     }
 
     @Test
@@ -780,7 +778,7 @@ public class BytecodeSuite {
 
     @Test
     public void testInvalidElemHeaderGlobalIndexAndOffsetAddress() {
-        testAssertion(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, new byte[]{Bytecode.GLOBAL_GET_U8, 1}, 1), "elem header does not allow global index and offset address");
+        testAssertion(b -> b.addElemHeader(SegmentMode.ACTIVE, 0, WasmType.FUNCREF_TYPE, 0, new byte[]{Bytecode.GLOBAL_GET_U8, 1}, 1), "elem header does not allow offset bytecode and offset address");
     }
 
     @Test
