@@ -193,6 +193,11 @@ public class NativeImageGeneratorRunner {
                         "java.base",
                         "java.management",
                         "java.logging",
+                        // workaround for GR-47773 on the module-path which requires java.sql (like
+                        // truffle) or java.xml
+                        "java.sql",
+                        "java.xml",
+                        "java.transaction.xa",
                         "jdk.management",
                         "java.compiler",
                         "jdk.jfr",
