@@ -236,11 +236,17 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ol9 = {
+    docker+: {
+      image: "buildslave_ol9",
+      mount_modules: true,
+    },
+  },
   local ubuntu22 = {
-      docker: {
-        image: "buildslave_ubuntu22",
-        mount_modules: true,
-      },
+    docker+: {
+      image: "buildslave_ubuntu22",
+      mount_modules: true,
+    },
   },
   local deps_linux = {
   },
@@ -256,16 +262,20 @@ local common_json = import "../common.json";
 
   local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
   local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
+  local ol_distro = {os_distro:: "ol"},
 
-  linux_amd64: linux + amd64 + ol7,
-  linux_amd64_ubuntu: linux + amd64 + ubuntu22,
-  linux_aarch64: linux + aarch64,
+  linux_amd64: linux + amd64 + ol7 + ol_distro,
+  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + {os_distro:: "ubuntu"},
+  linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+  linux_aarch64: linux + aarch64 + ol_distro,
+  linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
 
   darwin_amd64: darwin + amd64,
   darwin_aarch64: darwin + aarch64,
 
   windows_amd64: windows + amd64,
   windows_server_2016_amd64: windows_server_2016 + amd64,
+
 
   # Utils
   disable_proxies: {
