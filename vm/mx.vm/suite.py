@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "7679cc605bae08066530d4836aa0d27340bd4f5c",
+                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "7679cc605bae08066530d4836aa0d27340bd4f5c",
+                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
