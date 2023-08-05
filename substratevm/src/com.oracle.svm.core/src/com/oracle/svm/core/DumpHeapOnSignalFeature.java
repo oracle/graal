@@ -25,16 +25,10 @@
 package com.oracle.svm.core;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
-
-import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.nativeimage.VMRuntime;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 
@@ -50,7 +44,8 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpHeapStartupHook());
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(new DumpHeapStartupHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(new DumpHeapTeardownHook());
     }
 }
 
@@ -60,24 +55,30 @@ final class DumpHeapStartupHook implements RuntimeSupport.Hook {
         if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             DumpHeapReport.install();
         }
+
+        if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
+            HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
+        }
+    }
+}
+
+final class DumpHeapTeardownHook implements RuntimeSupport.Hook {
+    @Override
+    public void execute(boolean isFirstIsolate) {
+        /* Do this unconditionally, the runtime option could have changed in the meanwhile. */
+        HeapDumping.singleton().teardownDumpHeapOnOutOfMemoryError();
     }
 }
 
 class DumpHeapReport implements Signal.Handler {
-    private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
-
     static void install() {
         Signal.handle(new Signal("USR1"), new DumpHeapReport());
     }
 
     @Override
     public void handle(Signal arg0) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-        dateFormat.setTimeZone(UTC_TIMEZONE);
-        String defaultHeapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
-        String heapDumpPath = SubstrateOptions.getHeapDumpPath(defaultHeapDumpFileName);
         try {
-            VMRuntime.dumpHeap(heapDumpPath, true);
+            HeapDumping.singleton().dumpHeap(true);
         } catch (IOException e) {
             Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
         }

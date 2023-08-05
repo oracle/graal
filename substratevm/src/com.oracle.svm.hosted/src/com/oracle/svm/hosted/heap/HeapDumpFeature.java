@@ -42,8 +42,9 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
-import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
+import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heapdump.HeapDumpUtils;
 import com.oracle.svm.core.heapdump.HeapDumpWriterImpl;
 import com.oracle.svm.core.meta.SharedField;
@@ -75,15 +76,21 @@ public class HeapDumpFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (useLegacyImplementation()) {
-            ImageSingletons.add(HeapDumpSupport.class, new com.oracle.svm.core.heapdump.HeapDumpSupportImpl());
+            HeapDumping heapDumpSupport = new HeapDumpSupportImpl();
+
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
             ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
             ImageSingletons.add(com.oracle.svm.core.heapdump.HeapDumpWriter.class, new HeapDumpWriterImpl());
         } else {
             HeapDumpMetadata metadata = new HeapDumpMetadata();
+            HeapDumping heapDumpSupport = new com.oracle.svm.core.heap.dump.HeapDumpSupportImpl(metadata);
+
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
             ImageSingletons.add(HeapDumpMetadata.class, metadata);
-            ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl(metadata));
         }
     }
 
