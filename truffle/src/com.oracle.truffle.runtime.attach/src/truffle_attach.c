@@ -23,36 +23,24 @@
  * questions.
  */
 
-#include<jni.h>
+#include <jni.h>
 
-#define EXCEPTION_CHECK_VOID(env) if (env->ExceptionCheck()) { \
-return;                                                        \
-}
-
-static void addExports(JNIEnv* jniEnv, jobject m1, jobject pn, jobject m2)  {
-    jclass modulesClass = jniEnv->FindClass("jdk/internal/module/Modules");
-    EXCEPTION_CHECK_VOID(jniEnv)
-    jmethodID addExports = jniEnv->GetStaticMethodID(modulesClass, "addExports", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V");
-    EXCEPTION_CHECK_VOID(jniEnv)
-    jvalue args[4] {};
-    args[0].l = m1;
-    args[1].l = pn;
-    args[2].l = m2;
-    jniEnv->CallStaticVoidMethodA(modulesClass, addExports, args);
-}
+#define EXCEPTION_CHECK_VOID(env)                                                                                                                    \
+    if ((*env)->ExceptionCheck(env)) {                                                                                                               \
+        return;                                                                                                                                      \
+    }
 
 // Library entry points
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-JNIEXPORT void JNICALL Java_com_oracle_truffle_runtime_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
-    addExports(env, m1, pn, m2);
+JNIEXPORT void JNICALL Java_com_oracle_truffle_runtime_ModulesSupport_addExports0(JNIEnv *jniEnv, jclass clz, jobject m1, jobject pn, jobject m2) {
+    jclass modulesClass = (*jniEnv)->FindClass(jniEnv, "jdk/internal/module/Modules");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jmethodID addExports =
+        (*jniEnv)->GetStaticMethodID(jniEnv, modulesClass, "addExports", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V");
+    EXCEPTION_CHECK_VOID(jniEnv)
+    jvalue args[3];
+    args[0].l = m1;
+    args[1].l = pn;
+    args[2].l = m2;
+    (*jniEnv)->CallStaticVoidMethodA(jniEnv, modulesClass, addExports, args);
 }
-
-
-#ifdef __cplusplus
-}
-#endif
-

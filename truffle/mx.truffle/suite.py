@@ -1118,18 +1118,18 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : ["--std=c++11"]
+            "cflags" : []
           }
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
