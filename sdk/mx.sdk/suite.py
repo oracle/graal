@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
+      "licenses" : ["GPLv2-CPE", "GPLv2", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
       "mavenId" : "lafo",
     },
   },
@@ -429,6 +429,10 @@ suite = {
     "ICU" : {
       "name" : "Unicode/ICU License",
       "url" : "https://raw.githubusercontent.com/unicode-org/icu/main/LICENSE",
+    },
+    "GPLv2" : {
+      "name" : "GNU General Public License, version 2",
+      "url" : "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
     },
 },
 
