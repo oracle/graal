@@ -54,7 +54,7 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
+    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize, SubstrateGCOptions.ReservedAddressSpaceSize,
                     SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
