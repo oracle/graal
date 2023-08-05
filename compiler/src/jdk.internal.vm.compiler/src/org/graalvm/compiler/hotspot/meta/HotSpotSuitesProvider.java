@@ -160,7 +160,10 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         if (Assertions.detailedAssertionsEnabled(options)) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
         }
-        if (Assertions.assertionsEnabled()) {
+        // MaxVectorSize < 16 is used by HotSpot to disable vectorization but that
+        // doesn't work reliably with Graal because it assumes XMM registers are always
+        // available. For now just skip the verification for this case.
+        if (Assertions.assertionsEnabled() && config.maxVectorSize >= 16) {
             suites.getFinalCodeAnalysisStage().appendPhase(new VerifyMaxRegisterSizePhase(config.maxVectorSize));
         }
         return suites;
