@@ -3508,7 +3508,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
                             # Create dedicated NativeLibraryLauncherProject for JVM Standalones, which can find the JVM
                             jvm_standalone_launcher_project = NativeLibraryLauncherProject(main_component, library_config, jvm_standalone=java_standalone, defaultBuild=False)
-                            standalone_deps_names.append(jvm_standalone_launcher_project.name)
                             register_project(jvm_standalone_launcher_project)
 
                 # Native standalones
@@ -3536,7 +3535,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             missing_export_target_action='warn',
             default_to_jvmci='lib' if mx.suite('substratevm', fatalIfMissing=False) else False,
         )
-        standalone_deps_names.append(java_standalone_jimage.name)
         register_project(java_standalone_jimage)
 
     # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
