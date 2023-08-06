@@ -43,10 +43,6 @@ public class BuildDirectoryProviderImpl implements BuildDirectoryProvider {
             home = System.getProperty("org.graalvm.launcher.home");
         }
         if (home == null || home.isEmpty()) {
-            // for compatibility with old HomeFinder -> should be removed
-            home = System.getProperty("org.graalvm.launcher.relative.home");
-        }
-        if (home == null || home.isEmpty()) {
             home = System.getProperty("java.home");
         }
         return Path.of(home);

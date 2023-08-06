@@ -46,6 +46,7 @@ from os import environ, listdir, remove, linesep, pathsep
 from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
+import mx_truffle
 
 _suite = mx.suite('vm')
 
@@ -364,8 +365,8 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                    '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
 
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
-        cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
+        cp_args = mx.get_runtime_jvm_args(mx_truffle.resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True))
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
         err = mx.OutputCapture()
         exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
         if err.data:
@@ -547,7 +548,7 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--macro:truffle',
                 '--language:nfi',
                 '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                '--add-exports=org.graalvm.sdk/org.graalvm.polyglot.impl=ALL-UNNAMED',
+                '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
                 '-H:MaxRuntimeCompileMethods=5000',
                 '-R:MaxHeapSize=2g',
                 '--enable-url-protocols=jar',
@@ -700,9 +701,6 @@ def gate_svm_truffle_tck_python(tasks):
 
 def gate_truffle_unchained(tasks):
     truffle_suite = mx.suite('truffle')
-    if truffle_suite:
-        import mx_truffle
-
     with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
         if t:
             if not truffle_suite:

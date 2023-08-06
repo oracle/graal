@@ -41,11 +41,8 @@
 package org.graalvm.sdk;
 
 /**
- * @deprecated Do not use the sdk module. Use one of the newly split modules: nativeimage, polyglot,
- *             collections or word instead.
  * @since 23.1
  */
-@Deprecated
 public final class Placeholder {
     private Placeholder() {
     }

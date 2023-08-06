@@ -1300,7 +1300,7 @@ def _graal_config():
             self.truffle_jars = []
             self.jars = []
 
-            for component in mx_sdk_vm.graalvm_components():
+            for component in mx_sdk_vm_impl.registered_graalvm_components():
                 if isinstance(component, mx_sdk_vm.GraalVmJvmciComponent):
                     for jar in component.jvmci_jars:
                         d = mx.distribution(jar)

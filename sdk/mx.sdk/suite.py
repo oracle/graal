@@ -299,7 +299,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "POLYGLOT",
+        "sdk:POLYGLOT",
         "JLINE3",
       ],
       "requires" : [
@@ -568,6 +568,7 @@ suite = {
             "transitive org.graalvm.collections",
         ],
         "exports" : [
+            "org.graalvm.sdk"
         ],
         "uses" : [
         ],

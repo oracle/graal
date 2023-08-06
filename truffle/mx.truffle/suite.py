@@ -1620,7 +1620,7 @@ suite = {
       ],
       "distDependencies" : [
           "sdk:POLYGLOT",
-      ], 
+      ],
       "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
