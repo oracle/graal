@@ -68,17 +68,6 @@ namespace fs = std::filesystem;
 #endif
 #define GRAALVM_VERSION_STR STR(GRAALVM_VERSION)
 
-#ifndef LAUNCHER_MODULE_PATH
-    #error launcher module path undefined
-#endif
-#ifndef LAUNCHER_LIBRARY_PATH
-    #error launcher library path undefined
-#endif
-
-#ifndef LIBLANG_RELPATH
-    #error path to native library undefined
-#endif
-
 #ifndef LIBJVM_RELPATH
     #error path to jvm library undefined
 #endif
@@ -91,7 +80,10 @@ namespace fs = std::filesystem;
     #error class path separator undefined
 #endif
 
+#ifdef LIBLANG_RELPATH
 #define LIBLANG_RELPATH_STR STR(LIBLANG_RELPATH)
+#endif
+
 #define LIBJVM_RELPATH_STR STR(LIBJVM_RELPATH)
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
@@ -271,7 +263,12 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
     } else {
+#ifdef LIBLANG_RELPATH
         liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+#else
+        std::cerr << "Should not reach here: native mode with no LIBLANG defined" << std::endl;
+        exit(EXIT_FAILURE);
+#endif
     }
     return liblangPath.str();
 }
@@ -332,7 +329,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     /* construct classpath - only needed for jvm mode */
     std::stringstream cp;
     cp << "-Djava.class.path=";
-#ifdef LAUNCHER_CLASSPATH
+    #ifdef LAUNCHER_CLASSPATH
     if (jvmMode) {
         /* add the launcher classpath */
         const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
@@ -344,12 +341,12 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             }
         }
     }
-#endif
+    #endif
 
     /* construct module path - only needed for jvm mode */
     std::stringstream modulePath;
     modulePath << "--module-path=";
-#ifdef LAUNCHER_MODULE_PATH
+    #ifdef LAUNCHER_MODULE_PATH
     if (jvmMode) {
         /* add the launcher module path */
         const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
@@ -363,9 +360,11 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             }
         }
     }
-#endif
+    #endif
+
 
     if (jvmMode) {
+        #ifdef LANGUAGES_DIR
         /* Add languages to module path */
         std::stringstream languagesDir;
         languagesDir << exeDir << DIR_SEP_STR << LANGUAGES_DIR_STR;
@@ -373,7 +372,9 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         for (const auto & entry : fs::directory_iterator(languagesDirPath)) {
             modulePath << CP_SEP_STR << entry.path().string();
         }
+        #endif
 
+        #ifdef TOOLS_DIR
         /* Add tools to module path */
         std::stringstream toolsDir;
         toolsDir << exeDir << DIR_SEP_STR << TOOLS_DIR_STR;
@@ -383,12 +384,14 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 modulePath << CP_SEP_STR << entry.path().string();
             }
         }
+        #endif
     }
 
-    /* construct module path - only needed for jvm mode */
-    std::stringstream modulePath;
-    modulePath << "--module-path=";
+    #ifdef LAUNCHER_MODULE_PATH
     if (jvmMode) {
+        /* construct module path - only needed for jvm mode */
+        std::stringstream modulePath;
+        modulePath << "--module-path=";
         /* add the launcher module path */
         const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
         int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
@@ -399,11 +402,13 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             }
         }
     }
+    #endif
 
-    /* construct java.library.path - only needed for jvm mode */
-    std::stringstream libraryPath;
-    libraryPath << "-Djava.library.path=";
+    #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
+        /* construct java.library.path - only needed for jvm mode */
+        std::stringstream libraryPath;
+        libraryPath << "-Djava.library.path=";
         /* add the library path */
         const char *launcherLibraryPathEntries[] = LAUNCHER_LIBRARY_PATH;
         int launcherLibraryPathCnt = sizeof(launcherLibraryPathEntries) / sizeof(*launcherLibraryPathEntries);
@@ -413,7 +418,9 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 libraryPath << CP_SEP_STR;
             }
         }
+        vmArgs.push_back(libraryPath.str());
     }
+    #endif
 
     #if defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
     if (jvmMode) {
@@ -522,7 +529,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvmModeEnv, bool jvmMode, std::string libPath);
+static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath);
 
 #if defined (__APPLE__)
 static void dummyTimer(CFRunLoopTimerRef timer, void *info) {}
@@ -544,7 +551,6 @@ struct MainThreadArgs {
     int argc;
     char **argv;
     std::string exeDir;
-    char *jvmModeEnv;
     bool jvmMode;
     std::string libPath;
 };
@@ -552,7 +558,7 @@ struct MainThreadArgs {
 static void *apple_main (void *arg)
 {
     struct MainThreadArgs *args = (struct MainThreadArgs *) arg;
-    int ret = jvm_main_thread(args->argc, args->argv, args->exeDir, args->jvmModeEnv, args->jvmMode, args->libPath);
+    int ret = jvm_main_thread(args->argc, args->argv, args->exeDir, args->jvmMode, args->libPath);
     exit(ret);
 }
 #endif /* __APPLE__ */
@@ -562,6 +568,13 @@ int main(int argc, char *argv[]) {
     std::string exeDir = exe_directory();
     char* jvmModeEnv = getenv("GRAALVM_LAUNCHER_FORCE_JVM");
     bool jvmMode = (jvmModeEnv && (strcmp(jvmModeEnv, "true") == 0));
+#ifndef LIBLANG_RELPATH
+    if (jvmModeEnv && !jvmMode) {
+        std::cerr << "Cannot run in native mode from jvm-only launcher" << std::endl;
+        return -1;
+    }
+    jvmMode = true;
+#endif
 
     std::string libPath = vm_path(exeDir, jvmMode);
 
@@ -582,7 +595,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
+    struct MainThreadArgs args = { argc, argv, exeDir, jvmMode, libPath};
 
     /* Inherit stacksize of main thread. Otherwise pthread_create() defaults to
      * 512K on darwin, while the main thread has 8192K.
@@ -614,11 +627,11 @@ int main(int argc, char *argv[]) {
     ParkEventLoop();
     return 0;
 #else
-    return jvm_main_thread(argc, argv, exeDir, jvmModeEnv, jvmMode, libPath);
+    return jvm_main_thread(argc, argv, exeDir, jvmMode, libPath);
 #endif
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvmModeEnv, bool jvmMode, std::string libPath) {
+static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath) {
     /* parse VM args */
     JavaVM *vm;
     JNIEnv *env;

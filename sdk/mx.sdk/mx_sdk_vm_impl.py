@@ -3266,13 +3266,14 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if not main_module:
             mx.abort("The distribution with main class {} among {} must have export: {}".format(main_class, launcher_jars, main_module_export))
 
-        _dynamic_cflags += [
-            '-DLAUNCHER_MAIN_MODULE=' + main_module,
-            '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
-            '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"', # TODO: remove
-            '-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"',
-            '-DLAUNCHER_LIBRARY_PATH="{\\"' + '\\", \\"'.join(_lp) + '\\"}"',
-        ]
+        _dynamic_cflags.append('-DLAUNCHER_MAIN_MODULE=' + main_module)
+        _dynamic_cflags.append('-DLAUNCHER_CLASS=' + self.language_library_config.main_class)
+        if _cp:
+            _dynamic_cflags.append('-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"') # TODO: remove
+        if _mp:
+            _dynamic_cflags.append('-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"')
+        if _mp:
+            _dynamic_cflags.append('-DLAUNCHER_LIBRARY_PATH="{\\"' + '\\", \\"'.join(_lp) + '\\"}"')
 
         # path to libjvm
         if mx.is_windows():
@@ -3302,15 +3303,16 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLIBJLI_RELPATH=' + _libjli_path,
             ]
 
-        # path to native image language library - this is set even if the library is not built, as it may be built after the fact
-        if self.jvm_launcher:
-            # since this distribution has no native library, we can only assume the default path: language_home/lib<lang>vm.so
-            _lib_path = join(_graalvm_home, "languages", self.language_library_config.language, self.default_language_home_relative_libpath())
-        else:
-            _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
-        _dynamic_cflags += [
-            '-DLIBLANG_RELPATH=' + escaped_relpath(_lib_path)
-        ]
+        if not self.jvm_standalone:
+            # path to native image language library - this is set even if the library is not built, as it may be built after the fact
+            if self.jvm_launcher:
+                # since this distribution has no native library, we can only assume the default path: language_home/lib<lang>vm.so
+                _lib_path = join(_graalvm_home, "languages", self.language_library_config.language, self.default_language_home_relative_libpath())
+            else:
+                _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
+            _dynamic_cflags += [
+                '-DLIBLANG_RELPATH=' + escaped_relpath(_lib_path)
+            ]
 
         if len(self.language_library_config.option_vars) > 0:
             _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
