@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "6.37.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 

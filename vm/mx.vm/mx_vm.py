@@ -219,50 +219,71 @@ def mx_post_parse_cmd_line(args):
 
 def _register_all_tools_distribution(register_distribution):
     """
-    If the tools suite is imported, creates a dynamic TOOLS_COMMUNITY meta-POM distribution containing all
-    META-POM distributions from the tools suite.
+    Creates a dynamic TOOLS_COMMUNITY meta-POM distribution containing all
+    community tool meta POMs.
     :type register_distribution: (mx.Distribution) -> None
     """
-    tools_suite = mx.suite('tools', fatalIfMissing=False)
-    if tools_suite:
-        tools_meta_poms = [dist for dist in tools_suite.dists if dist.isPOMDistribution()]
-        attrs = {'maven': {
-            "groupId": "org.graalvm.polyglot",
-            "artifactId": "tools-community",
-        },
-            "description": "Graalvm community tools.",
+    community_tools = [
+        "tools:CHROMEINSPECTOR_COMMUNITY",
+        "tools:TRUFFLE_COVERAGE_COMMUNITY",
+        "tools:DAP_COMMUNITY",
+        "tools:INSIGHT_COMMUNITY",
+        "tools:INSIGHT_HEAP_COMMUNITY",
+        "tools:LSP_COMMUNITY",
+        "tools:TRUFFLE_PROFILER_COMMUNITY",
+    ]
+    tools_meta_poms = []
+    tools_licenses = set()
+    for tool_name in community_tools:
+        tool_distribution = mx.distribution(tool_name, fatalIfMissing=False)
+        if tool_distribution:
+            assert tool_distribution.isPOMDistribution(), f'TOOLS_COMMUNITY dependency {tool_distribution.name} must be a meta-POM distribution.'
+            tools_meta_poms.append(tool_distribution)
+            tool_license = tool_distribution.theLicense
+            if not tool_license:
+                tool_license = tool_distribution.suite.defaultLicense
+            tools_licenses.update(tool_license)
+    if tools_meta_poms:
+        attrs = {
+            'maven': {
+                'groupId': 'org.graalvm.polyglot',
+                'artifactId': 'tools-community',
+            },
+            'description': 'Graalvm community tools.',
         }
-        tools_community = mx_pomdistribution.POMDistribution(_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, None, **attrs)
+        tools_community = mx_pomdistribution.POMDistribution(_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, sorted(list(tools_licenses)), **attrs)
         register_distribution(tools_community)
+
 
 def _register_all_languages_distribution(register_distribution):
     """
     Creates a dynamic LANGUAGES_COMMUNITY meta-POM distribution containing all
-    META-POM distributions from imported public language suites.
+    community language meta POMs.
     :type register_distribution: (mx.Distribution) -> None
     """
-    language_suites = [
-        'espresso',
-        'fastr',
-        'graal-js',
-        'graalpython',
-        'sulong',
-        'truffleruby',
-        'wasm',
+    community_languages = [
+        'graal-js:GRAALJS_COMMUNITY',
     ]
     languages_meta_poms = []
-    for suite_name in language_suites:
-        language_suite = mx.suite(suite_name, fatalIfMissing=False)
-        if language_suite:
-            languages_meta_poms.extend([dist for dist in language_suite.dists if dist.isPOMDistribution()])
+    languages_licenses = set()
+    for distribution_name in community_languages:
+        language_distribution = mx.distribution(distribution_name, fatalIfMissing=False)
+        if language_distribution:
+            assert language_distribution.isPOMDistribution(), f'LANGUAGES_COMMUNITY dependency {language_distribution.name} must be a meta-POM distribution.'
+            languages_meta_poms.append(language_distribution)
+            language_license = language_distribution.theLicense
+            if not language_license:
+                language_license = language_distribution.suite.defaultLicense
+            languages_licenses.update(language_license)
     if languages_meta_poms:
-        attrs = {'maven': {
-            "groupId": "org.graalvm.polyglot",
-            "artifactId": "languages-community",
-        },
-            "description": "Graalvm community languages.",
+        attrs = {
+            'maven': {
+                'groupId': 'org.graalvm.polyglot',
+                'artifactId': 'languages-community',
+            },
+            'description': 'Graalvm community languages.',
         }
-        languages_community = mx_pomdistribution.POMDistribution(_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, None, **attrs)
+        languages_community = mx_pomdistribution.POMDistribution(_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, sorted(list(languages_licenses)), **attrs)
         register_distribution(languages_community)
 
 
@@ -382,6 +403,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     # add jars to the layout of the benchmark distribution
                     _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
+    if register_distribution:
         _register_all_tools_distribution(register_distribution)
         _register_all_languages_distribution(register_distribution)
 
