@@ -1582,9 +1582,9 @@ suite = {
     "SULONG_CORE" : {
       "description" : "Sulong core functionality (parser, execution engine, launcher)",
       "moduleInfo" : {
-        "name" : "org.graalvm.llvm",
+        "name" : "org.graalvm.llvm_community",
         "exports" : [
-          "* to org.graalvm.llvm.nativemode,org.graalvm.llvm_enterprise,org.graalvm.llvm.managed,org.graalvm.llvm.nativemode_enterprise,org.graalvm.llvm.mixed",
+          "* to org.graalvm.llvm.nativemode,org.graalvm.llvm,org.graalvm.llvm.managed,org.graalvm.llvm.nativemode_community",
         ],
         "uses" : [
           "com.oracle.truffle.llvm.runtime.config.ConfigurationFactory",
@@ -1670,9 +1670,9 @@ suite = {
     "SULONG_NATIVE" : {
       "description" : "Sulong Native functionality (native memory support, native library support)",
       "moduleInfo" : {
-        "name" : "org.graalvm.llvm.nativemode",
+        "name" : "org.graalvm.llvm.nativemode_community",
         "exports" : [
-          "* to org.graalvm.llvm.nativemode_enterprise,org.graalvm.llvm.mixed",
+          "* to org.graalvm.llvm.nativemode",
         ],
       },
       "subDir" : "projects",
