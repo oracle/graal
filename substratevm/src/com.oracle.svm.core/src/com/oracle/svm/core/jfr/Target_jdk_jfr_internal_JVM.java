@@ -346,8 +346,8 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#flush}. */
     @Substitute
-    public static boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
-        return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
+    public static void flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+        SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
     @Substitute
