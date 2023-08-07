@@ -829,13 +829,9 @@ public class AArch64Move {
         public static final LIRInstructionClass<CompressPointerOp> TYPE = LIRInstructionClass.create(CompressPointerOp.class);
 
         public CompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
-        }
+            super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
 
-        private CompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
-                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-
-            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
+            assert input.getPlatformKind().equals(AArch64Kind.QWORD);
         }
 
         @Override
@@ -870,13 +866,22 @@ public class AArch64Move {
     public static class UncompressPointerOp extends PointerCompressionOp {
         public static final LIRInstructionClass<UncompressPointerOp> TYPE = LIRInstructionClass.create(UncompressPointerOp.class);
 
-        public UncompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
-        }
+        /**
+         * Tracks whether this uncompress expands a 32-bit value to 64-bits. When this is occurs,
+         * care must be taken to ensure the upper 32-bits of the input value are ignored.
+         */
+        private final boolean uncompress32To64Bits;
 
-        private UncompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
-                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        public UncompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+
+            uncompress32To64Bits = input.getPlatformKind().getSizeInBytes() != result.getPlatformKind().getSizeInBytes();
+            if (uncompress32To64Bits) {
+                assert input.getPlatformKind().equals(AArch64Kind.DWORD);
+            } else {
+                assert input.getPlatformKind().equals(AArch64Kind.QWORD);
+            }
+            assert result.getPlatformKind().equals(AArch64Kind.QWORD);
         }
 
         @Override
@@ -887,14 +892,19 @@ public class AArch64Move {
 
             // result = base + (ptr << shift)
             if (nonNull || base == null) {
-                masm.add(64, resultRegister, base == null ? zr : base, inputRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
+                Register src;
+                if (uncompress32To64Bits) {
+                    masm.mov(32, resultRegister, inputRegister);
+                    src = resultRegister;
+                } else {
+                    src = inputRegister;
+                }
+                masm.add(64, resultRegister, base == null ? zr : base, src, AArch64Assembler.ShiftType.LSL, encoding.getShift());
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();
-                if (!resultRegister.equals(inputRegister)) {
-                    masm.mov(32, resultRegister, inputRegister);
-                }
-                masm.cbz(32, resultRegister, done);
+                masm.mov(uncompress32To64Bits ? 32 : 64, resultRegister, inputRegister);
+                masm.cbz(64, resultRegister, done);
                 masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
                 masm.bind(done);
             }
@@ -909,13 +919,20 @@ public class AArch64Move {
             super(type);
             this.result = result;
             this.input = input;
+            int inputSize = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int resultSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert inputSize == resultSize && resultSize == 64;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register nullRegister = crb.uncompressedNullRegister;
+            Register resultReg = asRegister(result);
+            Register inputReg = asRegister(input);
             if (!nullRegister.equals(Register.None)) {
                 emitConversion(asRegister(result), asRegister(input), nullRegister, masm);
+            } else {
+                masm.mov(64, resultReg, inputReg);
             }
         }
 

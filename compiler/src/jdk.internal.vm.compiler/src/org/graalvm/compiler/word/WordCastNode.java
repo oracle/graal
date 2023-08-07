@@ -35,14 +35,14 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
@@ -189,24 +189,24 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
-        ValueKind<?> kind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        assert kind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes();
+        ValueKind<?> resultKind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
+        assert resultKind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes();
 
-        if (trackedPointer && LIRKind.isValue(kind) && !LIRKind.isValue(value)) {
+        if (trackedPointer && LIRKind.isValue(resultKind) && !LIRKind.isValue(value)) {
             // just change the PlatformKind, but don't drop reference information
-            kind = value.getValueKind().changeType(kind.getPlatformKind());
+            resultKind = value.getValueKind().changeType(resultKind.getPlatformKind());
         }
 
-        if (kind.equals(value.getValueKind()) && !(value instanceof ConstantValue)) {
+        if (resultKind.equals(value.getValueKind()) && !(value instanceof ConstantValue)) {
             generator.setResult(this, value);
         } else {
-            AllocatableValue result = generator.getLIRGeneratorTool().newVariable(kind);
+            AllocatableValue result = generator.getLIRGeneratorTool().newVariable(resultKind);
             if (stamp.equals(StampFactory.object())) {
                 generator.getLIRGeneratorTool().emitConvertZeroToNull(result, value);
-            } else if (!trackedPointer && !((AbstractPointerStamp) input.stamp(NodeView.DEFAULT)).nonNull()) {
+            } else if (!trackedPointer && !((AbstractPointerStamp) input.stamp(NodeView.DEFAULT)).nonNull() && !(input.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
                 generator.getLIRGeneratorTool().emitConvertNullToZero(result, (AllocatableValue) value);
             } else {
-                result = generator.getLIRGeneratorTool().emitMove(kind, value);
+                result = generator.getLIRGeneratorTool().emitMove(resultKind, value);
             }
             generator.setResult(this, result);
         }
