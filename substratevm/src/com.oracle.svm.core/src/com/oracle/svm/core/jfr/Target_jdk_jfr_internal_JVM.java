@@ -355,6 +355,11 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().flush();
     }
 
+    @Substitute
+    public static long commit(long nextPosition) {
+        return SubstrateJVM.get().commit(nextPosition);
+    }
+
     /** See {@link JVM#setRepositoryLocation}. */
     @Substitute
     public void setRepositoryLocation(String dirText) {

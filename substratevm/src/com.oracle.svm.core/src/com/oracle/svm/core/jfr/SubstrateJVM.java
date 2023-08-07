@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -518,6 +519,22 @@ public class SubstrateJVM {
         } finally {
             chunkWriter.unlock();
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
+    public long commit(long nextPosition) {
+        assert nextPosition != 0 : "invariant";
+        JfrBuffer current = threadLocal.getJavaBuffer();
+        assert current.isNonNull() : "invariant";
+        Pointer next = WordFactory.pointer(nextPosition);
+        assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
+        assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
+        if (JfrThreadLocal.isNotified()) {
+            JfrThreadLocal.clearNotification();
+            return current.getCommittedPos().rawValue();
+        }
+        current.setCommittedPos(next);
+        return nextPosition;
     }
 
     public void markChunkFinal() {

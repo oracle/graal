@@ -32,9 +32,6 @@ import com.oracle.svm.core.jdk.JDK19OrLater;
 
 @TargetClass(className = "EventWriter", classNameProvider = Package_jdk_jfr_internal_event_helper.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_EventWriter {
-    @Alias //
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    @SuppressWarnings("unused") boolean notified;
 
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) boolean excluded;
