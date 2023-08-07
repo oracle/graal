@@ -29,10 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.op;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesLongPointer;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshl_I16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshl_I16VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshl_I32NodeGen;
@@ -49,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshr_
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshr_I64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshr_I8NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory.Fshr_I8VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -174,11 +179,19 @@ public abstract class LLVMFunnelShiftNode extends LLVMExpressionNode {
         }
     }
 
+    @TypeSystemReference(LLVMTypesLongPointer.class)
     public abstract static class Fshl_I64 extends LLVMFunnelShiftNode {
 
         @Specialization
         long doFshl(long left, long right, long shift) {
             return (left << shift) | (right >>> (Long.SIZE - shift));
+        }
+
+        @Specialization
+        long doFshl(LLVMPointer left, LLVMPointer right, long shift,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+            return doFshl(toNativePointerLeft.execute(left).asNative(), toNativePointerRight.execute(right).asNative(), shift);
         }
     }
 
