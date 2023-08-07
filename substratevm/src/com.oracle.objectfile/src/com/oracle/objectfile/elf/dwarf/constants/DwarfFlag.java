@@ -34,7 +34,7 @@ public enum DwarfFlag {
     DW_FLAG_false((byte) 0),
     DW_FLAG_true((byte) 1);
 
-    byte value;
+    private final byte value;
 
     DwarfFlag(byte b) {
         value = b;

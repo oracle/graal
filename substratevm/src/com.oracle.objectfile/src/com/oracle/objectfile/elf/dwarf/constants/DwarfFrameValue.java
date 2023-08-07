@@ -56,7 +56,7 @@ public enum DwarfFrameValue {
     DW_CFA_def_cfa_register((byte) 0xd),
     DW_CFA_def_cfa_offset((byte) 0xe);
 
-    byte value;
+    private final byte value;
 
     DwarfFrameValue(byte b) {
         value = b;

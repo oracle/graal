@@ -61,14 +61,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_ABBREV_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_INFO_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LINE_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LOC_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_RANGES_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_STR_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.TEXT_SECTION;
-
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
@@ -290,7 +282,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, TEXT_SECTION.value(), l);
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfSectionName.TEXT_SECTION.value(), l);
         pos = writeLong(0, buffer, pos);
         return pos;
     }
@@ -531,19 +523,19 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeInfoSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_INFO_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_INFO_SECTION, pos);
     }
 
     protected int writeLineSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_LINE_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LINE_SECTION, pos);
     }
 
     protected int writeRangesSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_RANGES_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_RANGES_SECTION, pos);
     }
 
     protected int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_ABBREV_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_ABBREV_SECTION, pos);
     }
 
     protected int writeStrSectionOffset(String value, byte[] buffer, int p) {
@@ -553,11 +545,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     private int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_STR_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_STR_SECTION, pos);
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DW_LOC_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LOC_SECTION, pos);
     }
 
     protected int writeDwarfSectionOffset(int offset, byte[] buffer, DwarfSectionName referencedSectionName, int pos) {

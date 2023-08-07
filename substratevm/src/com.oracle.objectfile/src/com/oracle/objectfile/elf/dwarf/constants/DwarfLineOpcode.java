@@ -101,7 +101,7 @@ public enum DwarfLineOpcode {
      */
     DW_LNE_define_file((byte) 3);
 
-    byte value;
+    private final byte value;
 
     DwarfLineOpcode(byte b) {
         value = b;

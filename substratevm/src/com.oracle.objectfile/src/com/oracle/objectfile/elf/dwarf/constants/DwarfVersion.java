@@ -38,7 +38,7 @@ public enum DwarfVersion {
     DW_VERSION_2((short) 2),
     DW_VERSION_4((short) 4);
 
-    short value;
+    private final short value;
 
     DwarfVersion(short s) {
         value = s;

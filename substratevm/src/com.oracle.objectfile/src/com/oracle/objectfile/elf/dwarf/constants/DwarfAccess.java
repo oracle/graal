@@ -34,7 +34,7 @@ public enum DwarfAccess {
     DW_ACCESS_protected((byte) 2),
     DW_ACCESS_private((byte) 3);
 
-    byte value;
+    private final byte value;
 
     DwarfAccess(byte b) {
         value = b;

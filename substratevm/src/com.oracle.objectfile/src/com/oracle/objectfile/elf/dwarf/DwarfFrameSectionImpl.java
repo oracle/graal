@@ -30,12 +30,10 @@ import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.List;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_FRAME_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LINE_SECTION;
 
 /**
  * Section generic generator for debug_frame section.
@@ -48,7 +46,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     public DwarfFrameSectionImpl(DwarfDebugInfo dwarfSections) {
         // debug_frame section depends on debug_line section
-        super(dwarfSections, DW_FRAME_SECTION, DW_LINE_SECTION);
+        super(dwarfSections, DwarfSectionName.DW_FRAME_SECTION, DwarfSectionName.DW_LINE_SECTION);
     }
 
     @Override

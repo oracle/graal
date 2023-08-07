@@ -50,7 +50,7 @@ public enum DwarfExpressionOpcode {
     DW_OP_implicit_value((byte) 0x9e),
     DW_OP_stack_value((byte) 0x9f);
 
-    byte value;
+    private final byte value;
 
     DwarfExpressionOpcode(byte b) {
         value = b;

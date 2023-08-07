@@ -38,7 +38,7 @@ public enum DwarfInline {
     @SuppressWarnings("unused")
     DW_INL_declared_inlined((byte) 3);
 
-    byte value;
+    private final byte value;
 
     DwarfInline(byte b) {
         value = b;

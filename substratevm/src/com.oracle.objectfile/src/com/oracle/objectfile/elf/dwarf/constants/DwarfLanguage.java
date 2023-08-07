@@ -33,7 +33,7 @@ package com.oracle.objectfile.elf.dwarf.constants;
 public enum DwarfLanguage {
     DW_LANG_Java((byte) 0xb);
 
-    byte value;
+    private final byte value;
 
     DwarfLanguage(byte b) {
         value = b;

@@ -27,10 +27,8 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.StringEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import org.graalvm.compiler.debug.DebugContext;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_INFO_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_STR_SECTION;
 
 /**
  * Generator for debug_str section.
@@ -38,7 +36,7 @@ import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_STR_
 public class DwarfStrSectionImpl extends DwarfSectionImpl {
     public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
         // debug_str section depends on info section
-        super(dwarfSections, DW_STR_SECTION, DW_INFO_SECTION);
+        super(dwarfSections, DwarfSectionName.DW_STR_SECTION, DwarfSectionName.DW_INFO_SECTION);
     }
 
     @Override
