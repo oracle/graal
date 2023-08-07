@@ -146,10 +146,12 @@ public class HeapBreakdownProvider {
         /* Extract byte[] for resources. */
         long resourcesByteArraySize = 0;
         int resourcesByteArrayCount = 0;
-        for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
-            for (byte[] resource : resourceList.getData()) {
-                resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
-                resourcesByteArrayCount++;
+        for (Object resourceList : Resources.singleton().resources()) {
+            if (resourceList instanceof ResourceStorageEntry resourceStorageEntry) {
+                for (byte[] resource : resourceStorageEntry.getData()) {
+                    resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
+                    resourcesByteArrayCount++;
+                }
             }
         }
         ProgressReporter reporter = ProgressReporter.singleton();

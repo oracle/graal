@@ -145,11 +145,13 @@ public class ImageHeapConnectedComponentsPrinter {
     }
 
     private static void markResources(NativeImageHeap heap) {
-        for (ResourceStorageEntry value : Resources.singleton().resources()) {
-            for (byte[] arr : value.getData()) {
-                ObjectInfo info = heap.getObjectInfo(arr);
-                if (info != null) {
-                    heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);
+        for (Object value : Resources.singleton().resources()) {
+            if (value instanceof ResourceStorageEntry resourceStorageEntry) {
+                for (byte[] arr : resourceStorageEntry.getData()) {
+                    ObjectInfo info = heap.getObjectInfo(arr);
+                    if (info != null) {
+                        heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);
+                    }
                 }
             }
         }
