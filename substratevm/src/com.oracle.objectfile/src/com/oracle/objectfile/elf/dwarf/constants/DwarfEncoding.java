@@ -40,7 +40,7 @@ public enum DwarfEncoding {
     @SuppressWarnings("unused")
     DW_ATE_unsigned_char((byte) 0x8);
 
-    byte value;
+    private final byte value;
 
     DwarfEncoding(byte b) {
         value = b;

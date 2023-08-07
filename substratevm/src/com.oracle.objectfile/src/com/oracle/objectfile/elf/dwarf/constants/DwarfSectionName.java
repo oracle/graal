@@ -41,7 +41,7 @@ public enum DwarfSectionName {
     DW_ARANGES_SECTION(".debug_aranges"),
     DW_RANGES_SECTION(".debug_ranges");
 
-    String value;
+    private final String value;
 
     DwarfSectionName(String s) {
         value = s;

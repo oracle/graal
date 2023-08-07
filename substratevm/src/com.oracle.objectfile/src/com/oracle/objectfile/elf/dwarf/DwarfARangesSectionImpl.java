@@ -29,6 +29,8 @@ package com.oracle.objectfile.elf.dwarf;
 import java.util.Map;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
@@ -36,11 +38,6 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_ARANGES_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_FRAME_SECTION;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfVersion.DW_VERSION_2;
 
 /**
  * Section generator for debug_aranges section.
@@ -51,7 +48,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     private static final int AR_HEADER_PAD_SIZE = 4;
 
     public DwarfARangesSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections, DW_ARANGES_SECTION, DW_FRAME_SECTION);
+        super(dwarfSections, DwarfSectionName.DW_ARANGES_SECTION, DwarfSectionName.DW_FRAME_SECTION);
     }
 
     @Override
@@ -161,7 +158,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         // write dummy length for now
         pos = writeInt(0, buffer, pos);
         /* DWARF version is always 2. */
-        pos = writeDwarfVersion(DW_VERSION_2, buffer, pos);
+        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_2, buffer, pos);
         pos = writeInfoSectionOffset(cuIndex, buffer, pos);
         /* Address size is always 8. */
         pos = writeByte((byte) 8, buffer, pos);

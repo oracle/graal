@@ -33,7 +33,7 @@ public enum DwarfHasChildren {
     DW_CHILDREN_no((byte) 0),
     DW_CHILDREN_yes((byte) 1);
 
-    byte value;
+    private final byte value;
 
     DwarfHasChildren(byte b) {
         value = b;

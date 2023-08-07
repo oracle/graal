@@ -50,7 +50,7 @@ public enum DwarfTag {
     DW_TAG_unspecified_type(0x3b),
     DW_TAG_inlined_subroutine(0x1d);
 
-    int value;
+    private final int value;
 
     DwarfTag(int i) {
         value = i;

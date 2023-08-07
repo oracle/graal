@@ -54,7 +54,7 @@ public enum DwarfForm {
     DW_FORM_strp(0xe),
     DW_FORM_expr_loc(0x18);
 
-    int value;
+    private final int value;
 
     DwarfForm(int i) {
         value = i;

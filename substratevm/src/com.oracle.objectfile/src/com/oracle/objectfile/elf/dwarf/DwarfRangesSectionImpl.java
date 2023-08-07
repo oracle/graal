@@ -30,17 +30,15 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
 
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_ARANGES_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_RANGES_SECTION;
-
 public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     public DwarfRangesSectionImpl(DwarfDebugInfo dwarfSections) {
         // debug_ranges section depends on debug_aranges section
-        super(dwarfSections, DW_RANGES_SECTION, DW_ARANGES_SECTION);
+        super(dwarfSections, DwarfSectionName.DW_RANGES_SECTION, DwarfSectionName.DW_ARANGES_SECTION);
     }
 
     @Override

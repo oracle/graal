@@ -37,6 +37,7 @@ import java.util.Set;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
@@ -55,13 +56,6 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_breg0;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_bregx;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode.DW_OP_implicit_value;
-
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.DW_LOC_SECTION;
-import static com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName.TEXT_SECTION;
 
 /**
  * Section generator for debug_loc section.
@@ -86,7 +80,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
         // debug_loc section depends on text section
-        super(dwarfSections, DW_LOC_SECTION, TEXT_SECTION, targetLayoutKinds);
+        super(dwarfSections, DwarfSectionName.DW_LOC_SECTION, DwarfSectionName.TEXT_SECTION, targetLayoutKinds);
         initDwarfRegMap();
     }
 
@@ -285,7 +279,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             // fold the base reg index into the op
             pos = writeExprOpcodeBReg(sp, buffer, pos);
         } else {
-            pos = writeExprOpcode(DW_OP_bregx, buffer, pos);
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_bregx, buffer, pos);
             // pass base reg index as a ULEB operand
             pos = writeULEB(sp, buffer, pos);
         }
@@ -294,9 +288,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         byteCount = (byte) (pos - zeroPos);
         writeShort(byteCount, buffer, patchPos);
         if (sp < 0x20) {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, (DW_OP_breg0.value() + sp), 0 - offset);
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, (DwarfExpressionOpcode.DW_OP_breg0.value() + sp), 0 - offset);
         } else {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, DW_OP_bregx.value(), sp, 0 - offset);
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, DwarfExpressionOpcode.DW_OP_bregx.value(), sp, 0 - offset);
         }
         return pos;
     }
@@ -304,7 +298,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writePrimitiveConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant instanceof PrimitiveConstant;
         int pos = p;
-        DwarfExpressionOpcode op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         JavaKind kind = constant.getJavaKind();
         int dataByteCount = kind.getByteCount();
         // total bytes is op + uleb + dataByteCount
@@ -334,7 +328,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeNullConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant.isNull();
         int pos = p;
-        DwarfExpressionOpcode op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         int dataByteCount = 8;
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
