@@ -60,17 +60,21 @@ final class LibTruffleAttachResource implements InternalResource {
             // The truffleattach library is not needed in native-image.
             return;
         }
-        Path base = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString());
+        Path base = basePath(env);
         env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
     }
 
     @Override
     public String versionHash(Env env) {
         try {
-            Path hashResource = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
-            return env.readResourceLines(hashResource).get(0);
+            Path base = basePath(env);
+            return env.readResourceLines(base.resolve("sha256")).get(0);
         } catch (IOException ioe) {
             throw CompilerDirectives.shouldNotReachHere(ioe);
         }
+    }
+
+    private static Path basePath(Env env) {
+        return Path.of("META-INF", "resources", "engine", "LibTruffleAttach", env.getOS().toString(), env.getCPUArchitecture().toString());
     }
 }
