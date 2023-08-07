@@ -40,9 +40,7 @@
 #
 import os
 import re
-import io
 import shutil
-import sys
 import tempfile
 import difflib
 import zipfile
@@ -50,7 +48,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
-from pathlib import PurePath, PurePosixPath
 
 import mx
 import mx_benchmark
