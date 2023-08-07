@@ -2,7 +2,7 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
-## Version 23.0.0
+## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-42212): Remove support for all JDKs earlier than JDK 17.
 * (GR-42044): Improved output of `-Dgraal.ShowConfiguration=info`. For example:
     `Using "Graal Community compiler" loaded from a Native Image shared library`
