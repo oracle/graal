@@ -354,7 +354,8 @@ public class TruffleFeature implements InternalFeature {
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
-        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
+        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true,
+                        "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
@@ -414,7 +415,7 @@ public class TruffleFeature implements InternalFeature {
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsRoot((AnalysisMethod) method, true);
+            config.registerAsRoot((AnalysisMethod) method, true, "Truffle stack frame support, registered in " + TruffleFeature.class);
         }
 
         /*
@@ -423,7 +424,7 @@ public class TruffleFeature implements InternalFeature {
          * adds it as a root and non-static root methods are only compiled if types implementing
          * them or any of their subtypes are allocated.
          */
-        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by TruffleFeature.");
+        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by " + TruffleFeature.class);
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system

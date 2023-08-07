@@ -42,10 +42,12 @@ final class ImplicitExceptionsFeature implements InternalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true,
+                            "Implicit exception foreign calls, registered in " + ImplicitExceptionsFeature.class);
         }
         if (SubstrateOptions.VerifyTypes.getValue()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR.findMethod(access.getMetaAccess()), true,
+                            "Type verification support in foreign calls, registered in " + ImplicitExceptionsFeature.class);
         }
     }
 

@@ -177,24 +177,24 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             } else if (n instanceof ForeignCall) {
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, ((ForeignCall) n).getDescriptor(), foreignCallsProvider);
+                handleForeignCall(bb, ((ForeignCall) n).getDescriptor(), foreignCallsProvider, graph.method());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
+                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
+                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
 
             }
         }
     }
 
-    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider) {
+    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider, ResolvedJavaMethod from) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(descriptor, foreignCallsProvider);
-        targetMethod.ifPresent(method -> bb.addRootMethod(method, false));
+        targetMethod.ifPresent(method -> bb.addRootMethod(method, false, from));
     }
 }

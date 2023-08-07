@@ -107,8 +107,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, otherRoots);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @SuppressWarnings("try")
@@ -146,26 +146,26 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert otherRoots.length == 0;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
             postTask(() -> {
-                if (method.registerAsDirectRootMethod()) {
-                    markMethodImplementationInvoked(method, "root method");
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
                 }
             });
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
             postTask(() -> {
-                if (method.registerAsDirectRootMethod()) {
-                    markMethodImplementationInvoked(method, "root method");
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
                 }
             });
         } else {
             postTask(() -> {
-                if (method.registerAsVirtualRootMethod()) {
-                    markMethodInvoked(method, "root method");
+                if (method.registerAsVirtualRootMethod(reason)) {
+                    markMethodInvoked(method, reason);
                 }
             });
         }

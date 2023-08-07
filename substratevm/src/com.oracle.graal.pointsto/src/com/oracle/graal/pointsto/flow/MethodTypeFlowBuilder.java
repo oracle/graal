@@ -147,6 +147,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
@@ -334,13 +335,13 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof ForeignCall) {
                 ForeignCall node = (ForeignCall) n;
-                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor());
+                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
             }
         }
     }
@@ -410,9 +411,9 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor) {
+    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, foreignCallsProvider);
-        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
+        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true, from));
     }
 
     private boolean handleNodeIntrinsic() {

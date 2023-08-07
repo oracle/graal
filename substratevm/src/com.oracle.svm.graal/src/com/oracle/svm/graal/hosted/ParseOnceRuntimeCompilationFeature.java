@@ -400,9 +400,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
                 boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
-                if (added) {
-                    assert runtimeCompiledMethodCallTree.containsKey(method);
-                }
+                assert !added || runtimeCompiledMethodCallTree.containsKey(method);
             }
         }
 
@@ -731,7 +729,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
              */
             var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
             SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
-            config.registerAsRoot(aMethod, true, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + ParseOnceRuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
         return sMethod;

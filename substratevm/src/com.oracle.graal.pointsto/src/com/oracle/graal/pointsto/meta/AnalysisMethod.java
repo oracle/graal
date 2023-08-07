@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
@@ -85,9 +84,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider, MultiMethod {
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater.newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isVirtualRootMethodUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isVirtualRootMethod");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isDirectRootMethodUpdater = AtomicIntegerFieldUpdater.newUpdater(AnalysisMethod.class, "isDirectRootMethod");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isDirectRootMethodUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isDirectRootMethod");
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInvokedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInvoked");
@@ -136,9 +137,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                     "multiMethodMap");
 
     /** Virtually invoked method registered as root. */
-    @SuppressWarnings("unused") private volatile int isVirtualRootMethod;
+    @SuppressWarnings("unused") private volatile Object isVirtualRootMethod;
     /** Direct (special or static) invoked method registered as root. */
-    @SuppressWarnings("unused") private volatile int isDirectRootMethod;
+    @SuppressWarnings("unused") private volatile Object isDirectRootMethod;
     private Object entryPointData;
     @SuppressWarnings("unused") private volatile Object isInvoked;
     @SuppressWarnings("unused") private volatile Object isImplementationInvoked;
@@ -449,17 +450,17 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
      * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
-    public boolean registerAsVirtualRootMethod() {
+    public boolean registerAsVirtualRootMethod(Object reason) {
         getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
-        return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
+        return AtomicUtils.atomicSet(this, reason, isVirtualRootMethodUpdater);
     }
 
     /**
      * Registers this method as a direct (special or static) root for the analysis.
      */
-    public boolean registerAsDirectRootMethod() {
+    public boolean registerAsDirectRootMethod(Object reason) {
         getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
-        return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
+        return AtomicUtils.atomicSet(this, reason, isDirectRootMethodUpdater);
     }
 
     /**
@@ -779,7 +780,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public String toString() {
         return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ", invoked: " + (isInvoked != null) +
                         ", implInvoked: " + (isImplementationInvoked != null) + ", intrinsic: " + (isIntrinsicMethod != null) + ", inlined: " + (isInlined != null) +
-                        (isVirtualRootMethod != 0 ? ", virtual root" : "") + (isDirectRootMethod != 0 ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
+                        (isVirtualRootMethod() ? ", virtual root" : "") + (isDirectRootMethod() ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
     }
 
     @Override
