@@ -58,6 +58,7 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.ResourceBundleControlProvider;
 import java.util.spi.TimeZoneNameProvider;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -68,12 +69,14 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
@@ -550,6 +553,7 @@ public class LocalizationFeature implements InternalFeature {
         prepareBundle(baseName, allLocales);
     }
 
+    @SuppressWarnings("deprecation")
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String baseName, Collection<Locale> wantedLocales) {
         if (baseName.isEmpty()) {
@@ -578,8 +582,15 @@ public class LocalizationFeature implements InternalFeature {
             Class<?> clazz = findClassByName.apply(baseName);
             if (clazz != null && ResourceBundle.class.isAssignableFrom(clazz)) {
                 trace("Found non-compliant class-based bundle " + clazz);
-                somethingFound = true;
-                support.prepareNonCompliant(clazz);
+                try {
+                    support.prepareNonCompliant(clazz);
+                    somethingFound = true;
+                } catch (ReflectiveOperationException e) {
+                    /*
+                     * The bundle does not implement the getContents method, so they cannot be
+                     * stored as a DelayedBundle.
+                     */
+                }
             }
         }
 
@@ -587,8 +598,29 @@ public class LocalizationFeature implements InternalFeature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            System.out.println(errorMessage);
+            trace(errorMessage);
+            prepareNegativeBundle(baseName, Locale.ROOT);
+            for (String language : wantedLocales.stream().map(Locale::getLanguage).collect(Collectors.toSet())) {
+                prepareNegativeBundle(baseName, new Locale(language));
+            }
+            for (Locale locale : wantedLocales) {
+                if (!locale.getCountry().isEmpty()) {
+                    prepareNegativeBundle(baseName, locale);
+                }
+            }
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void prepareNegativeBundle(String baseName, Locale locale) {
+        String bundleName = baseName + (locale.toString().isEmpty() ? "" : "_" + locale);
+        Class<?> clazz = findClassByName.apply(bundleName);
+        if (clazz != null) {
+            RuntimeReflection.register(clazz);
+        } else {
+            RuntimeReflection.registerClassLookup(bundleName);
+        }
+        Resources.singleton().registerNegativeQuery(support.getResultingPattern(baseName, locale) + ".properties");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
