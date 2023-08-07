@@ -455,6 +455,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -477,6 +478,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
