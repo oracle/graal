@@ -480,7 +480,7 @@ suite = {
                 import org.graalvm.shadowed.org.jline.terminal.Terminal;
                 import org.graalvm.shadowed.org.jline.terminal.impl.exec.ExecTerminalProvider;
               """,
-            "static TerminalProvider load\\(String name\\) throws IOException {":
+            "static TerminalProvider load\\(String name\\) throws IOException \\x7b":
               """
               static TerminalProvider load(String name) throws IOException {
                   switch (name) {
@@ -491,6 +491,7 @@ suite = {
                             throw new IOException(\"Unable to find terminal provider \" + name);
                         }
                   }
+                  // }
               """,
           },
         },
