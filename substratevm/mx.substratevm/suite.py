@@ -1083,6 +1083,14 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.truffle.nfi.none": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "javaCompliance" : "17+",
+            "workingSets": "SVM",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.truffle.nfi": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1954,8 +1962,13 @@ suite = {
             },
         },
 
-        "SVM_NFI_EMPTY_JAR" : {
-            "description" : "Empty jar for the none NFI backend",
+        "SVM_NFI_NONE_JAR" : {
+            "description" : "Almost empty jar for the none NFI backend",
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi.none", # to avoid `MX_BUILD_EXPLODED=true mx build` failing
+            ],
+            "maven": False
         },
 
         "SVM_NFI_GRAALVM_SUPPORT" : {
@@ -1973,8 +1986,8 @@ suite = {
                 ],
                 # The following files are intentionally left empty. The "none" backend is actually nothing, but we still
                 # need some files so native-image doesn't complain about missing files on the classpath.
-                "truffle-nfi-none.jar" : "dependency:SVM_NFI_EMPTY_JAR",
-                "builder/svm-none.jar" : "dependency:SVM_NFI_EMPTY_JAR",
+                "truffle-nfi-none.jar" : "dependency:SVM_NFI_NONE_JAR",
+                "builder/svm-none.jar" : "dependency:SVM_NFI_NONE_JAR",
                 "builder/clibraries-none/.empty.h" : "file:src/com.oracle.svm.libffi/include/empty.h",
             },
         },
