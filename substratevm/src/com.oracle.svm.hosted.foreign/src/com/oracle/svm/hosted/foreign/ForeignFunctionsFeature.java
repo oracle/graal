@@ -129,7 +129,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateUtil.getArchitectureName().contains("amd64");
+        return SubstrateUtil.getArchitectureName().contains("amd64") && !SubstrateOptions.useLLVMBackend();
     }
 
     @Override
@@ -151,10 +151,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     }
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-    }
-
     private int createDowncallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
         Map<NativeEntryPointInfo, ResolvedJavaMethod> created = new HashMap<>();
         for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : registeredDowncalls) {
@@ -163,7 +159,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             if (!created.containsKey(nepi)) {
                 ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped());
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
-                access.getBigBang().addRootMethod(analysisStub, false);
+                access.getBigBang().addRootMethod(analysisStub, false, "Foreign downcall stub, registered in " + ForeignFunctionsFeature.class);
                 created.put(nepi, analysisStub);
                 ForeignFunctionsRuntime.singleton().addStubPointer(
                                 nepi,
@@ -198,7 +194,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                         "USE_SPEC"),
                         (receiver, originalValue) -> false);
 
-        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false);
+        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
+                        "Runtime support, registered in " + ForeignFunctionsFeature.class);
 
         int downcallStubsCount = createDowncallStubs(access);
         ProgressReporter.singleton().setForeignFunctionsInfo(downcallStubsCount);
