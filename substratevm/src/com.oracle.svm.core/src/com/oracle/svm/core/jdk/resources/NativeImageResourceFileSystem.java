@@ -119,7 +119,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private final ReadWriteLock rwlock = new ReentrantReadWriteLock();
 
     private static final byte[] ROOT_PATH = new byte[]{'/'};
-    private final IndexNode lookupKey = new IndexNode(null, true);
+    private final IndexNode lookupKey = new IndexNode(null, true, false);
     private final LinkedHashMap<IndexNode, IndexNode> inodes = new LinkedHashMap<>(10);
 
     @SuppressWarnings("this-escape")
@@ -306,7 +306,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                 if (inode == null) {
                     return null;
                 }
-                entry = new Entry(inode.name, inode.isDir);
+                entry = new Entry(inode.name, inode.isDir, inode.isComplete);
                 entry.lastModifiedTime = entry.lastAccessTime = entry.createTime = defaultTimestamp;
             }
         } finally {
@@ -352,7 +352,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                     throw new NoSuchFileException(getString(path));
                 }
                 checkParents(path);
-                return new EntryOutputChannel(new Entry(path, false));
+                return new EntryOutputChannel(new Entry(path, false, false));
             } finally {
                 endRead();
             }
@@ -440,7 +440,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                 throw new FileAlreadyExistsException(getString(dir));
             }
             checkParents(dir);
-            Entry e = new Entry(dir, true);
+            Entry e = new Entry(dir, true, false);
             update(e);
         } finally {
             endWrite();
@@ -572,7 +572,12 @@ public class NativeImageResourceFileSystem extends FileSystem {
         if (path == null) {
             throw new NullPointerException("Path is null!");
         }
-        return inodes.get(IndexNode.keyOf(path));
+        IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
+        if (indexNode == null && MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
+            // Try to access the resource to see if the metadata is present
+            Resources.singleton().get(getString(path), true);
+        }
+        return indexNode;
     }
 
     Entry getEntry(byte[] path) {
@@ -583,7 +588,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         if (inode == null) {
             return null;
         }
-        return new Entry(inode.name, inode.isDir);
+        return new Entry(inode.name, inode.isDir, inode.isComplete);
     }
 
     static byte[] getParent(byte[] path) {
@@ -651,11 +656,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Pair<Module, String>, ResourceStorageEntry> entries = Resources.singleton().getResourceStorage().getEntries();
+        MapCursor<Pair<Module, String>, Object> entries = Resources.singleton().getResourceStorage().getEntries();
         while (entries.advance()) {
             byte[] name = getBytes(entries.getKey().getRight());
-            IndexNode newIndexNode = new IndexNode(name, entries.getValue().isDirectory());
-            inodes.put(newIndexNode, newIndexNode);
+            Object entry = entries.getValue();
+            if (entry instanceof ResourceStorageEntry resourceStorageEntry) {
+                IndexNode newIndexNode = new IndexNode(name, resourceStorageEntry.isDirectory(), true);
+                inodes.put(newIndexNode, newIndexNode);
+            }
         }
         buildNodeTree();
     }
@@ -665,7 +673,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         try {
             IndexNode rootIndex = inodes.get(lookupKey.as(ROOT_PATH));
             if (rootIndex == null) {
-                rootIndex = new IndexNode(ROOT_PATH, true);
+                rootIndex = new IndexNode(ROOT_PATH, true, false);
             } else {
                 inodes.remove(rootIndex);
             }
@@ -690,7 +698,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                         break;
                     }
                     // Add new pseudo directory entry.
-                    parent = new IndexNode(Arrays.copyOf(node.name, off), true);
+                    parent = new IndexNode(Arrays.copyOf(node.name, off), true, false);
                     inodes.put(parent, parent);
                     node.sibling = parent.child;
                     parent.child = node;
@@ -801,7 +809,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                     throw new NoSuchFileException(getString(path));
                 }
                 checkParents(path);
-                return getOutputStream(new Entry(path, false));
+                return getOutputStream(new Entry(path, false, false));
             }
         } finally {
             endRead();
@@ -835,7 +843,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             final boolean isFCH = (e != null && e.type == Entry.FILE_CH);
             final Path tmpFile = isFCH ? e.file : getTempPathForEntry(path);
             final FileChannel fch = tmpFile.getFileSystem().provider().newFileChannel(tmpFile, options, attrs);
-            final Entry target = isFCH ? e : new Entry(path, tmpFile, Entry.FILE_CH);
+            final Entry target = isFCH ? e : new Entry(path, tmpFile, Entry.FILE_CH, false);
             return new FileChannel() {
 
                 @Override
@@ -979,6 +987,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         byte[] name;
         int hashcode;
         boolean isDir;
+        boolean isComplete;
 
         IndexNode child;
         IndexNode sibling;
@@ -990,9 +999,10 @@ public class NativeImageResourceFileSystem extends FileSystem {
             name(n);
         }
 
-        IndexNode(byte[] n, boolean isDir) {
+        IndexNode(byte[] n, boolean isDir, boolean isComplete) {
             name(n);
             this.isDir = isDir;
+            this.isComplete = isComplete;
         }
 
         static IndexNode keyOf(byte[] n) {
@@ -1097,8 +1107,8 @@ public class NativeImageResourceFileSystem extends FileSystem {
         private byte[] bytes;
         public Path file;
 
-        Entry(byte[] name, Path file, int type) {
-            this(name, type, false);
+        Entry(byte[] name, Path file, int type, boolean isComplete) {
+            this(name, type, false, isComplete);
             this.file = file;
         }
 
@@ -1107,12 +1117,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
         }
 
         void initData() {
-            this.bytes = NativeImageResourceFileSystemUtil.getBytes(getString(name), true);
-            this.size = !isDir ? this.bytes.length : 0;
+            if (isComplete) {
+                this.bytes = NativeImageResourceFileSystemUtil.getBytes(getString(name), true);
+                this.size = !isDir ? this.bytes.length : 0;
+            }
         }
 
         byte[] getBytes(boolean readOnly) {
-            if (!readOnly) {
+            if (!readOnly && isComplete) {
                 // Copy On Write technique.
                 if (!copyOnWrite) {
                     copyOnWrite = true;
@@ -1122,18 +1134,20 @@ public class NativeImageResourceFileSystem extends FileSystem {
             return this.bytes;
         }
 
-        Entry(byte[] name, boolean isDir) {
+        Entry(byte[] name, boolean isDir, boolean isComplete) {
             name(name);
             this.type = Entry.NEW;
             this.isDir = isDir;
+            this.isComplete = isComplete;
             initData();
             initTimes();
         }
 
-        Entry(byte[] name, int type, boolean isDir) {
+        Entry(byte[] name, int type, boolean isDir, boolean isComplete) {
             name(name);
             this.type = type;
             this.isDir = isDir;
+            this.isComplete = isComplete;
             initData();
             initTimes();
         }
@@ -1144,6 +1158,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             this.lastAccessTime = other.lastAccessTime;
             this.createTime = other.createTime;
             this.isDir = other.isDir;
+            this.isComplete = other.isComplete;
             this.size = other.size;
             this.bytes = other.bytes;
             this.type = type;
