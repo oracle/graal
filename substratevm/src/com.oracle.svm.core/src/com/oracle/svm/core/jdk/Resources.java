@@ -92,7 +92,7 @@ public final class Resources {
      * when accessing the {@link Resources#resources} map, and it means that even though the
      * resource was correctly specified in the configuration, accessing it will return null.
      */
-    public static final Object NEGATIVE_QUERY = new Object();
+    public static final Object NEGATIVE_QUERY_MARKER = new Object();
 
     /**
      * The object used to detect that the resource is not reachable according to the metadata. It
@@ -100,7 +100,7 @@ public final class Resources {
      * specified in the configuration, but we do not want to throw directly (for example when we try
      * to check all the modules for a resource).
      */
-    private static final Object MISSING_METADATA = new Object();
+    private static final Object MISSING_METADATA_MARKER = new Object();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -169,7 +169,7 @@ public final class Resources {
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(m, resourceName);
             Object entry = resources.get(key);
-            if (entry == null || entry == NEGATIVE_QUERY) {
+            if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
                 entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
                 updateTimeStamp();
                 resources.put(key, entry);
@@ -261,7 +261,7 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(Module module, String resourceName) {
-        addEntry(module, resourceName, NEGATIVE_QUERY, false, false);
+        addEntry(module, resourceName, NEGATIVE_QUERY_MARKER, false, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -328,7 +328,7 @@ public final class Resources {
         if (entry instanceof IOException) {
             throw new RuntimeException((IOException) entry);
         }
-        if (entry == NEGATIVE_QUERY) {
+        if (entry == NEGATIVE_QUERY_MARKER) {
             return null;
         }
         ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
@@ -353,7 +353,7 @@ public final class Resources {
         if (throwOnMissing) {
             MissingResourceRegistrationUtils.missingResource(resourceName);
         }
-        return MISSING_METADATA;
+        return MISSING_METADATA_MARKER;
     }
 
     @SuppressWarnings("deprecation")
@@ -391,18 +391,18 @@ public final class Resources {
         }
 
         Object entry = get(module, resourceName, false);
-        boolean isInMetadata = entry != MISSING_METADATA;
-        if (moduleName(module) == null && (entry == MISSING_METADATA || entry == null)) {
+        boolean isInMetadata = entry != MISSING_METADATA_MARKER;
+        if (moduleName(module) == null && (entry == MISSING_METADATA_MARKER || entry == null)) {
             /*
              * If module is not specified or is an unnamed module and entry was not found as
              * classpath-resource we have to search for the resource in all modules in the image.
              */
             for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
                 entry = get(m, resourceName, false);
-                if (entry != MISSING_METADATA) {
+                if (entry != MISSING_METADATA_MARKER) {
                     isInMetadata = true;
                 }
-                if (entry != null && entry != MISSING_METADATA) {
+                if (entry != null && entry != MISSING_METADATA_MARKER) {
                     break;
                 }
             }
@@ -411,7 +411,7 @@ public final class Resources {
         if (!isInMetadata) {
             MissingResourceRegistrationUtils.missingResource(resourceName);
         }
-        if (entry == null || entry == MISSING_METADATA) {
+        if (entry == null || entry == MISSING_METADATA_MARKER) {
             return null;
         }
         List<byte[]> data = ((ResourceStorageEntry) entry).getData();
@@ -437,7 +437,7 @@ public final class Resources {
         if (moduleName(module) == null) {
             for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
                 Object entry = get(m, resourceName, false);
-                if (entry == MISSING_METADATA) {
+                if (entry == MISSING_METADATA_MARKER) {
                     continue;
                 }
                 missingMetadata = false;
@@ -445,7 +445,7 @@ public final class Resources {
             }
         }
         Object explicitEntry = get(module, resourceName, false);
-        if (explicitEntry != MISSING_METADATA) {
+        if (explicitEntry != MISSING_METADATA_MARKER) {
             missingMetadata = false;
             addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
         }
