@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nativemode.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -42,6 +43,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nativemode.resources.SulongNativeLibResource;
 import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtensionFactory.CreateClosureNodeGen;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -63,6 +65,7 @@ import com.oracle.truffle.nfi.api.SignatureLibrary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -214,8 +217,14 @@ public final class NFIContextExtension extends NativeContextExtension {
     public void initialize(LLVMContext context) {
         assert !isInitialized();
         if (!internalLibrariesAdded) {
-            TruffleFile file = locateInternalLibrary(context, getNativeLibrary("sulong-native"), "<default nfi library>");
-            Object lib = loadLibrary(file.getPath(), context);
+            TruffleFile libsulongNative;
+            try {
+                TruffleFile resourceBase = context.getEnv().getInternalResource(SulongNativeLibResource.class);
+                libsulongNative = resourceBase.resolve(getNativeLibrary("sulong-native"));
+            } catch (IOException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+            Object lib = loadLibrary(libsulongNative.getAbsoluteFile().getPath(), context);
             if (lib instanceof CallTarget) {
                 libraryHandles.add(((CallTarget) lib).call());
             }

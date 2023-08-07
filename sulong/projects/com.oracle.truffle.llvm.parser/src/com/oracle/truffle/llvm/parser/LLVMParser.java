@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -171,7 +171,7 @@ public final class LLVMParser {
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
-                        functionDefinition.isExported(), runtime.getFile().getPath(), functionDefinition.isExternalWeak());
+                        functionDefinition.isExported(), runtime.getPath(), functionDefinition.isExternalWeak());
         lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
         registerInPublicFileScope(llvmFunction);

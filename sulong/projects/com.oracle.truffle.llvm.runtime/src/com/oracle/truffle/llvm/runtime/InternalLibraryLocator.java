@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.runtime;
+
+import java.net.URL;
 
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
-import com.oracle.truffle.llvm.parser.factories.inlineasm.Aarch64InlineAssemblyParser;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import com.oracle.truffle.api.InternalResource.OS;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
 
-public abstract class BasicAarch64PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends BasicPlatformCapability<S> {
-    protected BasicAarch64PlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries, new Aarch64InlineAssemblyParser());
+/**
+ * Locates internal libraries that are embedded as resources.
+ */
+public final class InternalLibraryLocator extends LibraryLocator implements LLVMCapability {
+
+    private final Class<?> resourceLocation;
+    private final String basePath;
+
+    public InternalLibraryLocator(LLVMResourceProvider provider, OS os, CPUArchitecture arch) {
+        this.resourceLocation = provider.getClass();
+        this.basePath = provider.getBasePath(os, arch);
     }
 
     @Override
-    public CPUArchitecture getArch() {
-        return CPUArchitecture.AARCH64;
+    protected final SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
+        URL url = resourceLocation.getResource(basePath + lib);
+        if (url == null) {
+            return null;
+        }
+        return Source.newBuilder("llvm", url).internal(true);
     }
 }

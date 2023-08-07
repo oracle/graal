@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.spi.internal;
 
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
-import com.oracle.truffle.llvm.parser.factories.inlineasm.Aarch64InlineAssemblyParser;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import com.oracle.truffle.api.InternalResource.OS;
 
-public abstract class BasicAarch64PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends BasicPlatformCapability<S> {
-    protected BasicAarch64PlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries, new Aarch64InlineAssemblyParser());
-    }
+/**
+ * Marker interface to be used by classes that provide resources to the LLVM runtime.
+ *
+ * This interface is used with a service provider to pull in resources on demand. Modules that
+ * provide implementations of this interface are only going to be loaded when there is no LLVM
+ * language home available.
+ */
+public interface LLVMResourceProvider {
 
-    @Override
-    public CPUArchitecture getArch() {
-        return CPUArchitecture.AARCH64;
-    }
+    String getBasePath(OS os, CPUArchitecture arch);
 }
