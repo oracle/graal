@@ -500,6 +500,7 @@ suite = {
       },
       "description": "JLINE shaded library.",
       "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,
       "javac.lint.overrides": 'none',
       "jacoco": "exclude",
     },
