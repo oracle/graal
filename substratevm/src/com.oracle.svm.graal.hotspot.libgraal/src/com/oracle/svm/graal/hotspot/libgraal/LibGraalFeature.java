@@ -29,7 +29,6 @@ import static com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeS
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
@@ -53,6 +52,8 @@ import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.heap.dump.HeapDumping;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -166,12 +167,8 @@ class LibGraalOptions {
                     "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
                     "This option exists for the purpose of testing callbacks in this context.") //
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
-    @Option(help = "Path of the file or directory in which to dump the libgraal heap the first time an " +
-                    "OutOfMemoryError is seen during compilation. An empty value means a default file name " +
-                    "of libgraal_pid<pid>.hprof will be used. A value specifying an existing directory means " +
-                    "the dump will be placed in the directory with the aforementioned default file name.") //
-    static final RuntimeOptionKey<String> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(null);
-    @Option(help = "Replaces an exception thrown by the CrashAt option with an OutOfMemoryError. " +
+    @Option(help = "Replaces first exception thrown by the CrashAt option with an OutOfMemoryError. " +
+                    "Subsequently CrashAt exceptions are suppressed. " +
                     "This option exists to test HeapDumpOnOutOfMemoryError. " +
                     "See the MethodFilter option for the pattern syntax.") //
     static final RuntimeOptionKey<Boolean> CrashAtThrowsOOME = new RuntimeOptionKey<>(false);
@@ -756,9 +753,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 }
 
 final class HotSpotGraalOptionValuesUtil {
-    // Support for HeapDumpOnOutOfMemoryError
-    static String heapDumpFile;
-    static final GlobalAtomicLong HEAP_DUMPED = new GlobalAtomicLong(0);
+    // Support for CrashAtThrowsOOME
+    static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
 
     private static final String LIBGRAAL_PREFIX = "libgraal.";
     private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
@@ -799,23 +795,11 @@ final class HotSpotGraalOptionValuesUtil {
             OptionsParser.parseOptions(optionSettings, values, loader);
             options.update(values);
         }
+        if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
+            HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
+        }
         if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
             throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
-        }
-
-        String dumpPath = LibGraalOptions.HeapDumpOnOutOfMemoryError.getValue();
-        if (dumpPath != null) {
-            File dumpFile;
-            String defaultName = "libgraal_pid" + GraalServices.getExecutionID() + ".hprof";
-            if (dumpPath.isEmpty()) {
-                dumpFile = new File(defaultName);
-            } else {
-                dumpFile = new File(dumpPath);
-                if (dumpFile.isDirectory()) {
-                    dumpFile = new File(dumpFile, defaultName);
-                }
-            }
-            heapDumpFile = dumpFile.getAbsolutePath();
         }
 
         return options;
@@ -844,36 +828,22 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.core.CompilationWrapper", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_core_CompilationWrapper {
-
-    @SuppressWarnings("unused")
-    @Substitute()
-    private static void notifyOutOfMemoryDuringCompilation(Throwable cause) {
-        if (HotSpotGraalOptionValuesUtil.heapDumpFile != null && HotSpotGraalOptionValuesUtil.HEAP_DUMPED.compareAndSet(0, 1)) {
-            try {
-                boolean gcBefore = false; // Assume OOME comes from an attempted GC
-                System.err.print("Dumping heap to ");
-                System.err.println(HotSpotGraalOptionValuesUtil.heapDumpFile);
-                VMRuntime.dumpHeap(HotSpotGraalOptionValuesUtil.heapDumpFile, gcBefore);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-}
-
 @TargetClass(className = "org.graalvm.compiler.core.GraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_core_GraalCompiler {
     @SuppressWarnings("unused")
     @Substitute()
-    private static void notifyCrash(String crashMessage) {
+    private static boolean notifyCrash(String crashMessage) {
         if (LibGraalOptions.CrashAtThrowsOOME.getValue()) {
-            OutOfMemoryError e = new OutOfMemoryError("Throwing OutOfMemoryError due to CrashAtThrowsOOME=true");
-            System.err.println(e);
-            throw e;
-        }
-        if (LibGraalOptions.CrashAtIsFatal.getValue()) {
+            if (HotSpotGraalOptionValuesUtil.OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
+                // The -Dlibgraal.Xmx option should also be employed to make this
+                // this allocation fail quicky
+                String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
+                throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());
+            } else {
+                // Remaining compilations should proceed so that test finishes quickly.
+                return false;
+            }
+        } else if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
                 VMError.shouldNotReachHere(crashMessage);
@@ -881,6 +851,7 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
             // If changing this message, update the test for it in mx_vm_gate.py
             System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
         }
+        return true;
     }
 }
 

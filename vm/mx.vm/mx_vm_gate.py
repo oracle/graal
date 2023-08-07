@@ -283,8 +283,11 @@ def _test_libgraal_oome_dumping():
     }
     for n, v in inputs.items():
         vmargs = ['-Dlibgraal.CrashAt=*',
-                  '-Dlibgraal.CrashAtThrowsOOME=true',
-                  f'-Dgraal.HeapDumpOnOutOfMemoryError={n}']
+                  '-Dlibgraal.Xmx128M',
+                  '-Dlibgraal.PrintGC=true',
+                  '-Dlibgraal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Dlibgraal.HeapDumpPath={n}',
+                  '-Dlibgraal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
         heap_dumps = glob.glob(v)

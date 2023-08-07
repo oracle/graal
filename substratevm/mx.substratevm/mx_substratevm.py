@@ -1258,6 +1258,10 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
+    # Configure -Dlibgraal.HeapDumpOnOutOfMemoryError=true
+    '--enable-monitoring=heapdump',
+    '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
+
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',

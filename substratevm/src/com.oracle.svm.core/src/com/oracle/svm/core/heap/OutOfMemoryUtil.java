@@ -37,6 +37,10 @@ import com.oracle.svm.core.util.VMError;
 
 public class OutOfMemoryUtil {
     private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+
+    /**
+     * Guard to ensure heap dump on OOME is performed at most once.
+     */
     private static final AtomicBoolean HEAP_DUMPED = new AtomicBoolean(false);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate when out of memory.")

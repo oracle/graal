@@ -268,10 +268,6 @@ public abstract class CompilationWrapper<T> {
             // forced crash (i.e., use of GraalCompilerOptions.CrashAt)
             // is truncated.
 
-            if (cause instanceof OutOfMemoryError) {
-                notifyOutOfMemoryDuringCompilation(cause);
-            }
-
             ExceptionAction action = lookupAction(initialOptions, cause);
 
             action = adjustAction(initialOptions, action, cause);
@@ -370,12 +366,6 @@ public abstract class CompilationWrapper<T> {
                 return postRetry(action, handleException(cause));
             }
         }
-    }
-
-    // Hook to do a heap dump if in a native image.
-    // Substituted in Target_org_graalvm_compiler_core_CompilationWrapper
-    @SuppressWarnings("unused")
-    private static void notifyOutOfMemoryDuringCompilation(Throwable cause) {
     }
 
     private T postRetry(ExceptionAction action, T res) {
