@@ -359,6 +359,7 @@ public class JfrThreadLocal implements ThreadListener {
     public static boolean isNotified() {
         return notified.get() != 0;
     }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
         notified.set(thread, 1);

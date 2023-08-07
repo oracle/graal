@@ -70,11 +70,11 @@ public final class JfrEventWriterAccess {
 
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
-        long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
         } else {
+            long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
         }
     }
@@ -86,7 +86,6 @@ public final class JfrEventWriterAccess {
         assert JfrBufferAccess.verify(buffer);
 
         Pointer committedPos = buffer.getCommittedPos();
-        Pointer addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer);
         Pointer currentPos = committedPos.add(uncommittedSize);
         Pointer maxPos = JfrBufferAccess.getDataEnd(buffer);
 
