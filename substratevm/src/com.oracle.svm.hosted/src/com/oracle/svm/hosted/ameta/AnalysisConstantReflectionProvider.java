@@ -200,7 +200,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = readSimulatedValue(field);
         }
         if (value == null && receiver instanceof ImageHeapConstant) {
-            AnalysisError.guarantee(field.isValueAvailable(), "Value not yet available for %s", field);
+            AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
