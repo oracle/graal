@@ -457,6 +457,9 @@ suite = {
                 "exports" : [
                     "com.oracle.truffle.espresso.polyglot",
                 ]
+            },
+            "maven": {
+                "artifactId": "polyglot",
             }
         },
 

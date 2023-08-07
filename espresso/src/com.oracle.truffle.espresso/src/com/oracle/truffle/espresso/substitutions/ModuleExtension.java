@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 public final class ModuleExtension {
     private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = new ModuleExtension[]{
                     new ModuleExtension("espresso.hotswap", "hotswap.jar", (context) -> context.getEspressoEnv().JDWPOptions != null),
-                    new ModuleExtension("espresso.polyglot", "polyglot.jar", (context) -> context.getEspressoEnv().Polyglot),
+                    new ModuleExtension("espresso.polyglot", "espresso-polyglot.jar", (context) -> context.getEspressoEnv().Polyglot),
     };
     private static final ModuleExtension[] EMPTY_MODULE_EXTENSION_ARRAY = new ModuleExtension[0];
 

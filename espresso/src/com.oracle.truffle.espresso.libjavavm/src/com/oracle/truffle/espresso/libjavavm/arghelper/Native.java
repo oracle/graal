@@ -109,7 +109,7 @@ class Native {
         return argPrefix + arg;
     }
 
-    private static void setGraalStyleRuntimeOption(String arg) {
+    private void setGraalStyleRuntimeOption(String arg) {
         if (arg.startsWith("+") || arg.startsWith("-")) {
             throw abort("Dgraal option must use <name>=<value> format, not +/- prefix");
         }
@@ -130,7 +130,7 @@ class Native {
         try {
             RuntimeOptions.set(key, descriptor.convertValue(value));
         } catch (IllegalArgumentException iae) {
-            throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
+            throw abort("Invalid argument: " + formatArg(arg) + ": " + iae.getMessage());
         }
     }
 
@@ -155,11 +155,11 @@ class Native {
         if (arg.startsWith("+") || arg.startsWith("-")) {
             key = arg.substring(1);
             if (eqIdx >= 0) {
-                throw abort("Invalid argument: '--vm." + arg + "': Use either +/- or =, but not both");
+                throw abort("Invalid argument: '" + formatArg(arg) + "': Use either +/- or =, but not both");
             }
             RuntimeOptions.Descriptor descriptor = getVMOptionDescriptor(key);
             if (!isBooleanOption(descriptor)) {
-                throw abort("Invalid argument: " + key + " is not a boolean option, set it with --vm.XX:" + key + "=<value>.");
+                throw abort("Invalid argument: " + key + " is not a boolean option, set it with " + argPrefix + "XX:" + key + "=<value>.");
             }
             value = arg.startsWith("+");
         } else if (eqIdx > 0) {
@@ -171,10 +171,10 @@ class Native {
             try {
                 value = descriptor.convertValue(arg.substring(eqIdx + 1));
             } catch (IllegalArgumentException iae) {
-                throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
+                throw abort("Invalid argument: '" + formatArg(arg) + "': " + iae.getMessage());
             }
         } else {
-            throw abort("Invalid argument: '--vm." + arg + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
+            throw abort("Invalid argument: '" + formatArg(arg) + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
         }
         RuntimeOptions.set(key, value);
     }
