@@ -288,7 +288,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.internal.vm.compiler",
-        "sdk:NATIVEIMAGE"
       ],
       "requires" : [
         "jdk.internal.vm.ci",
@@ -551,7 +550,6 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
-        "sdk:NATIVEIMAGE",
       ],
       "allowsJavadocWarnings": True,
       "description":  "The GraalVM compiler Management Bean.",

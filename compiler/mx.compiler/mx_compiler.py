@@ -1337,7 +1337,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['Truffle Compiler'],
+        dependencies=['Truffle Compiler', 'Graal SDK Compiler'],
         jar_distributions=[  # Dev jars (annotation processors)
             'compiler:GRAAL_PROCESSOR',
         ],
