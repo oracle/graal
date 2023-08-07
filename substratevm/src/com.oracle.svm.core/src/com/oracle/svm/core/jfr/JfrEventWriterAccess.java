@@ -46,18 +46,9 @@ public final class JfrEventWriterAccess {
      * the committed position and not to the start of the buffer.
      */
     private static final Field COMMITTED_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPosition");
-    private static final Field COMMITTED_POSITION_ADDRESS_FIELD;
     private static final Field CURRENT_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "currentPosition");
     private static final Field MAX_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "maxPosition");
     private static final Field VALID_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "valid");
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC <= 17) {
-            COMMITTED_POSITION_ADDRESS_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPositionAddress");
-        } else {
-            COMMITTED_POSITION_ADDRESS_FIELD = null;
-        } 
-    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrEventWriterAccess() {
@@ -100,7 +91,6 @@ public final class JfrEventWriterAccess {
         Pointer maxPos = JfrBufferAccess.getDataEnd(buffer);
 
         U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_FIELD), committedPos.rawValue());
-        U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_ADDRESS_FIELD), addressOfCommittedPos.rawValue());
         U.putLong(writer, U.objectFieldOffset(CURRENT_POSITION_FIELD), currentPos.rawValue());
         U.putLong(writer, U.objectFieldOffset(MAX_POSITION_FIELD), maxPos.rawValue());
         if (!valid) {
