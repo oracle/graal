@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.37.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.1.0",
@@ -248,7 +248,22 @@ suite = {
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,
       "license" : "UPL",
-      "maven" : False,
+      "maven" : {
+        "artifactId" : "wasm-language",
+      },
+    },
+
+    "WASM_COMMUNITY" : {
+      "type":"pom",
+      "runtimeDependencies" : [
+        "WASM",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "maven" : {
+        "artifactId" : "wasm-community",
+      },
+      "description" : "Graal WASM engine.",
+      "license" : "UPL",
     },
 
     "WASM_LAUNCHER" : {

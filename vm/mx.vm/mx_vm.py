@@ -264,6 +264,7 @@ def _register_all_languages_distribution(register_distribution):
     community_languages = [
         'graal-js:GRAALJS_COMMUNITY',
         'sulong:SULONG_COMMUNITY',
+        'wasm:WASM_COMMUNITY',
     ]
     languages_meta_poms = []
     languages_licenses = set()
