@@ -2074,15 +2074,20 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
                 case Instructions.I32_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
                     state.popChecked(I32_TYPE);
                     state.popChecked(I32_TYPE);
                     state.push(I32_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
+                        int x = (int) stack.popBack();
+                        int y = (int) stack.popBack();
                         stack.add(switch (opcode) {
-                            case Instructions.I32_ADD -> (int) stack.popBack() + (int) stack.popBack();
-                            case Instructions.I32_SUB -> (int) stack.popBack() - (int) stack.popBack();
-                            case Instructions.I32_MUL -> (int) stack.popBack() * (int) stack.popBack();
+                            case Instructions.I32_ADD -> y + x;
+                            case Instructions.I32_SUB -> y - x;
+                            case Instructions.I32_MUL -> y * x;
                             default -> throw CompilerDirectives.shouldNotReachHere();
                         });
                     }
@@ -2090,15 +2095,20 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_ADD:
                 case Instructions.I64_SUB:
                 case Instructions.I64_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
                     state.popChecked(I64_TYPE);
                     state.popChecked(I64_TYPE);
                     state.push(I64_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
+                        long x = stack.popBack();
+                        long y = stack.popBack();
                         stack.add(switch (opcode) {
-                            case Instructions.I64_ADD -> stack.popBack() + stack.popBack();
-                            case Instructions.I64_SUB -> stack.popBack() - stack.popBack();
-                            case Instructions.I64_MUL -> stack.popBack() * stack.popBack();
+                            case Instructions.I64_ADD -> y + x;
+                            case Instructions.I64_SUB -> y - x;
+                            case Instructions.I64_MUL -> y * x;
                             default -> throw CompilerDirectives.shouldNotReachHere();
                         });
                     }
@@ -2144,16 +2154,21 @@ public class BinaryParser extends BinaryStreamParser {
             int opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.I32_CONST:
-                case Instructions.I32_ADD:
-                case Instructions.I32_SUB:
-                case Instructions.I32_MUL:
                 case Instructions.I64_CONST:
-                case Instructions.I64_ADD:
-                case Instructions.I64_SUB:
-                case Instructions.I64_MUL:
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
                     throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                case Instructions.I32_ADD:
+                case Instructions.I32_SUB:
+                case Instructions.I32_MUL:
+                case Instructions.I64_ADD:
+                case Instructions.I64_SUB:
+                case Instructions.I64_MUL:
+                    if (wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                    } else {
+                        throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
+                    }
                 case Instructions.REF_NULL:
                     final byte type = readRefType();
                     if (bulkMemoryAndRefTypes && type != elemType) {

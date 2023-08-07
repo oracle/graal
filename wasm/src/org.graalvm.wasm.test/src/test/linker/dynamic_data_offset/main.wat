@@ -40,7 +40,7 @@
 ;;
 (module
   (type $int_func (func (result i32)))
-  (import "runtime" "heap" (memory (;0;) 4))
+  (import "runtime" "heap" (memory 4))
   (import "runtime" "heap_base" (global $heap_base i32))
   (import "constant-pools" "string_constants_offset" (global $string_constants_offset i32))
   (global $string_constants_base i32 (i32.add (global.get $heap_base) (global.get $string_constants_offset)))

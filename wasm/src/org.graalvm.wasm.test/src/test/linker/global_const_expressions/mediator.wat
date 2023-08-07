@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,12 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func (result i32)))
-  (global (;0;) i32 (i32.const 1096))
-  (global (;0;) i32 (i32.const 127))
-  (export "hb" (global 0))
-  (export "boffs" (global 1))
+  (import "runtime" "hb" (global $hb i32))
+  (import "runtime" "boffs" (global $boffs i32))
+  (import "runtime" "bwords" (global $bwords i32))
+  (import "runtime" "wordsize" (global $wordsize i32))
+  (global $block_size i32 (i32.mul (global.get $bwords) (global.get $wordsize)))
+  (export "heap_base" (global $hb))
+  (export "block_offset" (global $boffs))
+  (export "block_size" (global $block_size))
 )

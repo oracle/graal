@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,15 @@
 ;; SOFTWARE.
 ;;
 (module
-  (type (;0;) (func (result i32)))
-  (global (;0;) i32 (i32.const 1096))
-  (global (;0;) i32 (i32.const 127))
-  (export "hb" (global 0))
-  (export "boffs" (global 1))
+  (type $int_func (func (result i32)))
+  (import "mediator" "heap_base" (global $heap_base i32))
+  (import "mediator" "block_offset" (global $block_offset i32))
+  (import "mediator" "block_size" (global $block_size i32))
+  (global $address i32 (i32.add (i32.sub (global.get $heap_base) (i32.const 42))
+                                (i32.mul (global.get $block_offset) (global.get $block_size))))
+  (global $const_address i32 (i32.add (i32.sub (i32.const 1096) (i32.const 42))
+                                      (i32.mul (i32.const 127)
+                                               (i32.mul (i32.const 512) (i32.const 4)))))
+  (func (export "_main") (type $int_func)
+    (i32.sub (global.get $address) (global.get $const_address)))
 )

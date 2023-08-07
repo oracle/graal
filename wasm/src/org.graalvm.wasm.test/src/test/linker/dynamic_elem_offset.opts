@@ -1,3 +1,4 @@
+wasm.ExtendedConstExpressions = true
 zero-memory = false
 interpreter-iterations = 3
 sync-noinline-iterations = 3

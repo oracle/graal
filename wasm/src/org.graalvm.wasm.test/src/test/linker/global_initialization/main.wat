@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 (module
   (type (;0;) (func (result i32)))
   (import "mediator" "heap_base" (global (;0;) i32))
-  (import "mediator" "block_offset" (global (;1;) i32))
-  (import "mediator" "block_size" (global (;2;) i32))
-  (global (;3;) i32 (i32.add (i32.sub (global.get 0) (i32.const 42)) (i32.mul (global.get 1) (global.get 2))))
+  (import "mediator" "block_offset" (global (;0;) i32))
+  (global (;2;) i32 (global.get 0))
+  (global (;3;) i32 (global.get 1))
   (func (export "_main") (type 0)
+    global.get 2
     global.get 3
+    i32.add
   )
 )
