@@ -446,7 +446,10 @@ suite = {
           "org/jline/builtins/TTop.java",
           # we patch the JLine's service loading mechanism with
           # hard-coded set of supported services, see one of the patches below
-          "META-INF/services/*",
+          "META-INF/services/**",
+          "META-INF/maven/**",
+          # We have our own native-image configuration
+          "META-INF/native-image/**",
         ],
         "patch": {
           "org/jline/builtins/Nano.java": {
@@ -460,8 +463,7 @@ suite = {
                     void handleData(byte[] a, int b, int c) {}
                     void dataEnd() {}
                     String getDetectedCharset() { return null; }
-                }
-              """,
+                }""",
           },
           # Remove dependency on JLine's native library (would require shading and deployment of the library)
           # The native library is a fallback for functionality that is otherwise done via accessing
