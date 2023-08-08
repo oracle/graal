@@ -58,6 +58,9 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
+import java.util.Arrays;
+import java.util.Comparator;
+
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via pthreads.
@@ -96,6 +99,8 @@ final class PthreadVMLockFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess access) {
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
+        Arrays.sort(mutexes, Comparator.comparing(PthreadVMMutex::getName));
+        Arrays.sort(conditions, Comparator.comparing(c -> c.getMutex().getName()));
 
         PthreadVMLockSupport lockSupport = PthreadVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
