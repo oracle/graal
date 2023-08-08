@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
-import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
 
 import java.lang.reflect.Method;
@@ -54,7 +54,7 @@ import org.graalvm.word.WordFactory;
  */
 public class StubUtil {
 
-    public static final HotSpotForeignCallDescriptor VM_MESSAGE_C = newDescriptor(SAFEPOINT, REEXECUTABLE, null, StubUtil.class, "vmMessageC", void.class, boolean.class, Word.class, long.class,
+    public static final HotSpotForeignCallDescriptor VM_MESSAGE_C = newDescriptor(LEAF, REEXECUTABLE, null, StubUtil.class, "vmMessageC", void.class, boolean.class, Word.class, long.class,
                     long.class, long.class);
 
     public static HotSpotForeignCallDescriptor newDescriptor(HotSpotForeignCallDescriptor.Transition safepoint, HotSpotForeignCallDescriptor.Reexecutability reexecutable,
