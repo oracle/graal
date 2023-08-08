@@ -232,6 +232,7 @@ community_languages_meta_distributions = [
     'graal-js:GRAALJS_COMMUNITY',
     'graalpyton:GRAALPYTHON_COMMUNITY',
     'sulong:SULONG_COMMUNITY',
+    'truffleruby:TRUFFLERUBY_COMMUNITY',
     'wasm:WASM_COMMUNITY',
 ]
 
