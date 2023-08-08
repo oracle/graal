@@ -28,7 +28,6 @@ import json
 import shutil
 
 import mx
-import mx_benchmark
 import mx_subst
 import mx_unittest
 import mx_sdk_vm
