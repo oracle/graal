@@ -216,6 +216,7 @@ mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
 def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
 
+
 community_tools_meta_distributions = [
     "tools:CHROMEINSPECTOR_COMMUNITY",
     "tools:TRUFFLE_COVERAGE_COMMUNITY",
@@ -227,6 +228,7 @@ community_tools_meta_distributions = [
 ]
 
 community_languages_meta_distributions = [
+    'espresso:ESPRESSO_COMMUNITY',
     'graal-js:GRAALJS_COMMUNITY',
     'graalpyton:GRAALPYTHON_COMMUNITY',
     'sulong:SULONG_COMMUNITY',
@@ -393,6 +395,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     ))
 
                     dist_name = 'POLYBENCH_ESPRESSO_' + simple_name.upper()
+                    attrs = {
+                        'maven': False,
+                    }
                     register_distribution(mx_jardistribution.JARDistribution(
                         suite=_suite,
                         subDir=None,
@@ -410,6 +415,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         theLicense=None,
                         testProject=True,
                         defaultBuild=False,
+                        **attrs
                     ))
                     # add jars to the layout of the benchmark distribution
                     _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,

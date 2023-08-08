@@ -316,7 +316,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso",
             },
-            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
@@ -328,7 +328,22 @@ suite = {
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
             },
+            "maven" : {
+                "artifactId" : "espresso-language",
+            },
             "noMavenJavadoc": True,
+        },
+
+        "ESPRESSO_COMMUNITY" : {
+            "type":"pom",
+            "runtimeDependencies" : [
+                "ESPRESSO",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "maven" : {
+                "artifactId" : "espresso-community",
+            },
         },
 
         "ESPRESSO_LAUNCHER": {
