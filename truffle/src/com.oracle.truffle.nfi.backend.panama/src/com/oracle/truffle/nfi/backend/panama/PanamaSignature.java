@@ -168,15 +168,10 @@ final class PanamaSignature {
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
+
             @SuppressWarnings("preview")
-            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO
-                                                                                 // check
-                                                                                 // if
-                                                                                 // this
-                                                                                 // can
-                                                                                 // also
-                                                                                 // be
-                                                                                 // cached
+            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);
+
             return new PanamaClosure(ret);
         }
 

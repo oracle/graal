@@ -40,32 +40,66 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
 @ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
-final class NativePointer extends AbstractNativePointer {
+@ExportLibrary(InteropLibrary.class)
+final class NativePointer implements TruffleObject {
 
     static final NativePointer NULL = new NativePointer(0);
 
+    final long nativePointer;
+
     NativePointer(long nativePointer) {
-        super(nativePointer);
+        this.nativePointer = nativePointer;
     }
 
     static Object create(long nativePointer) {
         return new NativePointer(nativePointer);
     }
 
-    @ExportMessage(library = BackendNativePointerLibrary.class)
     @Override
-    boolean isPointer() {
-        return super.isPointer();
+    public String toString() {
+        return String.valueOf(nativePointer);
     }
 
-    @ExportMessage(library = BackendNativePointerLibrary.class)
-    @Override
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
     long asPointer() {
-        return super.asPointer();
+        return nativePointer;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return nativePointer == 0;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return PanamaNFILanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativePointer(" + nativePointer + ")";
     }
 }

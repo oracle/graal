@@ -91,7 +91,7 @@ class PanamaType {
                 javaRetType = javaType;
                 break;
             case FP80:
-                throw new UnsupportedOperationException("Did not impl FP80");
+                throw new UnsupportedOperationException("FP80 not implemented");
             case FLOAT:
                 nativeLayout = ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
@@ -110,10 +110,10 @@ class PanamaType {
             case OBJECT:
                 javaType = Object.class;
                 // TODO
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                throw CompilerDirectives.shouldNotReachHere("OBJ not implemented");
             case NULLABLE:
                 // TODO
-                throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
+                throw CompilerDirectives.shouldNotReachHere("Nullable not implemented");
             default:
                 throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
         }
