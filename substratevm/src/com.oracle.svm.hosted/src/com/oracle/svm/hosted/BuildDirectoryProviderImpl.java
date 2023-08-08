@@ -26,13 +26,14 @@ package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildDirectoryProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@AutomaticallyRegisteredImageSingleton(BuildDirectoryProvider.class)
 public class BuildDirectoryProviderImpl implements BuildDirectoryProvider {
 
     @Override
@@ -46,10 +47,6 @@ public class BuildDirectoryProviderImpl implements BuildDirectoryProvider {
             home = System.getProperty("java.home");
         }
         return Path.of(home);
-    }
-
-    static void install() {
-        ImageSingletons.add(BuildDirectoryProvider.class, new BuildDirectoryProviderImpl());
     }
 
 }
