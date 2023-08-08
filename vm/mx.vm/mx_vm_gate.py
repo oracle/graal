@@ -280,6 +280,11 @@ def _test_libgraal_oome_dumping():
         'custom.hprof': join(scratch_dir, 'custom.hprof'),
         'subdir': join(scratch_dir, 'subdir', 'libgraal_pid*.hprof'),
     }
+    if mx.is_windows():
+        # GR-39501
+        mx.log('-Dlibgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        return
+
     for n, v in inputs.items():
         vmargs = ['-Dlibgraal.CrashAt=*',
                   '-Dlibgraal.Xmx128M',
