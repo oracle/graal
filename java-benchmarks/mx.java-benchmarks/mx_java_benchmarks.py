@@ -39,7 +39,7 @@ import mx
 import mx_benchmark
 from mx_benchmark import ParserEntry
 import mx_sdk_benchmark
-from mx_sdk_benchmark import NativeImageBenchmarkMixin, NativeImageBundleBasedBenchmarkMixin
+from mx_sdk_benchmark import NativeImageBundleBasedBenchmarkMixin
 import mx_sdk_vm_impl
 
 _suite = mx.suite('java-benchmarks')
@@ -455,7 +455,7 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def get_application_startup_regex(self):
         # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -478,6 +478,15 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
+
+    def uses_bundles(self):
+        return True
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
+
+    def extra_image_build_argument(self, _, args):
+        return super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
