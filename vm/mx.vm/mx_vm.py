@@ -216,6 +216,35 @@ mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
 def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
 
+community_tools_meta_distributions = [
+    "tools:CHROMEINSPECTOR_COMMUNITY",
+    "tools:TRUFFLE_COVERAGE_COMMUNITY",
+    "tools:DAP_COMMUNITY",
+    "tools:INSIGHT_COMMUNITY",
+    "tools:INSIGHT_HEAP_COMMUNITY",
+    "tools:LSP_COMMUNITY",
+    "tools:TRUFFLE_PROFILER_COMMUNITY",
+]
+
+community_languages_meta_distributions = [
+    'graal-js:GRAALJS_COMMUNITY',
+    'graalpyton:GRAALPYTHON_COMMUNITY',
+    'sulong:SULONG_COMMUNITY',
+    'wasm:WASM_COMMUNITY',
+]
+
+
+def _distribution_license(dist):
+    """
+    Provides the distribution license if it's specified, or the default license of the suite that owns the distribution.
+    :return: list of licenses
+    :rtype: list[str]
+    """
+    license = dist.theLicense
+    if not license:
+        license = dist.suite.defaultLicense
+    return license
+
 
 def _register_all_tools_distribution(register_distribution):
     """
@@ -223,26 +252,14 @@ def _register_all_tools_distribution(register_distribution):
     community tool meta POMs.
     :type register_distribution: (mx.Distribution) -> None
     """
-    community_tools = [
-        "tools:CHROMEINSPECTOR_COMMUNITY",
-        "tools:TRUFFLE_COVERAGE_COMMUNITY",
-        "tools:DAP_COMMUNITY",
-        "tools:INSIGHT_COMMUNITY",
-        "tools:INSIGHT_HEAP_COMMUNITY",
-        "tools:LSP_COMMUNITY",
-        "tools:TRUFFLE_PROFILER_COMMUNITY",
-    ]
     tools_meta_poms = []
     tools_licenses = set()
-    for tool_name in community_tools:
+    for tool_name in community_tools_meta_distributions:
         tool_distribution = mx.distribution(tool_name, fatalIfMissing=False)
         if tool_distribution:
             assert tool_distribution.isPOMDistribution(), f'TOOLS_COMMUNITY dependency {tool_distribution.name} must be a meta-POM distribution.'
             tools_meta_poms.append(tool_distribution)
-            tool_license = tool_distribution.theLicense
-            if not tool_license:
-                tool_license = tool_distribution.suite.defaultLicense
-            tools_licenses.update(tool_license)
+            tools_licenses.update(_distribution_license(tool_distribution))
     if tools_meta_poms:
         attrs = {
             'maven': {
@@ -261,23 +278,14 @@ def _register_all_languages_distribution(register_distribution):
     community language meta POMs.
     :type register_distribution: (mx.Distribution) -> None
     """
-    community_languages = [
-        'graal-js:GRAALJS_COMMUNITY',
-        'graalpyton:GRAALPYTHON_COMMUNITY',
-        'sulong:SULONG_COMMUNITY',
-        'wasm:WASM_COMMUNITY',
-    ]
     languages_meta_poms = []
     languages_licenses = set()
-    for distribution_name in community_languages:
+    for distribution_name in community_languages_meta_distributions:
         language_distribution = mx.distribution(distribution_name, fatalIfMissing=False)
         if language_distribution:
             assert language_distribution.isPOMDistribution(), f'LANGUAGES_COMMUNITY dependency {language_distribution.name} must be a meta-POM distribution.'
             languages_meta_poms.append(language_distribution)
-            language_license = language_distribution.theLicense
-            if not language_license:
-                language_license = language_distribution.suite.defaultLicense
-            languages_licenses.update(language_license)
+            languages_licenses.update(_distribution_license(language_distribution))
     if languages_meta_poms:
         attrs = {
             'maven': {
