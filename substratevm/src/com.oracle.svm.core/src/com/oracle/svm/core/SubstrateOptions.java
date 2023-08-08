@@ -828,8 +828,8 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false);
 
     @Option(help = "Path of the file or directory in which heap dumps are created. An empty value means a default file " +
-                    "name will be used (e.g. libgraal_pid<pid>.hprof or svm-heapdump-<pid>.hprof). An existing directory " +
-                    "means the dump will be placed in the directory and have the aforementioned default file name.") //
+                    "name will be used. An existing directory means the dump will be placed in the directory and have " +
+                    "the default file name.") //
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
