@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -356,6 +357,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
     public static long commit(long nextPosition) {
         return SubstrateJVM.get().commit(nextPosition);
     }
