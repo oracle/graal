@@ -91,7 +91,6 @@ final class NativeImageClassLoader extends SecureClassLoader {
         ClassLoader.registerAsParallelCapable();
     }
 
-    // parent ClassLoader, can be null
     private final ClassLoader parent;
 
     // maps a module name to a module reference
@@ -467,9 +466,6 @@ final class NativeImageClassLoader extends SecureClassLoader {
             return null;
         }
 
-        if (result == null) {
-            throw new ClassNotFoundException(name);
-        }
         return result;
     }
 
@@ -630,6 +626,14 @@ final class NativeImageClassLoader extends SecureClassLoader {
         synchronized (getClassLoadingLock(cn)) {
             // check if already loaded
             Class<?> c = findLoadedClass(cn);
+
+            if (c == null) {
+                try {
+                    c = parent.loadClass(cn);
+                } catch (ClassNotFoundException ignore) {
+                    c = null;
+                }
+            }
 
             if (c == null) {
                 c = findClassViaClassPath(cn);
