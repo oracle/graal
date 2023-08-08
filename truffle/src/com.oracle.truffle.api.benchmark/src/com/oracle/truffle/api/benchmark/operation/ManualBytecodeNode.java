@@ -444,11 +444,13 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
 @GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
 class ManualBytecodeNodedNode extends BaseBytecodeNode {
 
-    private final Object[] objs;
+    @CompilationFinal(dimensions = 1) private final Object[] objs;
+    @CompilationFinal(dimensions = 1) private final Node[] nodes;
 
-    protected ManualBytecodeNodedNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs) {
+    protected ManualBytecodeNodedNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
         super(language, frameDescriptor, bc);
         this.objs = objs;
+        this.nodes = nodes;
     }
 
     private static final FastAccess UFA = FastAccess.UNSAFE;
@@ -485,6 +487,7 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
         Object[] localObjs = objs;
+        Node[] localNodes = nodes;
         int bci = startBci;
         int sp = startSp;
 
@@ -494,12 +497,11 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
 
         loop: while (true) {
             short opcode = UFA.shortArrayRead(localBc, bci);
-            Object obj = UFA.objectArrayRead(localObjs, bci);
             CompilerAsserts.partialEvaluationConstant(opcode);
             switch (opcode) {
                 // ( -- )
                 case OP_JUMP: {
-                    int nextBci = UFA.cast(obj, Integer.class);
+                    int nextBci = UFA.shortArrayRead(localBc, bci + 1);
                     CompilerAsserts.partialEvaluationConstant(nextBci);
                     if (nextBci <= bci) {
                         Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
@@ -514,25 +516,25 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(obj, AddNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), AddNode.class).execute(lhs, rhs));
                     sp -= 1;
-                    bci += 1;
+                    bci += 2;
                     continue loop;
                 }
                 // (i1 i2 -- i3)
                 case OP_MOD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(obj, ModNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ModNode.class).execute(lhs, rhs));
                     sp -= 1;
-                    bci += 1;
+                    bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setInt(frame, sp, UFA.cast(obj, Integer.class));
+                    UFA.setInt(frame, sp, UFA.cast(UFA.objectArrayRead(localObjs, UFA.shortArrayRead(localBc, bci + 1)), Integer.class));
                     sp += 1;
-                    bci += 1;
+                    bci += 2;
                     continue loop;
                 }
                 // (b -- )
@@ -540,10 +542,10 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
                     sp -= 1;
                     if (!cond) {
-                        bci = UFA.cast(obj, Integer.class);
+                        bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
-                        bci += 1;
+                        bci += 2;
                         continue loop;
                     }
                 }
@@ -562,16 +564,16 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    UFA.copyPrimitive(frame, sp - 1, UFA.cast(obj, Integer.class));
+                    UFA.copyPrimitive(frame, sp - 1, UFA.shortArrayRead(localBc, bci + 1));
                     sp -= 1;
-                    bci += 1;
+                    bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    UFA.copyPrimitive(frame, UFA.cast(obj, Integer.class), sp);
+                    UFA.copyPrimitive(frame, UFA.shortArrayRead(localBc, bci + 1), sp);
                     sp += 1;
-                    bci += 1;
+                    bci += 2;
                     continue loop;
                 }
                 default:
