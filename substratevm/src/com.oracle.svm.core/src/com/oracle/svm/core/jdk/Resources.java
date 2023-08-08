@@ -55,7 +55,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
+import com.oracle.svm.core.jdk.resources.ResourceException;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -84,7 +86,7 @@ public final class Resources {
      * the image heap is computed after the runtime module instances have been computed {see
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
-    private final EconomicMap<Pair<Module, String>, Object> resources = ImageHeapMap.create();
+    private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
     private final List<Pair<String, String>> includePatterns = new ArrayList<>();
 
     /**
@@ -92,7 +94,7 @@ public final class Resources {
      * when accessing the {@link Resources#resources} map, and it means that even though the
      * resource was correctly specified in the configuration, accessing it will return null.
      */
-    public static final Object NEGATIVE_QUERY_MARKER = new Object();
+    public static final ResourceStorageEntryBase NEGATIVE_QUERY_MARKER = new ResourceStorageEntryBase();
 
     /**
      * The object used to detect that the resource is not reachable according to the metadata. It
@@ -100,7 +102,7 @@ public final class Resources {
      * specified in the configuration, but we do not want to throw directly (for example when we try
      * to check all the modules for a resource).
      */
-    private static final Object MISSING_METADATA_MARKER = new Object();
+    private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -112,11 +114,11 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<Pair<Module, String>, Object> getResourceStorage() {
+    public EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> getResourceStorage() {
         return resources;
     }
 
-    public Iterable<Object> resources() {
+    public Iterable<ResourceStorageEntryBase> resources() {
         return resources.getValues();
     }
 
@@ -160,7 +162,7 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private Object addEntry(Module module, String resourceName, Object newEntry, boolean isDirectory, boolean fromJar) {
+    private ResourceStorageEntryBase addEntry(Module module, String resourceName, ResourceStorageEntryBase newEntry, boolean isDirectory, boolean fromJar) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         if (m != null) {
@@ -168,7 +170,7 @@ public final class Resources {
         }
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(m, resourceName);
-            Object entry = resources.get(key);
+            ResourceStorageEntryBase entry = resources.get(key);
             if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
                 entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
                 updateTimeStamp();
@@ -179,8 +181,8 @@ public final class Resources {
     }
 
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        Object entry = addEntry(module, resourceName, null, isDirectory, fromJar);
-        ((ResourceStorageEntry) entry).getData().add(data);
+        ResourceStorageEntryBase entry = addEntry(module, resourceName, null, isDirectory, fromJar);
+        entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -250,7 +252,7 @@ public final class Resources {
         Pair<Module, String> key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
-            resources.put(key, e);
+            resources.put(key, new ResourceException(e));
         }
     }
 
@@ -299,7 +301,7 @@ public final class Resources {
         return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
-    public Object get(String name, boolean throwOnMissing) {
+    public ResourceStorageEntryBase get(String name, boolean throwOnMissing) {
         return get(null, name, throwOnMissing);
     }
 
@@ -309,10 +311,10 @@ public final class Resources {
      * {@link MissingResourceRegistrationError}. This is needed because different modules can be
      * tried on the same resource name, causing an unexpected exception if we throw directly.
      */
-    public Object get(Module module, String resourceName, boolean throwOnMissing) {
+    public ResourceStorageEntryBase get(Module module, String resourceName, boolean throwOnMissing) {
         String canonicalResourceName = toCanonicalForm(resourceName);
         String moduleName = moduleName(module);
-        Object entry = resources.get(createStorageKey(module, canonicalResourceName));
+        ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 for (Pair<String, String> pattern : includePatterns) {
@@ -325,31 +327,30 @@ public final class Resources {
                 return null;
             }
         }
-        if (entry instanceof IOException) {
-            throw new RuntimeException((IOException) entry);
+        if (entry.isException()) {
+            throw new RuntimeException(entry.getException());
         }
         if (entry == NEGATIVE_QUERY_MARKER) {
             return null;
         }
-        ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
-        if (resourceStorageEntry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
+        if (entry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
             /*
              * The resource originally came from a jar file, thus behave like ZipFileSystem behaves
              * for non-canonical paths.
              */
             return null;
         }
-        if (!resourceStorageEntry.isDirectory() && hasTrailingSlash(resourceName)) {
+        if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
             /*
              * If this is an actual resource file (not a directory) we do not tolerate a trailing
              * slash.
              */
             return null;
         }
-        return resourceStorageEntry;
+        return entry;
     }
 
-    private static Object missingMetadata(String resourceName, boolean throwOnMissing) {
+    private static ResourceStorageEntryBase missingMetadata(String resourceName, boolean throwOnMissing) {
         if (throwOnMissing) {
             MissingResourceRegistrationUtils.missingResource(resourceName);
         }
@@ -390,7 +391,7 @@ public final class Resources {
             return null;
         }
 
-        Object entry = get(module, resourceName, false);
+        ResourceStorageEntryBase entry = get(module, resourceName, false);
         boolean isInMetadata = entry != MISSING_METADATA_MARKER;
         if (moduleName(module) == null && (entry == MISSING_METADATA_MARKER || entry == null)) {
             /*
@@ -414,7 +415,7 @@ public final class Resources {
         if (entry == null || entry == MISSING_METADATA_MARKER) {
             return null;
         }
-        List<byte[]> data = ((ResourceStorageEntry) entry).getData();
+        List<byte[]> data = entry.getData();
         return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
     }
 
@@ -436,7 +437,7 @@ public final class Resources {
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName(module) == null) {
             for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
-                Object entry = get(m, resourceName, false);
+                ResourceStorageEntryBase entry = get(m, resourceName, false);
                 if (entry == MISSING_METADATA_MARKER) {
                     continue;
                 }
@@ -444,7 +445,7 @@ public final class Resources {
                 addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        Object explicitEntry = get(module, resourceName, false);
+        ResourceStorageEntryBase explicitEntry = get(module, resourceName, false);
         if (explicitEntry != MISSING_METADATA_MARKER) {
             missingMetadata = false;
             addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
@@ -518,9 +519,9 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (Object entry : Resources.singleton().resources()) {
-            if (entry instanceof ResourceStorageEntry resourceStorageEntry) {
-                for (byte[] resource : resourceStorageEntry.getData()) {
+        for (ResourceStorageEntryBase entry : Resources.singleton().resources()) {
+            if (entry.hasData()) {
+                for (byte[] resource : entry.getData()) {
                     access.registerAsImmutable(resource);
                 }
             }

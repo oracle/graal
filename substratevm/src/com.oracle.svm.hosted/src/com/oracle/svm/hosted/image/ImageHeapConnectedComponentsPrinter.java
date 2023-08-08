@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ByteFormattingUtil;
@@ -145,9 +145,9 @@ public class ImageHeapConnectedComponentsPrinter {
     }
 
     private static void markResources(NativeImageHeap heap) {
-        for (Object value : Resources.singleton().resources()) {
-            if (value instanceof ResourceStorageEntry resourceStorageEntry) {
-                for (byte[] arr : resourceStorageEntry.getData()) {
+        for (ResourceStorageEntryBase value : Resources.singleton().resources()) {
+            if (value.hasData()) {
+                for (byte[] arr : value.getData()) {
                     ObjectInfo info = heap.getObjectInfo(arr);
                     if (info != null) {
                         heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);

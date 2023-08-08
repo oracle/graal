@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,43 +25,32 @@
 
 package com.oracle.svm.core.jdk.resources;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public final class ResourceStorageEntry extends ResourceStorageEntryBase {
+import com.oracle.svm.core.util.VMError;
 
-    private final boolean isDirectory;
-    private final boolean fromJar;
-    private final List<byte[]> data;
-
-    public ResourceStorageEntry(boolean isDirectory, boolean fromJar) {
-        this.isDirectory = isDirectory;
-        this.fromJar = fromJar;
-        this.data = new ArrayList<>();
-    }
-
-    @Override
+public class ResourceStorageEntryBase {
     public boolean isDirectory() {
-        return isDirectory;
+        throw VMError.shouldNotReachHere("This should only be called entries with data.");
     }
 
-    @Override
     public boolean isFromJar() {
-        return fromJar;
+        throw VMError.shouldNotReachHere("This should only be called entries with data.");
     }
 
-    @Override
     public List<byte[]> getData() {
-        return data;
+        throw VMError.shouldNotReachHere("This should only be called entries with data.");
     }
 
-    @Override
     public boolean isException() {
         return false;
     }
 
-    @Override
+    public Exception getException() {
+        throw VMError.shouldNotReachHere("This should only be called on exceptions.");
+    }
+
     public boolean hasData() {
-        return true;
+        return false;
     }
 }
