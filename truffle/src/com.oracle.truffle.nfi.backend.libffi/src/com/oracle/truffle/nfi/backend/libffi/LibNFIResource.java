@@ -46,8 +46,10 @@ import com.oracle.truffle.api.InternalResource;
 import java.io.IOException;
 import java.nio.file.Path;
 
-@InternalResource.Id("libtrufflenfi")
+@InternalResource.Id(LibNFIResource.ID)
 final class LibNFIResource implements InternalResource {
+
+    static final String ID = "libnfi";
 
     @Override
     public void unpackFiles(Env env, Path targetDirectory) throws IOException {
@@ -71,6 +73,6 @@ final class LibNFIResource implements InternalResource {
     }
 
     private static Path basePath(Env env) {
-        return Path.of("META-INF", "resources", "nfi-native", "libtrufflenfi", env.getOS().toString(), env.getCPUArchitecture().toString());
+        return Path.of("META-INF", "resources", "nfi-native", ID, env.getOS().toString(), env.getCPUArchitecture().toString());
     }
 }

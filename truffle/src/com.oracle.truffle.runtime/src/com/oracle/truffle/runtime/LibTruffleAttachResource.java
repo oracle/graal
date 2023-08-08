@@ -46,8 +46,10 @@ import com.oracle.truffle.api.InternalResource;
 import java.io.IOException;
 import java.nio.file.Path;
 
-@InternalResource.Id("LibTruffleAttach")
+@InternalResource.Id(LibTruffleAttachResource.ID)
 final class LibTruffleAttachResource implements InternalResource {
+
+    static final String ID = "libtruffleattach";
 
     static final LibTruffleAttachResource INSTANCE = new LibTruffleAttachResource();
 
@@ -75,6 +77,6 @@ final class LibTruffleAttachResource implements InternalResource {
     }
 
     private static Path basePath(Env env) {
-        return Path.of("META-INF", "resources", "engine", "LibTruffleAttach", env.getOS().toString(), env.getCPUArchitecture().toString());
+        return Path.of("META-INF", "resources", "engine", ID, env.getOS().toString(), env.getCPUArchitecture().toString());
     }
 }

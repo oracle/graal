@@ -331,43 +331,43 @@ public interface InternalResource {
                 return preferred;  // Classloader does not provide code source location, return the
                                    // first resource
             }
-            try {
-                Path classOwner = fileURL(location);
-                if (classOwner == null) {
-                    return preferred; // Code source is not a file, return the first resource
-                }
-                if (!isInClassSourceLocation(preferred, classOwner)) {
-                    while (candidates.hasMoreElements()) {
-                        URL candidate = candidates.nextElement();
-                        if (isInClassSourceLocation(candidate, classOwner)) {
-                            preferred = candidate;
-                            break;
-                        }
+            Path classOwner = fileURL(location);
+            if (classOwner == null) {
+                return preferred; // Code source is not a file, return the first resource
+            }
+            if (!isInClassSourceLocation(preferred, classOwner)) {
+                while (candidates.hasMoreElements()) {
+                    URL candidate = candidates.nextElement();
+                    if (isInClassSourceLocation(candidate, classOwner)) {
+                        preferred = candidate;
+                        break;
                     }
                 }
-            } catch (URISyntaxException e) {
-                // pass and return the first resource
             }
             return preferred;
         }
 
-        private static boolean isInClassSourceLocation(URL resource, Path classSourceLocation) throws URISyntaxException {
+        private static boolean isInClassSourceLocation(URL resource, Path classSourceLocation) {
             Path resourceOwner = fileURL(resource);
             return resourceOwner != null && resourceOwner.startsWith(classSourceLocation);
         }
 
-        private static Path fileURL(URL url) throws URISyntaxException {
-            URI useURI = url.toURI();
-            if ("jar".equals(url.getProtocol())) {
-                String path = useURI.getRawSchemeSpecificPart();
-                int index = path.indexOf("!/");
-                String jarPath = index >= 0 ? path.substring(0, index) : null;
-                useURI = jarPath != null ? new URI(jarPath) : null;
+        private static Path fileURL(URL url) {
+            try {
+                URI useURI = url.toURI();
+                if ("jar".equals(url.getProtocol())) {
+                    String path = useURI.getRawSchemeSpecificPart();
+                    int index = path.indexOf("!/");
+                    String jarPath = index >= 0 ? path.substring(0, index) : null;
+                    useURI = jarPath != null ? new URI(jarPath) : null;
+                }
+                if (useURI != null && "file".equals(useURI.getScheme())) {
+                    return Paths.get(useURI);
+                }
+                return null;
+            } catch (URISyntaxException e) {
+                return null;
             }
-            if (useURI != null && "file".equals(useURI.getScheme())) {
-                return Paths.get(useURI);
-            }
-            return null;
         }
 
         private void copyResource(Path source, Path target, Set<PosixFilePermission> attrs) throws IOException {
