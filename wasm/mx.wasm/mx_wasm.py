@@ -75,6 +75,11 @@ microbenchmarks = [
     "strings",
 ]
 
+def get_jdk(forBuild=False):
+    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
+        return mx.get_jdk(tag='jvmci')
+    else:
+        return mx.get_jdk()
 
 #
 # Gate runners.
@@ -571,22 +576,20 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
-    mx.get_opts().jdk = "jvmci"
-    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):
     """Run WebAssembly memory layout extractor."""
-    mx.get_opts().jdk = "jvmci"
-    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "org.graalvm.wasm",
         "org.graalvm.wasm.memory",
     ])
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, **kwargs)
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, jdk=get_jdk(), **kwargs)
