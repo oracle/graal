@@ -313,7 +313,7 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
-  daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  daily_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['daily'],
   },
 
@@ -341,7 +341,7 @@ local devkits = graal_common.devkits;
     targets+: ['weekly'],
   },
 
-  weekly_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  weekly_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['weekly'],
   },
 
@@ -377,7 +377,7 @@ local devkits = graal_common.devkits;
     targets+: ['ondemand', 'deploy'],
   },
 
-  ondemand_deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  ondemand_deploy_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['ondemand', 'deploy'],
   },
 
@@ -646,11 +646,11 @@ local devkits = graal_common.devkits;
     #
     # Gates
     #
-    vm.vm_java_20 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
+    vm.vm_java_21 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
-     name: 'gate-vm-style-jdk20-linux-amd64',
+     name: 'gate-vm-style-jdk21-linux-amd64',
     },
 
     vm.vm_java_21 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
