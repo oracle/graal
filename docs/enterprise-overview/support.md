@@ -39,10 +39,10 @@ The following table lists supported and experimental features in Oracle GraalVM 
 | Feature         | Linux x64     | Linux AArch64 | macOS x64     | macOS AArch64 | Windows x64   |
 |-----------------|---------------|---------------|---------------|---------------|---------------|
 | Native Image    | supported     | supported     | supported     | supported     | supported     |
-| LLVM runtime    | supported     | supported     | supported     | supported     | experimental  |
+| LLVM runtime    | deprecated    | deprecated    | deprecated    | deprecated    | deprecated    |
 | LLVM toolchain  | supported     | supported     | supported     | supported     | experimental  |
 | JavaScript      | supported     | supported     | supported     | supported     | supported     |
-| Node.js         | supported     | supported     | supported     | supported     | supported     |
+| Node.js         | deprecated    | deprecated    | deprecated    | deprecated    | deprecated    |
 | Java on Truffle | supported     | experimental  | experimental  | experimental  | experimental  |
 | Python          | experimental  | experimental  | experimental  | experimental  | not available |
 | Ruby            | experimental  | experimental  | experimental  | experimental  | not available |
