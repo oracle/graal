@@ -94,7 +94,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
     private final ClassLoader parent;
 
     // maps a module name to a module reference
-    private final Map<String, ModuleReference> nameToModule;
+    private final Map<String, ModuleReference> localNameToModule;
 
     // maps package name to a module loaded by this class loader
     private final Map<String, LoadedModule> localPackageToModule;
@@ -116,16 +116,16 @@ final class NativeImageClassLoader extends SecureClassLoader {
         private final CodeSource cs;
 
         LoadedModule(ModuleReference mref) {
-            URL url = null;
+            URL urlVal = null;
             if (mref.location().isPresent()) {
                 try {
-                    url = mref.location().get().toURL();
+                    urlVal = mref.location().get().toURL();
                 } catch (MalformedURLException | IllegalArgumentException e) {
                 }
             }
             this.mref = mref;
-            this.url = url;
-            this.cs = new CodeSource(url, (CodeSigner[]) null);
+            this.url = urlVal;
+            this.cs = new CodeSource(urlVal, (CodeSigner[]) null);
         }
 
         ModuleReference mref() {
@@ -136,6 +136,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
             return mref.descriptor().name();
         }
 
+        @SuppressWarnings("unused")
         URL location() {
             return url;
         }
@@ -156,20 +157,20 @@ final class NativeImageClassLoader extends SecureClassLoader {
         this.parent = parent;
 
         Map<String, ModuleReference> nameToModule = new HashMap<>();
-        Map<String, LoadedModule> localPackageToModule = new HashMap<>();
+        Map<String, LoadedModule> packageToModule = new HashMap<>();
         for (ResolvedModule resolvedModule : modules) {
             ModuleReference mref = resolvedModule.reference();
             ModuleDescriptor descriptor = mref.descriptor();
             nameToModule.put(descriptor.name(), mref);
             descriptor.packages().forEach(pn -> {
                 LoadedModule lm = new LoadedModule(mref);
-                if (localPackageToModule.put(pn, lm) != null) {
+                if (packageToModule.put(pn, lm) != null) {
                     throw new IllegalArgumentException("Package " + pn + " in more than one module");
                 }
             });
         }
-        this.nameToModule = nameToModule;
-        this.localPackageToModule = localPackageToModule;
+        localNameToModule = nameToModule;
+        localPackageToModule = packageToModule;
         remotePackageToLoader = new ConcurrentHashMap<>();
         moduleToReader = new ConcurrentHashMap<>();
 
@@ -194,7 +195,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
      * @param parentModuleLayers the parent ModuleLayers
      */
     public NativeImageClassLoader initRemotePackageMap(Configuration cf, List<ModuleLayer> parentModuleLayers) {
-        for (String name : nameToModule.keySet()) {
+        for (String name : localNameToModule.keySet()) {
             ResolvedModule resolvedModule = cf.findModule(name).get();
             assert resolvedModule.configuration() == cf;
 
@@ -207,13 +208,13 @@ final class NativeImageClassLoader extends SecureClassLoader {
                     // The module reads another module in the newly created
                     // layer. If all modules are defined to the same class
                     // loader then the packages are local.
-                    assert nameToModule.containsKey(mn);
+                    assert localNameToModule.containsKey(mn);
                     continue;
                 } else {
 
                     // find the layer for the target module
                     ModuleLayer layer = parentModuleLayers.stream()
-                                    .map(parent -> findModuleLayer(parent, other.configuration()))
+                                    .map(parentLayer -> findModuleLayer(parentLayer, other.configuration()))
                                     .flatMap(Optional::stream)
                                     .findAny()
                                     .orElseThrow(() -> new InternalError("Unable to find parent layer"));
@@ -274,8 +275,8 @@ final class NativeImageClassLoader extends SecureClassLoader {
      * Find the layer corresponding to the given configuration in the tree of layers rooted at the
      * given parent.
      */
-    private Optional<ModuleLayer> findModuleLayer(ModuleLayer parent, Configuration cf) {
-        return SharedSecrets.getJavaLangAccess().layers(parent)
+    private static Optional<ModuleLayer> findModuleLayer(ModuleLayer moduleLayer, Configuration cf) {
+        return SharedSecrets.getJavaLangAccess().layers(moduleLayer)
                         .filter(l -> l.configuration() == cf)
                         .findAny();
     }
@@ -287,7 +288,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
      */
     @Override
     protected URL findResource(String mn, String name) throws IOException {
-        ModuleReference mref = (mn != null) ? nameToModule.get(mn) : null;
+        ModuleReference mref = (mn != null) ? localNameToModule.get(mn) : null;
         if (mref == null) {
             return null;   // not defined to this class loader
         }
@@ -326,7 +327,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
             }
 
         } else {
-            for (ModuleReference mref : nameToModule.values()) {
+            for (ModuleReference mref : localNameToModule.values()) {
                 try {
                     URL url = findResource(mref.descriptor().name(), name);
                     if (url != null) {
@@ -418,7 +419,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 urls.add(url);
             }
         } else {
-            for (ModuleReference mref : nameToModule.values()) {
+            for (ModuleReference mref : localNameToModule.values()) {
                 URL url = findResource(mref.descriptor().name(), name);
                 if (url != null) {
                     urls.add(url);
@@ -589,7 +590,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                         implTitle, implVersion, implVendor, sealBase);
     }
 
-    private boolean isSealed(String name, Manifest man) {
+    private static boolean isSealed(String name, Manifest man) {
         Attributes attr = SharedSecrets.javaUtilJarAccess()
                         .getTrustedAttributes(man, name.replace('.', '/').concat("/"));
         String sealed = null;
@@ -762,7 +763,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return pn.isEmpty() ? null : localPackageToModule.get(pn);
     }
 
-    private String packageName(String cn) {
+    private static String packageName(String cn) {
         int pos = cn.lastIndexOf('.');
         return (pos < 0) ? "" : cn.substring(0, pos);
     }
@@ -771,7 +772,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return moduleToReader.computeIfAbsent(mref, m -> createModuleReader(mref));
     }
 
-    private ModuleReader createModuleReader(ModuleReference mref) {
+    private static ModuleReader createModuleReader(ModuleReference mref) {
         try {
             return mref.open();
         } catch (IOException e) {
@@ -798,7 +799,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         }
     }
 
-    private boolean isOpen(ModuleReference mref, String pn) {
+    private static boolean isOpen(ModuleReference mref, String pn) {
         ModuleDescriptor descriptor = mref.descriptor();
         if (descriptor.isOpen() || descriptor.isAutomatic()) {
             return true;
