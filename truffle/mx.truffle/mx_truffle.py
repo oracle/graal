@@ -92,20 +92,26 @@ def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
     projects = [
-         'org.graalvm.collections', 'org.graalvm.word', 'org.graalvm.options', 'org.graalvm.nativeimage', 'org.graalvm.home',
-         'org.graalvm.polyglot', 'com.oracle.svm.core.annotate', 'com.oracle.truffle.api', 'com.oracle.truffle.api.dsl',
-         'com.oracle.truffle.api.profiles', 'com.oracle.truffle.api.utilities', 'com.oracle.truffle.api.library',
-         'com.oracle.truffle.api.strings', 'com.oracle.truffle.api.interop', 'com.oracle.truffle.api.exception',
-         'com.oracle.truffle.api.instrumentation', 'com.oracle.truffle.polyglot', 'com.oracle.truffle.api.debug',
-         'com.oracle.truffle.api.object', 'com.oracle.truffle.object', 'com.oracle.truffle.host',
-         'com.oracle.truffle.api.staticobject', 'com.oracle.graalvm.locator', 'org.graalvm.polyglot.tck',
-         'com.oracle.truffle.tck.common', 'com.oracle.truffle.tck.tests', 'com.oracle.truffle.sl',
-         'com.oracle.truffle.compiler', 'com.oracle.truffle.dsl.processor',
-         'com.oracle.truffle.libgraal.processor', 'com.oracle.truffle.nfi.api', 'com.oracle.truffle.nfi.backend.spi',
-         'com.oracle.truffle.nfi', 'com.oracle.truffle.nfi.backend.libffi', 'com.oracle.truffle.runtime',
-         'com.oracle.truffle.sl.launcher', 'com.oracle.truffle.sl.tck', 'com.oracle.truffle.st',
-         'com.oracle.truffle.tck.instrumentation', 'org.graalvm.jniutils',
-         'org.graalvm.launcher', 'org.graalvm.nativebridge', 'org.graalvm.nativebridge.processor']
+        'org.graalvm.collections',
+        'org.graalvm.word',
+        'org.graalvm.options',
+        'org.graalvm.nativeimage',
+        'org.graalvm.home',
+        'org.graalvm.polyglot',
+        'com.oracle.svm.core.annotate',
+        'com.oracle.truffle.api',
+        'com.oracle.truffle.api.dsl',
+        'com.oracle.truffle.api.profiles',
+        'com.oracle.truffle.api.utilities',
+        'com.oracle.truffle.api.library',
+        'com.oracle.truffle.api.strings',
+        'com.oracle.truffle.api.interop',
+        'com.oracle.truffle.api.exception',
+        'com.oracle.truffle.api.instrumentation',
+        'com.oracle.truffle.api.debug',
+        'com.oracle.truffle.api.object',
+        'com.oracle.truffle.api.staticobject',
+    ]
     mx.javadoc(['--unified', '--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
