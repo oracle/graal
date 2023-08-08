@@ -140,7 +140,7 @@ public final class CompileTheWorld {
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
-        // truffle may or may not be on the module-path
+        // Truffle may not be on the module-path
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.compiler", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime", false);
