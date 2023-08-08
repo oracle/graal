@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test.bml;
+package com.oracle.truffle.api.benchmark.operation;
 
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_ADD;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_CONST;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_JUMP;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_JUMP_FALSE;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_LD_LOC;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_LESS;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_MOD;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_RETURN;
-import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_ST_LOC;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_ADD;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_CONST;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_JUMP;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_JUMP_FALSE;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_LD_LOC;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_LESS;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_MOD;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_RETURN;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_ST_LOC;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.test.bml.BMOperationRootNodeGen.Builder;
-import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.AddNode;
-import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.ModNode;
+import com.oracle.truffle.api.benchmark.TruffleBenchmark;
+import com.oracle.truffle.api.benchmark.operation.BMOperationRootNodeGen.Builder;
+import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.AddNode;
+import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.ModNode;
 
 @State(Scope.Benchmark)
-public class BenchmarkSimple extends BaseBenchmark {
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 5, time = 1)
+public class BenchmarkSimple extends TruffleBenchmark {
 
     private static final int TOTAL_ITERATIONS = 5000;
 
@@ -672,7 +677,11 @@ public class BenchmarkSimple extends BaseBenchmark {
 
     @Benchmark
     public void manualUnsafe() {
-        doEval(SOURCE_MANUAL_UNSAFE);
+// doEval(SOURCE_MANUAL_UNSAFE);
+        FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
+        b.addSlots(8, FrameSlotKind.Illegal);
+        ManualUnsafeBytecodeNode node = new ManualUnsafeBytecodeNode(null, b.build(), BYTECODE);
+        node.getCallTarget().call();
     }
 
     @Benchmark
