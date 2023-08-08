@@ -389,8 +389,7 @@ final class Target_java_lang_StackTraceElement {
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     static StackTraceElement[] of(Object x, int depth) {
-        VMError.guarantee(x instanceof long[], "Throwable.backtrace must be a long[]");
-        return StackTraceBuilder.build(x);
+        return StackTraceBuilder.build((long[]) x);
     }
 
     /**
@@ -403,8 +402,7 @@ final class Target_java_lang_StackTraceElement {
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     static StackTraceElement[] of(Target_java_lang_Throwable t, int depth) {
         Object x = t.backtrace;
-        VMError.guarantee(x instanceof long[], "Throwable.backtrace must be a long[]");
-        return StackTraceBuilder.build(x);
+        return StackTraceBuilder.build((long[]) x);
     }
 }
 

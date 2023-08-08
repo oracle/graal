@@ -588,7 +588,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
  */
 final class StackTraceBuilder extends BacktraceDecoder {
 
-    static StackTraceElement[] build(Object backtrace) {
+    static StackTraceElement[] build(long[] backtrace) {
         var stackTraceBuilder = new StackTraceBuilder();
         stackTraceBuilder.visitBacktrace(backtrace, Integer.MAX_VALUE, SubstrateOptions.maxJavaStackTraceDepth());
         return stackTraceBuilder.trace.toArray(new StackTraceElement[0]);

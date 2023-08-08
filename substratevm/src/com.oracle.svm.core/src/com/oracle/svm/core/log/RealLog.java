@@ -675,7 +675,7 @@ public class RealLog extends Log {
         BACKTRACE_PRINTER_MUTEX.lock();
         try {
             Object backtrace = JDKUtils.getBacktrace(t);
-            return backtracePrinter.printBacktrace(backtrace, maxFrames);
+            return backtracePrinter.printBacktrace((long[]) backtrace, maxFrames);
         } finally {
             BACKTRACE_PRINTER_MUTEX.unlock();
         }
@@ -695,7 +695,7 @@ public class RealLog extends Log {
 
     private class BacktracePrinter extends BacktraceDecoder {
 
-        protected final int printBacktrace(Object backtrace, int maxFramesProcessed) {
+        protected final int printBacktrace(long[] backtrace, int maxFramesProcessed) {
             return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
         }
 
