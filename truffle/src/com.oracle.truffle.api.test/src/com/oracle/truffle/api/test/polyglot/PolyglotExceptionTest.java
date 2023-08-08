@@ -52,6 +52,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -68,9 +69,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -84,12 +82,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -101,6 +101,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -742,6 +743,51 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             } catch (PolyglotException e) {
                 Assert.assertEquals("MyError", e.getMessage());
                 Assert.assertTrue(e.isGuestException());
+            }
+        }
+    }
+
+    public static final String ITL_ID = "instrumentation-test-language";
+
+    @Test
+    public void testNonInternalError() throws IOException {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream(); PrintWriter writer = new PrintWriter(outputStream, true); Context ctx = Context.newBuilder().build()) {
+            try {
+                ctx.eval(ITL_ID, "ROOT(THROW(a,\"error non-internal\"))");
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage().contains("error non-internal"));
+                assertFalse(e.isInternalError());
+                e.printStackTrace(writer);
+                assertFalse(outputStream.toString().contains("Original "));
+            }
+        }
+    }
+
+    @Test
+    public void testNonInternalErrorPrintInternalStacktrace() throws IOException {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                        PrintWriter writer = new PrintWriter(outputStream, true);
+                        Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.PrintInternalStackTrace", "true").build()) {
+            try {
+                ctx.eval(ITL_ID, "ROOT(THROW(a,\"error non-internal\"))");
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage().contains("error non-internal"));
+                assertFalse(e.isInternalError());
+                e.printStackTrace(writer);
+                assertTrue(outputStream.toString().contains("Original Error"));
+                assertTrue(outputStream.toString().contains("Polyglot Exception Creation Stacktrace"));
+            }
+        }
+    }
+
+    @Test
+    public void testInternalError() {
+        try (Context ctx = Context.create()) {
+            try {
+                ctx.eval(ITL_ID, "ROOT(THROW(internal,\"error internal\"))");
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage().contains("error internal"));
+                assertTrue(e.isInternalError());
             }
         }
     }
