@@ -551,12 +551,13 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
           "org.graalvm.sdk",
+      ],
+      "distDependencies" : [
           "sdk:COLLECTIONS",
           "sdk:NATIVEIMAGE",
           "sdk:POLYGLOT",
           "sdk:WORD",
       ],
-      "distDependencies" : [],
       "javadocType": "api",
       "moduleInfo" : {
         "name" : "org.graalvm.sdk",
