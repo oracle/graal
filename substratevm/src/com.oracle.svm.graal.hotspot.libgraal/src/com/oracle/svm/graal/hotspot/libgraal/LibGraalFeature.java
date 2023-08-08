@@ -795,9 +795,14 @@ final class HotSpotGraalOptionValuesUtil {
             OptionsParser.parseOptions(optionSettings, values, loader);
             options.update(values);
         }
+
+        // Normally HeapDumpOnOutOfMemoryError is done in an isolate startup hook.
+        // However, that hook is runtime before libgraal options have been parsed,
+        // so we need to do it explicitly here.
         if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
             HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
         }
+
         if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
             throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
         }
