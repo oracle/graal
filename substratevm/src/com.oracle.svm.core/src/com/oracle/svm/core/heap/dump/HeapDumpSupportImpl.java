@@ -79,11 +79,8 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void teardownDumpHeapOnOutOfMemoryError() {
-        // Be defensive against different paths finalizing this feature
-        if (!outOfMemoryHeapDumpPath.isNull()) {
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(outOfMemoryHeapDumpPath);
-            outOfMemoryHeapDumpPath = WordFactory.nullPointer();
-        }
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(outOfMemoryHeapDumpPath);
+        outOfMemoryHeapDumpPath = WordFactory.nullPointer();
     }
 
     @Override
