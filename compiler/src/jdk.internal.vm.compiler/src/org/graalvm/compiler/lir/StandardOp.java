@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.lir;
 
-import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.OUTGOING;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -44,7 +42,6 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
@@ -300,7 +297,7 @@ public class StandardOp {
     /**
      * An operation that saves registers to the stack. The set of saved registers can be
      * {@linkplain #remove(EconomicSet) pruned} and a mapping from registers to the frame slots in
-     * which they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
+     * which they are saved can be {@linkplain #getRegisterSaveLayout(FrameMap) retrieved}.
      */
     public abstract static class SaveRegistersOp extends LIRInstruction {
         public static final LIRInstructionClass<SaveRegistersOp> TYPE = LIRInstructionClass.create(SaveRegistersOp.class);
@@ -338,37 +335,8 @@ public class StandardOp {
             return prune(doNotSave, savedRegisters);
         }
 
-        /**
-         * Gets a map from the saved registers saved by this operation to the frame slots in which
-         * they are saved.
-         *
-         * @param frameMap used to {@linkplain FrameMap#offsetForStackSlot(StackSlot) convert} a
-         *            virtual slot to a frame slot index
-         */
-
-        public RegisterSaveLayout getMap(FrameMap frameMap) {
-            int total = 0;
-            for (int i = 0; i < savedRegisters.length; i++) {
-                if (savedRegisters[i] != null) {
-                    total++;
-                }
-            }
-            Register[] keys = new Register[total];
-            int[] values = new int[total];
-            if (total != 0) {
-                int mapIndex = 0;
-                for (int i = 0; i < savedRegisters.length; i++) {
-                    if (savedRegisters[i] != null) {
-                        keys[mapIndex] = savedRegisters[i];
-                        assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
-                        StackSlot slot = asStackSlot(slots[i]);
-                        values[mapIndex] = indexForStackSlot(frameMap, slot);
-                        mapIndex++;
-                    }
-                }
-                assert mapIndex == total;
-            }
-            return new RegisterSaveLayout(keys, values);
+        public RegisterSaveLayout getRegisterSaveLayout(FrameMap frameMap) {
+            return frameMap.getRegisterSaveLayout(savedRegisters, slots);
         }
 
         public Register[] getSavedRegisters() {
@@ -401,19 +369,6 @@ public class StandardOp {
                 }
             }
             return pruned;
-        }
-
-        /**
-         * Computes the index of a stack slot relative to slot 0. This is also the bit index of
-         * stack slots in the reference map.
-         *
-         * @param slot a stack slot
-         * @return the index of the stack slot
-         */
-        private static int indexForStackSlot(FrameMap frameMap, StackSlot slot) {
-            assert frameMap.offsetForStackSlot(slot) % frameMap.getTarget().wordSize == 0;
-            int value = frameMap.offsetForStackSlot(slot) / frameMap.getTarget().wordSize;
-            return value;
         }
     }
 

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 
 import org.graalvm.compiler.core.common.LIRKind;
@@ -32,6 +33,7 @@ import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 
@@ -122,5 +124,24 @@ public class AMD64HotSpotFrameMap extends AMD64FrameMap {
     public StackSlot getDeoptimizationRescueSlot() {
         assert deoptimizationRescueSlot != null;
         return deoptimizationRescueSlot;
+    }
+
+    @Override
+    protected Register[] filterSavedRegisters(Register[] savedRegisters) {
+        Register[] filtered = null;
+        for (int i = 0; i < savedRegisters.length; i++) {
+            Register reg = savedRegisters[i];
+            if (reg == null) {
+                continue;
+            }
+            if (reg.getRegisterCategory().equals(MASK)) {
+                // These can't appear in HotSpot debug info
+                if (filtered == null) {
+                    filtered = savedRegisters.clone();
+                }
+                filtered[i] = null;
+            }
+        }
+        return filtered != null ? filtered : savedRegisters;
     }
 }
