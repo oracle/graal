@@ -426,12 +426,12 @@ public class Linker {
                 return context.globals().loadAsInt(globalAddress);
             case F32_TYPE:
                 return Float.intBitsToFloat(context.globals().loadAsInt(globalAddress));
-            case WasmType.I64_TYPE:
+            case I64_TYPE:
                 return context.globals().loadAsLong(globalAddress);
-            case WasmType.F64_TYPE:
+            case F64_TYPE:
                 return Double.longBitsToDouble(context.globals().loadAsLong(globalAddress));
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
+            case FUNCREF_TYPE:
+            case EXTERNREF_TYPE:
                 return context.globals().loadAsReference(globalAddress);
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Local variable cannot have the void type.");
@@ -488,7 +488,7 @@ public class Linker {
                     break;
                 }
                 case Bytecode.F64_CONST: {
-                    double value = Double.longBitsToDouble(BinaryStreamParser.rawPeekI64(bytecode, offset));
+                    double value = Double.longBitsToDouble(rawPeekI64(bytecode, offset));
                     offset += 8;
                     stack.add(value);
                     break;

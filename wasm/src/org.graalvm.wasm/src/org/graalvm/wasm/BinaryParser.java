@@ -2348,7 +2348,7 @@ public class BinaryParser extends BinaryStreamParser {
             Pair<Long, byte[]> initExpression = readConstantExpression(type, true);
             final long value = initExpression.getLeft();
             final byte[] initBytecode = initExpression.getRight();
-            final boolean isInitialized = initExpression.getRight() == null;
+            final boolean isInitialized = initBytecode == null;
             final boolean isReference = WasmType.isReferenceType(type);
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isReference, initBytecode, value);
