@@ -314,7 +314,7 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
-    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
+    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
@@ -416,7 +416,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
-    @Option(help = "Prefix that is added to the names of API functions.")//
+    @Option(help = "Prefix that is added to the names of API functions.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
     @APIOption(name = "enable-http", fixedValue = "http", customHelp = "enable http support in the generated image")//
@@ -651,7 +651,7 @@ public class SubstrateOptions {
     @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
-    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
+    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Determines if a null region is present between the heap base and the image heap.", type = Expert)//

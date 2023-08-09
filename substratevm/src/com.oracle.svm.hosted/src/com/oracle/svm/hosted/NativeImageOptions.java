@@ -35,6 +35,7 @@ import java.util.Date;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -62,7 +63,7 @@ public class NativeImageOptions {
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list. These features " +
-                    "are in addition to -march.", type = User)//
+                    "are in addition to -march.", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
