@@ -364,8 +364,8 @@ public class TruffleTypes {
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
     public static final String OperationTracingMetadata_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata";
     public static final String OperationTracingMetadata_SpecializationNames_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata.SpecializationNames";
-    public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants";
-    public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant";
+    public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants";
+    public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant";
     public static final String FastAccess_Name = "com.oracle.truffle.api.impl.FastAccess";
 
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);

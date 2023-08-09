@@ -6,9 +6,10 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
-import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 
 public class TestVariantErrorTests {
 

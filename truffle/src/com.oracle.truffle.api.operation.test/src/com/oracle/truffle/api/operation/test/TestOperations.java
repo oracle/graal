@@ -60,13 +60,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.LocalSetter;
 import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true)),

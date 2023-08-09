@@ -1,11 +1,9 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import com.oracle.truffle.api.operation.GenerateOperations;
 
 /**
  * This annotation is only used for testing. The DSL generates multiple variants of the interpreter

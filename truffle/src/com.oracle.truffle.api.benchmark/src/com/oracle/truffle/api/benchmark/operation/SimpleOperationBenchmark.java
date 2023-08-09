@@ -67,29 +67,38 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.benchmark.TruffleBenchmark;
-import com.oracle.truffle.api.benchmark.operation.BMOperationRootNodeGen.Builder;
 import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.AddNode;
 import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.ModNode;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-public class BenchmarkSimple extends TruffleBenchmark {
+public class SimpleOperationBenchmark extends TruffleBenchmark {
 
-    private static final int TOTAL_ITERATIONS = 5000;
+    private static final int TOTAL_ITERATIONS;
+    static {
+        String iters = System.getenv("TOTAL_ITERATIONS");
+        TOTAL_ITERATIONS = (iters == null) ? 5000 : Integer.parseInt(iters);
+    }
 
-    private static final String NAME_TEST_LOOP = "simple:test-loop";
-    private static final String NAME_TEST_LOOP_NO_BE = "simple:test-loop-no-be";
-    private static final String NAME_TEST_LOOP_QUICKEN = "simple:test-loop-quicken";
+    private static final String NAME_OPERATION = "simple:operation-base";
+    private static final String NAME_OPERATION_BASELINE = "simple:operation-baseline";
+    private static final String NAME_OPERATION_UNSAFE = "simple:operation-unsafe";
+    private static final String NAME_OPERATION_BE = "simple:operation-be";
+    private static final String NAME_OPERATION_QUICKENED = "simple:operation-quickened";
+    private static final String NAME_OPERATION_ALL = "simple:operation-all";
     private static final String NAME_MANUAL = "simple:manual";
     private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
     private static final String NAME_MANUAL_UNSAFE = "simple:manual-unsafe";
     private static final String NAME_MANUAL_NODED = "simple:manual-noded";
     private static final String NAME_AST = "simple:ast";
 
-    private static final Source SOURCE_TEST_LOOP = Source.create("bm", NAME_TEST_LOOP);
-    private static final Source SOURCE_TEST_LOOP_NO_BE = Source.create("bm", NAME_TEST_LOOP_NO_BE);
-    private static final Source SOURCE_TEST_LOOP_QUICKEN = Source.create("bm", NAME_TEST_LOOP_QUICKEN);
+    private static final Source SOURCE_OPERATION = Source.create("bm", NAME_OPERATION);
+    private static final Source SOURCE_OPERATION_BASELINE = Source.create("bm", NAME_OPERATION_BASELINE);
+    private static final Source SOURCE_OPERATION_UNSAFE = Source.create("bm", NAME_OPERATION_UNSAFE);
+    private static final Source SOURCE_OPERATION_BE = Source.create("bm", NAME_OPERATION_BE);
+    private static final Source SOURCE_OPERATION_QUICKENED = Source.create("bm", NAME_OPERATION_QUICKENED);
+    private static final Source SOURCE_OPERATION_ALL = Source.create("bm", NAME_OPERATION_ALL);
     private static final Source SOURCE_MANUAL = Source.create("bm", NAME_MANUAL);
     private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
     private static final Source SOURCE_MANUAL_UNSAFE = Source.create("bm", NAME_MANUAL_UNSAFE);
@@ -113,7 +122,7 @@ public class BenchmarkSimple extends TruffleBenchmark {
                     // while (i < 5000) {
                     /* while_0_start: */
                     /* 10 */ OP_LD_LOC, LOC_I,
-                    /* 12 */ OP_CONST, 0, TOTAL_ITERATIONS,
+                    /* 12 */ OP_CONST, 0, (short) TOTAL_ITERATIONS,
                     /* 15 */ OP_LESS,
                     /* 16 */ OP_JUMP_FALSE, 83, // while_0_end
 
@@ -289,10 +298,6 @@ public class BenchmarkSimple extends TruffleBenchmark {
 
     private Context context;
 
-    private static final int MODE_NORMAL = 0;
-    private static final int MODE_NO_BE = 1;
-    private static final int MODE_QUICKEN = 2;
-
     /**
      * The code is equivalent to:
      *
@@ -323,40 +328,49 @@ public class BenchmarkSimple extends TruffleBenchmark {
             throw new AssertionError("bad bytecode length: " + BYTECODE.length);
         }
 
-        BenchmarkLanguage.registerName(NAME_TEST_LOOP, (lang, b) -> {
-            createSimpleLoop(lang, b, MODE_NORMAL);
+        BenchmarkLanguage.registerName(NAME_OPERATION, BMOperationRootNodeBase.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
         });
-        BenchmarkLanguage.registerName(NAME_TEST_LOOP_NO_BE, (lang, b) -> {
-            createSimpleLoop(lang, b, MODE_NO_BE);
+        BenchmarkLanguage.registerName(NAME_OPERATION_BASELINE, BMOperationRootNodeWithBaseline.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
         });
-        BenchmarkLanguage.registerName(NAME_TEST_LOOP_QUICKEN, (lang, b) -> {
-            createSimpleLoop(lang, b, MODE_QUICKEN);
+        BenchmarkLanguage.registerName(NAME_OPERATION_UNSAFE, BMOperationRootNodeUnsafe.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
         });
-        BenchmarkLanguage.registerName2(NAME_MANUAL, lang -> {
+        BenchmarkLanguage.registerName(NAME_OPERATION_BE, BMOperationRootNodeBoxingEliminated.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
+        });
+        BenchmarkLanguage.registerName(NAME_OPERATION_QUICKENED, BMOperationRootNodeQuickened.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
+        });
+        BenchmarkLanguage.registerName(NAME_OPERATION_ALL, BMOperationRootNodeAll.class, (lang, b) -> {
+            createSimpleLoop(lang, b);
+        });
+        BenchmarkLanguage.registerName(NAME_MANUAL, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNode node = new ManualBytecodeNode(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName2(NAME_MANUAL_NO_BE, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNodeNBE node = new ManualBytecodeNodeNBE(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName2(NAME_MANUAL_UNSAFE, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_UNSAFE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
             ManualUnsafeBytecodeNode node = new ManualUnsafeBytecodeNode(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName2(NAME_MANUAL_NODED, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_NODED, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNodedNode node = new ManualBytecodeNodedNode(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName2(NAME_AST, lang -> {
+        BenchmarkLanguage.registerName(NAME_AST, lang -> {
             int iLoc = 0;
             int sumLoc = 1;
             int jLoc = 2;
@@ -392,71 +406,7 @@ public class BenchmarkSimple extends TruffleBenchmark {
         });
     }
 
-    private static void beginAdd(Builder b, int mode) {
-        switch (mode) {
-            case MODE_NORMAL:
-                b.beginAdd();
-                break;
-            case MODE_NO_BE:
-                b.beginAddBoxed();
-                break;
-            case MODE_QUICKEN:
-                b.beginAddQuickened();
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    private static void endAdd(Builder b, int mode) {
-        switch (mode) {
-            case MODE_NORMAL:
-                b.endAdd();
-                break;
-            case MODE_NO_BE:
-                b.endAddBoxed();
-                break;
-            case MODE_QUICKEN:
-                b.endAddQuickened();
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    private static void beginMod(Builder b, int mode) {
-        switch (mode) {
-            case MODE_NORMAL:
-                b.beginMod();
-                break;
-            case MODE_NO_BE:
-                b.beginModBoxed();
-                break;
-            case MODE_QUICKEN:
-                b.beginModQuickened();
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    private static void endMod(Builder b, int mode) {
-        switch (mode) {
-            case MODE_NORMAL:
-                b.endMod();
-                break;
-            case MODE_NO_BE:
-                b.endModBoxed();
-                break;
-            case MODE_QUICKEN:
-                b.endModQuickened();
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    private static void createSimpleLoop(BenchmarkLanguage lang, Builder b, int mode) {
+    private static void createSimpleLoop(BenchmarkLanguage lang, BMOperationRootNodeBuilder b) {
         b.beginRoot(lang);
 
         OperationLocal iLoc = b.createLocal();
@@ -500,10 +450,10 @@ public class BenchmarkSimple extends TruffleBenchmark {
         b.beginIfThenElse();
 
         b.beginLess();
-        beginMod(b, mode);
+        b.beginMod();
         b.emitLoadLocal(iLoc);
         b.emitLoadConstant(3);
-        endMod(b, mode);
+        b.endMod();
         b.emitLoadConstant(1);
         b.endLess();
 
@@ -515,10 +465,10 @@ public class BenchmarkSimple extends TruffleBenchmark {
         // } else {
         // temp = i % 3;
         b.beginStoreLocal(tempLoc);
-        beginMod(b, mode);
+        b.beginMod();
         b.emitLoadLocal(iLoc);
         b.emitLoadConstant(3);
-        endMod(b, mode);
+        b.endMod();
         b.endStoreLocal();
 
         // }
@@ -526,10 +476,10 @@ public class BenchmarkSimple extends TruffleBenchmark {
 
         // j = j + temp;
         b.beginStoreLocal(jLoc);
-        beginAdd(b, mode);
+        b.beginAdd();
         b.emitLoadLocal(jLoc);
         b.emitLoadLocal(tempLoc);
-        endAdd(b, mode);
+        b.endAdd();
         b.endStoreLocal();
 
         // }
@@ -538,18 +488,18 @@ public class BenchmarkSimple extends TruffleBenchmark {
 
         // sum = sum + j;
         b.beginStoreLocal(sumLoc);
-        beginAdd(b, mode);
+        b.beginAdd();
         b.emitLoadLocal(sumLoc);
         b.emitLoadLocal(jLoc);
-        endAdd(b, mode);
+        b.endAdd();
         b.endStoreLocal();
 
         // i = i + 1;
         b.beginStoreLocal(iLoc);
-        beginAdd(b, mode);
+        b.beginAdd();
         b.emitLoadLocal(iLoc);
         b.emitLoadConstant(1);
-        endAdd(b, mode);
+        b.endAdd();
         b.endStoreLocal();
 
         // }
@@ -590,17 +540,32 @@ public class BenchmarkSimple extends TruffleBenchmark {
 
     @Benchmark
     public void operation() {
-        doEval(SOURCE_TEST_LOOP);
+        doEval(SOURCE_OPERATION);
     }
 
     @Benchmark
-    public void operationNoBe() {
-        doEval(SOURCE_TEST_LOOP_NO_BE);
+    public void operationWithBaseline() {
+        doEval(SOURCE_OPERATION_BASELINE);
+    }
+
+    @Benchmark
+    public void operationUnsafe() {
+        doEval(SOURCE_OPERATION_UNSAFE);
+    }
+
+    @Benchmark
+    public void operationBE() {
+        doEval(SOURCE_OPERATION_BE);
     }
 
     @Benchmark
     public void operationQuicken() {
-        doEval(SOURCE_TEST_LOOP_QUICKEN);
+        doEval(SOURCE_OPERATION_QUICKENED);
+    }
+
+    @Benchmark
+    public void operationAll() {
+        doEval(SOURCE_OPERATION_ALL);
     }
 
     @Benchmark

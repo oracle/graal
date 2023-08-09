@@ -45,13 +45,20 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationRootNode;
 
-@GenerateOperations(//
-                languageClass = BenchmarkLanguage.class, //
-                decisionsFile = "decisions.json", //
-                boxingEliminationTypes = {int.class, boolean.class})
+@GenerateOperationsTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class)),
+                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableBaselineInterpreter = true)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, allowUnsafe = true)),
+                @Variant(suffix = "BoxingEliminated", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
+                @Variant(suffix = "Quickened", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, decisionsFile = "decisions.json")),
+                @Variant(suffix = "All", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableBaselineInterpreter = true, allowUnsafe = true, boxingEliminationTypes = {
+                                int.class, boolean.class}, decisionsFile = "decisions.json"))
+})
 abstract class BMOperationRootNode extends RootNode implements OperationRootNode {
 
     protected BMOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -80,38 +87,6 @@ abstract class BMOperationRootNode extends RootNode implements OperationRootNode
         @Specialization
         static int doInts(int left, int right) {
             return left % right;
-        }
-    }
-
-    @Operation
-    static final class AddQuickened {
-        @Specialization
-        static int doInts(int left, int right) {
-            return left + right;
-        }
-    }
-
-    @Operation
-    static final class ModQuickened {
-        @Specialization
-        static int doInts(int left, int right) {
-            return left % right;
-        }
-    }
-
-    @Operation
-    static final class AddBoxed {
-        @Specialization
-        static Object doInts(Object left, Object right) {
-            return (int) left + (int) right;
-        }
-    }
-
-    @Operation
-    static final class ModBoxed {
-        @Specialization
-        static Object doInts(Object left, Object right) {
-            return (int) left % (int) right;
         }
     }
 
