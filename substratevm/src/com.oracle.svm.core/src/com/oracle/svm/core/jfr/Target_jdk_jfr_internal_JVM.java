@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK21OrLater;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
@@ -345,8 +346,18 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().newEventWriter();
     }
 
+    /**
+     * See {@link JVM#flush}.
+     */
+    @Substitute
+    @TargetElement(name = "flush", onlyWith = JDK20OrEarlier.class)
+    public static boolean flushJDK20(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+        return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
+    }
+
     /** See {@link JVM#flush}. */
     @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
     public static void flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
