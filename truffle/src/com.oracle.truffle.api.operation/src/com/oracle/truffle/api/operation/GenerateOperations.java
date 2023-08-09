@@ -46,9 +46,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Generates a bytecode interpreter using the Operation DSL. The Operation DSL automatically

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.benchmark.operation;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -50,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
+import com.oracle.truffle.api.operation.OperationParser;
 
 @Registration(id = "bm", name = "bm")
 class BenchmarkLanguage extends TruffleLanguage<Object> {
@@ -61,14 +64,29 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
         return new Object();
     }
 
-    public static void registerName(String name, BiConsumer<BenchmarkLanguage, BMOperationRootNodeGen.Builder> parser) {
-        registerName2(name, l -> {
-            OperationNodes<BMOperationRootNode> nodes = BMOperationRootNodeGen.create(OperationConfig.DEFAULT, b -> parser.accept(l, b));
+    public static void registerName(String name, Class<? extends BMOperationRootNode> cls, BiConsumer<BenchmarkLanguage, BMOperationRootNodeBuilder> parser) {
+        registerName(name, l -> {
+            OperationNodes<BMOperationRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
             return nodes.getNodes().get(nodes.getNodes().size() - 1).getCallTarget();
         });
     }
 
-    public static void registerName2(String name, Function<BenchmarkLanguage, CallTarget> parser) {
+    @SuppressWarnings("unchecked")
+    private static <T extends BMOperationRootNodeBuilder> OperationNodes<BMOperationRootNode> createNodes(Class<? extends BMOperationRootNode> interpreterClass, OperationParser<T> builder) {
+        try {
+            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
+            return (OperationNodes<BMOperationRootNode>) create.invoke(null, OperationConfig.DEFAULT, builder);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            // Other exceptions (e.g., NoSuchMethodError) likely indicate a bad reflective call.
+            throw new AssertionError("Encountered exception during reflective call: " + e.getMessage());
+        }
+    }
+
+    public static void registerName(String name, Function<BenchmarkLanguage, CallTarget> parser) {
         NAMES.put(name, parser);
     }
 
