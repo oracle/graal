@@ -26,12 +26,23 @@ package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
+import java.util.List;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -40,8 +51,16 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
+import org.graalvm.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -209,5 +228,68 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
                 return null;
             }
         });
+    }
+
+    @BytecodeParserNeverInline
+    @SuppressWarnings("unused")
+    private static boolean foldAferRealInline(int i, int j) {
+        return i < j;
+    }
+
+    public static int loopSnippet(boolean b, int limit1, int limit2) {
+        block: {
+            if (b) {
+                for (int i = 0; i < limit1; i++) {
+                    GraalDirectives.sideEffect(i);
+                    if (i < limit2) {
+                        GraalDirectives.sideEffect(limit2);
+                        // folds away after inlining and CE
+                        if (foldAferRealInline(i, limit2)) {
+                            break block;
+                        }
+                    }
+                }
+            } else {
+                for (int i = 0; i < limit2; i++) {
+                    GraalDirectives.sideEffect(i);
+                }
+            }
+        }
+        return S;
+    }
+
+    @Test
+    public void testProxyGen() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet"), AllowAssumptions.YES);
+        // make fixed guards
+        new ConvertDeoptimizeToGuardPhase(CanonicalizerPhase.create()).apply(g, getDefaultHighTierContext());
+
+        // inline the trivial optimizable
+        new InliningPhase(new GreedyInliningPolicy(null), CanonicalizerPhase.create()).apply(g, getEagerHighTierContext());
+
+        // get floating guards
+        new HighTierLoweringPhase(CanonicalizerPhase.create()).apply(g, getDefaultHighTierContext());
+
+        new FloatingReadPhase(CanonicalizerPhase.create()).apply(g, getDefaultMidTierContext());
+
+        for (Node n : g.getNodes()) {
+            if (n instanceof MergeNode) {
+                MergeNode merge = (MergeNode) n;
+                // must be the merge of the loop exits
+
+                GuardPhiNode guardPhi = g.addWithoutUnique(new GuardPhiNode(merge));
+                for (EndNode end : merge.forwardEnds()) {
+                    guardPhi.addInput(AbstractBeginNode.prevBegin(end));
+                }
+                List<FloatingReadNode> fr = g.getNodes().filter(FloatingReadNode.class).snapshot();
+                assert fr.size() == 1 : "Must only have a single floating read found " + fr;
+                fr.get(0).setGuard(guardPhi);
+            }
+        }
+
+        g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "After creating guard phi");
+        new ConditionalEliminationPhase(false).apply(g, getDefaultMidTierContext());
+
+        GraphOrder.assertSchedulableGraph(g);
     }
 }

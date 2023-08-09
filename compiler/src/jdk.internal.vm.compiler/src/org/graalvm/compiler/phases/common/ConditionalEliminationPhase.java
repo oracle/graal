@@ -523,7 +523,10 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             tryProveGuardCondition(null, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
+                if (!(survivingSuccessor instanceof LoopExitNode)) {
+                    // loop exit nodes are not deleted when the predecessor split gets removed
+                    survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
+                }
                 // Don't kill the other branch immediately, see `processGuard`.
                 graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "IfElimination", node);
                 return true;
