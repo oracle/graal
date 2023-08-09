@@ -445,14 +445,14 @@ class ABIs {
             if (methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
                 throw new AssertionError("Address expected as first param: " + methodType);
             }
-            if (nep.returnsAssignment() != null && methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
+            if (nep.needsReturnBuffer() && methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
                 throw new AssertionError("Return buffer address expected: " + methodType);
             }
             if (nep.capturesCallState() && methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
                 throw new AssertionError("Capture buffer address expected: " + methodType);
             }
 
-            assert firstActualArgument + assignments.length == methodType.parameterCount() : assignments.length + " " + methodType.parameterCount();
+            assert firstActualArgument + assignments.length == methodType.parameterCount() : firstActualArgument + " " + assignments.length + " " + methodType.parameterCount();
             AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
             Adaptation[] adaptations = new Adaptation[methodType.parameterCount()];
 
