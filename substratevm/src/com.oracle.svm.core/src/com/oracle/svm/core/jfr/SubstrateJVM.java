@@ -486,7 +486,7 @@ public class SubstrateJVM {
      * See {@link JVM#flush}.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public void flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
@@ -499,6 +499,12 @@ public class SubstrateJVM {
         } else {
             JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
         }
+
+        /*
+         * Return false to signal that there is no need to do another flush at the end of the
+         * current event.
+         */
+        return false;
     }
 
     public void flush() {
