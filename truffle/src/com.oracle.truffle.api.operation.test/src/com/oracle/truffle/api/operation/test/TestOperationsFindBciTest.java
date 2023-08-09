@@ -10,6 +10,10 @@ import java.util.List;
 import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNodeWithSource;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -19,15 +23,23 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+@RunWith(Parameterized.class)
 public class TestOperationsFindBciTest {
     protected static final TestOperationsLanguage LANGUAGE = null;
+
+    @Parameters(name = "{0}")
+    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
+        return List.of(TestOperationsBase.class, TestOperationsWithBaseline.class);
+    }
+
+    @Parameter(0) public Class<? extends TestOperations> interpreterClass;
 
     @Test
     public void testStacktrace() {
         List<FrameInstance> frames = new ArrayList<>();
 
         Source bazSource = Source.newBuilder("test", "<dump> 4", "baz").build();
-        TestOperations baz = parseNodeWithSource(TestOperationsBase.class, "baz", b -> {
+        TestOperations baz = parseNodeWithSource(interpreterClass, "baz", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(bazSource);
 
@@ -119,7 +131,7 @@ public class TestOperationsFindBciTest {
          * bar
          * foo
          *
-         * Given a call node, we can look up a bci; this bci should correspond to a specific source section.
+         * Given a frame instance, we can look up a bci; this bci should correspond to a specific source section.
          * @formatter:on
          */
 
@@ -127,24 +139,24 @@ public class TestOperationsFindBciTest {
 
         // <anon>
         assertNull(frames.get(0).getCallNode());
-        assertEquals(-1, OperationRootNode.findBci(frames.get(0).getCallNode()));
+        assertEquals(-1, OperationRootNode.findBci(frames.get(0)));
 
         // baz
-        int bazBci = OperationRootNode.findBci(frames.get(1).getCallNode());
+        int bazBci = OperationRootNode.findBci(frames.get(1));
         assertNotEquals(-1, bazBci);
         SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
         assertEquals(bazSourceSection.getSource(), bazSource);
         assertEquals(bazSourceSection.getCharacters(), "<dump>");
 
         // bar
-        int barBci = OperationRootNode.findBci(frames.get(2).getCallNode());
+        int barBci = OperationRootNode.findBci(frames.get(2));
         assertNotEquals(-1, barBci);
         SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
         assertEquals(barSourceSection.getSource(), barSource);
         assertEquals(barSourceSection.getCharacters(), "baz()");
 
         // foo
-        int fooBci = OperationRootNode.findBci(frames.get(3).getCallNode());
+        int fooBci = OperationRootNode.findBci(frames.get(3));
         assertNotEquals(-1, fooBci);
         SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
         assertEquals(fooSourceSection.getSource(), fooSource);
