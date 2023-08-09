@@ -79,7 +79,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         if (graph.hasLoops()) {
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
-            int shouldPeelOnly = LoopPolicies.Options.PeelOnly.getValue(graph.getOptions());
+            int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
                     if (canPeel(loop)) {
