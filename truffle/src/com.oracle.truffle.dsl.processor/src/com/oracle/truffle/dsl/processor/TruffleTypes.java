@@ -130,6 +130,7 @@ public class TruffleTypes {
     public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
     public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
+    public static final String LoopNode_Name = "com.oracle.truffle.api.nodes.LoopNode";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
     public static final String Node_Children_Name = "com.oracle.truffle.api.nodes.Node.Children";
@@ -181,6 +182,7 @@ public class TruffleTypes {
     public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
+    public final DeclaredType LoopNode = c.getDeclaredType(LoopNode_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
     public final DeclaredType Node_Child = c.getDeclaredType(Node_Child_Name);
