@@ -225,8 +225,10 @@ The full option help of `--bundle-apply` shows a more advanced use case that wil
 Another addition to the `--bundle-create` and `--bundle-apply` options, as mentioned above, is to perform image building inside a container image.
 This ensures that during the image build `native-image` can not access any resources that were not explicitly specified via the classpath or module path.
 Modify the `--bundle-create` argument in the `native-maven-plugin` configuration to `<buildArg>--bundle-create,container<buildArg>`.
-This still creates the same bundle as before. However, a container image is built and then used for building the native image executable.
-If the container image is newly created, you can also see the build output from the container tool. The name of the container image is the hash of the used Dockerfile.
+This still creates the same bundle as before. 
+However, a container image is built and then used for building the native image executable.
+If the container image is newly created, you can also see the build output from the container tool. 
+The name of the container image is the hash of the used Dockerfile.
 If the container image already exists you will see the following line in the build output instead:
 
 ```shell
@@ -234,9 +236,11 @@ Native Image Bundles: Reusing container image c253ca50f50b380da0e23b168349271976
 ```
 
 For building in a container you require either _podman_ or _rootless docker_ to be available on your system.
-Additionally, building in a container is currently only supported for Linux, if using any other OS native image will not create and use a container image.
+Additionally, building in a container is currently only supported for Linux.
+Using any other OS native image will not create and use a container image.
 The container tool used for running the image build can be specified with `<buildArg>--bundle-create,container=podman<buildArg>` or `<buildArg>--bundle-create,container=docker<buildArg>`.
-If not specified, `native-image` uses one of the supported tools. If available, `podman` is preferred and rootless `docker` is the fallback.
+If not specified, `native-image` uses one of the supported tools. 
+If available, `podman` is preferred and rootless `docker` is the fallback.
 
 The Dockerfile used to build the container image may also be explicitly specified with `--bundle-create,container,dockerfile=<path-to-dockerfile>`.
 If no Dockerfile was specified, a default Dockerfile is used, which is based on the Oracle Linux 8 container images for GraalVM from [here](https://github.com/graalvm/container).
@@ -412,12 +416,12 @@ where options include:
 Running the bundled application with the `--with-native-image-agent` argument requires a `native-image-agent` library to be available.
 The output of the `native-image-agent` is written to _<bundle-name>.output/launcher/META-INF/native-image/<bundle-name>-agent_.
 If native image agents output should be inserted into the bundle with `,update-bundle`, the launcher then also requires `native-image`.
-The `update-bundle` option makes executes the command `native-image --bundle-apply=<bundle-name>.nib --bundle-create=<bundle-name>.nib -cp <bundle-name>.output/launcher` after executing the bundled application with the `native-image-agent` attached.
+The `update-bundle` option executes the command `native-image --bundle-apply=<bundle-name>.nib --bundle-create=<bundle-name>.nib -cp <bundle-name>.output/launcher` after executing the bundled application with the `native-image-agent` attached.
 
 The `container` option realizes a similar behavior to [containerized image builds](#building-in-a-container).
 However, the only exception is that in this case the application is executed inside the container instead of `native-image`.
 Every bundle contains a Dockerfile which is used for executing the bundled application in a container.
-However, this Dockerfile can be overwritten by adding `,dockerile=<path-to-dockerfile>` to the `--container` argument.
+However, this Dockerfile can be overwritten by adding `,dockerfile=<path-to-dockerfile>` to the `--container` argument.
 
 The bundle launcher only consumes options it knows, all other arguments are passed on to the bundled application.
 If the bundle launcher parses ` -- ` without a specified option, the launcher stops parsing arguments.
