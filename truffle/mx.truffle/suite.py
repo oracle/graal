@@ -1360,7 +1360,9 @@ suite = {
       ],
       "description" : "Truffle runtime distribution.",
       "useModulePath": True,
-      "maven": True,
+      "maven": {
+          "artifactId": "truffle-runtime",
+      },
     },
 
     "TRUFFLE_API" : {

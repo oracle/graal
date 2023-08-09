@@ -374,18 +374,18 @@ suite = {
             "maven" : {
               "artifactId" : "chromeinspector-tool",
             },
-            "description" : "The bridge between truffle tools and the chrome inspector.",
+            "description" : "The core module of the polyglot debugging backend for chrome inspector.",
         },
-        "CHROMEINSPECTOR_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "CHROMEINSPECTOR_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "CHROMEINSPECTOR",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "chromeinspector-community",
+            "maven": {
+              "artifactId": "chromeinspector-community",
             },
-            "description" : "The component providing bridge between truffle tools and the chrome inspector and Truffle runtime.",
+            "description": "The polyglot debugging backend for chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
             "subDir": "src",
@@ -427,18 +427,18 @@ suite = {
             "maven" : {
               "artifactId" : "insight-tool",
             },
-            "description" : "The Ultimate Insights Gathering Platform",
+            "description" : "The core module of the Insights Gathering Platform",
         },
-        "INSIGHT_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "INSIGHT_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "INSIGHT",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "insight-community",
+            "maven": {
+              "artifactId": "insight-community",
             },
-            "description" : "The component providing The Ultimate Insights Gathering Platform and Truffle runtime.",
+            "description": "The Ultimate Insights Gathering Platform",
         },
         "INSIGHT_HEAP": {
             "subDir": "src",
@@ -456,18 +456,18 @@ suite = {
             "maven" : {
               "artifactId" : "insight-heap-tool",
             },
-            "description" : "Heap Dump for GraalVM Insight",
+            "description" : "The core module of Heap Dump for Insight",
         },
-        "INSIGHT_HEAP_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "INSIGHT_HEAP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "INSIGHT_HEAP",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "insight-heap-community",
+            "maven": {
+              "artifactId": "insight-heap-community",
             },
-            "description" : "The component providing Heap Dump for GraalVM Insight and Truffle runtime.",
+            "description": "The Heap Dump for the Insights Gathering Platform",
         },
         "INSIGHT_TEST": {
             "subDir": "src",
@@ -517,18 +517,18 @@ suite = {
               "artifactId" : "profiler-tool",
             },
             "javadocType" : "api",
-            "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
+            "description" : "The core module of the Truffle profiler"
         },
-        "TRUFFLE_PROFILER_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "TRUFFLE_PROFILER_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "TRUFFLE_PROFILER",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "profiler-community",
+            "maven": {
+              "artifactId": "profiler-community",
             },
-            "description" : "The component providing the truffle profiler, supporting CPU sampling and tracing and Truffle runtime"
+            "description": "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
         "TRUFFLE_PROFILER_TEST": {
             "subDir": "src",
@@ -565,19 +565,19 @@ suite = {
             "maven" : {
               "artifactId" : "coverage-tool",
             },
-            "description" : "Truffle code coverage tool.",
+            "description" : "Core module of the Truffle code coverage tool",
             "javadocType" : "api",
         },
-        "TRUFFLE_COVERAGE_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "TRUFFLE_COVERAGE_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "TRUFFLE_COVERAGE",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "coverage-community",
+            "maven": {
+              "artifactId": "coverage-community",
             },
-            "description" : "The component providing Truffle code coverage tool and Truffle runtime"
+            "description": "The Truffle code coverage tool"
         },
         "TRUFFLE_COVERAGE_TEST": {
             "subDir": "src",
@@ -614,18 +614,18 @@ suite = {
             "maven" : {
               "artifactId" : "dap-tool",
             },
-            "description" : "Truffle Debug Protocol Server implementation.",
+            "description" : "Core module of the polyglot debugging backend for the Debug Adapter Protocol",
         },
-        "DAP_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "DAP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "DAP",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "dap-community",
+            "maven": {
+              "artifactId": "dap-community",
             },
-            "description" : "The component providing Truffle Debug Protocol Server implementation and Truffle runtime"
+            "description": "The polyglot debugging backend for the Debug Adapter Protocol"
         },
         "DAP_TEST": {
             "subDir": "src",
@@ -689,18 +689,18 @@ suite = {
             "maven" : {
               "artifactId" : "lsp-tool",
             },
-            "description" : "Truffle Language Server backend implementation.",
+            "description" : "Core module of the polyglot Language Server backend",
         },
-        "LSP_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "LSP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "LSP",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "maven" : {
-              "artifactId" : "lsp-community",
+            "maven": {
+              "artifactId": "lsp-community",
             },
-            "description" : "The component providing Truffle Language Server backend implementation and Truffle runtime"
+            "description": "The polyglot Language Server backend"
         },
         "LSP_TEST": {
             "dependencies": ["org.graalvm.tools.lsp.test"],

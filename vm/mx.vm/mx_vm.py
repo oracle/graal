@@ -217,7 +217,9 @@ def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
 
 
-community_tools_meta_distributions = [
+# When this list is changed, the _enterprise_tools_meta_distributions
+# in the mx_vm_enterprise.py must also be updated.
+_community_tools_meta_distributions = [
     "tools:CHROMEINSPECTOR_COMMUNITY",
     "tools:TRUFFLE_COVERAGE_COMMUNITY",
     "tools:DAP_COMMUNITY",
@@ -227,7 +229,9 @@ community_tools_meta_distributions = [
     "tools:TRUFFLE_PROFILER_COMMUNITY",
 ]
 
-community_languages_meta_distributions = [
+# When this list is changed, the _enterprise_languages_meta_distributions
+# in the mx_vm_enterprise.py must also be updated.
+_community_languages_meta_distributions = [
     'espresso:ESPRESSO_COMMUNITY',
     'graal-js:GRAALJS_COMMUNITY',
     'graalpyton:GRAALPYTHON_COMMUNITY',
@@ -257,7 +261,7 @@ def _register_all_tools_distribution(register_distribution):
     """
     tools_meta_poms = []
     tools_licenses = set()
-    for tool_name in community_tools_meta_distributions:
+    for tool_name in _community_tools_meta_distributions:
         tool_distribution = mx.distribution(tool_name, fatalIfMissing=False)
         if tool_distribution:
             assert tool_distribution.isPOMDistribution(), f'TOOLS_COMMUNITY dependency {tool_distribution.name} must be a meta-POM distribution.'
@@ -283,7 +287,7 @@ def _register_all_languages_distribution(register_distribution):
     """
     languages_meta_poms = []
     languages_licenses = set()
-    for distribution_name in community_languages_meta_distributions:
+    for distribution_name in _community_languages_meta_distributions:
         language_distribution = mx.distribution(distribution_name, fatalIfMissing=False)
         if language_distribution:
             assert language_distribution.isPOMDistribution(), f'LANGUAGES_COMMUNITY dependency {language_distribution.name} must be a meta-POM distribution.'

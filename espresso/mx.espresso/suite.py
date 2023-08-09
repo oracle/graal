@@ -334,15 +334,15 @@ suite = {
             "noMavenJavadoc": True,
         },
 
-        "ESPRESSO_COMMUNITY" : {
-            "type":"pom",
-            "runtimeDependencies" : [
+        "ESPRESSO_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
                 "ESPRESSO",
                 "truffle:TRUFFLE_RUNTIME",
             ],
-            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
-            "maven" : {
-                "artifactId" : "espresso-community",
+            "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "maven": {
+                "artifactId": "espresso-community",
             },
         },
 

@@ -251,19 +251,20 @@ suite = {
       "maven" : {
         "artifactId" : "wasm-language",
       },
+      "noMavenJavadoc": True,
     },
 
-    "WASM_COMMUNITY" : {
-      "type":"pom",
-      "runtimeDependencies" : [
+    "WASM_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
         "WASM",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "maven" : {
-        "artifactId" : "wasm-community",
+      "maven": {
+        "artifactId": "wasm-community",
       },
-      "description" : "Graal WASM engine.",
-      "license" : "UPL",
+      "description": "Graal WASM engine.",
+      "license": "UPL",
     },
 
     "WASM_LAUNCHER" : {

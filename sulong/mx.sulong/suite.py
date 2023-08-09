@@ -2,18 +2,18 @@ suite = {
   "mxversion": "6.37.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
-  "groupId" : "org.graalvm.llvm",
-  "url" : "http://www.graalvm.org/",
-  "developer" : {
-    "name" : "GraalVM Development",
-    "email" : "graalvm-dev@oss.oracle.com",
-    "organization" : "Oracle Corporation",
-    "organizationUrl" : "http://www.graalvm.org/",
+  "groupId": "org.graalvm.llvm",
+  "url": "http://www.graalvm.org/",
+  "developer": {
+    "name": "GraalVM Development",
+    "email": "graalvm-dev@oss.oracle.com",
+    "organization": "Oracle Corporation",
+    "organizationUrl": "http://www.graalvm.org/",
   },
-  "scm" : {
-    "url" : "https://github.com/oracle/graal",
-    "read" : "https://github.com/oracle/graal.git",
-    "write" : "git@github.com:oracle/graal.git",
+  "scm": {
+    "url": "https://github.com/oracle/graal",
+    "read": "https://github.com/oracle/graal.git",
+    "write": "git@github.com:oracle/graal.git",
   },
 
   "imports" : {
@@ -1606,26 +1606,26 @@ suite = {
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",
       },
-      "maven" : {
-        "artifactId" : "llvm-language",
+      "maven": {
+        "artifactId": "llvm-language",
       },
-      "license" : "BSD-new",
-      "allowsJavadocWarnings": True,  # GR-47782
+      "license": "BSD-new",
+      "noMavenJavadoc": True,
     },
 
-    "SULONG_COMMUNITY" : {
-      "type":"pom",
-      "runtimeDependencies" : [
+    "SULONG_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
         "SULONG_CORE",
         "SULONG_NATIVE",
         "SULONG_NFI",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "maven" : {
-        "artifactId" : "llvm-community",
+      "maven": {
+        "artifactId": "llvm-community",
       },
-      "description" : "Graal LLVM engine.",
-      "license" : "BSD-new",
+      "description": "Graal LLVM engine.",
+      "license": "BSD-new",
     },
 
     "SULONG_API" : {
