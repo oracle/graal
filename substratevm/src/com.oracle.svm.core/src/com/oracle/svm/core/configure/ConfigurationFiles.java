@@ -93,6 +93,12 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
+        @Option(help = "Files describing stubs allowing foreign calls.", type = OptionType.User)//
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ForeignConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+        @Option(help = "Resources describing stubs allowing foreign calls.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ForeignResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
         @Option(help = "Files describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());

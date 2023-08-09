@@ -522,11 +522,32 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
+    default void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitSha512ImplCompress(Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitMD5ImplCompress(Value buf, Value state) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);
 
     void emitPause();
+
+    /**
+     * Perform no operation by default. See also {@link Thread#onSpinWait()}.
+     */
+    default void emitSpinWait() {
+    }
 
     void emitPrefetchAllocate(Value address);
 

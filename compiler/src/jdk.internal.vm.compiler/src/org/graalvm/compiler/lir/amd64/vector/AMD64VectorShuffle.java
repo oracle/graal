@@ -115,7 +115,7 @@ public class AMD64VectorShuffle {
 
         public LongToVectorOp(AllocatableValue result, AllocatableValue value) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD;
+            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD || result.getPlatformKind() == AMD64Kind.V512_QWORD;
             this.result = result;
             this.value = value;
         }

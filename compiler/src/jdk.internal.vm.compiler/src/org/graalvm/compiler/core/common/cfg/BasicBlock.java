@@ -88,6 +88,10 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
      * See {@link #domNumber} for details.
      */
     private int maxChildDomNumber = INVALID_BLOCK_ID;
+    /**
+     * Indicates if this block is a target of an indirect branch.
+     */
+    private boolean indirectBranchTarget = false;
     protected final AbstractControlFlowGraph<T> cfg;
 
     protected BasicBlock(AbstractControlFlowGraph<T> cfg) {
@@ -233,6 +237,14 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
     public final boolean strictlyDominates(BasicBlock<T> other) {
         return AbstractControlFlowGraph.strictlyDominates(this, other);
+    }
+
+    public void setIndirectBranchTarget() {
+        this.indirectBranchTarget = true;
+    }
+
+    public boolean isIndirectBranchTarget() {
+        return this.indirectBranchTarget;
     }
 
     @Override

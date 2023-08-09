@@ -55,8 +55,9 @@ from mx_bisect_strategy import BuildStepsGraalVMStrategy
 from mx_gate import Task
 from mx_unittest import unittest
 
-# re-export custom mx project classes so they can be used from suite.py
+# re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_toolchain import ToolchainTestProject # pylint: disable=unused-import
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
 _suite = mx.suite('sdk')
 
@@ -115,7 +116,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK', 'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE'],
+    boot_jars=['sdk:GRAAL_SDK'],
     stability="supported",
 ))
 

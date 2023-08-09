@@ -69,11 +69,8 @@ public final class ModulesSupport {
     private ModulesSupport() {
     }
 
-    /**
-     * This is invoked reflectively from {@link Truffle}.
-     */
-    public static String exportJVMCI(Class<?> toClass) {
-        ModuleLayer layer = toClass.getModule().getLayer();
+    public static String exportJVMCI(Module module) {
+        ModuleLayer layer = module.getLayer();
         if (layer == null) {
             /*
              * Truffle is running in an unnamed module, so we cannot export jvmci to it.
@@ -98,8 +95,15 @@ public final class ModulesSupport {
             return "The Truffle attach library is not available.";
         }
 
-        addExportsRecursive(jvmciModule, toClass.getModule());
+        addExportsRecursive(jvmciModule, module);
         return null;
+    }
+
+    /**
+     * This is invoked reflectively from {@link Truffle}.
+     */
+    public static String exportJVMCI(Class<?> toClass) {
+        return exportJVMCI(toClass.getModule());
     }
 
     private static void addExportsRecursive(Module jvmciModule, Module runtimeModule) {

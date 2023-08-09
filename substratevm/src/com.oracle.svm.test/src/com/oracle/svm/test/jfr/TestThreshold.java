@@ -92,7 +92,7 @@ public class TestThreshold extends JfrRecordingTest {
         for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             assertNotNull("No event thread", eventThread);
-            assertTrue(event.getDuration().toMillis() >= LONG_MILLIS);
+            assertTrue(event.getDuration().toMillis() >= THRESHOLD);
 
             if (event.getEventType().getName().equals("com.jfr.String")) {
                 foundJavaEvent = true;

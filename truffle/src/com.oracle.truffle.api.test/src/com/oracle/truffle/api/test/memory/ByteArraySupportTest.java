@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -569,6 +569,705 @@ public class ByteArraySupportTest {
     public void getDoubleLittleEndianWithLongAddress() {
         byte[] buffer = hexToBytes("00003536373839404142");
         Assert.assertEquals(Double.longBitsToDouble(0x4241403938373635L), ByteArraySupport.littleEndian().getDouble(buffer, 2L), 0);
+    }
+
+    @Test
+    public void getByteVolatile() {
+        byte[] bigEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test
+    public void putByteVolatile() {
+        byte[] bigEndianBuffer = new byte[1];
+        ByteArraySupport.bigEndian().putByteVolatile(bigEndianBuffer, 0, (byte) 0x42);
+        assertBytesEqual(bigEndianBuffer, "42");
+        byte[] littleEndianBuffer = new byte[1];
+        ByteArraySupport.littleEndian().putByteVolatile(littleEndianBuffer, 0, (byte) 0x42);
+        assertBytesEqual(littleEndianBuffer, "42");
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteVolatileBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().putByteVolatile(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteVolatileLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putByteVolatile(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getShortVolatile() {
+        byte[] bigEndianBuffer = hexToBytes("4241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("4142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test
+    public void putShortVolatile() {
+        byte[] bigEndianBuffer = new byte[2];
+        ByteArraySupport.bigEndian().putShortVolatile(bigEndianBuffer, 0, (short) 0x4241);
+        assertBytesEqual(bigEndianBuffer, "4241");
+        byte[] littleEndianBuffer = new byte[2];
+        ByteArraySupport.littleEndian().putShortVolatile(littleEndianBuffer, 0, (short) 0x4241);
+        assertBytesEqual(littleEndianBuffer, "4142");
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortVolatileBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().putShortVolatile(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortVolatileLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().putShortVolatile(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getIntVolatile() {
+        byte[] bigEndianBuffer = hexToBytes("42414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("39404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test
+    public void putIntVolatile() {
+        byte[] bigEndianBuffer = new byte[4];
+        ByteArraySupport.bigEndian().putIntVolatile(bigEndianBuffer, 0, 0x42414039);
+        assertBytesEqual(bigEndianBuffer, "42414039");
+        byte[] littleEndianBuffer = new byte[4];
+        ByteArraySupport.littleEndian().putIntVolatile(littleEndianBuffer, 0, 0x42414039);
+        assertBytesEqual(littleEndianBuffer, "39404142");
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putIntVolatileBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().putIntVolatile(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putIntVolatileLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().putIntVolatile(buffer, 1, 1);
+    }
+
+    @Test
+    public void getLongVolatile() {
+        byte[] bigEndianBuffer = hexToBytes("4241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("3536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test
+    public void putLongVolatile() {
+        byte[] bigEndianBuffer = new byte[8];
+        ByteArraySupport.bigEndian().putLongVolatile(bigEndianBuffer, 0, 0x4241403938373635L);
+        assertBytesEqual(bigEndianBuffer, "4241403938373635");
+        byte[] littleEndianBuffer = new byte[8];
+        ByteArraySupport.littleEndian().putLongVolatile(littleEndianBuffer, 0, 0x4241403938373635L);
+        assertBytesEqual(littleEndianBuffer, "3536373839404142");
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putLongVolatileBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().putLongVolatile(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putLongVolatileLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().putLongVolatile(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndAddByte() {
+        byte[] bigEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.bigEndian().getAndAddByte(bigEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x43, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.littleEndian().getAndAddByte(littleEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x43, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().getAndAddByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().getAndAddByte(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getAndAddShort() {
+        byte[] bigEndianBuffer = hexToBytes("4241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getAndAddShort(bigEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x4242, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("4142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getAndAddShort(littleEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x4242, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().getAndAddShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().getAndAddShort(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getAndAddInt() {
+        byte[] bigEndianBuffer = hexToBytes("42414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getAndAddInt(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("39404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getAndAddInt(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().getAndAddInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().getAndAddInt(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndAddLong() {
+        byte[] bigEndianBuffer = hexToBytes("4241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getAndAddLong(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("3536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getAndAddLong(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().getAndAddLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndAddLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().getAndAddLong(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseAndByte() {
+        byte[] bigEndianBuffer = hexToBytes("7F");
+        Assert.assertEquals(0x7F, ByteArraySupport.bigEndian().getAndBitwiseAndByte(bigEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x1, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("7F");
+        Assert.assertEquals(0x7F, ByteArraySupport.littleEndian().getAndBitwiseAndByte(littleEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x1, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().getAndBitwiseAndByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().getAndBitwiseAndByte(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getAndBitwiseAndShort() {
+        byte[] bigEndianBuffer = hexToBytes("7FFF");
+        Assert.assertEquals(0x7FFF, ByteArraySupport.bigEndian().getAndBitwiseAndShort(bigEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x1, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FF7F");
+        Assert.assertEquals(0x7FFF, ByteArraySupport.littleEndian().getAndBitwiseAndShort(littleEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x1, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().getAndBitwiseAndShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().getAndBitwiseAndShort(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getAndBitwiseAndInt() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFFFF");
+        Assert.assertEquals(0x7FFFFFFF, ByteArraySupport.bigEndian().getAndBitwiseAndInt(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x1, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FFFFFF7F");
+        Assert.assertEquals(0x7FFFFFFF, ByteArraySupport.littleEndian().getAndBitwiseAndInt(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x1, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().getAndBitwiseAndInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().getAndBitwiseAndInt(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseAndLong() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFFFFFFFFFFFF");
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFFL, ByteArraySupport.bigEndian().getAndBitwiseAndLong(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x1L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FFFFFFFFFFFFFF7F");
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFFL, ByteArraySupport.littleEndian().getAndBitwiseAndLong(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x1L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().getAndBitwiseAndLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseAndLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().getAndBitwiseAndLong(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseOrByte() {
+        byte[] bigEndianBuffer = hexToBytes("00");
+        Assert.assertEquals(0x00, ByteArraySupport.bigEndian().getAndBitwiseOrByte(bigEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x01, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("00");
+        Assert.assertEquals(0x00, ByteArraySupport.littleEndian().getAndBitwiseOrByte(littleEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x01, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().getAndBitwiseOrByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().getAndBitwiseOrByte(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getAndBitwiseOrShort() {
+        byte[] bigEndianBuffer = hexToBytes("7F00");
+        Assert.assertEquals(0x7F00, ByteArraySupport.bigEndian().getAndBitwiseOrShort(bigEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x7F01, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("007F");
+        Assert.assertEquals(0x7F00, ByteArraySupport.littleEndian().getAndBitwiseOrShort(littleEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x7F01, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().getAndBitwiseOrShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().getAndBitwiseOrShort(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getAndBitwiseOrInt() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFF00");
+        Assert.assertEquals(0x7FFFFF00, ByteArraySupport.bigEndian().getAndBitwiseOrInt(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFF01, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("00FFFF7F");
+        Assert.assertEquals(0x7FFFFF00, ByteArraySupport.littleEndian().getAndBitwiseOrInt(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFF01, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().getAndBitwiseOrInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().getAndBitwiseOrInt(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseOrLong() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFFFFFFFFFF00");
+        Assert.assertEquals(0x7FFFFFFFFFFFFF00L, ByteArraySupport.bigEndian().getAndBitwiseOrLong(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFFFFFFFF01L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("00FFFFFFFFFFFF7F");
+        Assert.assertEquals(0x7FFFFFFFFFFFFF00L, ByteArraySupport.littleEndian().getAndBitwiseOrLong(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFFFFFFFF01L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().getAndBitwiseOrLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseOrLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().getAndBitwiseOrLong(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseXorByte() {
+        byte[] bigEndianBuffer = hexToBytes("7F");
+        Assert.assertEquals(0x7F, ByteArraySupport.bigEndian().getAndBitwiseXorByte(bigEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x7E, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("7F");
+        Assert.assertEquals(0x7F, ByteArraySupport.littleEndian().getAndBitwiseXorByte(littleEndianBuffer, 0, (byte) 1));
+        Assert.assertEquals(0x7E, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().getAndBitwiseXorByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().getAndBitwiseXorByte(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getAndBitwiseXorShort() {
+        byte[] bigEndianBuffer = hexToBytes("7FFF");
+        Assert.assertEquals(0x7FFF, ByteArraySupport.bigEndian().getAndBitwiseXorShort(bigEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x7FFE, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FF7F");
+        Assert.assertEquals(0x7FFF, ByteArraySupport.littleEndian().getAndBitwiseXorShort(littleEndianBuffer, 0, (short) 1));
+        Assert.assertEquals(0x7FFE, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().getAndBitwiseXorShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().getAndBitwiseXorShort(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getAndBitwiseXorInt() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFFFF");
+        Assert.assertEquals(0x7FFFFFFF, ByteArraySupport.bigEndian().getAndBitwiseXorInt(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFE, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FFFFFF7F");
+        Assert.assertEquals(0x7FFFFFFF, ByteArraySupport.littleEndian().getAndBitwiseXorInt(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFE, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().getAndBitwiseXorInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().getAndBitwiseXorInt(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndBitwiseXorLong() {
+        byte[] bigEndianBuffer = hexToBytes("7FFFFFFFFFFFFFFF");
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFFL, ByteArraySupport.bigEndian().getAndBitwiseXorLong(bigEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFEL, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("FFFFFFFFFFFFFF7F");
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFFL, ByteArraySupport.littleEndian().getAndBitwiseXorLong(littleEndianBuffer, 0, 1));
+        Assert.assertEquals(0x7FFFFFFFFFFFFFFEL, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().getAndBitwiseXorLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndBitwiseXorLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().getAndBitwiseXorLong(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndSetByte() {
+        byte[] bigEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.bigEndian().getAndSetByte(bigEndianBuffer, 0, (byte) 0x43));
+        Assert.assertEquals(0x43, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.littleEndian().getAndSetByte(littleEndianBuffer, 0, (byte) 0x43));
+        Assert.assertEquals(0x43, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().getAndSetByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().getAndSetByte(buffer, 1, (byte) 1);
+    }
+
+    @Test
+    public void getAndSetShort() {
+        byte[] bigEndianBuffer = hexToBytes("4241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getAndSetShort(bigEndianBuffer, 0, (short) 0x4242));
+        Assert.assertEquals(0x4242, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("4142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getAndSetShort(littleEndianBuffer, 0, (short) 0x4242));
+        Assert.assertEquals(0x4242, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().getAndSetShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().getAndSetShort(buffer, 1, (short) 1);
+    }
+
+    @Test
+    public void getAndSetInt() {
+        byte[] bigEndianBuffer = hexToBytes("42414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getAndSetInt(bigEndianBuffer, 0, 0x4241403A));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("39404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getAndSetInt(littleEndianBuffer, 0, 0x4241403A));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().getAndSetInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().getAndSetInt(buffer, 1, 1);
+    }
+
+    @Test
+    public void getAndSetLong() {
+        byte[] bigEndianBuffer = hexToBytes("4241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getAndSetLong(bigEndianBuffer, 0, 0x4241403938373636L));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("3536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getAndSetLong(littleEndianBuffer, 0, 0x4241403938373636L));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().getAndSetLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getAndSetLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().getAndSetLong(buffer, 1, 1);
+    }
+
+    @Test
+    public void compareAndExchangeByte() {
+        byte[] bigEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.bigEndian().compareAndExchangeByte(bigEndianBuffer, 0, (byte) 0x42, (byte) 0x43));
+        Assert.assertEquals(0x43, ByteArraySupport.bigEndian().getByteVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.littleEndian().compareAndExchangeByte(littleEndianBuffer, 0, (byte) 0x42, (byte) 0x43));
+        Assert.assertEquals(0x43, ByteArraySupport.littleEndian().getByteVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeByteBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().compareAndExchangeByte(buffer, 1, (byte) 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().compareAndExchangeByte(buffer, 1, (byte) 1, (byte) 1);
+    }
+
+    @Test
+    public void compareAndExchangeShort() {
+        byte[] bigEndianBuffer = hexToBytes("4241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().compareAndExchangeShort(bigEndianBuffer, 0, (short) 0x4241, (short) 0x4242));
+        Assert.assertEquals(0x4242, ByteArraySupport.bigEndian().getShortVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("4142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().compareAndExchangeShort(littleEndianBuffer, 0, (short) 0x4241, (short) 0x4242));
+        Assert.assertEquals(0x4242, ByteArraySupport.littleEndian().getShortVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeShortBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().compareAndExchangeShort(buffer, 1, (short) 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().compareAndExchangeShort(buffer, 1, (short) 1, (short) 1);
+    }
+
+    @Test
+    public void compareAndExchangeInt() {
+        byte[] bigEndianBuffer = hexToBytes("42414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().compareAndExchangeInt(bigEndianBuffer, 0, 0x42414039, 0x4241403A));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.bigEndian().getIntVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("39404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().compareAndExchangeInt(littleEndianBuffer, 0, 0x42414039, 0x4241403A));
+        Assert.assertEquals(0x4241403A, ByteArraySupport.littleEndian().getIntVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeIntBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().compareAndExchangeInt(buffer, 1, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeIntLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().compareAndExchangeInt(buffer, 1, 1, 1);
+    }
+
+    @Test
+    public void compareAndExchangeLong() {
+        byte[] bigEndianBuffer = hexToBytes("4241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().compareAndExchangeLong(bigEndianBuffer, 0, 0x4241403938373635L, 0x4241403938373636L));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.bigEndian().getLongVolatile(bigEndianBuffer, 0));
+        byte[] littleEndianBuffer = hexToBytes("3536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().compareAndExchangeLong(littleEndianBuffer, 0, 0x4241403938373635L, 0x4241403938373636L));
+        Assert.assertEquals(0x4241403938373636L, ByteArraySupport.littleEndian().getLongVolatile(littleEndianBuffer, 0));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeLongBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().compareAndExchangeLong(buffer, 1, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void compareAndExchangeLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().compareAndExchangeLong(buffer, 1, 1, 1);
+    }
+
+    @Test
+    public void incrementSharedCounter() throws InterruptedException {
+        byte[] buffer = new byte[4];
+        Runnable runnable = () -> {
+            for (int i = 0; i < 10000000; i++) {
+                ByteArraySupport.littleEndian().getAndAddInt(buffer, 0, 1);
+            }
+        };
+
+        Thread thread1 = new Thread(runnable);
+        Thread thread2 = new Thread(runnable);
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+
+        int finalValue = ByteArraySupport.littleEndian().getIntVolatile(buffer, 0);
+        Assert.assertEquals(20000000, finalValue);
+    }
+
+    @Test
+    public void incrementSharedCounterWithSpinLock() throws InterruptedException {
+        // last byte is the lock
+        byte[] buffer = new byte[5];
+        Runnable runnable = () -> {
+            for (int i = 0; i < 10000000; i++) {
+                // acquire the spinlock
+                while (ByteArraySupport.littleEndian().compareAndExchangeByte(buffer, 4, (byte) 0, (byte) 1) != 0) {
+                    // spin
+                }
+
+                // critical section
+                int oldValue = ByteArraySupport.littleEndian().getInt(buffer, 0);
+                ByteArraySupport.littleEndian().putInt(buffer, 0, oldValue + 1);
+
+                // release the spinlock
+                ByteArraySupport.littleEndian().putByteVolatile(buffer, 4, (byte) 0);
+            }
+        };
+
+        Thread thread1 = new Thread(runnable);
+        Thread thread2 = new Thread(runnable);
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+
+        int finalValue = ByteArraySupport.littleEndian().getIntVolatile(buffer, 0);
+        Assert.assertEquals(20000000, finalValue);
     }
 
     private static void assertBytesEqual(byte[] actual, String expected) {

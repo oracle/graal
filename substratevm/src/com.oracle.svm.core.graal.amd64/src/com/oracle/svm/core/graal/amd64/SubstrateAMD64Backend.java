@@ -27,6 +27,8 @@ package com.oracle.svm.core.graal.amd64;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
@@ -39,6 +41,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.asm.Label;
@@ -78,6 +81,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
@@ -94,6 +98,7 @@ import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
 import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
+import org.graalvm.compiler.lir.amd64.EndbranchOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -119,6 +124,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
@@ -127,6 +133,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -140,6 +147,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -756,12 +764,40 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public Register getHeapBaseRegister() {
             return ReservedRegisters.singleton().getHeapBaseRegister();
         }
+
+        @Override
+        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, key);
+            markIndirectBranchTargets(targets);
+        }
+
+        @Override
+        protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+            super.emitHashTableSwitch(keys, defaultTarget, targets, value, hash);
+            markIndirectBranchTargets(targets);
+        }
+
+        private void markIndirectBranchTargets(LabelRef[] labels) {
+            for (LabelRef label : labels) {
+                label.getTargetBlock().setIndirectBranchTarget();
+            }
+        }
     }
 
     public class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
+        }
+
+        @Override
+        public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && block.isIndirectBranchTarget()) {
+                List<LIRInstruction> lir = gen.getResult().getLIR().getLIRforBlock(block);
+                GraalError.guarantee(lir.size() == 1 && lir.get(0) instanceof LabelOp, "block may only contain an initial LabelOp before emitting endbranch");
+                gen.append(EndbranchOp.create());
+            }
+            super.doBlockPrologue(block, options);
         }
 
         @Override
@@ -860,6 +896,35 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 emitComputedIndirectCall((ComputedIndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
             } else {
                 super.emitInvoke(callTarget, parameters, callState, result);
+            }
+
+            var cc = (SubstrateCallingConventionType) callTarget.callType();
+            if (cc.returnSaving != null) {
+                // The pointer to the return buffer is passed as first argument
+                Value baseSaveLocation = parameters[0];
+                // Could be any x86 scratch register
+                RegisterValue scratch = r10.asValue(parameters[0].getValueKind());
+                gen.emitMove(scratch, baseSaveLocation);
+                long offset = 0;
+                for (AssignedLocation ret : cc.returnSaving) {
+                    Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
+                    if (ret.assignsToStack()) {
+                        throw unsupportedFeature("Return should never happen on stack.");
+                    }
+                    var register = ret.register();
+                    LIRKind kind;
+                    // There might a better/more natural way to check this
+                    if (register.getRegisterCategory().equals(AMD64.CPU)) {
+                        kind = gen.getValueKind(JavaKind.Long);
+                        offset += 8;
+                    } else if (register.getRegisterCategory().equals(AMD64.XMM)) {
+                        kind = gen.getValueKind(JavaKind.Double);
+                        offset += 16;
+                    } else {
+                        throw unsupportedFeature("Cannot use register " + register + " for return.");
+                    }
+                    gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
+                }
             }
         }
 
@@ -999,7 +1064,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(PROLOGUE_END);
         }
 
+        protected void emitEndBranch(CompilationResultBuilder crb) {
+            /*
+             * Emit an endbranch instruction if we are runtime compiling or the method can be
+             * dynamically bound.
+             */
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && (ImageInfo.inImageRuntimeCode() || !method.canBeStaticallyBound())) {
+                ((AMD64Assembler) crb.asm).endbranch();
+            }
+        }
+
         protected void makeFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
+            emitEndBranch(crb);
+            reserveStackFrame(crb, asm);
+        }
+
+        protected final void reserveStackFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
             maybePushBasePointer(crb, asm);
             asm.decrementq(rsp, crb.frameMap.frameSize());
         }

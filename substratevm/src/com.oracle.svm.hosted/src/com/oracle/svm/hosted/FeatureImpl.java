@@ -412,12 +412,12 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField, reason);
         }
 
-        public void registerAsRoot(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
-            bb.addRootMethod(method, invokeSpecial, otherRoots);
+        public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(method, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots) {
-            bb.addRootMethod(aMethod, invokeSpecial, otherRoots);
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {
@@ -788,6 +788,10 @@ public class FeatureImpl {
 
         @Override
         public Path getImagePath() {
+            if (linkerInvocation == null) {
+                /* Some backends might not use native-linking */
+                return null;
+            }
             return linkerInvocation.getOutputFile();
         }
 

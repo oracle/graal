@@ -64,32 +64,24 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 1697,
-          lineEnd   = 1796,
-          commit    = "6ebea8973feb08a7443d8d86ff52f453dc4aec43",
-          sha1      = "a93850c44f7e34fcec05226bae95fd695b2ea2f7")
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 1918,
-          lineEnd   = 1964,
-          commit    = "6ebea8973feb08a7443d8d86ff52f453dc4aec43",
-          sha1      = "9cbba8bd6c4037427fa46f067abb722b15aca90c")
-@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 3236,
-          lineEnd   = 3423,
-          commit    = "6ebea8973feb08a7443d8d86ff52f453dc4aec43",
-          sha1      = "2457cf3f9d3ff89c1515fa5d95cc7c8437a5318b")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1697-L1796",
+          sha1 = "a93850c44f7e34fcec05226bae95fd695b2ea2f7")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L1918-L1964",
+          sha1 = "9cbba8bd6c4037427fa46f067abb722b15aca90c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/6ebea8973feb08a7443d8d86ff52f453dc4aec43/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3236-L3423",
+          sha1 = "2457cf3f9d3ff89c1515fa5d95cc7c8437a5318b")
 // @formatter:on
 @Opcode("VECTORIZED_HASHCODE")
 public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
@@ -106,7 +98,7 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
     @Temp({REG}) Value[] vectorTemp;
 
     public AMD64VectorizedHashCodeOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
-                    Value result, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+                    AllocatableValue result, AllocatableValue arrayStart, AllocatableValue length, AllocatableValue initialValue, JavaKind arrayKind) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.resultValue = result;
         this.arrayStart = arrayStart;

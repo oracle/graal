@@ -174,7 +174,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     protected void clearState() {
         assert TruffleOptions.AOT : "Must be called only in AOT mode.";
-        knownMethods = null;
+        this.knownMethods = null;
     }
 
     private final OptimizedTruffleRuntimeListenerDispatcher listeners = new OptimizedTruffleRuntimeListenerDispatcher();
@@ -195,25 +195,37 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     private final LoopNodeFactory loopNodeFactory;
-    private final EngineCacheSupport engineCacheSupport;
+    private EngineCacheSupport engineCacheSupport;
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final FloodControlHandler floodControlHandler;
-    private final OptionDescriptors[] runtimeOptionDescriptors;
+    private final List<OptionDescriptors> runtimeOptionDescriptors;
     private volatile OptionDescriptors engineOptions;
 
     protected final TruffleCompilationSupport compilationSupport;
 
+    @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
         this.compilationSupport = compilationSupport;
         this.lookupTypes = initLookupTypes(extraLookupTypes);
         List<OptionDescriptors> options = new ArrayList<>();
         this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
-        EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
+        EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(OptimizedRuntimeOptions.getDescriptors());
         options.add(new CompilerOptionsDescriptors());
-        this.runtimeOptionDescriptors = options.toArray(new OptionDescriptors[options.size()]);
+        this.runtimeOptionDescriptors = options;
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
+    }
+
+    public final void initializeEngineCacheSupport(EngineCacheSupport support) {
+        if (this.engineCacheSupport instanceof EngineCacheSupport.Disabled) {
+            this.engineCacheSupport = support;
+            this.runtimeOptionDescriptors.add(support.getEngineOptions());
+        }
+    }
+
+    protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
+        return loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
     }
 
     public boolean isLatestJVMCI() {
@@ -1163,7 +1175,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // still returns null.
         OptionDescriptors res = engineOptions;
         if (res == null) {
-            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors);
+            res = OptimizedRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors.toArray(new OptionDescriptors[runtimeOptionDescriptors.size()]));
             engineOptions = res;
         }
         return res;

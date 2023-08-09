@@ -120,7 +120,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
-import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -169,7 +168,15 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides base support for Truffle";
+        return "Provides support for Truffle languages";
+    }
+
+    public static Class<?> lookupClass(String className) {
+        try {
+            return Class.forName(className, false, TruffleBaseFeature.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     public static class Options {
@@ -289,7 +296,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
-        UserError.guarantee(runtime instanceof SubstrateTruffleRuntime || runtime instanceof DefaultTruffleRuntime,
+        UserError.guarantee(isSubstrateRuntime(runtime) || runtime instanceof DefaultTruffleRuntime,
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
@@ -311,19 +318,21 @@ public final class TruffleBaseFeature implements InternalFeature {
         profilingEnabled = false;
     }
 
+    @SuppressWarnings({"null", "unused"})
+    private static boolean isSubstrateRuntime(TruffleRuntime runtime) {
+        /*
+         * We cannot directly depend on SubstrateTruffleRuntime from the base feature, as the
+         * runtime might not be on the module-path.
+         */
+        return runtime.getClass().getName().equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+    }
+
     public void setProfilingEnabled(boolean profilingEnabled) {
         this.profilingEnabled = profilingEnabled;
     }
 
     @Override
     public void cleanup() {
-        /*
-         * Clean the cached call target nodes to prevent them from keeping application classes alive
-         */
-        TruffleRuntime runtime = Truffle.getRuntime();
-        if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
-            throw VMError.shouldNotReachHere("Only SubstrateTruffleRuntime and DefaultTruffleRuntime supported");
-        }
 
         // clean up the language cache
         invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotFastThreadLocals", "resetNativeImageState", Collections.emptyList());
@@ -376,7 +385,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(TruffleFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
+        if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
         access.registerObjectReplacer(this::processInlinedField);
@@ -1006,55 +1015,63 @@ public final class TruffleBaseFeature implements InternalFeature {
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
                 PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
             }
+
         }
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
         if (Options.CopyLanguageResources.getValue()) {
-            Path buildDir = access.getImagePath().getParent();
-            assert buildDir != null;
-            Path resourcesDir = buildDir.resolve("resources");
-            if (languageHomesToCopy != null) {
-                Path languagesDir = resourcesDir.resolve("languages");
-                if (Files.exists(languagesDir)) {
+            Path buildDir = access.getImagePath();
+            if (buildDir != null) {
+                Path parent = buildDir.getParent();
+                if (parent != null) {
+                    copyResources(parent);
+                }
+            }
+        }
+    }
 
-                    try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
-                        filesToDelete.sorted(Comparator.reverseOrder())
-                                        .forEach(f -> {
-                                            try {
-                                                Files.deleteIfExists(f);
-                                            } catch (IOException ioe) {
-                                                throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                                            }
-                                        });
-                    } catch (IOException ioe) {
-                        throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                    }
+    private void copyResources(Path buildDir) {
+        Path resourcesDir = buildDir.resolve("resources");
+        if (languageHomesToCopy != null) {
+            Path languagesDir = resourcesDir.resolve("languages");
+            if (Files.exists(languagesDir)) {
+                try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
+                    filesToDelete.sorted(Comparator.reverseOrder())
+                                    .forEach(f -> {
+                                        try {
+                                            Files.deleteIfExists(f);
+                                        } catch (IOException ioe) {
+                                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                                        }
+                                    });
+                } catch (IOException ioe) {
+                    throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
                 }
-                HomeFinder hf = HomeFinder.getInstance();
-                Map<String, Path> languageHomes = hf.getLanguageHomes();
-                languageHomesToCopy.forEach((s, path) -> {
-                    Path copyTo = buildDir.resolve(path);
-                    Path copyFrom = languageHomes.get(s);
-                    Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
-                    try {
-                        Files.lines(fileListFile).forEach(fileName -> {
-                            copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
-                        });
-                    } catch (IOException ioe) {
-                        throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
-                    }
-                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
-                });
             }
-            try {
-                if (Engine.copyResources(resourcesDir)) {
-                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
+            HomeFinder hf = HomeFinder.getInstance();
+            Map<String, Path> languageHomes = hf.getLanguageHomes();
+            languageHomesToCopy.forEach((s, path) -> {
+                Path copyTo = buildDir.resolve(path);
+                Path copyFrom = languageHomes.get(s);
+                Path fileListFile = copyFrom.resolve(NATIVE_IMAGE_FILELIST_FILE_NAME);
+                try {
+                    Files.lines(fileListFile).forEach(fileName -> {
+                        copy(s, copyFrom.resolve(fileName), copyTo.resolve(fileName));
+                    });
+                } catch (IOException ioe) {
+                    throw VMError.shouldNotReachHere(String.format("Copying of language resources failed for language %s.", s), ioe);
                 }
-            } catch (IOException ioe) {
-                throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
+            });
+        }
+        try {
+            if (Engine.copyResources(resourcesDir)) {
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
             }
+        } catch (IOException ioe) {
+            throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
         }
     }
 
@@ -1257,10 +1274,11 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
          */
         return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
     }
+
 }
 
 final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTransformerWithAvailability {
-    static final Class<?> SHAPE_GENERATOR = ReflectionUtil.lookupClass(false, "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+    static final Class<?> SHAPE_GENERATOR = TruffleBaseFeature.lookupClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
 
     private final String storageClassFieldName;
 
@@ -1398,6 +1416,12 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
+    /*
+     * These fields are not needed at runtime in a native image. The offset is enough.
+     */
+    @Delete private Class<?> declaringClass;
+    @Delete private String name;
+
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public ValueAvailability valueAvailability() {
@@ -1416,4 +1440,5 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
             return Long.valueOf(offset);
         }
     }
+
 }

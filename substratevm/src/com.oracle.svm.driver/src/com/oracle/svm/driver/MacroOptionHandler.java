@@ -79,6 +79,10 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         BuildConfiguration config = nativeImage.config;
+        boolean ignoreIfBuilderOnClasspath = Boolean.parseBoolean(enabledOption.getProperty(config, "IgnoreIfBuilderOnClasspath"));
+        if (ignoreIfBuilderOnClasspath && !config.modulePathBuild) {
+            return;
+        }
 
         String propertyName = "BuilderOnClasspath";
         String propertyValue = enabledOption.getProperty(config, propertyName);

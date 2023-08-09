@@ -40,9 +40,7 @@
 #
 import os
 import re
-import io
 import shutil
-import sys
 import tempfile
 import difflib
 import zipfile
@@ -50,7 +48,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
-from pathlib import PurePath, PurePosixPath
 
 import mx
 import mx_benchmark
@@ -61,11 +58,14 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info, get_module_name
+from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
 from mx_unittest import unittest
 
 _suite = mx.suite('truffle')
+
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
 class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
@@ -91,8 +91,28 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
-    mx.javadoc(['--unified', '--exclude-packages',
-                'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
+    projects = [
+        'org.graalvm.collections',
+        'org.graalvm.word',
+        'org.graalvm.options',
+        'org.graalvm.nativeimage',
+        'org.graalvm.home',
+        'org.graalvm.polyglot',
+        'com.oracle.svm.core.annotate',
+        'com.oracle.truffle.api',
+        'com.oracle.truffle.api.dsl',
+        'com.oracle.truffle.api.profiles',
+        'com.oracle.truffle.api.utilities',
+        'com.oracle.truffle.api.library',
+        'com.oracle.truffle.api.strings',
+        'com.oracle.truffle.api.interop',
+        'com.oracle.truffle.api.exception',
+        'com.oracle.truffle.api.instrumentation',
+        'com.oracle.truffle.api.debug',
+        'com.oracle.truffle.api.object',
+        'com.oracle.truffle.api.staticobject',
+    ]
+    mx.javadoc(['--unified', '--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -144,33 +164,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def _path_args(depNames=None):
-    """
-    Gets the VM args for putting the dependencies named in `depNames` on the
-    class path and module path (if running on JDK9 or later).
-
-    :param names: a Dependency, str or list containing Dependency/str objects. If None,
-           then all registered dependencies are used.
-    """
-    jdk = mx.get_jdk()
-    if jdk.javaCompliance >= '1.9':
-        modules = [as_java_module(dist, jdk) for dist in _suite.dists if get_java_module_info(dist)]
-        if modules:
-            # Partition resources between the class path and module path
-            modulepath = []
-            classpath = []
-            cpEntryToModule = {m.dist.path : m for m in modules}
-
-            for e in mx.classpath(depNames).split(os.pathsep):
-                if e in cpEntryToModule:
-                    modulepath.append(cpEntryToModule[e].jarpath)
-                else:
-                    classpath.append(e)
-            # The Truffle modules must be eagerly loaded as they could be referenced from
-            # the main class hence the --add-modules argument
-            return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
-    return ['-cp', mx.classpath(depNames)]
-
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
@@ -201,6 +194,13 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
+
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
         config = _unittest_config_participant_tck(config)
@@ -208,10 +208,57 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
+# simple utility that returns the right distribution names to use
+# for building a language module path
+def resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True):
+    if use_optimized_runtime:
+        enterprise_dist = _get_enterprise_truffle()
+        if enterprise_dist and use_enterprise:
+            return ['graal-enterprise:TRUFFLE_ENTERPRISE']
+        else:
+            return ['truffle:TRUFFLE_RUNTIME']
+    else:
+        return ['truffle:TRUFFLE_API']
+
+def _get_enterprise_truffle():
+    return mx.distribution('graal-enterprise:TRUFFLE_ENTERPRISE', False)
+
+def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
+    return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
 def sl(args):
     """run an SL program"""
-    vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"]) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
+    vm_args, sl_args = mx.extract_VM_args(args)
+    return mx.run(_sl_command(vm_args, sl_args))
+
+def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True):
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+    java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
+    dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+
+def slnative(args):
+    """build a native image of an SL program"""
+    vm_args, sl_args = mx.extract_VM_args(args)
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True)
+    if not image:
+        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
+    mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
+    result = mx.run([image] + sl_args)
+    return result
+
+def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True):
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+    native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
+    if not exists(native_image_path):
+        native_image_path = os.path.join(graalvm_home, 'bin', mx.cmd_suffix('native-image'))
+        if not exists(native_image_path):
+            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
+            return None
+    target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
+    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
+    return target_path
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
@@ -242,6 +289,114 @@ def _truffle_gate_runner(args, tasks):
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
 
+# invoked by vm gate runner in ce-unchained configuration
+def sl_jvm_gate_tests():
+    def run_jvm_fallback(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'], use_optimized_runtime=False)
+    def run_jvm_optimized(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True)
+    def run_jvm_optimized_immediately(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True)
+
+    mx.log("Run SL JVM Fallback Test")
+    _run_sl_tests(run_jvm_fallback)
+    mx.log("Run SL JVM Optimized Test")
+    _run_sl_tests(run_jvm_optimized)
+    mx.log("Run SL JVM Optimized Immediately Test")
+    _run_sl_tests(run_jvm_optimized_immediately)
+
+    # test if the enterprise compiler is in use
+    # that everything works fine if truffle-enterprise.jar is not availble
+    enterprise = _get_enterprise_truffle()
+    if enterprise:
+        def run_jvm_no_enterprise_optimized(test_file):
+            return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True, use_enterprise=False)
+        def run_jvm_no_enterprise_optimized_immediately(test_file):
+            return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True, use_enterprise=False)
+
+        mx.log("Run SL JVM Optimized  Test No Truffle Enterprise")
+        _run_sl_tests(run_jvm_no_enterprise_optimized)
+        mx.log("Run SL JVM Optimized Immediately Test No Truffle Enterprise")
+        _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
+
+# invoked by vm gate runner in ce-unchained configuration
+def sl_native_optimized_gate_tests():
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
+
+    def run_native_optimized(test_file):
+        return [image] + [test_file, '--disable-launcher-output']
+    def run_native_optimized_immediately(test_file):
+        return [image] + [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false']
+
+    mx.log("Run SL Native Optimized Test")
+    _run_sl_tests(run_native_optimized)
+    mx.log("Run SL Native Optimized Immediately Test")
+    _run_sl_tests(run_native_optimized_immediately)
+
+    mx.rmtree(target_dir)
+
+    # test if the enterprise compiler is in use
+    # that everything works fine if truffle-enterprise.jar is not availble
+    enterprise = _get_enterprise_truffle()
+    if enterprise:
+        target_dir = tempfile.mkdtemp()
+        image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=False)
+
+        def run_no_enterprise_native_optimized(test_file):
+            return [image] + [test_file, '--disable-launcher-output']
+        def run_no_enterprise_native_optimized_immediately(test_file):
+            return [image] + [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false']
+
+        mx.log("Run SL Native Optimized Test No Truffle Enterprise")
+        _run_sl_tests(run_no_enterprise_native_optimized)
+        mx.log("Run SL Native Optimized Immediately Test No Truffle Enterprise")
+        _run_sl_tests(run_no_enterprise_native_optimized_immediately)
+
+        shutil.rmtree(target_dir)
+
+# invoked by vm gate runner in ce-unchained configuration
+def sl_native_fallback_gate_tests():
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=False)
+
+    def run_native_fallback(test_file):
+        return [image] + [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false']
+
+    mx.log("Run SL Native Fallback Test")
+    _run_sl_tests(run_native_fallback)
+
+    mx.rmtree(target_dir)
+
+def _run_sl_tests(create_command):
+    sl_test = mx.project("com.oracle.truffle.sl.test")
+    test_path = join(_suite.dir, sl_test.subDir, sl_test.name, "src", "tests")
+    for f in os.listdir(test_path):
+        if f.endswith('.sl'):
+            base_name = os.path.splitext(f)[0]
+            test_file = join(test_path, base_name + '.sl')
+            expected_file = join(test_path, base_name + '.output')
+            temp = tempfile.NamedTemporaryFile(delete=False)
+            command = create_command(test_file)
+            mx.log("Running SL test {}".format(test_file))
+            with open(temp.name, 'w') as out:
+                mx.run(command, nonZeroIsFatal=False, out=out, err=out)
+                out.flush()
+            diff = compare_files(expected_file, temp.name)
+            if diff:
+                mx.log("Failed command: {}".format(" ".join(command)))
+                mx.abort("Output does not match expected output: {}".format(''.join(diff)))
+
+            # delete file only on success
+            os.unlink(temp.name)
+
+def compare_files(file1_path, file2_path):
+    with open(file1_path, 'r') as file1, open(file2_path, 'r') as file2:
+        content1 = file1.readlines()
+        content2 = file2.readlines()
+        diff = difflib.unified_diff(content1, content2, fromfile=file1_path, tofile=file2_path)
+        return list(diff)
+
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
 # we rebuild the truffle tests with a number of max state bit width values to
@@ -268,6 +423,7 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
+    'slnative' : [slnative, '[SL args|@VM options]'],
 })
 
 def _is_graalvm(jdk):
@@ -874,296 +1030,25 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
     def clean(self, forBuild=False):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
-class ShadedLibraryProject(mx.JavaProject):
-    """
-    A special JavaProject for shading third-party libraries.
-    Configuration:
-        shadedDependencies: [
-            # one or more library dependencies
-        ],
-        "shade": {
-            "packages" : {
-                # a list of package name/path prefixes that should be shaded.
-                # only .java/.class files that are in one of these packages are included.
-                # package names must contain at least one '.' (i.e., two package parts).
-                "old.pkg.name": "new.pkg.name",
-            },
-            "include" : [
-                # a list of resource path patterns that should be copied.
-                # by default, only shaded .java/.class files are included.
-                "pkg/name/**",
-            ],
-            "exclude" : [
-                # a list of (re)source path patterns that should be excluded from the generated jar
-                "**/*.html",
-            ],
-            "patch" : [
-                # a list of (re)source path patterns that should be patched with regex substitutions
-                "pkg/name/my.properties" : {
-                    "<pattern>" : "<replacement>",
-                },
-            ],
-        }
-    The build task then runs a Java program to shade the library and generates a .jar file.
-    """
-    def __init__(self, suite, name, deps, workingSets, theLicense, **args):
-        self.shade = args.pop('shade')
-        subDir = args.pop('subDir', 'src')
-        srcDirs = args.pop('sourceDirs', ['src']) # + [source_gen_dir()], added below
-        d = mx.join(suite.dir, subDir, name)
-        shadedLibraries = args.pop('shadedDependencies', [])
-        self.shadedDeps = list(set(mx.dependency(d) for d in shadedLibraries))
-        assert all(dep.isLibrary() for dep in self.shadedDeps), f"shadedDependencies must all be libraries: {self.shadedDeps}"
-        super().__init__(suite, name, subDir=subDir, srcDirs=srcDirs, deps=deps, # javaCompliance
-                        workingSets=workingSets, d=d, theLicense=theLicense, **args)
 
-        # add 'src_gen' dir to srcDirs (self.source_gen_dir() should only be called after Project.__init__)
-        src_gen_dir = self.source_gen_dir()
-        self.srcDirs.append(src_gen_dir)
-        mx.ensure_dir_exists(src_gen_dir)
-
-        self.checkstyleProj = args.get('checkstyle', name)
-        self.checkPackagePrefix = False
-
-    def getBuildTask(self, args):
-        jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
-        return ShadedLibraryBuildTask(args, self, jdk)
-
-    def shaded_deps(self):
-        return self.shadedDeps
-
-    def shaded_package_paths(self):
-        result = getattr(self, '_shaded_package_paths', None)
-        if not result:
-            result = {k.replace('.', '/'): v.replace('.', '/') for (k, v) in self.shaded_package_names().items()}
-            self._shaded_package_paths = result
-        return result
-
-    def shaded_package_names(self):
-        return self.shade.get('packages', {})
-
-    def included_paths(self):
-        return self.shade.get('include', [])
-
-    def excluded_paths(self):
-        return self.shade.get('exclude', [])
-
-    def defined_java_packages(self):
-        """Get defined java packages from the dependencies, rename them, and remove any non-shaded packages."""
-        packagesDefinedByDeps = [pkg for dep in self.shaded_deps() for pkg in dep.defined_java_packages()]
-        return set([self.substitute_package_name(pkg) for pkg in packagesDefinedByDeps]).difference(set(packagesDefinedByDeps))
-
-    def substitute_path(self, old_filename, mappings=None, default=None, reverse=False):
-        """renames package path (using '/' as separator)."""
-        assert isinstance(old_filename, str), old_filename
-        if mappings is None:
-            mappings = self.shaded_package_paths()
-        if default is None:
-            default = old_filename
-        for (orig, shad) in mappings.items():
-            if old_filename.startswith(orig):
-                return old_filename.replace(orig, shad) if not reverse else old_filename.replace(shad, orig)
-        return default
-
-    def substitute_package_name(self, old_package_name):
-        """renames java package name (using '.' as separator)."""
-        return self.substitute_path(old_package_name, mappings=self.shaded_package_names())
-
-class ShadedLibraryBuildTask(mx.JavaBuildTask):
-    def __str__(self):
-        return f'Shading {self.subject}'
-
-    def needsBuild(self, newestInput):
-        is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
-        if is_needed:
-            return True, reason
-
-        proj = self.subject
-        for outDir in [proj.output_dir(), proj.source_gen_dir()]:
-            if not exists(outDir):
-                return True, f"{outDir} does not exist"
-
-        suite_py_ts = mx.TimeStampFile.newest([self.subject.suite.suite_py(), __file__])
-
-        for dep in proj.shaded_deps():
-            jarFilePath = dep.get_path(False)
-            srcFilePath = dep.get_source_path(False)
-
-            input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
-            if suite_py_ts.isNewerThan(input_ts):
-                input_ts = suite_py_ts
-
-            for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
-                try:
-                    with zipfile.ZipFile(zipFilePath, 'r') as zf:
-                        for zi in zf.infolist():
-                            if zi.is_dir():
-                                continue
-
-                            old_filename = zi.filename
-                            if old_filename.endswith('.java'):
-                                filepath = PurePosixPath(old_filename)
-                                if any(glob_match(filepath, i) for i in proj.excluded_paths()):
-                                    continue
-                                new_filename = proj.substitute_path(old_filename)
-                                if old_filename != new_filename:
-                                    output_file = join(outDir, new_filename)
-                                    output_ts = mx.TimeStampFile(output_file)
-                                    if output_ts.isOlderThan(input_ts):
-                                        return True, f'{output_ts} is older than {input_ts}'
-                except FileNotFoundError:
-                    return True, f"{zipFilePath} does not exist"
-
-        return super().needsBuild(newestInput)
-
-    def prepare(self, daemons):
-        # delay prepare until build
-        self.daemons = daemons
-
-    def build(self):
-        dist = self.subject
-        shadedDeps = dist.shaded_deps()
-        includedPaths = dist.included_paths()
-        patch = dist.shade.get('patch', [])
-        excludedPaths = dist.excluded_paths()
-
-        binDir = dist.output_dir()
-        srcDir = dist.source_gen_dir()
-        mx.ensure_dir_exists(binDir)
-        mx.ensure_dir_exists(srcDir)
-
-        javaSubstitutions = [
-                                sub for orig, shad in dist.shaded_package_names().items() for sub in [
-                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+)?\b'), shad),
-                                ]
-                            ] + [
-                                sub for orig, shad in dist.shaded_package_paths().items() for sub in [
-                                    (re.compile(r'(?<=")' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
-                                    (re.compile(r'(?<="/)' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
-                                ]
-                            ]
-
-        for dep in shadedDeps:
-            jarFilePath = dep.get_path(True)
-            srcFilePath = dep.get_source_path(True)
-
-            for zipFilePath, outDir in [(jarFilePath, binDir), (srcFilePath, srcDir)]:
-                with zipfile.ZipFile(zipFilePath, 'r') as zf:
-                    for zi in zf.infolist():
-                        if zi.is_dir():
-                            continue
-
-                        old_filename = zi.filename
-                        filepath = PurePosixPath(old_filename)
-                        if any(glob_match(filepath, i) for i in excludedPaths):
-                            mx.logv(f'ignoring file {old_filename} (matches {", ".join(i for i in excludedPaths if glob_match(filepath, i))})')
-                            continue
-
-                        if filepath.suffix not in ['.java', '.class'] and not any(glob_match(filepath, i) for i in includedPaths):
-                            mx.warn(f'file {old_filename} is not included (if this is intended, please add the file to the exclude list)')
-                            continue
-
-                        new_filename = dist.substitute_path(old_filename)
-                        applicableSubs = []
-
-                        if filepath.suffix == '.java':
-                            applicableSubs += javaSubstitutions
-                        if filepath.suffix == '.class':
-                            continue
-
-                        mx.logv(f'extracting file {old_filename} to {new_filename}')
-                        extraPatches = [sub for filepattern, subs in patch.items() if glob_match(filepath, filepattern) for sub in subs.items()]
-                        extraSubs = list((re.compile(s, flags=re.MULTILINE), r) for (s, r) in extraPatches)
-                        applicableSubs += extraSubs
-                        if old_filename == new_filename and len(applicableSubs) == 0:
-                            # same file name, no substitutions: just extract
-                            zf.extract(zi, outDir)
-                        else:
-                            output_file = join(outDir, new_filename)
-                            mx.ensure_dir_exists(mx.dirname(output_file))
-                            if len(applicableSubs) == 0:
-                                with zf.open(zi) as src, open(output_file, 'wb') as dst:
-                                    shutil.copyfileobj(src, dst)
-                            else:
-                                assert filepath.suffix != '.class', filepath
-                                with io.TextIOWrapper(zf.open(zi), encoding='utf-8') as src, open(output_file, 'w', encoding='utf-8') as dst:
-                                    contents = src.read()
-
-                                    # remove trailing whitespace and duplicate blank lines.
-                                    contents = re.sub(r'(\n)?\s*(\n|$)', r'\1\2', contents)
-
-                                    # apply substitutions
-                                    for (srch, repl) in applicableSubs:
-                                        contents = re.sub(srch, repl, contents)
-
-                                    # turn off eclipseformat for generated .java files
-                                    if filepath.suffix == '.java':
-                                        dst.write('// @formatter:off\n')
-
-                                    dst.write(contents)
-
-        # After generating (re)sources, run the normal Java build task.
-        if getattr(self, '_javafiles', None) == {}:
-            self._javafiles = None
-        super().prepare(self.daemons)
-        super().build()
-
-def glob_match(path, pattern):
-    """
-    Like PurePath.match(pattern), but adds support for the recursive wildcard '**'.
-    :param path: a PurePath
-    :param pattern: a string or a PurePath representing the glob pattern
-    """
-    assert isinstance(path, PurePath), path
-    if sys.version_info[:2] >= (3, 13):
-        # Since Python 3.13, PurePath.match already supports '**'.
-        return path.match(pattern)
-
-    pathType = type(path)
-    patternParts = pathType(pattern).parts
-    if not '**' in patternParts:
-        if len(path.parts) != len(patternParts):
-            return False
-        return path.match(str(pattern))
-    else:
-        # split pattern at first '**'
-        i = next(i for (i, p) in enumerate(patternParts) if p == '**')
-        lhs = patternParts[:i]
-        if (lhs == () or glob_match(pathType(*path.parts[:len(lhs)]), pathType(*lhs))):
-            rhs = patternParts[i+1:]
-            if rhs == ():
-                return True
-            min_start = len(lhs)
-            max_start = len(path.parts) - len(rhs)
-            if not '**' in rhs:
-                return glob_match(pathType(*path.parts[max_start:]), pathType(*rhs))
-            else:
-                # multiple '**', must recurse
-                for start in range(min_start, max_start + 1):
-                    if glob_match(pathType(*path.parts[start:]), pathType(*rhs)):
-                        return True
-        return False
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
     short_name='tfla',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal SDK'],
+    dependencies=['Graal SDK', 'Truffle Compiler'],
     jar_distributions=[],
     jvmci_parent_jars=[
+        'sdk:JNIUTILS',
         'truffle:TRUFFLE_API',
-        'truffle:TRUFFLE_COMPILER',
         'truffle:TRUFFLE_RUNTIME',
     ],
-    support_libraries_distributions=['truffle:TRUFFLE_RUNTIME_ATTACH_SUPPORT'],
     stability="supported",
 ))
 
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
@@ -1172,7 +1057,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[
         'Truffle API',
-        'GraalVM Launcher Common'
+        'GraalVM Launcher Common',
     ],
     jar_distributions=[],
     jvmci_parent_jars=[
@@ -1181,28 +1066,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
-# This component is useful only if `SubstrateVM` is included. However, we do
-# not declare a dependency because:
-# - it should be possible to build a GraalVM that includes this macro and not
-#   `SubstrateVM`, which can be installed via `gu`
-# - we prefer to define this component here rather than in the `substratevm`
-#   suite
-# - The `SubstrateVM` component explicitly depends on this macro, to make sure
-#   that it is always present whenever `SubstrateVM` is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
-    name='Truffle Macro',
-    short_name='tflm',
+    name='Truffle Compiler',
+    short_name='tflc',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     dependencies=[],
-    support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
+    jar_distributions=[],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_COMPILER',
+    ],
     stability="supported",
 ))
 
 # Typically not included in releases
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle DSL Processor',
     short_name='tflp',

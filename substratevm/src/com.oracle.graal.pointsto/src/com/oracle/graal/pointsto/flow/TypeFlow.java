@@ -464,7 +464,7 @@ public abstract class TypeFlow<T> {
          * An observer is linked even if it is already saturated itself, hence no
          * 'observer.isSaturated()' check is performed here. For observers the saturation state is
          * that of the values flowing through and not that of the objects they observe.
-         * 
+         *
          * Some observers may need to continue to observe the state of their receiver object until
          * the receiver object saturates itself, e.g., instance field stores, other observers may
          * deregister themselves from observing the receiver object when they saturate, e.g.,
@@ -562,7 +562,7 @@ public abstract class TypeFlow<T> {
      *
      * Places where interface types need to be filtered: method parameters, method return values,
      * and field loads (including unsafe memory loads).
-     * 
+     *
      * Places where interface types need not be filtered: array element loads (because all array
      * stores have an array store check).
      */
@@ -704,10 +704,10 @@ public abstract class TypeFlow<T> {
      * approximation, e.g., the flow of the receiver type for a special invoke operation or of the
      * field declaring class for a field access operation. By default the observers don't use the
      * null state of the observed, therefore the non-null type flow is used.
-     * 
+     *
      * The overloaded {@link #replacedObservedWith(PointsToAnalysis, TypeFlow)} can be used for
      * replacing the observed with a custom type flow.
-     * 
+     *
      */
     public void replaceObservedWith(PointsToAnalysis bb, AnalysisType newObservedType) {
         replacedObservedWith(bb, newObservedType.getTypeFlow(bb, false));

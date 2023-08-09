@@ -163,6 +163,7 @@ public interface InternalResource {
          *
          * @since 23.1
          */
+        @SuppressWarnings("static-method")
         public boolean inNativeImageBuild() {
             return TruffleOptions.AOT;
         }
@@ -173,6 +174,7 @@ public interface InternalResource {
          *
          * @since 23.1
          */
+        @SuppressWarnings("static-method")
         public CPUArchitecture getCPUArchitecture() {
             return CPUArchitecture.getCurrent();
         }
@@ -183,6 +185,7 @@ public interface InternalResource {
          *
          * @since 23.1
          */
+        @SuppressWarnings("static-method")
         public OS getOS() {
             return OS.getCurrent();
         }

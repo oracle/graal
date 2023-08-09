@@ -667,7 +667,7 @@ public class WebAssembly extends Dictionary {
         }
         final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, false, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {

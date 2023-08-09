@@ -146,10 +146,10 @@ public abstract class BuiltinModule {
         instance.symbolTable().exportMemory(index, memoryName);
     }
 
-    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit) {
-        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
         int index = instance.symbolTable().memoryCount();
-        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, multiMemory);
+        // set multiMemory flag to true, since spectest module has multiple memories
+        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true);
         instance.symbolTable().exportMemory(index, memoryName);
     }
 
@@ -159,10 +159,10 @@ public abstract class BuiltinModule {
         instance.symbolTable().exportFunction(function.index(), exportName);
     }
 
-    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit) {
+    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit, boolean isShared) {
         final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
         int index = instance.symbolTable().memoryCount();
-        instance.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, multiMemory);
+        instance.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory);
     }
 
     protected byte[] types(byte... args) {

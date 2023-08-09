@@ -147,6 +147,7 @@ public class NativeImage {
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
+
         return null;
     }
 
@@ -295,7 +296,6 @@ public class NativeImage {
     BundleSupport bundleSupport;
 
     protected static class BuildConfiguration {
-
         /*
          * Reuse com.oracle.svm.util.ModuleSupport.isModulePathBuild() to ensure same interpretation
          * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
@@ -308,6 +308,7 @@ public class NativeImage {
         protected final Path workDir;
         protected final Path rootDir;
         protected final Path libJvmciDir;
+        protected final Path libPreviewDir;
         protected final List<String> args;
 
         BuildConfiguration(BuildConfiguration original) {
@@ -316,6 +317,7 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
+            libPreviewDir = original.libPreviewDir;
             args = original.args;
         }
 
@@ -359,6 +361,8 @@ public class NativeImage {
             }
             Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
             libJvmciDir = Files.exists(ljDir) ? ljDir : null;
+            Path lpDir = this.rootDir.resolve(Paths.get("lib", "svm-preview", "builder"));
+            libPreviewDir = Files.exists(lpDir) ? lpDir : null;
         }
 
         /**
@@ -422,6 +426,9 @@ public class NativeImage {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "graal", "enterprise-graal"));
             }
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+            if (!modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
+            }
             return result;
         }
 
@@ -548,11 +555,29 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
             if (modulePathBuild) {
+                result.addAll(createTruffleBuilderModulePath());
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
             return result;
+        }
+
+        private List<Path> createTruffleBuilderModulePath() {
+            List<Path> jars = getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-runtime", "truffle-enterprise");
+            if (!jars.isEmpty()) {
+                /*
+                 * If Truffle is installed as part of the JDK we always add the builder modules of
+                 * Truffle to the builder module path. This is legacy support and should in the
+                 * future no longer be needed.
+                 */
+                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
+                Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
+                if (Files.exists(builderPath)) {
+                    jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
+                }
+            }
+
+            return jars;
         }
 
         /**
@@ -1575,8 +1600,8 @@ public class NativeImage {
      *
      * @see #callListModules(String, List)
      */
-    private static Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
-        if (modulePath.isEmpty()) {
+    private Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+        if (modulePath.isEmpty() || !config.modulePathBuild) {
             return Map.of();
         }
         String modulePathEntries = modulePath.stream()
@@ -1602,25 +1627,24 @@ public class NativeImage {
             pb.command().add("--list-modules");
             pb.environment().clear();
             listModulesProcess = pb.start();
+
+            List<String> lines;
             try (var br = new BufferedReader(new InputStreamReader(listModulesProcess.getInputStream()))) {
-                while (true) {
-                    var line = br.readLine();
-                    if (line == null) {
-                        break;
-                    }
-                    String[] splitString = StringUtil.split(line, " ", 3);
-                    String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
-                    Path externalPath = null;
-                    if (splitString.length > 1) {
-                        String pathURI = splitString[1]; // url: file://path/to/file
-                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
-                    }
-                    result.put(splitModuleNameAndVersion[0], externalPath);
-                }
+                lines = br.lines().toList();
             }
             int exitStatus = listModulesProcess.waitFor();
             if (exitStatus != 0) {
-                throw showError("Determining image-builder observable modules failed (Exit status %d).".formatted(exitStatus));
+                throw showError("Determining image-builder observable modules failed (Exit status %d). Process output: %n%s".formatted(exitStatus, String.join(System.lineSeparator(), lines)));
+            }
+            for (String line : lines) {
+                String[] splitString = StringUtil.split(line, " ", 3);
+                String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
+                Path externalPath = null;
+                if (splitString.length > 1) {
+                    String pathURI = splitString[1]; // url: file://path/to/file
+                    externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
+                }
+                result.put(splitModuleNameAndVersion[0], externalPath);
             }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
@@ -1821,6 +1845,43 @@ public class NativeImage {
             return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
+        }
+    }
+
+    public enum PreviewFeatures {
+        FOREIGN(JavaVersionUtil.JAVA_SPEC >= 21, "svm-foreign");
+
+        private final boolean requirementsMet;
+        private final String libName;
+
+        PreviewFeatures(boolean requirementsMet, String libName) {
+            this.requirementsMet = requirementsMet;
+            this.libName = libName;
+        }
+
+        public boolean requirementsMet() {
+            return requirementsMet;
+        }
+
+        public String getLibName() {
+            return libName;
+        }
+    }
+
+    public void enablePreview() {
+        if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
+            throw showError("The directory containing the preview modules was not found.");
+        }
+
+        for (var preview : PreviewFeatures.values()) {
+            if (preview.requirementsMet()) {
+                Path libPath = config.libPreviewDir == null ? null : config.libPreviewDir.resolve(preview.getLibName() + ".jar");
+                if (libPath != null && Files.exists(libPath)) {
+                    addImageBuilderModulePath(libPath);
+                } else {
+                    throw showError("Preview library " + preview.getLibName() + " should be enabled, but was not found.");
+                }
+            }
         }
     }
 
@@ -2156,22 +2217,20 @@ public class NativeImage {
     }
 
     protected static List<Path> getJars(Path dir, String... jarBaseNames) {
-        try {
-            List<String> baseNameList = Arrays.asList(jarBaseNames);
-            return Files.list(dir)
-                            .filter(p -> {
-                                String jarFileName = p.getFileName().toString();
-                                String jarSuffix = ".jar";
-                                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
-                                    return false;
-                                }
-                                if (baseNameList.isEmpty()) {
-                                    return true;
-                                }
-                                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-                                return baseNameList.contains(jarBaseName);
-                            })
-                            .collect(Collectors.toList());
+        List<String> baseNameList = Arrays.asList(jarBaseNames);
+        try (var files = Files.list(dir)) {
+            return files.filter(p -> {
+                String jarFileName = p.getFileName().toString();
+                String jarSuffix = ".jar";
+                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                    return false;
+                }
+                if (baseNameList.isEmpty()) {
+                    return true;
+                }
+                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                return baseNameList.contains(jarBaseName);
+            }).collect(Collectors.toList());
         } catch (IOException e) {
             throw showError("Unable to use jar-files from directory " + dir, e);
         }

@@ -973,6 +973,6 @@ final class MethodPointerInvalidHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "InvalidMethodPointerHandler, registered in " + MethodPointerInvalidHandlerFeature.class);
     }
 }

@@ -169,7 +169,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
             if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
                 /* Method handles must not be invoked via reflection. */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod));
+                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod), "Registered in " + ReflectionFeature.class);
             } else {
                 Method target = (Method) member;
                 if (JavaVersionUtil.JAVA_SPEC > 17) {
@@ -191,11 +191,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  * both a directTarget and a vtableOffset.
                  */
                 if (!targetMethod.isAbstract()) {
-                    directTarget = register(targetMethod);
+                    directTarget = register(targetMethod, "Reflection target, registered in " + ReflectionFeature.class);
                 }
                 if (!targetMethod.canBeStaticallyBound()) {
                     vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
-                    analysisAccess.registerAsRoot(targetMethod, false);
+                    analysisAccess.registerAsRoot(targetMethod, false, "Accessor method for reflection, registered in " + ReflectionFeature.class);
                 }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
@@ -216,12 +216,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  * an interface, array, or primitive type, but we are defensive and throw the
                  * exception in that case too.
                  */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
+                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod), "Registered in " + ReflectionFeature.class);
             } else {
                 expandSignature = createExpandSignatureMethod(member, false);
                 AnalysisMethod constructor = analysisAccess.getMetaAccess().lookupJavaMethod(member);
                 AnalysisMethod factoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
-                directTarget = register(factoryMethod);
+                directTarget = register(factoryMethod, "Factory method, registered in " + ReflectionFeature.class);
                 if (!constructor.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(constructor.getDeclaringClass());
                 }
@@ -234,13 +234,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
             return register(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
-                            signatureKey.callerSensitiveAdapter));
+                            signatureKey.callerSensitiveAdapter), "Registered in " + ReflectionFeature.class);
         });
     }
 
-    private MethodPointer register(ResolvedJavaMethod method) {
+    private MethodPointer register(ResolvedJavaMethod method, String reason) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        analysisAccess.registerAsRoot(aMethod, true);
+        analysisAccess.registerAsRoot(aMethod, true, reason);
         return new MethodPointer(aMethod);
     }
 

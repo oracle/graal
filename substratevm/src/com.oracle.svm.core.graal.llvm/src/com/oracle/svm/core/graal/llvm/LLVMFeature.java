@@ -143,7 +143,7 @@ public class LLVMFeature implements Feature, InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
+        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true, "LLVM exception unwind, registered in " + LLVMFeature.class);
     }
 
     @Override

@@ -68,7 +68,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
@@ -78,11 +78,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
-          lineStart = 333,
-          lineEnd   = 640,
-          commit    = "d7b941640638b35f9ac1ef11cd6bf6ccb795c29a",
-          sha1      = "f73999add65bf7ccd9ee310df5412213fac98192")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L333-L640",
+          sha1 = "f73999add65bf7ccd9ee310df5412213fac98192")
 // @formatter:on
 public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 

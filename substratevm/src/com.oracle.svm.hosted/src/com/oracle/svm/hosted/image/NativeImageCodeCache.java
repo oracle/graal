@@ -80,7 +80,6 @@ import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
-import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -253,7 +252,7 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
@@ -391,7 +390,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = installCodeInfo(firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             System.out.println("****Start Code Info Encoder Counters****");
@@ -412,9 +411,10 @@ public abstract class NativeImageCodeCache {
         assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
     }
 
-    protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
+    protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
+                    ReflectionMetadataEncoder reflectionMetadataEncoder) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection));
         reflectionMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);

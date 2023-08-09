@@ -109,7 +109,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
@@ -400,9 +400,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
                 boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
-                if (added) {
-                    assert runtimeCompiledMethodCallTree.containsKey(method);
-                }
+                assert !added || runtimeCompiledMethodCallTree.containsKey(method);
             }
         }
 
@@ -630,7 +628,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
         }
 
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.setMethodsImplementations();
@@ -731,7 +729,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
              */
             var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
             SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
-            config.registerAsRoot(aMethod, true, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + ParseOnceRuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
         return sMethod;

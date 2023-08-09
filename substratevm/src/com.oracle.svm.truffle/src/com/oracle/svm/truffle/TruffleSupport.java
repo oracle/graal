@@ -32,13 +32,11 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -95,10 +93,6 @@ public class TruffleSupport {
 
     public SubstratePartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
         return new SubstratePartialEvaluator(config, graphBuilderConfigForRoot);
-    }
-
-    @SuppressWarnings("unused")
-    public void registerInterpreterEntryMethodsAsCompiled(PartialEvaluator partialEvaluator, Feature.BeforeAnalysisAccess access) {
     }
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
@@ -174,4 +168,5 @@ public class TruffleSupport {
         }
         return TriState.UNDEFINED;
     }
+
 }

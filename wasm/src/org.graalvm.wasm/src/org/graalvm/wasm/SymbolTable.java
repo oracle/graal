@@ -196,10 +196,16 @@ public abstract class SymbolTable {
          */
         public final boolean indexType64;
 
-        public MemoryInfo(long initialSize, long maximumSize, boolean indexType64) {
+        /**
+         * Whether the memory is shared (modifications are visible to other threads).
+         */
+        public final boolean shared;
+
+        public MemoryInfo(long initialSize, long maximumSize, boolean indexType64, boolean shared) {
             this.initialSize = initialSize;
             this.maximumSize = maximumSize;
             this.indexType64 = indexType64;
+            this.shared = shared;
         }
     }
 
@@ -1018,18 +1024,18 @@ public abstract class SymbolTable {
         }
     }
 
-    public void allocateMemory(int index, long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean multiMemory) {
+    public void allocateMemory(int index, long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean multiMemory) {
         checkNotParsed();
-        addMemory(index, declaredMinSize, declaredMaxSize, indexType64, multiMemory);
+        addMemory(index, declaredMinSize, declaredMaxSize, indexType64, shared, multiMemory);
         module().addLinkAction((context, instance) -> {
             final long maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit(indexType64));
             module().limits().checkMemoryInstanceSize(declaredMinSize, indexType64);
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = WasmMemoryFactory.createMemory(0, 0, 0, false, context.getContextOptions().useUnsafeMemory());
+                wasmMemory = WasmMemoryFactory.createMemory(0, 0, 0, false, false, context.getContextOptions().useUnsafeMemory());
             } else {
-                wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, context.getContextOptions().useUnsafeMemory());
+                wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared, context.getContextOptions().useUnsafeMemory());
             }
             final int memoryAddress = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryAddress);
@@ -1039,7 +1045,7 @@ public abstract class SymbolTable {
 
     public void allocateExternalMemory(int index, WasmMemory externalMemory, boolean multiMemory) {
         checkNotParsed();
-        addMemory(index, externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.hasIndexType64(), multiMemory);
+        addMemory(index, externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.hasIndexType64(), externalMemory.isShared(), multiMemory);
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().registerExternal(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -1047,22 +1053,22 @@ public abstract class SymbolTable {
         });
     }
 
-    public void importMemory(String moduleName, String memoryName, int index, long initSize, long maxSize, boolean typeIndex64, boolean multiMemory) {
+    public void importMemory(String moduleName, String memoryName, int index, long initSize, long maxSize, boolean typeIndex64, boolean shared, boolean multiMemory) {
         checkNotParsed();
-        addMemory(index, initSize, maxSize, typeIndex64, multiMemory);
+        addMemory(index, initSize, maxSize, typeIndex64, shared, multiMemory);
         final ImportDescriptor importedMemory = new ImportDescriptor(moduleName, memoryName, ImportIdentifier.MEMORY);
         importedMemories.put(index, importedMemory);
         importSymbol(importedMemory);
-        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemory, index, initSize, maxSize, typeIndex64));
+        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemory, index, initSize, maxSize, typeIndex64, shared));
     }
 
-    void addMemory(int index, long minSize, long maxSize, boolean indexType64, boolean multiMemory) {
+    void addMemory(int index, long minSize, long maxSize, boolean indexType64, boolean shared, boolean multiMemory) {
         if (!multiMemory) {
             assertTrue(importedMemories.size() == 0, "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
             assertTrue(memoryCount == 0, "A memory has already been declared in the module.", Failure.MULTIPLE_MEMORIES);
         }
         ensureMemoryCapacity(index);
-        final MemoryInfo memory = new MemoryInfo(minSize, maxSize, indexType64);
+        final MemoryInfo memory = new MemoryInfo(minSize, maxSize, indexType64, shared);
         memories[index] = memory;
         memoryCount++;
     }
@@ -1102,11 +1108,6 @@ public abstract class SymbolTable {
         return exportedMemories;
     }
 
-    boolean memoryHasIndexType64(int index) {
-        final MemoryInfo memory = memories[index];
-        return memory.indexType64;
-    }
-
     public long memoryInitialSize(int index) {
         final MemoryInfo memory = memories[index];
         return memory.initialSize;
@@ -1115,6 +1116,16 @@ public abstract class SymbolTable {
     public long memoryMaximumSize(int index) {
         final MemoryInfo memory = memories[index];
         return memory.maximumSize;
+    }
+
+    boolean memoryHasIndexType64(int index) {
+        final MemoryInfo memory = memories[index];
+        return memory.indexType64;
+    }
+
+    boolean memoryIsShared(int index) {
+        final MemoryInfo memory = memories[index];
+        return memory.shared;
     }
 
     void allocateCustomSection(String name, int offset, int length) {

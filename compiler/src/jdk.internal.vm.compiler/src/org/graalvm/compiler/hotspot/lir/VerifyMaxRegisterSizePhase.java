@@ -24,19 +24,20 @@
  */
 package org.graalvm.compiler.hotspot.lir;
 
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import jdk.vm.ci.code.TargetDescription;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
-import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 
 /**
  * Checks that no registers exceed the MaxVectorSize flag from the VM config.
@@ -72,7 +73,8 @@ public final class VerifyMaxRegisterSizePhase extends FinalCodeAnalysisPhase {
 
     @SuppressWarnings("unused")
     protected void verifyOperands(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        if (isRegister(value)) {
+        // Ensure that vector registers are never larger than the current vector size
+        if (isRegister(value) && value.getPlatformKind().getVectorLength() > 1) {
             assert value.getPlatformKind().getSizeInBytes() <= maxVectorSize : "value " + value + " exceeds MaxVectorSize " + maxVectorSize + " at " + instruction;
         }
     }

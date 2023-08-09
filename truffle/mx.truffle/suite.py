@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.34.0",
+  "mxversion": "6.39.0",
   "name" : "truffle",
   "version" : "23.1.0",
   "release" : False,
@@ -1131,18 +1131,18 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : ["--std=c++11"]
+            "cflags" : []
           }
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -1226,7 +1226,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
           "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
         ],
@@ -1262,7 +1262,9 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "* to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "* to org.graalvm.truffle, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          # necessary to instantiate access truffle compiler from the runtime during host compilation
+          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1296,6 +1298,7 @@ suite = {
         "TRUFFLE_COMPILER",
       ],
       "description" : "Truffle runtime distribution.",
+      "useModulePath": True,
       "maven": True,
     },
 
@@ -1334,8 +1337,8 @@ suite = {
           "com.oracle.truffle.api.library.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
         ],
         "opens" : [
           "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
@@ -1354,19 +1357,19 @@ suite = {
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
         ],
       },
+
       "moduleInfo:closed" : {
         # This is the module descriptor for the Truffle API modular jar deployed via maven.
-        # It exports all the Truffle API packages.
+        # It exports all the Truffle API packages to the language that get loaded through Truffle at runtime.
         "exports" : [
           # Unqualified exports
           "com.oracle.truffle.api.provider",
           "com.oracle.truffle.api.instrumentation.provider",
           "com.oracle.truffle.api.library.provider",
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime",
-          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler,org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api* to org.graalvm.locator, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object to org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
         ],
       },
       "subDir" : "src",
@@ -1390,10 +1393,16 @@ suite = {
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
       "maven": True,
-      "graalvm" : {
-        # Deploy the modular jar specified by "moduleInfo.closed"
-        "moduleInfo" : "closed",
-      }
+      "useModulePath": True,
+      # We do no longer deploy a closed module to graalvm because there are known bugs
+      # when a JDK boot module exports itself at runtime to a language at runtime.
+      # with Truffle unchained we want to use truffle always from the module path
+      # and deployement of Truffle the JDK is only there fore legacy support.
+      # See GR-47669
+      #"graalvm" : {
+      # Deploy the modular jar specified by "moduleInfo.closed"
+      #"moduleInfo" : "closed",
+      #}
     },
 
     "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
@@ -1414,16 +1423,6 @@ suite = {
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
       "maven": False,
-    },
-
-    "TRUFFLE_RUNTIME_ATTACH_SUPPORT" : {
-      "native" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.runtime.attach"],
-      },
-      "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
-      "maven" : False,
     },
 
     "TRUFFLE_NFI" : {
@@ -1454,6 +1453,9 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
+        "opens" : [
+          "com.oracle.truffle.nfi.backend.libffi to org.graalvm.truffle.runtime.svm",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1635,6 +1637,7 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
       ],
+      "useModulePath": True,
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
     },
@@ -1768,15 +1771,6 @@ suite = {
        "testDistribution" : True,
       "maven" : False,
      },
-
-    "TRUFFLE_GRAALVM_SUPPORT" : {
-      "native" : True,
-      "description" : "Truffle support distribution for SVM",
-      "layout" : {
-        "native-image.properties" : "file:mx.truffle/macro-truffle.properties",
-      },
-      "maven" : False,
-    },
 
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
       "native" : True,

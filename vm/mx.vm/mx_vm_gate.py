@@ -24,6 +24,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import json
 import shutil
 
 import mx
@@ -71,7 +72,7 @@ class VmGateTasks:
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
     svm_truffle_tck_python = 'svm-truffle-tck-python'
-
+    truffle_unchained = 'truffle-unchained'
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -448,6 +449,12 @@ def gate_body(args, tasks):
         if t:
             mx_sdk_vm.verify_graalvm_configs(suites=['vm', 'vm-enterprise'])
 
+    with Task('Vm: ce-release-artifacts.json', tasks, tags=['style']) as t:
+        if t:
+            with open(join(_suite.dir, 'ce-release-artifacts.json'), 'r') as f:
+                # check that this file can be read as json
+                json.load(f)
+
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
             # 1. the build must be a GraalVM
@@ -500,6 +507,7 @@ def gate_body(args, tasks):
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
     gate_svm_truffle_tck_python(tasks)
+    gate_truffle_unchained(tasks)
 
 def graalvm_svm():
     """
@@ -537,6 +545,9 @@ def gate_substratevm(tasks, quickbuild=False):
             truffle_with_compilation = [
                 '--verbose',
                 '--macro:truffle',
+                '--language:nfi',
+                '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                '--add-exports=org.graalvm.sdk/org.graalvm.polyglot.impl=ALL-UNNAMED',
                 '-H:MaxRuntimeCompileMethods=5000',
                 '-R:MaxHeapSize=2g',
                 '--enable-url-protocols=jar',
@@ -545,12 +556,12 @@ def gate_substratevm(tasks, quickbuild=False):
             truffle_without_compilation = truffle_with_compilation + [
                 '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
             ]
-            args = ['--force-builder-on-cp', '--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
+            args = ['--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
 
-            args = ['--force-builder-on-cp', '--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
+            args = ['--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
@@ -687,11 +698,30 @@ def gate_svm_truffle_tck_python(tasks):
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, py_suite, 'python')
 
+def gate_truffle_unchained(tasks):
+    truffle_suite = mx.suite('truffle')
+    if truffle_suite:
+        import mx_truffle
+
+    with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_jvm_gate_tests()
+    with Task('Truffle Unchained SL Native Fallback', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_fallback_gate_tests()
+    with Task('Truffle Unchained SL Native Optimized', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_optimized_gate_tests()
 
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-        import json
         import mx_compiler
         build_options = ['-H:+GenerateBuildArtifactsFile'] + options
         if shared_lib:

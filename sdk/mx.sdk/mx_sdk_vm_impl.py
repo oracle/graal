@@ -384,6 +384,15 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     for config in component.launcher_configs + component.library_configs:
                         if config.jar_distributions:
                             self.jimage_ignore_jars.update(config.jar_distributions)
+                if isinstance(component, mx_sdk_vm.GraalVmTruffleLibrary):
+                    # In order to transition to Truffle Unchained we need to
+                    # exclude Truffle libraries from the mechanism that produces
+                    # dummy modules for qualified exports when boot modules are installed in
+                    # the GraalVM JDK to be able to later load it from the module-path.
+                    self.jimage_ignore_jars.update(component.boot_jars)
+                    self.jimage_ignore_jars.update(component.jar_distributions)
+                    self.jimage_ignore_jars.update(component.jvmci_parent_jars)
+                    self.jimage_ignore_jars.update(component.builder_jar_distributions)
 
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
@@ -1655,6 +1664,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
         if _jlink_libraries():
             use_upgrade_module_path = mx.get_env('MX_BUILD_EXPLODED') == 'true'
+
             built = mx_sdk.jlink_new_jdk(_src_jdk,
                                  out_dir,
                                  self.subject.deps,

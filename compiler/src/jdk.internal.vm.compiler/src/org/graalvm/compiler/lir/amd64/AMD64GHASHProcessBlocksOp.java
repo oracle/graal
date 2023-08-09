@@ -53,7 +53,7 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -65,11 +65,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp",
-          lineStart = 35,
-          lineEnd   = 535,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "a0f563cb82a007e3c12d1554e825348b967f868a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp#L35-L535",
+          sha1 = "a0f563cb82a007e3c12d1554e825348b967f868a")
 // @formatter:on
 public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 

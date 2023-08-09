@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -125,14 +126,42 @@ public class ClassInitializationFeature implements InternalFeature {
          * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
-            String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
-            msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
-                            " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
-                                            " or use the the information from the trace to find the culprit and " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time") +
-                                            " to prevent its instantiation.\n");
-            throw new UnsupportedFeatureException(msg);
+            StringBuilder msg = new StringBuilder()
+                            .append("No instances of ").append(obj.getClass().getTypeName()).append(" are allowed in the image heap as this class should be initialized at image runtime.");
+
+            String action = " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
+                            " or use the the information from the trace to find the culprit and " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time") +
+                            " to prevent its instantiation." + System.lineSeparator();
+            msg.append(classInitializationSupport.objectInstantiationTraceMessage(obj, action));
+
+            if (!ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
+                msg.append(System.lineSeparator())
+                                .append("If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21.")
+                                .append(" All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-build-time are allowed to be in the image heap.")
+                                .append(" This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-build-time.");
+            }
+
+            String proxyOrLambda = null;
+            if (Proxy.isProxyClass(obj.getClass())) {
+                proxyOrLambda = "Proxy";
+            } else if (obj.getClass().getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                proxyOrLambda = "Lambda";
+            }
+            if (proxyOrLambda != null) {
+                msg.append(System.lineSeparator())
+                                .append("For ").append(proxyOrLambda).append(" classes, it is also sufficient to register all interfaces that the class implements as --initialize-at-build-time. ")
+                                .append(" The interfaces of this ").append(proxyOrLambda).append(" class are: [");
+                String sep = "";
+                for (var iface : ClassInitializationSupport.allInterfaces(obj.getClass())) {
+                    msg.append(sep).append(iface.getTypeName());
+                    sep = ", ";
+                }
+                msg.append("].");
+            }
+
+            throw new UnsupportedFeatureException(msg.toString());
         }
         return obj;
     }
@@ -141,7 +170,8 @@ public class ClassInitializationFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true,
+                            "Class initialization foreign call, registered in " + ClassInitializationFeature.class);
         }
     }
 
@@ -205,7 +235,7 @@ public class ClassInitializationFeature implements InternalFeature {
                                 .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
-                                .filter(name -> !LambdaUtils.isLambdaName(name))
+                                .filter(name -> !name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
                     System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));

@@ -10,6 +10,10 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-39406) All classes can now be used at image build time, even when they are not explicitly configured as `--initialize-at-build-time`. Note, however, that still only classes configured as `--initialize-at-build-time` are allowed in the image heap.
 * (GR-46392) Add `--parallelism` option to control how many threads are used by the build process.
 * (GR-46392) Add build resources section to the build output that shows the memory and thread limits of the build process.
+* (GR-38994) Together with Red Hat, we added support for `-XX:+HeapDumpOnOutOfMemoryError`.
+* (GR-47365) Throw `MissingReflectionRegistrationError` when attempting to create a proxy class without having it registered at build-time, instead of a `VMError`.
+* (GR-46064) Add option `-H:±IndirectBranchTargetMarker` to mark indirect branch targets on AMD64 with an endbranch instruction. This is a prerequisite for future Intel CET support.
+* (GR-46740) Add support for foreign downcalls (part of "Project Panama") on the AMD64 platform.
 
 ## Version 23.0.0
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.

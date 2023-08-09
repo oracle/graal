@@ -356,7 +356,8 @@ public class Linker {
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64) {
+    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
+                    boolean shared) {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
@@ -385,6 +386,9 @@ public class Linker {
             assertUnsignedLongGreaterOrEqual(declaredMaxSize, importedMemory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             if (typeIndex64 != importedMemory.hasIndexType64()) {
                 Assert.fail(Failure.INCOMPATIBLE_IMPORT_TYPE, "index types of memory import do not match");
+            }
+            if (shared != importedMemory.isShared()) {
+                Assert.fail(Failure.INCOMPATIBLE_IMPORT_TYPE, "shared statuses of memory import do not match");
             }
             instance.setMemory(memoryIndex, importedMemory);
         };
