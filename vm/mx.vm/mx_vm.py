@@ -58,37 +58,51 @@ def local_path_to_url(args):
     print(pathlib.Path(os.path.realpath(args.path)).as_uri())
 
 
-gu_component = mx_sdk_vm.GraalVmJdkComponent(
-    suite=_suite,
-    name='Component installer',
-    short_name='gu',
-    dir_name='installer',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['sdk'],
-    jar_distributions=[
-        'vm:INSTALLER',
-        'truffle:TRUFFLE_JSON'
-    ],
-    support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
-    launcher_configs=[
-        mx_sdk_vm.LauncherConfig(
-            destination="bin/<exe:gu>",
-            jar_distributions=[
-                'vm:INSTALLER',
-                'truffle:TRUFFLE_JSON'
-            ],
-            dir_jars=True,
-            main_class="org.graalvm.component.installer.ComponentInstaller",
-            link_at_build_time=False,
-            build_args=gu_build_args,
-            # Please see META-INF/native-image in the project for custom build options for native-image
-            is_sdk_launcher=True,
-            custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
-        ),
-    ],
-    stability="supported",
-)
+if mx_sdk_vm_impl.USE_LEGACY_GU:
+    gu_component = mx_sdk_vm.GraalVmJdkComponent(
+        suite=_suite,
+        name='Component installer',
+        short_name='gu',
+        dir_name='installer',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['sdk'],
+        jar_distributions=[
+            'vm:INSTALLER',
+            'truffle:TRUFFLE_JSON'
+        ],
+        support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
+        launcher_configs=[
+            mx_sdk_vm.LauncherConfig(
+                destination="bin/<exe:gu>",
+                jar_distributions=[
+                    'vm:INSTALLER',
+                    'truffle:TRUFFLE_JSON'
+                ],
+                dir_jars=True,
+                main_class="org.graalvm.component.installer.ComponentInstaller",
+                link_at_build_time=False,
+                build_args=gu_build_args,
+                # Please see META-INF/native-image in the project for custom build options for native-image
+                is_sdk_launcher=True,
+                custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
+            ),
+        ],
+        stability="supported",
+    )
+else:
+    gu_component = mx_sdk_vm.GraalVmJdkComponent(
+        suite=_suite,
+        name='Deprecated GraalVM Updater launchers',
+        short_name='gu',
+        dir_name='installer',
+        provided_executables=['bin/gu.cmd' if mx.is_windows() else 'bin/gu'],
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=[],
+        support_distributions=['vm:INSTALLER_DEPRECATED_GRAALVM_SUPPORT'],
+        stability="supported",
+    )
 mx_sdk_vm.register_graalvm_component(gu_component)
 
 

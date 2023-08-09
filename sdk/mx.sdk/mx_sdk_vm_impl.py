@@ -108,6 +108,8 @@ _base_jdk_version_info = None
 
 default_components = []
 
+USE_LEGACY_GU = False
+
 
 mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
@@ -866,10 +868,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 catalog = gds_snapshot_catalog
             else:
                 catalog = None
-        if catalog:
-            _metadata_dict['component_catalog'] = catalog
-        if gds_product_id:
-            _metadata_dict['GDS_PRODUCT_ID'] = gds_product_id
+        if USE_LEGACY_GU:
+            if catalog:
+                _metadata_dict['component_catalog'] = catalog
+            if gds_product_id:
+                _metadata_dict['GDS_PRODUCT_ID'] = gds_product_id
 
         # COMMIT_INFO is unquoted to simplify JSON parsing
         return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})

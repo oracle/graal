@@ -224,6 +224,29 @@ suite = {
             },
             "maven": False,
         },
+        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
+            "platformDependent": True,
+            "os": {
+                "linux": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "darwin": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "windows": {
+                    "layout": {
+                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
+                    },
+                },
+            },
+            "maven": False,
+        },
         "VM_GRAALVM_SUPPORT": {
             "native": True,
             "description": "VM support distribution for the GraalVM",
