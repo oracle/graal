@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.foreign;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-
 import java.lang.foreign.SymbolLookup;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.svm.core.OS;
@@ -43,23 +43,19 @@ public final class RuntimeSystemLookup {
         if (OS.WINDOWS.isCurrent()) {
             /*
              * Windows support has some subtleties: one would ideally load ucrtbase.dll, but some
-             * old installs might not have, in which case msvcrt.dll should be loaded instead. If
+             * old installs might not have it, in which case msvcrt.dll should be loaded instead. If
              * ucrt is used, then some symbols (the printf family) are (allegedly) inline, which
              * (allegedly) means that the symbols cannot be looked up. HotSpot's solution is to
              * create a dummy library which packs all these methods in an array, and retrieves the
              * function's address from there, which thus requires an external library (and requires
              * synchronization between the external library and the java code).
-             *
-             * A minimal support might be the following:
              */
-            /*
-             * Path system32 = Path.of(System.getenv("SystemRoot"), "System32"); Path ucrtbase =
-             * system32.resolve("ucrtbase.dll"); Path msvcrt = system32.resolve("msvcrt.dll");
-             * boolean useUCRT = Files.exists(ucrtbase); Path stdLib = useUCRT ? ucrtbase : msvcrt;
-             * return Util_java_lang_foreign_SymbolLookup.libraryLookup(NativeLibrarySupport::
-             * loadLibraryPlatformSpecific, List.of(stdLib));
-             */
-            throw unsupportedFeature("System lookup is not supported on Windows.");
+            Path system32 = Path.of(System.getenv("SystemRoot"), "System32");
+            Path ucrtbase = system32.resolve("ucrtbase.dll");
+            Path msvcrt = system32.resolve("msvcrt.dll");
+            boolean useUCRT = Files.exists(ucrtbase);
+            Path stdLib = useUCRT ? ucrtbase : msvcrt;
+            return Util_java_lang_foreign_SymbolLookup.libraryLookup(NativeLibrarySupport::loadLibraryPlatformSpecific, List.of(stdLib));
         } else {
             /*
              * This list of libraries is obtained by examining the dependencies of libsystemlookup,

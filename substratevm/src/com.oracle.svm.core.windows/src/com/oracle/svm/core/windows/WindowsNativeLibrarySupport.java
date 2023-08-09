@@ -150,7 +150,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 return false;
             }
             assert dlhandle.isNonNull();
-            if (LibLoaderAPI.FreeLibrary(dlhandle) == 0) {
+            if (LibLoaderAPI.FreeLibrary(dlhandle) != 0) {
                 dlhandle = WordFactory.nullPointer();
                 return true;
             } else {
