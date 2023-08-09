@@ -2,6 +2,9 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM for JDK 21 (Internal Version 23.1.0)
+* (GR-43228): Enforce backward-edge control-flow integrity (CFI) on aarch64 based on the `UseBranchProtection` JVM flag.
+
 ## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-42212): Remove support for all JDKs earlier than JDK 17.
 * (GR-42044): Improved output of `-Dgraal.ShowConfiguration=info`. For example:

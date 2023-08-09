@@ -31,6 +31,7 @@ import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
@@ -53,10 +54,16 @@ public abstract class SubprocessTest extends GraalCompilerTest {
      *         {@link Subprocess} instance describing the process after its successful termination.
      */
     public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(getClass(), runnable, args);
+        return launchSubprocess(null, true, getClass(), runnable, args);
     }
 
     public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(null, true, testClass, runnable, args);
+    }
+
+    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, boolean expectNormalExit, Class<? extends GraalCompilerTest> testClass, Runnable runnable,
+                    String... args)
+                    throws InterruptedException, IOException {
         String recursionPropName = testClass.getSimpleName() + ".Subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
@@ -71,12 +78,19 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 System.err.println(String.join(" ", vmArgs));
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
+            if (testPredicate != null) {
+                assertTrue(testPredicate.test(proc.output), proc.toString() + " produced unexpected output:\n\n" + String.join("\n", proc.output));
+            }
             if (verbose) {
                 for (String line : proc.output) {
                     System.err.println(line);
                 }
             }
-            assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
+            if (expectNormalExit) {
+                assertTrue(proc.exitCode == 0, proc.toString() + " produced exit code " + proc.exitCode + ", but expected 0.");
+            } else {
+                assertTrue(proc.exitCode != 0, proc.toString() + " produced normal exit code " + proc.exitCode + ", but expected abnormal exit.");
+            }
             return proc;
         }
     }
