@@ -197,7 +197,7 @@ def _unittest_config_participant(config):
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.polyglot/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
 
@@ -235,7 +235,7 @@ def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=Tru
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
-    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"] + sl_args
 
 def slnative(args):
     """build a native image of an SL program"""
@@ -257,7 +257,7 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
             mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
-    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
+    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
     return target_path
 
 def _truffle_gate_runner(args, tasks):

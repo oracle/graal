@@ -1300,7 +1300,7 @@ def _graal_config():
             self.truffle_jars = []
             self.jars = []
 
-            for component in mx_sdk_vm.graalvm_components():
+            for component in mx_sdk_vm_impl.registered_graalvm_components():
                 if isinstance(component, mx_sdk_vm.GraalVmJvmciComponent):
                     for jar in component.jvmci_jars:
                         d = mx.distribution(jar)
@@ -1337,7 +1337,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['Truffle Compiler'],
+        dependencies=['Truffle Compiler', 'Graal SDK Compiler'],
         jar_distributions=[  # Dev jars (annotation processors)
             'compiler:GRAAL_PROCESSOR',
         ],

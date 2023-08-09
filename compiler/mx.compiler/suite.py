@@ -162,7 +162,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:WORD",
+        "sdk:COLLECTIONS",
         "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
@@ -419,6 +420,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.internal.vm.compiler",
+        "sdk:COLLECTIONS",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
       "javaCompliance" : "17+",
@@ -526,7 +528,8 @@ suite = {
         "jdk.internal.vm.compiler"
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:COLLECTIONS",
+        "sdk:WORD",
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
@@ -610,7 +613,7 @@ suite = {
         "org.graalvm.profdiff",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:COLLECTIONS",
         "GRAAL",
       ],
       "maven" : False,

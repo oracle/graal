@@ -40,15 +40,15 @@
  */
 package org.graalvm.nativebridge.processor.test;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
 import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativebridge.BinaryMarshaller;
 import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.JNIConfig;
-import org.graalvm.polyglot.TypeLiteral;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
+import org.graalvm.nativebridge.TypeLiteral;
 
 public final class TestJNIConfig {
 
