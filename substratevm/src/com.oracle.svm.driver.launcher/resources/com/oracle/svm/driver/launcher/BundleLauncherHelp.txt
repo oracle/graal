@@ -1,4 +1,4 @@
-This tool can ahead-of-time compile Java code to native executables.
+This native image bundle can be used to launch the bundled application.
 
 Usage: java -jar bundle-file [options] [bundle-application-options]
 
@@ -15,7 +15,7 @@ where options include:
                 from inside that container. Requires podman or rootless docker to be installed.
                 If available, 'podman' is preferred and rootless 'docker' is the fallback. Specifying
                 one or the other as '=<container-tool>' forces the use of a specific tool.
-                'dockerfile=<Dockerfile>': Use a user provided 'Dockerfile' instead of the Dockerfile
+                'dockerfile=<Dockerfile>': Use a user-provided 'Dockerfile' instead of the Dockerfile
                 bundled with the application
 
     --verbose   enable verbose output
