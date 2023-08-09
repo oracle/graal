@@ -587,7 +587,7 @@ public class HotSpotGraphBuilderPlugins {
 
                     helper.emitReturnIf(srcBegin, Condition.GE, srcEnd, null, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
                     ValueNode size = helper.sub(srcEnd, srcBegin);
-                    ValueNode or = helper.xor(srcBegin, size);
+                    ValueNode or = helper.or(srcBegin, size);
                     helper.intrinsicRangeCheck(or, Condition.LT, ConstantNode.forInt(0));
                     ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), srcBegin);
                     helper.intrinsicRangeCheck(size, Condition.GT, srcLimit);
