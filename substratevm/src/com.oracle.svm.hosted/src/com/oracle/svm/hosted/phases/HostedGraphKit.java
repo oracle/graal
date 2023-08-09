@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -132,5 +136,30 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
         return append(PiNode.create(object, StampFactory.objectNonNull()));
+    }
+
+    /**
+     * Lift a node representing an array into a list of nodes representing the values in that array.
+     * 
+     * @param array The array to lift
+     * @param elementKinds The kinds of the elements in the array
+     * @param length The length of the array
+     */
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind[] elementKinds, int length) {
+        assert elementKinds.length == length;
+
+        List<ValueNode> result = new ArrayList<>();
+        for (int i = 0; i < length; ++i) {
+            ValueNode load = createLoadIndexed(array, i, elementKinds[i], null);
+            append(load);
+            result.add(load);
+        }
+        return result;
+    }
+
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind elementKind, int length) {
+        JavaKind[] elementKinds = new JavaKind[length];
+        Arrays.fill(elementKinds, elementKind);
+        return loadArrayElements(array, elementKinds, length);
     }
 }

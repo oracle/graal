@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.core.SubstrateUtil;
 
@@ -47,6 +49,12 @@ public class SimpleSignature implements Signature {
         }
         JavaType returnType = SimpleSignature.resolveType(returnKind, metaAccess);
         return new SimpleSignature(paramTypes, returnType);
+    }
+
+    public static SimpleSignature fromMethodType(MethodType mt, MetaAccessProvider metaAccess) {
+        return new SimpleSignature(
+                        Arrays.stream(mt.parameterArray()).map(metaAccess::lookupJavaType).collect(Collectors.toList()),
+                        metaAccess.lookupJavaType(mt.returnType()));
     }
 
     private static ResolvedJavaType resolveType(JavaKind kind, MetaAccessProvider metaAccess) {

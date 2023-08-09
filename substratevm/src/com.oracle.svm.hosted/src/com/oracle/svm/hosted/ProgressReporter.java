@@ -115,6 +115,7 @@ public class ProgressReporter {
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
+    private int numForeignDowncalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -181,6 +182,10 @@ public class ProgressReporter {
         numJNIClasses = numClasses;
         numJNIFields = numFields;
         numJNIMethods = numMethods;
+    }
+
+    public void setForeignFunctionsInfo(int numDowncalls) {
+        this.numForeignDowncalls = numDowncalls;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
@@ -374,6 +379,11 @@ public class ProgressReporter {
         if (numJNIClasses >= 0) {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+        }
+        recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0) {
+            l().a("%,8d ", numForeignDowncalls)
+                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {

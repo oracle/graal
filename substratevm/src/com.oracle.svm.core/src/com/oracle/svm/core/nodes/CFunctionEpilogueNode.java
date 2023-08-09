@@ -49,7 +49,9 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
-    /** See comment in {@link CFunctionPrologueNode}. */
+    /**
+     * See comment in {@link CFunctionPrologueNode}.
+     */
     private CFunctionEpilogueMarker marker;
 
     public CFunctionEpilogueNode(int oldThreadStatus) {
@@ -104,5 +106,4 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     public boolean canUseAsStateDuring() {
         return true;
     }
-
 }

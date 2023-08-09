@@ -162,6 +162,7 @@ public class ProgressReporterJsonHelper {
         FIELD_REACHABLE("fields", "reachable"),
         FIELD_JNI("fields", "jni"),
         FIELD_REFLECT("fields", "reflection"),
+        FOREIGN_DOWNCALLS("methods", "foreign_downcalls"),
 
         // TODO GR-42148: remove deprecated entries in a future release
         DEPRECATED_CLASS_TOTAL("classes", "total"),

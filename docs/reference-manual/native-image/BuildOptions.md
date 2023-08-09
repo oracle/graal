@@ -17,6 +17,7 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `-J<flag>`: pass an option directly to the JVM running the `native-image` builder
 * `--diagnostics-mode`: enable diagnostics output which includes class initialization, substitutions, etc.
 * `--enable-preview`: allow classes to depend on preview features of this release
+* `--enable-native-access <module name>[,<module name>...]` modules that are permitted to perform restricted native operations. `<module name>` can also be `ALL-UNNAMED`.
 * `--verbose`: enable verbose output
 * `--version`: print the product version and exit
 * `--help`: print this help message

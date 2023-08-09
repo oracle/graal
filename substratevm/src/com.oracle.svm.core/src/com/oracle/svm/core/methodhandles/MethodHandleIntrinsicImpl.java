@@ -59,6 +59,8 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
 
         /* MethodHandle.invokeBasic(Object...) */
         InvokeBasic(Modifier.FINAL | Modifier.NATIVE),
+        /* MethodHandle.linkToNative(Object...) */
+        LinkToNative(Modifier.STATIC | Modifier.NATIVE),
         /* MethodHandle.linkTo*(Object...) */
         Link(Modifier.STATIC | Modifier.NATIVE),
 
@@ -175,6 +177,10 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
                 Target_java_lang_invoke_MethodHandle mh = (Target_java_lang_invoke_MethodHandle) args[0];
                 Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
                 return mh.invokeBasic(invokeArgs);
+            }
+
+            case LinkToNative: {
+                return Target_java_lang_invoke_MethodHandle.linkToNative(args);
             }
 
             /*
@@ -425,6 +431,8 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
             switch (name) {
                 case "invokeBasic":
                     return intrinsic(Variant.InvokeBasic);
+                case "linkToNative":
+                    return intrinsic(Variant.LinkToNative);
                 case "linkToVirtual":
                 case "linkToStatic":
                 case "linkToSpecial":

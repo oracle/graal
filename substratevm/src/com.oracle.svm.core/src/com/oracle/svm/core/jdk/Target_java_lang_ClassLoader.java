@@ -251,8 +251,13 @@ public final class Target_java_lang_ClassLoader {
     @Delete
     private static native void registerNatives();
 
-    @Delete
-    private static native long findNative(ClassLoader loader, String entryName);
+    /**
+     * Ignores {@code loader}, as {@link Target_java_lang_ClassLoader#loadLibrary}.
+     */
+    @Substitute
+    private static long findNative(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
+        return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
+    }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})

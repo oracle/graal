@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.methodhandles;
 
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
@@ -33,13 +35,16 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
@@ -113,6 +118,16 @@ final class Target_java_lang_invoke_MethodHandle {
     @Substitute(polymorphicSignature = true)
     static Object linkToSpecial(Object... args) throws Throwable {
         return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+    }
+
+    @Substitute(polymorphicSignature = true)
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    static Object linkToNative(Object... args) throws Throwable {
+        if (LinkToNativeSupport.isAvailable()) {
+            return LinkToNativeSupport.singleton().linkToNative(args);
+        } else {
+            throw unsupportedFeature("The foreign downcalls feature is not available. Please make sure that preview features are enabled with '--enable-preview'.");
+        }
     }
 }
 
