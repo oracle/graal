@@ -288,6 +288,10 @@ final class NativeImageClassLoader extends SecureClassLoader {
      */
     @Override
     protected URL findResource(String mn, String name) throws IOException {
+        if (mn == null) {
+            return ucp.findResource(name, false);
+        }
+
         ModuleReference mref = (mn != null) ? localNameToModule.get(mn) : null;
         if (mref == null) {
             return null;   // not defined to this class loader
