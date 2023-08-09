@@ -85,7 +85,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                     if (canPeel(loop)) {
                         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
                             if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
-                                            (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())){
+                                            (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
                                 LoopTransformations.peel(loop);
                                 loop.invalidateFragmentsAndIVs();
                                 data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
