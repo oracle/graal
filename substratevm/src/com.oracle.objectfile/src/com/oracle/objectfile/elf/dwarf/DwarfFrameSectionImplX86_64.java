@@ -35,8 +35,8 @@ import java.util.List;
  * and frame layout.
  */
 public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
-    private static final int DW_CFA_RSP_IDX = 7;
-    private static final int DW_CFA_RIP_IDX = 16;
+    private static final int CFA_RSP_IDX = 7;
+    private static final int CFA_RIP_IDX = 16;
 
     public DwarfFrameSectionImplX86_64(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
@@ -44,12 +44,12 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
 
     @Override
     public int getReturnPCIdx() {
-        return DW_CFA_RIP_IDX;
+        return CFA_RIP_IDX;
     }
 
     @Override
     public int getSPIdx() {
-        return DW_CFA_RSP_IDX;
+        return CFA_RSP_IDX;
     }
 
     @Override
@@ -67,7 +67,7 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
          *
          * </ul>
          */
-        pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
+        pos = writeDefCFA(CFA_RSP_IDX, 8, buffer, pos);
         /*
          * Register rip is saved in slot 1.
          *
@@ -79,7 +79,7 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
          *
          * </ul>
          */
-        pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
+        pos = writeOffset(CFA_RIP_IDX, 1, buffer, pos);
         return pos;
     }
 

@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,6 +36,8 @@ import java.util.Set;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.range.SubRange;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
@@ -72,14 +72,16 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
      */
     private int dwarfStackRegister;
 
-    public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-        initDwarfRegMap();
-    }
+    private static final LayoutDecision.Kind[] targetLayoutKinds = {
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.SIZE,
+                    /* Add this so we can use the text section base address for debug. */
+                    LayoutDecision.Kind.VADDR};
 
-    @Override
-    public String getSectionName() {
-        return DwarfDebugInfo.DW_LOC_SECTION_NAME;
+    public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
+        // debug_loc section depends on text section
+        super(dwarfSections, DwarfSectionName.DW_LOC_SECTION, DwarfSectionName.TEXT_SECTION, targetLayoutKinds);
+        initDwarfRegMap();
     }
 
     @Override
@@ -243,23 +245,23 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int writeRegisterLocation(DebugContext context, int regIndex, byte[] buffer, int p) {
         int targetIdx = mapToDwarfReg(regIndex);
+        assert targetIdx >= 0;
         int pos = p;
-        if (targetIdx < 32) {
+        if (targetIdx < 0x20) {
             // can write using DW_OP_reg<n>
             short byteCount = 1;
-            byte regOp = (byte) (DwarfDebugInfo.DW_OP_reg0 + targetIdx);
+            byte reg = (byte) targetIdx;
             pos = writeShort(byteCount, buffer, pos);
-            pos = writeByte(regOp, buffer, pos);
-            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, regOp);
+            pos = writeExprOpcodeReg(reg, buffer, pos);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, DwarfExpressionOpcode.DW_OP_reg0.value() + reg);
         } else {
             // have to write using DW_OP_regx + LEB operand
             assert targetIdx < 128 : "unexpectedly high reg index!";
             short byteCount = 2;
-            byte regOp = DwarfDebugInfo.DW_OP_regx;
             pos = writeShort(byteCount, buffer, pos);
-            pos = writeByte(regOp, buffer, pos);
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_regx, buffer, pos);
             pos = writeULEB(targetIdx, buffer, pos);
-            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, regOp, targetIdx);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, DwarfExpressionOpcode.DW_OP_regx.value(), targetIdx);
             // target idx written as ULEB should fit in one byte
             assert pos == p + 4 : "wrote the wrong number of bytes!";
         }
@@ -269,32 +271,26 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeStackLocation(DebugContext context, int offset, byte[] buffer, int p) {
         int pos = p;
         short byteCount = 0;
-        int sp = getDwarfStackRegister();
-        byte stackOp;
-        if (sp < 32) {
-            // fold the base reg index into the op
-            stackOp = DwarfDebugInfo.DW_OP_breg0;
-            stackOp += (byte) sp;
-        } else {
-            // pass base reg index as a ULEB operand
-            stackOp = DwarfDebugInfo.DW_OP_bregx;
-        }
+        byte sp = (byte) getDwarfStackRegister();
         int patchPos = pos;
         pos = writeShort(byteCount, buffer, pos);
         int zeroPos = pos;
-        pos = writeByte(stackOp, buffer, pos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-            // need to pass base reg index as a ULEB operand
+        if (sp < 0x20) {
+            // fold the base reg index into the op
+            pos = writeExprOpcodeBReg(sp, buffer, pos);
+        } else {
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_bregx, buffer, pos);
+            // pass base reg index as a ULEB operand
             pos = writeULEB(sp, buffer, pos);
         }
         pos = writeSLEB(offset, buffer, pos);
         // now backpatch the byte count
         byteCount = (byte) (pos - zeroPos);
         writeShort(byteCount, buffer, patchPos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, stackOp, 0 - offset);
+        if (sp < 0x20) {
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, (DwarfExpressionOpcode.DW_OP_breg0.value() + sp), 0 - offset);
         } else {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, DwarfExpressionOpcode.DW_OP_bregx.value(), sp, 0 - offset);
         }
         return pos;
     }
@@ -302,13 +298,13 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writePrimitiveConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant instanceof PrimitiveConstant;
         int pos = p;
-        byte op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         JavaKind kind = constant.getJavaKind();
         int dataByteCount = kind.getByteCount();
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
         pos = writeShort((short) byteCount, buffer, pos);
-        pos = writeByte(op, buffer, pos);
+        pos = writeExprOpcode(op, buffer, pos);
         pos = writeULEB(dataByteCount, buffer, pos);
         if (dataByteCount == 1) {
             if (kind == JavaKind.Boolean) {
@@ -332,12 +328,12 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeNullConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant.isNull();
         int pos = p;
-        byte op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         int dataByteCount = 8;
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
         pos = writeShort((short) byteCount, buffer, pos);
-        pos = writeByte(op, buffer, pos);
+        pos = writeExprOpcode(op, buffer, pos);
         pos = writeULEB(dataByteCount, buffer, pos);
         pos = writeAttrData8(0, buffer, pos);
         verboseLog(context, "  [0x%08x]     CONSTANT (null) %s", pos, constant.toValueString());
@@ -414,28 +410,6 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             }
             return extents;
         }
-    }
-
-    /**
-     * The debug_loc section depends on text section.
-     */
-    protected static final String TARGET_SECTION_NAME = DwarfDebugInfo.TEXT_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE,
-                    /* Add this so we can use the text section base address for debug. */
-                    LayoutDecision.Kind.VADDR
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 
     private int getDwarfStackRegister() {
