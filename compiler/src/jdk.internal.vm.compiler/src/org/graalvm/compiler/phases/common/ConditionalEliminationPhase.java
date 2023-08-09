@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -523,10 +524,11 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             tryProveGuardCondition(null, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                if (!(survivingSuccessor instanceof LoopExitNode)) {
-                    // loop exit nodes are not deleted when the predecessor split gets removed
-                    survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
+                Node replacementForGuardedNodes = guard.asNode();
+                if (survivingSuccessor instanceof LoopExitNode loopExitNode) {
+                    replacementForGuardedNodes = graph.unique(new GuardProxyNode((GuardingNode) replacementForGuardedNodes, loopExitNode));
                 }
+                survivingSuccessor.replaceAtUsages(replacementForGuardedNodes, InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
                 graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "IfElimination", node);
                 return true;
