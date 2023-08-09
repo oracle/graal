@@ -107,6 +107,7 @@ def upx(args):
     upx_cmd = [upx_path] + args
     mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
+# SDK modules included if truffle, compiler and native-image is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK',
@@ -114,9 +115,37 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='graalvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['sdkni'],
+    jar_distributions=[],
+    boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
+    stability="supported",
+))
+
+# SDK modules included the compiler is included
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK Compiler',
+    short_name='sdkc',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK'],
+    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS'],
+    stability="supported",
+))
+
+# SDK modules included if the compiler and native-image is included
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK Native Image',
+    short_name='sdkni',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['sdkc'],
+    jar_distributions=[],
+    boot_jars=['sdk:NATIVEIMAGE'],
     stability="supported",
 ))
 

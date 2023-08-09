@@ -199,7 +199,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires" : [
         "java.logging",
@@ -241,7 +241,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
       ],
@@ -260,7 +260,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
@@ -312,7 +311,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.5",
       ],
@@ -979,7 +978,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
@@ -1279,7 +1278,6 @@ suite = {
         "TRUFFLE_RUNTIME_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
         "sdk:JNIUTILS",
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
@@ -1375,7 +1373,7 @@ suite = {
         "com.oracle.truffle.api.staticobject",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK"
+        "sdk:POLYGLOT"
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
@@ -1613,13 +1611,17 @@ suite = {
 
     "TRUFFLE_SL_LAUNCHER" : {
       "subDir" : "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sl_launcher",
+      },
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.sl.launcher",
       ],
       "distDependencies" : [
-          "sdk:GRAAL_SDK",
+          "sdk:POLYGLOT",
       ],
+      "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
     },

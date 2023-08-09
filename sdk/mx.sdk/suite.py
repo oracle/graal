@@ -229,12 +229,26 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.options",
         "org.graalvm.collections",
         "org.graalvm.home",
       ],
       "requires" : [
         "java.logging",
       ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,SDK",
+    },
+
+    "org.graalvm.sdk" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "sdk:COLLECTIONS",
+          "sdk:NATIVEIMAGE",
+          "sdk:POLYGLOT",
+          "sdk:WORD"],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
@@ -254,8 +268,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.word",
-        "org.graalvm.options",
+        "sdk:WORD",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
@@ -286,7 +299,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.polyglot",
+        "sdk:POLYGLOT",
         "JLINE3",
       ],
       "requires" : [
@@ -314,7 +327,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.polyglot",
+        "sdk:POLYGLOT",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
@@ -332,7 +345,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
-        "org.graalvm.collections",
+        "COLLECTIONS",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
@@ -342,7 +355,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.nativeimage",
+        "NATIVEIMAGE",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
@@ -353,7 +366,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
-        "org.graalvm.home",
+        "sdk:POLYGLOT",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
@@ -363,7 +376,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-          "GRAAL_SDK",
+          "NATIVEIMAGE",
       ],
       "requires" : [
       ],
@@ -537,21 +550,50 @@ suite = {
     "GRAAL_SDK" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.polyglot",
-        "org.graalvm.nativeimage",
-        "com.oracle.svm.core.annotate",
-        "org.graalvm.collections",
-        "org.graalvm.home",
+          "org.graalvm.sdk",
       ],
-      "distDependencies" : [],
+      "distDependencies" : [
+          "sdk:COLLECTIONS",
+          "sdk:NATIVEIMAGE",
+          "sdk:POLYGLOT",
+          "sdk:WORD",
+      ],
       "javadocType": "api",
       "moduleInfo" : {
         "name" : "org.graalvm.sdk",
-        "requires" : ["java.logging"],
+        "requires" : [
+            "transitive java.logging",
+            "transitive org.graalvm.word",
+            "transitive org.graalvm.polyglot",
+            "transitive org.graalvm.nativeimage",
+            "transitive org.graalvm.collections",
+        ],
         "exports" : [
-          "org.graalvm.collections",
-          "org.graalvm.home",
-          "org.graalvm.home.impl",
+            "org.graalvm.sdk"
+        ],
+        "uses" : [
+        ],
+        "opens" : [
+        ],
+      },
+      "description" : "Shared library",
+      "maven": True,
+    },
+
+    "NATIVEIMAGE" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativeimage",
+        "com.oracle.svm.core.annotate",
+      ],
+      "distDependencies" : ["WORD"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.nativeimage",
+        "requires" : [
+            "transitive org.graalvm.word",
+        ],
+        "exports" : [
           "com.oracle.svm.core.annotate",
           "org.graalvm.nativeimage.hosted",
           "org.graalvm.nativeimage.c.function",
@@ -560,17 +602,49 @@ suite = {
           "org.graalvm.nativeimage.c.constant",
           "org.graalvm.nativeimage.c",
           "org.graalvm.nativeimage",
+          """org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,
+                                             org.graalvm.nativeimage.base,
+                                             org.graalvm.nativeimage.builder,
+                                             org.graalvm.nativeimage.configure,
+                                             com.oracle.svm.svm_enterprise,
+                                             org.graalvm.extraimage.builder,
+                                             org.graalvm.truffle.runtime.svm,
+                                             com.oracle.svm.enterprise.truffle,
+                                             org.graalvm.nativeimage.foreign""",
+          "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "A framework that allows to customize native image generation.",
+      "maven": True,
+    },
+
+    "POLYGLOT" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.polyglot",
+        "org.graalvm.home",
+      ],
+      "distDependencies" : ["COLLECTIONS", "NATIVEIMAGE"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.polyglot",
+        "requires" : [
+            "transitive java.logging",
+            "org.graalvm.word",
+            "org.graalvm.nativeimage",
+            "org.graalvm.collections",
+        ],
+        "exports" : [
+          "org.graalvm.home",
+          "org.graalvm.home.impl",
           "org.graalvm.polyglot.proxy",
           "org.graalvm.polyglot.io",
           "org.graalvm.polyglot.management",
           "org.graalvm.polyglot",
           "org.graalvm.options",
-          "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.truffle.enterprise",
-          "org.graalvm.word.impl to jdk.internal.vm.compiler",
-          """org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.base,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,
-                                             org.graalvm.truffle.runtime.svm,com.oracle.svm.enterprise.truffle""",
-          "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
@@ -579,8 +653,54 @@ suite = {
           "org.graalvm.polyglot to org.graalvm.truffle"
         ],
       },
-      "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
+      "description" : "A framework that allows to embed polyglot language implementations in Java.",
+      "maven" : {
+        "groupId" : "org.graalvm.polyglot",
+        "artifactId" : "polyglot",
+      }
     },
+
+    "COLLECTIONS" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.collections",
+      ],
+      "distDependencies" : [],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.collections",
+        "requires" : [],
+        "exports" : [
+           "org.graalvm.collections",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "A collections framework for GraalVM components.",
+      "maven": True,
+    },
+
+    "WORD" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.word",
+      ],
+      "distDependencies" : [],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.word",
+        "requires" : [],
+        "exports" : [
+            "org.graalvm.word",
+            "org.graalvm.word.impl to jdk.internal.vm.compiler",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "A low-level framework for machine-word-sized values in Java.",
+      "maven": True,
+    },
+
     "SDK_TEST" : {
       "subDir" : "src",
       "dependencies" : [
@@ -590,9 +710,11 @@ suite = {
         "org.graalvm.home.test",
       ],
       "distDependencies" : [
-        "GRAAL_SDK",
-        "LAUNCHER_COMMON",
         "mx:JUNIT",
+        "sdk:POLYGLOT",
+        "sdk:NATIVEIMAGE",
+        "sdk:COLLECTIONS",
+        "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,
     },
@@ -642,7 +764,7 @@ suite = {
         "org.graalvm.launcher",
       ],
       "distDependencies" : [
-        "GRAAL_SDK",
+        "sdk:COLLECTIONS", "sdk:POLYGLOT",
         "JLINE3",
       ],
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
@@ -660,7 +782,7 @@ suite = {
         "org.graalvm.polyglot.tck",
       ],
       "distDependencies" : [
-        "GRAAL_SDK",
+        "sdk:COLLECTIONS", "sdk:POLYGLOT",
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
@@ -674,7 +796,7 @@ suite = {
       },
       "subDir" : "src",
       "dependencies" : ["org.graalvm.jniutils"],
-      "distDependencies" : ["GRAAL_SDK"],
+      "distDependencies" : ["COLLECTIONS", "NATIVEIMAGE"],
       "description" : "Utilities for JNI calls from within native-image.",
       "allowsJavadocWarnings": True,
     },

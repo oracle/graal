@@ -1418,7 +1418,7 @@ abstract class AbstractBridgeParser {
             this.string = (DeclaredType) processor.getType("java.lang.String");
             this.suppressWarnings = (DeclaredType) processor.getType("java.lang.SuppressWarnings");
             this.throwable = (DeclaredType) processor.getType("java.lang.Throwable");
-            this.typeLiteral = (DeclaredType) processor.getType("org.graalvm.polyglot.TypeLiteral");
+            this.typeLiteral = (DeclaredType) processor.getType("org.graalvm.nativebridge.TypeLiteral");
             this.unmanagedMemory = (DeclaredType) processor.getType("org.graalvm.nativeimage.UnmanagedMemory");
             this.weakHashMap = (DeclaredType) processor.getType("java.util.WeakHashMap");
             this.wordFactory = (DeclaredType) processor.getType("org.graalvm.word.WordFactory");

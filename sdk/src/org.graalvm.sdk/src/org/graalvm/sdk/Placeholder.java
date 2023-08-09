@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,20 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.sdk;
 
-import java.util.List;
-
-import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
-
-public interface RuntimeOptionsSupport {
-
-    void set(String optionName, Object value);
-
-    <T> T get(String optionName);
-
-    List<Descriptor> listDescriptors();
-
-    Descriptor getDescriptor(String optionName);
-
+/**
+ * @since 23.1
+ */
+public final class Placeholder {
+    private Placeholder() {
+    }
+    /*
+     * This class is just here to keep the package and module non-empty.
+     */
 }

@@ -180,7 +180,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "compiler:GRAAL",
             ],
             "requiresConcealed" : {
@@ -547,7 +547,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO"
             ],
             "requires": [
@@ -883,7 +883,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "SVM",
             ],
             "requires": [
@@ -916,7 +916,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
             ],
             "checkstyle": "com.oracle.svm.test",
@@ -934,7 +934,7 @@ suite = {
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
-            "dependencies" : ["sdk:GRAAL_SDK"],
+            "dependencies" : ["sdk:NATIVEIMAGE"],
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "17+",
             "workingSets" : "SVM",
@@ -946,7 +946,8 @@ suite = {
             "subDir": "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
-                "compiler:GRAAL"
+                "compiler:GRAAL",
+                "sdk:NATIVEIMAGE",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1003,7 +1004,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "com.oracle.svm.graal",
             ],
             "requiresConcealed" : {
@@ -1043,7 +1044,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
@@ -1164,7 +1165,8 @@ suite = {
                 "resources",
             ],
             "dependencies" : [
-                "sdk:GRAAL_SDK",
+                "sdk:POLYGLOT",
+                "sdk:NATIVEIMAGE",
                 "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.core",
@@ -1361,7 +1363,7 @@ suite = {
                 "com.oracle.svm.core.containers",
             ],
             "distDependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "OBJECTFILE",
                 "POINTSTO",
                 "compiler:GRAAL",
@@ -1461,7 +1463,7 @@ suite = {
                 "com.oracle.svm.thirdparty",
             ],
             "distDependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "SVM",
             ],
             "moduleInfo" : {
@@ -1479,7 +1481,7 @@ suite = {
                 "com.oracle.svm.junit",
             ],
             "distDependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "SVM",
                 "compiler:GRAAL",
                 "mx:JUNIT_TOOL",
@@ -1504,6 +1506,7 @@ suite = {
                 "com.oracle.objectfile"
             ],
             "distDependencies": [
+                "sdk:NATIVEIMAGE",
                 "compiler:GRAAL",
             ],
             "moduleInfo" : {
@@ -1779,11 +1782,13 @@ suite = {
             ],
             "distDependencies": [
                 "compiler:GRAAL",
+                "sdk:NATIVEIMAGE",
             ],
             "exclude": [
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
+                "requires" : ["java.sql", "java.xml"],# workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
@@ -1891,7 +1896,7 @@ suite = {
             ],
             "distDependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO",
             ],
             "testDistribution" : True,
@@ -1907,7 +1912,7 @@ suite = {
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
-            "sdk:GRAAL_SDK",
+            "sdk:NATIVEIMAGE",
             "SVM",
             "SVM_CONFIGURE",
           ],
@@ -1920,7 +1925,8 @@ suite = {
                 "org.graalvm.polyglot.nativeapi",
             ],
             "distDependencies": [
-                "sdk:GRAAL_SDK",
+                "sdk:NATIVEIMAGE",
+                "sdk:POLYGLOT",
                 "SVM",
             ],
             "maven": False

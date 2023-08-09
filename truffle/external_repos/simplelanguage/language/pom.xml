@@ -50,7 +50,7 @@
     <properties>
       <antlr.version>4.12.0</antlr.version>
       <jar.dir>${project.build.directory}/jars</jar.dir>
-      <test.argLine>--upgrade-module-path='${jar.dir}/truffle-api.jar' --add-opens org.graalvm.sdk/org.graalvm.polyglot=ALL-UNNAMED --add-exports java.base/jdk.internal.module=ALL-UNNAMED</test.argLine>
+      <test.argLine>--upgrade-module-path='${jar.dir}/truffle-api.jar' --add-opens org.graalvm.polylgot/org.graalvm.polyglot=ALL-UNNAMED --add-exports java.base/jdk.internal.module=ALL-UNNAMED</test.argLine>
     </properties>
   <build>
     <plugins>
