@@ -148,6 +148,11 @@ public class OperationsNodeFactory implements ElementHelpers {
     // Interface representing data objects that can have a specified boxing state.
     private final CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
 
+    // Helper class that tracks the number of guest-language loop iterations. The count must be
+    // wrapped in an object, otherwise the loop unrolling logic of ExplodeLoop.MERGE_EXPLODE will
+    // create a new "state" for each count.
+    private final CodeTypeElement loopCounter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "LoopCounter");
+
     // Root node and ContinuationLocal classes to support yield.
     private final CodeTypeElement continuationRoot;
     private final CodeTypeElement continuationLocationImpl;
@@ -223,6 +228,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Define the members required to support OSR.
         operationNodeGen.addAll(new OSRMembersFactory().create());
+
+        // Define a loop counter class to track how many back-edges have been taken.
+        operationNodeGen.add(createLoopCounter());
 
         // Define the static method to create a root node.
         operationNodeGen.add(createCreate());
@@ -671,6 +679,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end();
 
         return ex;
+    }
+
+    private CodeTypeElement createLoopCounter() {
+        addField(loopCounter, Set.of(PRIVATE, STATIC, FINAL), int.class, "REPORT_LOOP_STRIDE", "1 << 8");
+        addField(loopCounter, Set.of(PRIVATE), int.class, "value");
+
+        return loopCounter;
     }
 
     private CodeExecutableElement createCreate() {
@@ -3748,6 +3763,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
+            b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
 
             if (model.enableTracing) {
                 b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "$this.basicBlockBoundary");
@@ -3809,6 +3825,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.statement("return (sp << 16) | " + readBc("bci + 1"));
                             b.end();
                         } else {
+                            emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
+
                             b.startIf().startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("$this").end(2).startBlock();
 
                             b.startAssign("Object osrResult");
@@ -3856,11 +3874,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp", readConst(readBc("bci + 1"))));
                         b.statement("sp += 1");
                         break;
-                    case LOAD_LOCAL: {
+                    case LOAD_LOCAL:
                         b.statement(setFrameObject("sp", getFrameObject(localFrame(), readBc("bci + 1"))));
                         b.statement("sp += 1");
                         break;
-                    }
                     case LOAD_LOCAL_MATERIALIZED:
                         b.statement(setFrameObject("sp - 1", getFrameObject("(VirtualFrame) " + getFrameObject("sp - 1"), readBc("bci + 1"))));
                         break;
@@ -3876,16 +3893,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.end().startElseBlock();
                             b.statement("$this.baselineExecuteCount = baselineExecuteCount");
                             b.end();
+                        } else {
+                            emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
                         }
 
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
-                    case STORE_LOCAL: {
+                    case STORE_LOCAL:
                         b.statement(setFrameObject(localFrame(), readBc("bci + 1"), getFrameObject("sp - 1")));
                         b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
                         break;
-                    }
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("((VirtualFrame) " + getFrameObject("sp - 2") + ").setObject(" + readBc("bci + 1") + ", " + getFrameObject("sp - 1") + ")");
                         b.statement(clearFrame("sp - 1"));
@@ -3896,13 +3914,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("throw sneakyThrow((Throwable) " + getFrameObject(localFrame(), readBc("bci + 1")) + ")");
                         break;
                     case YIELD:
+                        emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
                         b.statement("int numLocals = $this.numLocals");
                         b.statement(copyFrameTo("frame", "numLocals", "localFrame", "numLocals", "(sp - 1 - numLocals)"));
                         b.statement(setFrameObject("sp - 1", "((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(localFrame, " + getFrameObject("sp - 1") + ")"));
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
-                        break;
-                    case SUPERINSTRUCTION:
-                        // todo: implement superinstructions
                         break;
                     case STORE_NULL:
                         b.statement(setFrameObject("sp", "null"));
@@ -3929,10 +3945,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case MERGE_VARIADIC:
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
-                    case CUSTOM: {
+                    case CUSTOM:
                         results.add(buildCustomInstructionExecute(b, instr, false));
                         break;
-                    }
                     case CUSTOM_SHORT_CIRCUIT:
                         results.add(buildCustomInstructionExecute(b, instr, true));
 
@@ -3947,18 +3962,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         b.end();
                         break;
-
+                    case SUPERINSTRUCTION:
+                        // not implemented yet
+                        break;
                     default:
-                        throw new UnsupportedOperationException("not implemented");
+                        throw new UnsupportedOperationException("not implemented: " + instr.kind);
                 }
-
                 if (!instr.isControlFlow()) {
                     b.statement("bci += " + instr.getInstructionLength());
                     b.statement("continue loop");
                 }
-
                 b.end();
-
             }
 
             b.end(); // switch
@@ -4003,6 +4017,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end(); // for
 
+            /**
+             * NB: Reporting here ensures loop counts are reported before a guest-language exception
+             * bubbles up. Loop counts may be lost when host exceptions are thrown (a compromise to
+             * avoid complicating the generated code too much).
+             */
+            emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
             b.statement("throw ex");
 
             b.end(); // catch
@@ -4016,6 +4036,19 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             return results;
+        }
+
+        private void emitReportLoopCount(CodeTreeBuilder b, CodeTree condition, boolean clear) {
+            b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end() //
+                            .string(" && ").tree(condition).end().startBlock();
+            b.startStatement().startStaticCall(types.LoopNode, "reportLoopCount");
+            b.string("$this");
+            b.string("loopCounter.value");
+            b.end(2);
+            if (clear) {
+                b.statement("loopCounter.value = 0");
+            }
+            b.end();
         }
 
         // Generate a helper method that implements the custom instruction. Also emits a call to the
