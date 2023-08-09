@@ -291,6 +291,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
         }
         if (model.enableBaselineInterpreter) {
+            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bciSlot")));
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
         }
         if (model.enableTracing) {
@@ -301,8 +302,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
 
-        // Define helper for bci lookups.
+        // Define helpers for bci lookups.
         operationNodeGen.add(createFindBciOfOperationNode());
+        operationNodeGen.add(createReadBciFromFrame());
 
         // Define helpers for boxing-eliminated accesses.
         if (model.hasBoxingElimination()) {
@@ -965,8 +967,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
         b.tree(createNeverPartOfCompilation());
-        b.declaration(arrayOf(types.Node), "nodes", "cachedNodes");
-        b.startIf().string("nodes == null").end().startBlock();
+        b.declaration(arrayOf(types.Node), "localNodes", "cachedNodes");
+        b.startIf().string("localNodes == null").end().startBlock();
         b.startReturn().string("-1").end();
         b.end();
 
@@ -1015,7 +1017,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // nodeIndex is guaranteed to be set, since we continue to the top of the loop when there's
         // no node.
-        b.startIf().string("nodes[nodeIndex] == operationNode").end().startBlock();
+        b.startIf().string("localNodes[nodeIndex] == operationNode").end().startBlock();
         b.startReturn().string("currentBci").end();
         b.end();
 
@@ -1026,6 +1028,20 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         return ex;
 
+    }
+
+    private CodeExecutableElement createReadBciFromFrame() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "readBciFromFrame");
+
+        CodeTreeBuilder b = ex.createBuilder();
+        if (model.enableBaselineInterpreter) {
+            b.startReturn().string("ACCESS.getInt(frame, bciSlot)").end();
+        } else {
+            b.lineComment("The bci is only stored in the frame for baseline interpreters.");
+            b.startReturn().string("-1").end();
+        }
+
+        return ex;
     }
 
     static Object[] merge(Object[] array0, Object[] array1) {
@@ -2609,6 +2625,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.cast(types.TruffleLanguage).string("rootData[1]");
             b.end();
 
+            if (model.enableBaselineInterpreter) {
+                b.declaration(context.getType(int.class), "bciSlot", "numLocals++");
+            }
+
             CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
             b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
             b.startStatement().startCall("fdb.addSlots");
@@ -2629,7 +2649,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             b.startAssign("result.numNodes").string("numNodes").end();
-
+            if (model.enableBaselineInterpreter) {
+                b.startAssign("result.bciSlot").string("bciSlot").end();
+            }
             if (model.enableYield) {
                 b.startFor().string("ContinuationLocation location : continuationLocations").end().startBlock();
                 b.statement("ContinuationLocationImpl locationImpl = (ContinuationLocationImpl) location");
@@ -3764,6 +3786,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
             b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
+            if (model.enableBaselineInterpreter && !tier.isUncached) {
+                // Non-baseline interpreters don't use the bci slot. Set it to an invalid value just
+                // in case it gets read during a stack walk.
+                b.statement("ACCESS.setInt(frame, $this.bciSlot, -1)");
+            }
 
             if (model.enableTracing) {
                 b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "$this.basicBlockBoundary");
@@ -4095,8 +4122,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             // Since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
 
-            if (!tier.isUncached) {
-                // If not tier 0, retrieve the node.
+            if (tier.isUncached) {
+                // If in the baseline interpreter, we need to store the bci in the frame in case the
+                // stack is inspected.
+                b.statement("ACCESS.setInt(frame, $this.bciSlot, bci)");
+            } else {
+                // If not in the baseline interpreter, we need to retrieve the node for the call.
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
                 String nodeIndex = readBc("bci + " + imm.offset);
                 CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
