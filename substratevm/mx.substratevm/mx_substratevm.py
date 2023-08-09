@@ -1270,11 +1270,15 @@ libgraal_build_args = [
     '-H:+ReportExceptionStackTraces',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
-    '-H:InitialCollectionPolicy=AggressiveShrink',
+    '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
+
+    # Configure -Dlibgraal.HeapDumpOnOutOfMemoryError=true
+    '--enable-monitoring=heapdump',
+    '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',

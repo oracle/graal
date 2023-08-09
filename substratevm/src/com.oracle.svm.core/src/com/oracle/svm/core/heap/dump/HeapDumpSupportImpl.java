@@ -69,9 +69,12 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void initializeDumpHeapOnOutOfMemoryError() {
-        String defaultFilename = getDefaultHeapDumpFilename("OOME");
-        String heapDumpPath = getHeapDumpPath(defaultFilename);
-        outOfMemoryHeapDumpPath = getFileSupport().allocateCPath(heapDumpPath);
+        // Be defensive against different paths initializing this feature
+        if (outOfMemoryHeapDumpPath.isNull()) {
+            String defaultFilename = getDefaultHeapDumpFilename("OOME");
+            String heapDumpPath = getHeapDumpPath(defaultFilename);
+            outOfMemoryHeapDumpPath = getFileSupport().allocateCPath(heapDumpPath);
+        }
     }
 
     @Override
@@ -83,19 +86,20 @@ public class HeapDumpSupportImpl extends HeapDumping {
     @Override
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "OutOfMemoryError heap dumping must not allocate.")
     public void dumpHeapOnOutOfMemoryError() {
-        if (outOfMemoryHeapDumpPath.isNull()) {
+        CCharPointer path = outOfMemoryHeapDumpPath;
+        if (path.isNull()) {
             Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file path could not be allocated.").newline();
             return;
         }
 
-        RawFileDescriptor fd = getFileSupport().create(outOfMemoryHeapDumpPath, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+        RawFileDescriptor fd = getFileSupport().create(path, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
-            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file could not be created: ").string(outOfMemoryHeapDumpPath).newline();
+            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file could not be created: ").string(path).newline();
             return;
         }
 
         try {
-            Log.log().string("Dumping heap to ").string(outOfMemoryHeapDumpPath).string(" ...").newline();
+            Log.log().string("Dumping heap to ").string(path).string(" ...").newline();
             long start = System.currentTimeMillis();
             if (dumpHeap(fd, false)) {
                 long fileSize = getFileSupport().size(fd);

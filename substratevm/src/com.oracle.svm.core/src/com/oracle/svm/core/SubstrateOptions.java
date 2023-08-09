@@ -824,10 +824,12 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Dump heap to file (see HeapDumpPath) when the executable throws a java.lang.OutOfMemoryError because it ran out of Java heap.")//
+    @Option(help = "Dump heap to file (see HeapDumpPath) the first time the image throws java.lang.OutOfMemoryError because it ran out of Java heap.")//
     public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false);
 
-    @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
+    @Option(help = "Path of the file or directory in which heap dumps are created. An empty value means a default file " +
+                    "name will be used. An existing directory means the dump will be placed in the directory and have " +
+                    "the default file name.") //
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
